@@ -17,3 +17,6 @@ logs:
 
 db-push:
 	docker compose exec api npm run db:push
+
+seed-mvp:
+	docker compose exec api npm run seed:mvp

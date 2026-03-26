@@ -6,7 +6,6 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
-  text,
   timestamp,
   uuid,
   varchar
@@ -17,6 +16,8 @@ export const productTypeEnum = pgEnum('product_type', ['chrome_extension', 'web_
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
 export const recordStatusEnum = pgEnum('record_status', ['active', 'inactive', 'cancelled', 'expired']);
+export const paymentProviderEnum = pgEnum('payment_provider', ['wechat_pay', 'alipay']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'failed', 'cancelled', 'refunded']);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -37,6 +38,17 @@ export const authIdentities = pgTable('auth_identities', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const passwordCredentials = pgTable('password_credentials', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' })
+    .unique(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
   code: varchar('code', { length: 64 }).notNull().unique(),
@@ -55,7 +67,10 @@ export const plans = pgTable('plans', {
   name: varchar('name', { length: 120 }).notNull(),
   billingProvider: varchar('billing_provider', { length: 32 }).notNull(),
   billingPriceId: varchar('billing_price_id', { length: 128 }),
+  priceAmount: integer('price_amount').notNull().default(0),
+  currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
   interval: intervalEnum('interval').notNull(),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
   status: recordStatusEnum('status').notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
@@ -120,12 +135,22 @@ export const orders = pgTable('orders', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  provider: varchar('provider', { length: 32 }).notNull(),
-  providerOrderId: varchar('provider_order_id', { length: 128 }).notNull(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'restrict' }),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => plans.id, { onDelete: 'restrict' }),
+  orderNo: varchar('order_no', { length: 64 }).notNull().unique(),
+  provider: paymentProviderEnum('provider').notNull(),
+  providerOrderId: varchar('provider_order_id', { length: 128 }),
+  subject: varchar('subject', { length: 255 }).notNull(),
   amount: integer('amount').notNull(),
   currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
-  status: recordStatusEnum('status').notNull().default('active'),
+  status: orderStatusEnum('status').notNull().default('pending'),
   meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 

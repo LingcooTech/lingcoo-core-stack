@@ -1,38 +1,41 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { AppEnv } from '../../lib/env';
 
-function hasWeChatPayConfig(env: AppEnv) {
-  return Boolean(
-    env.WECHAT_PAY_MCH_ID &&
-      env.WECHAT_PAY_CERT_SERIAL_NO &&
-      env.WECHAT_PAY_API_V3_KEY &&
-      env.WECHAT_PAY_PRIVATE_KEY_PATH
-  );
-}
-
-function hasAlipayConfig(env: AppEnv) {
-  return Boolean(
-    env.ALIPAY_APP_ID &&
-      env.ALIPAY_PRIVATE_KEY_PATH &&
-      env.ALIPAY_PUBLIC_KEY_PATH
-  );
-}
+import { createOrderSchema, orderNoParamsSchema } from './schemas';
+import { BillingService } from './service';
 
 export const billingRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/billing/providers', async () => {
     return {
-      wechatPay: {
-        enabled: hasWeChatPayConfig(app.appEnv),
-        notifyUrl: app.appEnv.WECHAT_PAY_NOTIFY_URL || null
-      },
-      alipay: {
-        enabled: hasAlipayConfig(app.appEnv),
-        notifyUrl: app.appEnv.ALIPAY_NOTIFY_URL || null
-      }
+      items: new BillingService(app.db, app.appEnv).listProviders()
     };
   });
 
-  app.post('/v1/billing/providers/wechat/notify', async (request) => {
+  app.post('/v1/billing/orders', { preHandler: app.authenticate }, async (request, reply) => {
+    const payload = createOrderSchema.parse(request.body);
+    const result = await new BillingService(app.db, app.appEnv).createOrder({
+      userId: request.user.sub,
+      ...payload
+    });
+
+    return reply.status(201).send(result);
+  });
+
+  app.get('/v1/billing/orders/me', { preHandler: app.authenticate }, async (request) => {
+    return {
+      items: await new BillingService(app.db, app.appEnv).listOrdersByUser(request.user.sub)
+    };
+  });
+
+  app.post('/v1/billing/orders/:orderNo/mock-pay', { preHandler: app.authenticate }, async (request) => {
+    const params = orderNoParamsSchema.parse(request.params);
+
+    return new BillingService(app.db, app.appEnv).mockPayOrder({
+      userId: request.user.sub,
+      orderNo: params.orderNo
+    });
+  });
+
+  app.post('/v1/billing/providers/wechat/notify', async (request, reply) => {
     request.log.info(
       {
         headers: request.headers,
@@ -41,10 +44,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       'wechat pay notify received'
     );
 
-    return {
-      code: 'SUCCESS',
-      message: '成功'
-    };
+    return reply.status(501).send({
+      error: 'NotImplemented',
+      message: 'WeChat Pay callback signature verification is not implemented yet.'
+    });
   });
 
   app.post('/v1/billing/providers/alipay/notify', async (request, reply) => {
@@ -56,6 +59,9 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       'alipay notify received'
     );
 
-    return reply.type('text/plain').send('success');
+    return reply.status(501).send({
+      error: 'NotImplemented',
+      message: 'Alipay callback signature verification is not implemented yet.'
+    });
   });
 };

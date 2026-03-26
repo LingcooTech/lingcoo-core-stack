@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { moduleNames } from '../names';
 
 export const systemRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async () => {
@@ -26,7 +27,7 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/system/modules', async () => {
     return {
-      items: ['system', 'auth', 'billing', 'license', 'event']
+      items: [...moduleNames]
     };
   });
 };

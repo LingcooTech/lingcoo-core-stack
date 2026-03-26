@@ -1,22 +1,19 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { z } from 'zod';
 
-const eventItemSchema = z.object({
-  eventName: z.string().min(1).max(120),
-  userId: z.string().uuid().optional(),
-  productId: z.string().uuid().optional(),
-  installId: z.string().uuid().optional(),
-  eventTime: z.iso.datetime().optional(),
-  properties: z.record(z.string(), z.unknown()).default({})
-});
-
-const eventBatchSchema = z.object({
-  items: z.array(eventItemSchema).min(1).max(100)
-});
+import { eventBatchSchema } from './schemas';
+import { EventService } from './service';
 
 export const eventRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/events/batch', async (request) => {
     const payload = eventBatchSchema.parse(request.body);
+    const service = new EventService(app.db);
+
+    await service.captureMany(
+      payload.items.map((item) => ({
+        ...item,
+        eventTime: item.eventTime ? new Date(item.eventTime) : undefined
+      }))
+    );
 
     request.log.info(
       {

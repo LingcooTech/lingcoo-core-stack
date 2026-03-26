@@ -9,11 +9,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import Fastify from 'fastify';
 import { ZodError } from 'zod';
 
-import { authRoutes } from './modules/auth/routes';
-import { billingRoutes } from './modules/billing/routes';
-import { eventRoutes } from './modules/event/routes';
-import { licenseRoutes } from './modules/license/routes';
-import { systemRoutes } from './modules/system/routes';
+import { appModules } from './modules';
 import { dbPlugin } from './plugins/db';
 import { redisPlugin } from './plugins/redis';
 import { type AppEnv } from './lib/env';
@@ -52,6 +48,13 @@ export async function buildApp(env: AppEnv) {
       signed: false
     }
   });
+  app.decorate('authenticate', async (request, reply) => {
+    try {
+      await request.jwtVerify();
+    } catch (error) {
+      return reply.unauthorized('Invalid or expired access token');
+    }
+  });
   await app.register(rateLimit, {
     max: 200,
     timeWindow: '1 minute'
@@ -71,11 +74,9 @@ export async function buildApp(env: AppEnv) {
   await app.register(dbPlugin, { env });
   await app.register(redisPlugin, { env });
 
-  await app.register(systemRoutes);
-  await app.register(authRoutes);
-  await app.register(billingRoutes);
-  await app.register(licenseRoutes);
-  await app.register(eventRoutes);
+  for (const module of appModules) {
+    await app.register(module.register);
+  }
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'request failed');

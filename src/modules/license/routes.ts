@@ -1,38 +1,28 @@
-import { desc } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 
-import { entitlements, features, plans, products } from '../../db/schema';
+import { LicenseService } from './service';
 
 export const licenseRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/v1/products', async () => {
-    const items = await app.db.select().from(products).orderBy(desc(products.createdAt)).limit(50);
+  app.get('/v1/catalog', async () => {
+    return new LicenseService(app.db).getCatalogSnapshot();
+  });
 
-    return {
-      items
-    };
+  app.get('/v1/products', async () => {
+    const { products } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: products };
   });
 
   app.get('/v1/plans', async () => {
-    const items = await app.db.select().from(plans).orderBy(desc(plans.createdAt)).limit(100);
-
-    return {
-      items
-    };
+    const { plans } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: plans };
   });
 
   app.get('/v1/features', async () => {
-    const items = await app.db.select().from(features).orderBy(desc(features.createdAt)).limit(200);
-
-    return {
-      items
-    };
+    const { features } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: features };
   });
 
-  app.get('/v1/entitlements', async () => {
-    const items = await app.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(200);
-
-    return {
-      items
-    };
+  app.get('/v1/entitlements/me', { preHandler: app.authenticate }, async (request) => {
+    return new LicenseService(app.db).listUserEntitlements(request.user.sub);
   });
 };

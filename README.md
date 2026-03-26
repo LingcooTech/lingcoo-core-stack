@@ -8,7 +8,7 @@
 - `event`
 - `api`
 
-当前目标不是把所有业务一次写完，而是先搭好一套能长期继续长的底座。
+当前目标不是一次把所有支付细节都写满，而是先把核心中台的 MVP 主流程跑通。
 
 ## 技术选择
 
@@ -40,11 +40,10 @@
 ├── drizzle.config.ts
 ├── src
 │   ├── app.ts
+│   ├── server.ts
 │   ├── worker.ts
 │   ├── db
-│   │   └── schema.ts
 │   ├── lib
-│   │   └── env.ts
 │   ├── modules
 │   │   ├── auth
 │   │   ├── billing
@@ -52,10 +51,8 @@
 │   │   ├── license
 │   │   └── system
 │   ├── plugins
-│   │   ├── db.ts
-│   │   └── redis.ts
+│   ├── scripts
 │   └── types
-│       └── fastify.d.ts
 └── secrets
 ```
 
@@ -85,15 +82,19 @@ docker compose up --build
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-## 数据库
+## MVP 初始化
 
-第一次启动后，执行：
+第一次启动后，执行数据库推送：
 
 ```bash
 docker compose exec api npm run db:push
 ```
 
-这一步会把当前 `src/db/schema.ts` 推到 PostgreSQL。
+然后导入一套可直接测试的 MVP 产品数据：
+
+```bash
+docker compose exec api npm run seed:mvp
+```
 
 `docker/postgres/init/001-extensions.sql` 会在新库初始化时自动启用 `pgcrypto`，用于 UUID 默认值。
 
@@ -102,23 +103,32 @@ docker compose exec api npm run db:push
 - Docker / Compose 开发与生产骨架
 - Fastify 应用入口
 - PostgreSQL / Redis 连接插件
-- 模块化路由结构
-- 系统、认证、支付、授权、事件模块占位
-- 一版中台核心表结构
+- 模块注册式架构
+- 邮箱密码注册 / 登录
+- JWT 鉴权
+- 产品、套餐、功能、授权的数据模型
+- 创建订单
+- 本地模拟支付完成
+- 支付完成后自动发放 entitlement
+- 查询当前用户权益
+- 事件入库
+- 一版中台核心表结构和迁移
+- MVP 种子数据脚本
 - GitHub Actions 基础 CI
 
 ## 这版还没有做的内容
 
-- 真正的注册 / 登录流程
 - 微信支付签名与回调验签
-- 支付宝下单与通知验签
-- entitlement 真实计算
+- 支付宝真实下单与通知验签
+- 支付状态查询与退款
 - Admin 后台
-- 队列任务处理
+- 真正的异步任务队列
+- 订阅续费与周期性扣费
+- 风控、限流和审计后台
 
 ## 支付接入策略
 
-这套骨架先把支付模块和配置位留出来。
+这版已经把支付模块做成了 provider 适配层，但目前还是 stub。
 
 后续建议：
 
@@ -129,6 +139,89 @@ docker compose exec api npm run db:push
 
 - 微信支付在 Node 生态里不适合把命脉押在小众第三方包上
 - 支付是核心业务，回调验签和订单状态同步必须自己掌控
+
+## 当前模块结构
+
+当前不是“外部插件系统”，而是“模块化单体”：
+
+- `system`
+  - 健康检查、模块自检
+- `auth`
+  - 注册、登录、`/v1/me`
+- `billing`
+  - 下单、订单查询、支付 provider 适配、模拟支付
+- `license`
+  - 产品目录、套餐、功能、entitlement 发放与查询
+- `event`
+  - 埋点和业务事件入库
+
+模块之间共享一套数据库、Redis、环境配置和鉴权能力，但服务层是按业务域拆开的。
+
+## 当前可跑通的 MVP 流程
+
+1. 注册账号
+
+```bash
+curl -X POST http://localhost:8080/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "demo@example.com",
+    "password": "password123",
+    "displayName": "Demo User"
+  }'
+```
+
+2. 登录，拿到 `token`
+
+```bash
+curl -X POST http://localhost:8080/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "demo@example.com",
+    "password": "password123"
+  }'
+```
+
+3. 查看产品目录
+
+```bash
+curl http://localhost:8080/v1/catalog
+```
+
+4. 创建订单
+
+```bash
+curl -X POST http://localhost:8080/v1/billing/orders \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "planCode": "translator_pro_monthly",
+    "provider": "wechat_pay"
+  }'
+```
+
+5. 模拟支付成功
+
+```bash
+curl -X POST http://localhost:8080/v1/billing/orders/$ORDER_NO/mock-pay \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+6. 查询当前用户权益
+
+```bash
+curl http://localhost:8080/v1/entitlements/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+这条链路已经完整：
+
+- 注册
+- 登录
+- 创建订单
+- 标记支付成功
+- 自动发放 entitlement
+- 查询 entitlement
 
 ## 单机部署建议
 
@@ -147,8 +240,8 @@ docker compose exec api npm run db:push
 
 下一步应该做的是：
 
-1. 定义配置中心和环境变量规范
-2. 固化数据库 schema
-3. 真正实现 `auth / billing / license / event` 的服务层
-4. 接微信支付和支付宝
-5. 增加后台管理接口
+1. 接入微信支付真实下单、验签和回调落单
+2. 接入支付宝真实下单、验签和回调落单
+3. 增加管理接口和后台
+4. 增加订单状态机、退款和补单逻辑
+5. 增加异步任务处理和告警

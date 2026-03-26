@@ -2,6 +2,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { FastifyJWT } from '@fastify/jwt';
 import type Redis from 'ioredis';
 import type { Pool } from 'pg';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import type * as schema from '../db/schema';
 import type { AppEnv } from '../lib/env';
@@ -12,6 +13,7 @@ declare module 'fastify' {
     db: NodePgDatabase<typeof schema>;
     pg: Pool;
     redis: Redis;
+    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
 }
 

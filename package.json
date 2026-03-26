@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "seed:mvp": "tsx src/scripts/seed-mvp.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",
