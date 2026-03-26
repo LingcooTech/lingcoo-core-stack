@@ -1,0 +1,34 @@
+import { z } from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  APP_NAME: z.string().default('fd-core-stack'),
+  PORT: z.coerce.number().int().positive().default(3000),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  PUBLIC_BASE_URL: z.url().default('http://localhost:8080'),
+  CORS_ORIGIN: z.string().default('http://localhost:8080'),
+  CADDY_SITE_ADDRESS: z.string().default(':80'),
+  DATABASE_URL: z.string().min(1),
+  REDIS_URL: z.string().min(1),
+  JWT_SECRET: z.string().min(16),
+  POSTGRES_DB: z.string().default('fd_core'),
+  POSTGRES_USER: z.string().default('fd_core'),
+  POSTGRES_PASSWORD: z.string().default('fd_core_password'),
+  WECHAT_PAY_MCH_ID: z.string().optional(),
+  WECHAT_PAY_APP_ID: z.string().optional(),
+  WECHAT_PAY_CERT_SERIAL_NO: z.string().optional(),
+  WECHAT_PAY_API_V3_KEY: z.string().optional(),
+  WECHAT_PAY_PRIVATE_KEY_PATH: z.string().optional(),
+  WECHAT_PAY_PLATFORM_CERT_PATH: z.string().optional(),
+  WECHAT_PAY_NOTIFY_URL: z.string().optional(),
+  ALIPAY_APP_ID: z.string().optional(),
+  ALIPAY_PRIVATE_KEY_PATH: z.string().optional(),
+  ALIPAY_PUBLIC_KEY_PATH: z.string().optional(),
+  ALIPAY_NOTIFY_URL: z.string().optional()
+});
+
+export type AppEnv = z.infer<typeof envSchema>;
+
+export function loadEnv(): AppEnv {
+  return envSchema.parse(process.env);
+}
