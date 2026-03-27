@@ -27,6 +27,7 @@
 - PostgreSQL 足够支撑用户、授权、订单、事件这些核心数据
 - Redis 先作为缓存和任务队列预留，不强行引入复杂消息系统
 - Caddy 适合单机，后面有域名时可以直接接 HTTPS
+- 生产环境端口做成可配置，避免在一台机器上和其他站点争抢 `80/443`
 
 ## 当前目录
 
@@ -87,6 +88,14 @@ docker compose -f docker-compose.prod.yml run --rm --no-deps \
   api npm run db:migrate
 docker compose -f docker-compose.prod.yml up -d api worker caddy
 ```
+
+生产默认访问入口：
+
+- API: `http://<server-ip>:18080`
+- Health: `http://<server-ip>:18080/health`
+- Docs: `http://<server-ip>:18080/docs`
+
+如果服务器已经有统一入口层占用 `80/443`，只需要在 `.env` 里改 `FD_CORE_HTTP_PORT` / `FD_CORE_HTTPS_PORT` 即可。
 
 完整自动化发布说明见 [DEPLOYMENT.md](/Users/admin/Desktop/fd-core-stack/DEPLOYMENT.md)。
 

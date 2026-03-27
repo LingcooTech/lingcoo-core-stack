@@ -33,7 +33,7 @@ The server deploys the immutable SHA tag from ACR.
 2. Clone the repo to the deployment path.
 3. Create the production `.env`.
 4. Ensure `docker`, `git`, and `curl` are available on the server.
-5. Open `80` and `443` in the firewall.
+5. Open the configured public ports in the firewall or security group.
 
 Example:
 
@@ -51,6 +51,7 @@ cp .env.example .env
 
 - `api` and `worker` use `FD_CORE_RUNTIME_IMAGE`
 - `postgres`, `redis`, and `caddy` use upstream images
+- `caddy` publishes `${FD_CORE_HTTP_PORT}` and `${FD_CORE_HTTPS_PORT}` so the stack does not have to own host `80/443`
 
 `FD_CORE_RUNTIME_IMAGE` is injected at deploy time by the workflow.
 
