@@ -424,6 +424,28 @@ export function renderPaymentAdminPage() {
             </div>
           </div>
 
+          <div class="panel card">
+            <div class="card-head">
+              <div>
+                <h2 class="section-title">和 fd-payment 的对应关系</h2>
+                <p class="muted">这套中台不是直接照搬 WordPress 插件实现，所以有一部分字段名字一样，一部分已经升级了。</p>
+              </div>
+            </div>
+            <div class="muted" style="display:grid; gap:14px;">
+              <div>
+                <strong style="display:block; color:var(--ink); margin-bottom:6px;">支付宝</strong>
+                <div>fd-payment 里的“支付宝APPID / 应用私钥 / 支付宝公钥”在这里仍然是同一套东西，基本可以直接照着填。</div>
+                <div>新增的 gateway / notifyUrl / returnUrl / keyType 里，通常只需要保留默认网关，回调地址可以先留空。</div>
+              </div>
+              <div>
+                <strong style="display:block; color:var(--ink); margin-bottom:6px;">微信支付</strong>
+                <div>这里不是旧版“AppSecret + API密钥”那套，而是微信支付 API v3。</div>
+                <div>所以 fd-payment 里的“微信AppID / 微信商户号”还能直接对应；但“API密钥”已经换成 API v3 Key，并且必须新增“证书序列号 / 商户私钥 PEM / 平台证书 PEM”。</div>
+                <div>AppSecret 在当前这版里不需要，因为我们现在做的是 Native 下单，不是 JSAPI。</div>
+              </div>
+            </div>
+          </div>
+
           <div id="access-panel" class="panel card">
             <div class="card-head">
               <div>
@@ -454,24 +476,29 @@ export function renderPaymentAdminPage() {
               <form id="wechat-form">
                 <div class="field-grid">
                   <div class="field">
-                    <label for="wechat-mchId">商户号</label>
+                    <label for="wechat-mchId">微信商户号</label>
                     <input id="wechat-mchId" name="mchId" type="text" placeholder="1900000109" />
+                    <div class="subtle">这就是 fd-payment 里的“微信商户号”。</div>
                   </div>
                   <div class="field">
-                    <label for="wechat-appId">AppID</label>
+                    <label for="wechat-appId">微信 AppID</label>
                     <input id="wechat-appId" name="appId" type="text" placeholder="wx1234567890abcdef" />
+                    <div class="subtle">这就是 fd-payment 里的“微信AppID”。</div>
                   </div>
                   <div class="field">
-                    <label for="wechat-certSerialNo">证书序列号</label>
+                    <label for="wechat-certSerialNo">API 证书序列号</label>
                     <input id="wechat-certSerialNo" name="certSerialNo" type="text" placeholder="7775B3..." />
+                    <div class="subtle">这是新字段。到微信商户平台 API 证书里看，不是旧插件那套配置。</div>
                   </div>
                   <div class="field">
                     <label for="wechat-apiBaseUrl">API Base URL</label>
                     <input id="wechat-apiBaseUrl" name="apiBaseUrl" type="url" placeholder="https://api.mch.weixin.qq.com" />
+                    <div class="subtle">正式环境保持默认即可。</div>
                   </div>
                   <div class="field full">
                     <label for="wechat-notifyUrl">回调地址</label>
                     <input id="wechat-notifyUrl" name="notifyUrl" type="url" placeholder="留空则按 PUBLIC_BASE_URL 自动生成" />
+                    <div class="subtle">通常留空，系统会自动生成。</div>
                   </div>
                   <div class="field full">
                     <label for="wechat-apiV3Key">API v3 Key</label>
@@ -511,8 +538,9 @@ export function renderPaymentAdminPage() {
               <form id="alipay-form">
                 <div class="field-grid">
                   <div class="field">
-                    <label for="alipay-appId">AppID</label>
+                    <label for="alipay-appId">支付宝 APPID</label>
                     <input id="alipay-appId" name="appId" type="text" placeholder="202100..." />
+                    <div class="subtle">这就是 fd-payment 里的“支付宝APPID”。</div>
                   </div>
                   <div class="field">
                     <label for="alipay-keyType">密钥格式</label>
@@ -524,14 +552,17 @@ export function renderPaymentAdminPage() {
                   <div class="field full">
                     <label for="alipay-gateway">网关</label>
                     <input id="alipay-gateway" name="gateway" type="url" placeholder="https://openapi.alipay.com/gateway.do" />
+                    <div class="subtle">保持默认即可，一般不用改。</div>
                   </div>
                   <div class="field">
                     <label for="alipay-notifyUrl">异步回调地址</label>
                     <input id="alipay-notifyUrl" name="notifyUrl" type="url" placeholder="留空则按 PUBLIC_BASE_URL 自动生成" />
+                    <div class="subtle">通常留空，系统会自动生成。</div>
                   </div>
                   <div class="field">
                     <label for="alipay-returnUrl">同步返回地址</label>
                     <input id="alipay-returnUrl" name="returnUrl" type="url" placeholder="可留空" />
+                    <div class="subtle">暂时可留空。</div>
                   </div>
                   <div class="field full">
                     <label for="alipay-privateKeyPem">应用私钥 PEM</label>
