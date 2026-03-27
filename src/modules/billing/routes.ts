@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { getBillingProviderAdapter } from './providers';
 import { createOrderSchema, orderNoParamsSchema } from './schemas';
 import { BillingService } from './service';
 
@@ -35,33 +36,67 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     });
   });
 
-  app.post('/v1/billing/providers/wechat/notify', async (request, reply) => {
-    request.log.info(
-      {
-        headers: request.headers,
+  app.post('/v1/billing/providers/wechat/notify', { config: { rawBody: true } }, async (request, reply) => {
+    try {
+      const provider = getBillingProviderAdapter('wechat_pay');
+      const notification = await provider.parseNotification({
+        env: app.appEnv,
+        headers: request.headers as Record<string, unknown>,
+        rawBody: request.rawBody,
         body: request.body
-      },
-      'wechat pay notify received'
-    );
+      });
 
-    return reply.status(501).send({
-      error: 'NotImplemented',
-      message: 'WeChat Pay callback signature verification is not implemented yet.'
-    });
+      if (notification.kind === 'paid') {
+        await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
+      } else {
+        request.log.info(
+          {
+            providerEventId: notification.providerEventId,
+            reason: notification.reason
+          },
+          'wechat pay notification ignored'
+        );
+      }
+
+      return reply.status(200).send({
+        code: 'SUCCESS',
+        message: '成功'
+      });
+    } catch (error) {
+      request.log.error({ err: error }, 'wechat pay notification failed');
+      return reply.status(500).send({
+        code: 'FAIL',
+        message: error instanceof Error ? error.message : 'failed'
+      });
+    }
   });
 
-  app.post('/v1/billing/providers/alipay/notify', async (request, reply) => {
-    request.log.info(
-      {
-        headers: request.headers,
+  app.post('/v1/billing/providers/alipay/notify', { config: { rawBody: true } }, async (request, reply) => {
+    try {
+      const provider = getBillingProviderAdapter('alipay');
+      const notification = await provider.parseNotification({
+        env: app.appEnv,
+        headers: request.headers as Record<string, unknown>,
+        rawBody: request.rawBody,
         body: request.body
-      },
-      'alipay notify received'
-    );
+      });
 
-    return reply.status(501).send({
-      error: 'NotImplemented',
-      message: 'Alipay callback signature verification is not implemented yet.'
-    });
+      if (notification.kind === 'paid') {
+        await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
+      } else {
+        request.log.info(
+          {
+            providerEventId: notification.providerEventId,
+            reason: notification.reason
+          },
+          'alipay notification ignored'
+        );
+      }
+
+      return reply.type('text/plain; charset=utf-8').send('success');
+    } catch (error) {
+      request.log.error({ err: error }, 'alipay notification failed');
+      return reply.status(500).type('text/plain; charset=utf-8').send('failure');
+    }
   });
 };

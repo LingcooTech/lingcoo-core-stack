@@ -1,6 +1,6 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 
-import { orders } from '../../db/schema';
+import { billingWebhookEvents, orders } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class BillingRepository {
@@ -33,23 +33,80 @@ export class BillingRepository {
     return order ?? null;
   }
 
+  async findOrderById(id: string) {
+    const [order] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
+    return order ?? null;
+  }
+
   async listOrdersByUserId(userId: string) {
     return this.db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
   }
 
-  async markOrderPaid(orderId: string, providerOrderId?: string | null, meta?: Record<string, unknown>) {
+  async markOrderPaidIfUnpaid(input: {
+    orderId: string;
+    providerOrderId?: string | null;
+    paidAt?: Date;
+    meta?: Record<string, unknown>;
+  }) {
     const [order] = await this.db
       .update(orders)
       .set({
         status: 'paid',
-        providerOrderId: providerOrderId ?? null,
-        paidAt: new Date(),
+        providerOrderId: input.providerOrderId ?? null,
+        paidAt: input.paidAt ?? new Date(),
         updatedAt: new Date(),
-        meta: meta ?? {}
+        meta: input.meta ?? {}
       })
-      .where(eq(orders.id, orderId))
+      .where(and(eq(orders.id, input.orderId), ne(orders.status, 'paid')))
       .returning();
 
-    return order;
+    return order ?? null;
+  }
+
+  async createWebhookEventIfAbsent(input: {
+    provider: 'wechat_pay' | 'alipay';
+    providerEventId: string;
+    type: string;
+    payload: Record<string, unknown>;
+  }) {
+    const [event] = await this.db
+      .insert(billingWebhookEvents)
+      .values({
+        ...input,
+        payload: input.payload
+      })
+      .onConflictDoNothing({
+        target: [billingWebhookEvents.provider, billingWebhookEvents.providerEventId]
+      })
+      .returning();
+
+    return event ?? null;
+  }
+
+  async findWebhookEvent(provider: 'wechat_pay' | 'alipay', providerEventId: string) {
+    const [event] = await this.db
+      .select()
+      .from(billingWebhookEvents)
+      .where(
+        and(
+          eq(billingWebhookEvents.provider, provider),
+          eq(billingWebhookEvents.providerEventId, providerEventId)
+        )
+      )
+      .limit(1);
+
+    return event ?? null;
+  }
+
+  async markWebhookProcessed(id: string) {
+    const [event] = await this.db
+      .update(billingWebhookEvents)
+      .set({
+        processedAt: new Date()
+      })
+      .where(eq(billingWebhookEvents.id, id))
+      .returning();
+
+    return event ?? null;
   }
 }

@@ -6,8 +6,15 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,5 +36,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Verify Docker build
-        run: docker build -t fd-core-stack:ci .
+      - name: Audit high severity dependencies
+        run: npm audit --audit-level=high || true

@@ -15,6 +15,10 @@ declare module 'fastify' {
     redis: Redis;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
+
+  interface FastifyRequest {
+    rawBody?: string | Buffer;
+  }
 }
 
 declare module '@fastify/jwt' {

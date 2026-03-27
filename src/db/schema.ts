@@ -7,6 +7,7 @@ import {
   pgTable,
   primaryKey,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar
 } from 'drizzle-orm/pg-core';
@@ -199,13 +200,22 @@ export const events = pgTable('events', {
   properties: jsonb('properties').notNull().default(sql`'{}'::jsonb`)
 });
 
-export const billingWebhookEvents = pgTable('billing_webhook_events', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  provider: varchar('provider', { length: 32 }).notNull(),
-  providerEventId: varchar('provider_event_id', { length: 128 }).notNull(),
-  type: varchar('type', { length: 64 }).notNull(),
-  status: recordStatusEnum('status').notNull().default('active'),
-  payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
-  processedAt: timestamp('processed_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
-});
+export const billingWebhookEvents = pgTable(
+  'billing_webhook_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    provider: varchar('provider', { length: 32 }).notNull(),
+    providerEventId: varchar('provider_event_id', { length: 128 }).notNull(),
+    type: varchar('type', { length: 64 }).notNull(),
+    status: recordStatusEnum('status').notNull().default('active'),
+    payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    providerEventKey: uniqueIndex('billing_webhook_events_provider_event_idx').on(
+      table.provider,
+      table.providerEventId
+    )
+  })
+);

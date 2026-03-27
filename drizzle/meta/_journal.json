@@ -15,6 +15,13 @@
       "when": 1774534567111,
       "tag": "0001_burly_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774536615677,
+      "tag": "0002_cold_christian_walker",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
+import formbody from '@fastify/formbody';
 import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
@@ -7,6 +8,7 @@ import sensible from '@fastify/sensible';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify from 'fastify';
+import fastifyRawBody from 'fastify-raw-body';
 import { ZodError } from 'zod';
 
 import { appModules } from './modules';
@@ -41,6 +43,13 @@ export async function buildApp(env: AppEnv) {
   });
   await app.register(helmet);
   await app.register(cookie);
+  await app.register(formbody);
+  await app.register(fastifyRawBody, {
+    field: 'rawBody',
+    global: false,
+    encoding: 'utf8',
+    runFirst: true
+  });
   await app.register(jwt, {
     secret: env.JWT_SECRET,
     cookie: {

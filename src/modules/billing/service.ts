@@ -5,7 +5,10 @@ import type { DbClient } from '../../db/types';
 import { EventService } from '../event/service';
 import { LicenseService } from '../license/service';
 import { getBillingProviderAdapter, listBillingProviders } from './providers';
+import type { PaymentNotificationResult } from './providers/types';
 import { BillingRepository } from './repository';
+
+type BillingOrder = NonNullable<Awaited<ReturnType<BillingRepository['findOrderByOrderNo']>>>;
 
 export class BillingService {
   constructor(
@@ -18,6 +21,11 @@ export class BillingService {
   }
 
   async createOrder(input: { userId: string; planCode: string; provider: 'wechat_pay' | 'alipay' }) {
+    const providerAdapter = getBillingProviderAdapter(input.provider);
+    if (!providerAdapter.isConfigured(this.env)) {
+      throw httpError(422, `${input.provider} is not configured`);
+    }
+
     const { plan, product } = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
 
     if (plan.priceAmount <= 0) {
@@ -53,10 +61,11 @@ export class BillingService {
       }
     });
 
-    const payment = getBillingProviderAdapter(input.provider).preparePayment({
+    const payment = await providerAdapter.preparePayment({
       env: this.env,
       order: {
         orderNo: order.orderNo,
+        subject: order.subject,
         amount: order.amount,
         currency: order.currency
       }
@@ -98,45 +107,154 @@ export class BillingService {
     }
 
     const result = await this.db.transaction(async (tx) => {
-      const currentMeta =
-        order.meta && typeof order.meta === 'object' && !Array.isArray(order.meta)
-          ? (order.meta as Record<string, unknown>)
-          : {};
-
-      const updatedOrder = await new BillingRepository(tx).markOrderPaid(order.id, `mock_${order.orderNo}`, {
-        ...currentMeta,
-        mockPaid: true
+      return this.completeOrderPayment(tx as DbClient, {
+        order,
+        providerOrderId: `mock_${order.orderNo}`,
+        paidAt: new Date(),
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          mockPaid: true
+        },
+        source: 'mock'
       });
-
-      const granted = await new LicenseService(tx).grantEntitlementsForPlan({
-        userId: order.userId,
-        planId: order.planId,
-        sourceType: 'order',
-        sourceId: order.id,
-        startsAt: updatedOrder.paidAt ?? new Date()
-      });
-
-      await new EventService(tx).capture({
-        userId: order.userId,
-        productId: order.productId,
-        eventName: 'billing.order_paid',
-        properties: {
-          orderNo: order.orderNo,
-          provider: order.provider,
-          source: 'mock'
-        }
-      });
-
-      return {
-        order: updatedOrder,
-        granted
-      };
     });
 
     return {
       order: result.order,
       entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
       granted: result.granted
+    };
+  }
+
+  async handlePaymentNotification(notification: Extract<PaymentNotificationResult, { kind: 'paid' }>) {
+    return this.db.transaction(async (tx) => {
+      const repository = new BillingRepository(tx);
+      const insertedEvent = await repository.createWebhookEventIfAbsent({
+        provider: notification.provider,
+        providerEventId: notification.providerEventId,
+        type: 'payment_paid',
+        payload: notification.payload
+      });
+      const webhookEvent =
+        insertedEvent ?? (await repository.findWebhookEvent(notification.provider, notification.providerEventId));
+
+      if (!webhookEvent) {
+        throw httpError(500, 'Failed to persist billing webhook event');
+      }
+
+      if (webhookEvent.processedAt) {
+        return {
+          duplicate: true,
+          order: await repository.findOrderByOrderNo(notification.orderNo)
+        };
+      }
+
+      const order = await repository.findOrderByOrderNo(notification.orderNo);
+      if (!order) {
+        throw httpError(404, `Order not found: ${notification.orderNo}`);
+      }
+
+      if (order.provider !== notification.provider) {
+        throw httpError(409, `Order provider mismatch for ${notification.orderNo}`);
+      }
+
+      if (order.amount !== notification.amount) {
+        throw httpError(409, `Order amount mismatch for ${notification.orderNo}`);
+      }
+
+      if (order.currency !== notification.currency) {
+        throw httpError(409, `Order currency mismatch for ${notification.orderNo}`);
+      }
+
+      const result = await this.completeOrderPayment(tx as DbClient, {
+        order,
+        providerOrderId: notification.providerOrderId,
+        paidAt: notification.paidAt,
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          lastPaymentNotification: {
+            provider: notification.provider,
+            providerEventId: notification.providerEventId,
+            receivedAt: new Date().toISOString()
+          },
+          lastPaidPayload: notification.payload
+        },
+        source: 'provider_notify',
+        providerEventId: notification.providerEventId
+      });
+
+      await repository.markWebhookProcessed(webhookEvent.id);
+
+      return {
+        duplicate: false,
+        order: result.order,
+        granted: result.granted
+      };
+    });
+  }
+
+  private getOrderMeta(value: unknown) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    return {};
+  }
+
+  private async completeOrderPayment(
+    tx: DbClient,
+    input: {
+      order: BillingOrder;
+      providerOrderId?: string | null;
+      paidAt?: Date;
+      meta?: Record<string, unknown>;
+      source: 'mock' | 'provider_notify';
+      providerEventId?: string;
+    }
+  ) {
+    const repository = new BillingRepository(tx);
+    const updatedOrder = await repository.markOrderPaidIfUnpaid({
+      orderId: input.order.id,
+      providerOrderId: input.providerOrderId,
+      paidAt: input.paidAt,
+      meta: input.meta
+    });
+
+    if (!updatedOrder) {
+      const currentOrder = await repository.findOrderById(input.order.id);
+      if (!currentOrder) {
+        throw httpError(404, `Order not found: ${input.order.orderNo}`);
+      }
+
+      return {
+        order: currentOrder,
+        granted: undefined
+      };
+    }
+
+    const granted = await new LicenseService(tx).grantEntitlementsForPlan({
+      userId: input.order.userId,
+      planId: input.order.planId,
+      sourceType: 'order',
+      sourceId: input.order.id,
+      startsAt: updatedOrder.paidAt ?? new Date()
+    });
+
+    await new EventService(tx).capture({
+      userId: input.order.userId,
+      productId: input.order.productId,
+      eventName: 'billing.order_paid',
+      properties: {
+        orderNo: input.order.orderNo,
+        provider: input.order.provider,
+        source: input.source,
+        providerEventId: input.providerEventId ?? null
+      }
+    });
+
+    return {
+      order: updatedOrder,
+      granted
     };
   }
 }

@@ -5,6 +5,7 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async () => {
     return {
       name: app.appEnv.APP_NAME,
+      version: app.appEnv.APP_VERSION,
       status: 'ok',
       docs: '/docs'
     };
@@ -12,7 +13,8 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/health', async () => {
     return {
-      status: 'ok'
+      status: 'ok',
+      version: app.appEnv.APP_VERSION
     };
   });
 
@@ -21,7 +23,16 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
     await app.redis.ping();
 
     return {
-      status: 'ready'
+      status: 'ready',
+      version: app.appEnv.APP_VERSION
+    };
+  });
+
+  app.get('/version', async () => {
+    return {
+      name: app.appEnv.APP_NAME,
+      version: app.appEnv.APP_VERSION,
+      environment: app.appEnv.NODE_ENV
     };
   });
 

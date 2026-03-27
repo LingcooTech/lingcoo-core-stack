@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "billing_webhook_events_provider_event_idx" ON "billing_webhook_events" USING btree ("provider","provider_event_id");
