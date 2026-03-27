@@ -1,4 +1,8 @@
-FROM node:22-alpine AS deps
+ARG NODE_BASE_IMAGE=registry.access.redhat.com/ubi9/nodejs-22
+
+FROM ${NODE_BASE_IMAGE} AS deps
+
+USER 0
 
 WORKDIR /app
 
@@ -14,9 +18,11 @@ COPY drizzle ./drizzle
 
 RUN npm run build
 
-FROM node:22-alpine AS runtime
+FROM ${NODE_BASE_IMAGE} AS runtime
 
 ARG APP_VERSION=development
+
+USER 0
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -33,9 +39,9 @@ COPY --from=build /app/drizzle.config.ts ./
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/dist ./dist
 
-RUN chown -R node:node /app
+RUN chown -R 1001:0 /app
 
-USER node
+USER 1001
 
 EXPOSE 3000
 
