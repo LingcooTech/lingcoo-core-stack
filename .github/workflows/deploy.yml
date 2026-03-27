@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
-      acr_image: ${{ steps.vars.outputs.acr_image }}
 
     steps:
       - name: Checkout
@@ -113,7 +112,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          FD_CORE_IMAGE_NAME: ${{ needs.build-and-push.outputs.acr_image }}
+          FD_CORE_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
           escape() {
