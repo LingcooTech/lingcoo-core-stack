@@ -1,12 +1,7 @@
-import { createDecipheriv, createSign, createVerify, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 import { httpError } from '../../../lib/errors';
-import {
-  getHeaderValue,
-  normalizeObject,
-  readSecretValue,
-  resolveCallbackUrl
-} from './shared';
+import { normalizeObject, resolveCallbackUrl } from './shared';
 import type {
   BillingProviderAdapter,
   PaymentNotificationResult,
@@ -15,30 +10,10 @@ import type {
   ProviderNotificationContext
 } from './types';
 
-type WechatNotificationEnvelope = {
-  id?: string;
-  event_type?: string;
-  resource?: {
-    algorithm?: string;
-    ciphertext?: string;
-    associated_data?: string;
-    nonce?: string;
-    original_type?: string;
-  };
-};
+type WechatXmlPayload = Record<string, string>;
 
-type WechatTransaction = {
-  mchid?: string;
-  appid?: string;
-  out_trade_no?: string;
-  transaction_id?: string;
-  trade_state?: string;
-  success_time?: string;
-  amount?: {
-    total?: number;
-    currency?: string;
-  };
-};
+const WECHAT_NATIVE_API_PATH = '/pay/unifiedorder';
+const WECHAT_NOTIFY_PATH = '/v1/billing/providers/wechat/notify';
 
 export class WechatPayProvider implements BillingProviderAdapter {
   code = 'wechat_pay' as const;
@@ -51,10 +26,8 @@ export class WechatPayProvider implements BillingProviderAdapter {
     return Boolean(
       context.WECHAT_PAY_MCH_ID &&
         context.WECHAT_PAY_APP_ID &&
-        context.WECHAT_PAY_CERT_SERIAL_NO &&
-        context.WECHAT_PAY_API_V3_KEY &&
-        (context.WECHAT_PAY_PRIVATE_KEY || context.WECHAT_PAY_PRIVATE_KEY_PATH) &&
-        (context.WECHAT_PAY_PLATFORM_CERT || context.WECHAT_PAY_PLATFORM_CERT_PATH)
+        context.WECHAT_PAY_APP_SECRET &&
+        (context.WECHAT_PAY_KEY || context.WECHAT_PAY_API_V3_KEY)
     );
   }
 
@@ -62,91 +35,155 @@ export class WechatPayProvider implements BillingProviderAdapter {
     return context.WECHAT_PAY_API_BASE_URL?.trim() || 'https://api.mch.weixin.qq.com';
   }
 
-  private getApiV3Key(context: ProviderContext['env']) {
-    const value = context.WECHAT_PAY_API_V3_KEY?.trim();
-    if (!value) {
-      throw httpError(422, 'WECHAT_PAY_API_V3_KEY is not configured');
-    }
+  private getApiKey(context: ProviderContext['env']) {
+    const value = context.WECHAT_PAY_KEY?.trim() || context.WECHAT_PAY_API_V3_KEY?.trim();
 
-    if (Buffer.byteLength(value, 'utf8') !== 32) {
-      throw httpError(422, 'WECHAT_PAY_API_V3_KEY must be exactly 32 bytes');
+    if (!value) {
+      throw httpError(422, 'WECHAT_PAY_KEY is not configured');
     }
 
     return value;
   }
 
-  private createAuthorizationHeader(input: {
-    env: ProviderContext['env'];
-    method: string;
-    url: URL;
-    body: string;
-  }) {
-    const privateKey = readSecretValue({
-      inlineValue: input.env.WECHAT_PAY_PRIVATE_KEY,
-      filePath: input.env.WECHAT_PAY_PRIVATE_KEY_PATH,
-      label: 'WECHAT_PAY_PRIVATE_KEY'
-    });
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const nonce = randomBytes(16).toString('hex');
-    const message = `${input.method}\n${input.url.pathname}${input.url.search}\n${timestamp}\n${nonce}\n${input.body}\n`;
-    const signature = createSign('RSA-SHA256').update(message).end().sign(privateKey, 'base64');
-
-    return `WECHATPAY2-SHA256-RSA2048 mchid="${input.env.WECHAT_PAY_MCH_ID}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${input.env.WECHAT_PAY_CERT_SERIAL_NO}"`;
+  private getNotifyUrl(context: ProviderContext['env']) {
+    return resolveCallbackUrl(context.WECHAT_PAY_NOTIFY_URL, context.PUBLIC_BASE_URL, WECHAT_NOTIFY_PATH);
   }
 
-  private verifyNotificationSignature(context: ProviderNotificationContext) {
-    const timestamp = getHeaderValue(context.headers, 'wechatpay-timestamp');
-    const nonce = getHeaderValue(context.headers, 'wechatpay-nonce');
-    const signature = getHeaderValue(context.headers, 'wechatpay-signature');
-    const rawBody = typeof context.rawBody === 'string' ? context.rawBody : context.rawBody?.toString('utf8') ?? '';
+  private buildXml(values: Record<string, string | number>) {
+    const body = Object.entries(values)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => {
+        if (typeof value === 'number') {
+          return `<${key}>${value}</${key}>`;
+        }
 
-    if (!timestamp || !nonce || !signature || !rawBody) {
-      throw httpError(400, 'Incomplete WeChat Pay callback headers');
+        const escaped = value.replace(/]]>/g, ']]]]><![CDATA[>');
+        return `<${key}><![CDATA[${escaped}]]></${key}>`;
+      })
+      .join('');
+
+    return `<xml>${body}</xml>`;
+  }
+
+  private parseXml(xml: string) {
+    const trimmed = xml.trim();
+
+    if (!trimmed) {
+      throw httpError(400, 'Empty WeChat Pay XML payload');
     }
 
-    const platformCert = readSecretValue({
-      inlineValue: context.env.WECHAT_PAY_PLATFORM_CERT,
-      filePath: context.env.WECHAT_PAY_PLATFORM_CERT_PATH,
-      label: 'WECHAT_PAY_PLATFORM_CERT'
-    });
-    const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
-    const verified = createVerify('RSA-SHA256').update(message).end().verify(platformCert, signature, 'base64');
+    const inner = trimmed.replace(/^\s*<xml>/i, '').replace(/<\/xml>\s*$/i, '');
+    const result: WechatXmlPayload = {};
+    const pattern = /<([a-zA-Z0-9_]+)>(?:<!\[CDATA\[([\s\S]*?)\]\]>|([\s\S]*?))<\/\1>/g;
 
-    if (!verified) {
+    for (const match of inner.matchAll(pattern)) {
+      const [, key, cdataValue, plainValue] = match;
+      result[key] = (cdataValue ?? plainValue ?? '').trim();
+    }
+
+    if (Object.keys(result).length === 0) {
+      throw httpError(400, 'Failed to parse WeChat Pay XML payload');
+    }
+
+    return result;
+  }
+
+  private buildSignContent(values: Record<string, string | number>) {
+    return Object.entries(values)
+      .filter(([key, value]) => key !== 'sign' && value !== undefined && value !== null && value !== '')
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, value]) => `${key}=${value}`)
+      .join('&');
+  }
+
+  private createSignature(
+    values: Record<string, string | number>,
+    key: string,
+    signType: 'MD5' | 'HMAC-SHA256'
+  ) {
+    const signContent = `${this.buildSignContent(values)}&key=${key}`;
+
+    if (signType === 'MD5') {
+      return createHash('md5').update(signContent, 'utf8').digest('hex').toUpperCase();
+    }
+
+    return createHmac('sha256', key).update(signContent, 'utf8').digest('hex').toUpperCase();
+  }
+
+  private verifySignature(values: WechatXmlPayload, key: string) {
+    const sign = values.sign?.trim().toUpperCase();
+
+    if (!sign) {
+      throw httpError(400, 'Missing WeChat Pay signature');
+    }
+
+    const signType =
+      values.sign_type?.trim().toUpperCase() === 'MD5'
+        ? 'MD5'
+        : values.sign_type?.trim().toUpperCase() === 'HMAC-SHA256'
+          ? 'HMAC-SHA256'
+          : sign.length > 32
+            ? 'HMAC-SHA256'
+            : 'MD5';
+    const expected = this.createSignature(values, key, signType);
+
+    if (expected !== sign) {
       throw httpError(400, 'Invalid WeChat Pay callback signature');
     }
-
-    return rawBody;
   }
 
-  private decryptNotificationResource(
-    context: ProviderNotificationContext,
-    resource: NonNullable<WechatNotificationEnvelope['resource']>
-  ) {
-    if (resource.algorithm !== 'AEAD_AES_256_GCM') {
-      throw httpError(400, `Unsupported WeChat Pay encrypt algorithm: ${resource.algorithm ?? 'unknown'}`);
+  private truncateBody(value: string) {
+    const normalized = value.trim() || 'fd-core-stack order';
+    return normalized.length <= 120 ? normalized : normalized.slice(0, 120);
+  }
+
+  private extractIpv4(value: string | undefined) {
+    if (!value) {
+      return '';
     }
 
-    if (!resource.ciphertext || !resource.nonce) {
-      throw httpError(400, 'Missing encrypted WeChat Pay callback payload');
+    const normalized = value.trim();
+
+    if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) {
+      return normalized;
     }
 
-    const ciphertextBuffer = Buffer.from(resource.ciphertext, 'base64');
-    const authTag = ciphertextBuffer.subarray(ciphertextBuffer.length - 16);
-    const encrypted = ciphertextBuffer.subarray(0, ciphertextBuffer.length - 16);
-    const decipher = createDecipheriv(
-      'aes-256-gcm',
-      Buffer.from(this.getApiV3Key(context.env), 'utf8'),
-      Buffer.from(resource.nonce, 'utf8')
-    );
+    const mapped = normalized.match(/::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i);
+    return mapped?.[1] ?? '';
+  }
 
-    if (resource.associated_data) {
-      decipher.setAAD(Buffer.from(resource.associated_data, 'utf8'));
+  private resolveClientIp(context: ProviderContext) {
+    const requestIp = this.extractIpv4(context.clientIp);
+    if (requestIp) {
+      return requestIp;
     }
 
-    decipher.setAuthTag(authTag);
+    try {
+      const publicHost = new URL(context.env.PUBLIC_BASE_URL).hostname;
+      const hostIp = this.extractIpv4(publicHost);
+      if (hostIp) {
+        return hostIp;
+      }
+    } catch {
+      // ignore invalid PUBLIC_BASE_URL, env parsing should already prevent this
+    }
 
-    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+    return '127.0.0.1';
+  }
+
+  private parsePaidAt(value: string | undefined) {
+    if (!value || !/^\d{14}$/.test(value)) {
+      return new Date();
+    }
+
+    const year = value.slice(0, 4);
+    const month = value.slice(4, 6);
+    const day = value.slice(6, 8);
+    const hour = value.slice(8, 10);
+    const minute = value.slice(10, 12);
+    const second = value.slice(12, 14);
+
+    return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}+08:00`);
   }
 
   async preparePayment(context: ProviderContext): Promise<PreparedPayment> {
@@ -158,56 +195,56 @@ export class WechatPayProvider implements BillingProviderAdapter {
       throw httpError(422, 'WeChat Pay only supports CNY in this MVP');
     }
 
-    const notifyUrl = resolveCallbackUrl(
-      context.env.WECHAT_PAY_NOTIFY_URL,
-      context.env.PUBLIC_BASE_URL,
-      '/v1/billing/providers/wechat/notify'
-    );
-    const requestBody = JSON.stringify({
-      appid: context.env.WECHAT_PAY_APP_ID,
-      mchid: context.env.WECHAT_PAY_MCH_ID,
-      description: context.order.subject,
+    const notifyUrl = this.getNotifyUrl(context.env);
+    const requestPayload: Record<string, string | number> = {
+      appid: context.env.WECHAT_PAY_APP_ID!.trim(),
+      mch_id: context.env.WECHAT_PAY_MCH_ID!.trim(),
+      nonce_str: randomBytes(16).toString('hex'),
+      sign_type: 'HMAC-SHA256',
+      body: this.truncateBody(context.order.subject),
       out_trade_no: context.order.orderNo,
+      total_fee: context.order.amount,
+      fee_type: context.order.currency,
+      spbill_create_ip: this.resolveClientIp(context),
       notify_url: notifyUrl,
-      amount: {
-        total: context.order.amount,
-        currency: context.order.currency
-      }
-    });
-    const url = new URL('/v3/pay/transactions/native', this.getApiBaseUrl(context.env));
-    const authorization = this.createAuthorizationHeader({
-      env: context.env,
-      method: 'POST',
-      url,
-      body: requestBody
-    });
-    const response = await fetch(url, {
+      trade_type: 'NATIVE',
+      product_id: context.order.orderNo
+    };
+
+    requestPayload.sign = this.createSignature(requestPayload, this.getApiKey(context.env), 'HMAC-SHA256');
+
+    const response = await fetch(new URL(WECHAT_NATIVE_API_PATH, this.getApiBaseUrl(context.env)), {
       method: 'POST',
       headers: {
-        Accept: 'application/json',
-        Authorization: authorization,
-        'Content-Type': 'application/json'
+        Accept: 'application/xml, text/xml, */*',
+        'Content-Type': 'text/xml; charset=utf-8'
       },
-      body: requestBody,
+      body: this.buildXml(requestPayload),
       signal: AbortSignal.timeout(10_000)
     });
     const responseText = await response.text();
-    let responseData: Record<string, unknown> = {};
 
-    if (responseText) {
-      try {
-        responseData = normalizeObject(JSON.parse(responseText));
-      } catch {
-        throw httpError(502, `WeChat Pay returned a non-JSON response: ${responseText}`);
-      }
+    if (!response.ok) {
+      throw httpError(502, `WeChat Pay create order failed: ${response.status} ${responseText || 'empty response'}`);
     }
 
-    const codeUrl = typeof responseData.code_url === 'string' ? responseData.code_url : '';
+    const responsePayload = this.parseXml(responseText);
 
-    if (!response.ok || !codeUrl) {
+    if (responsePayload.return_code === 'SUCCESS' && responsePayload.sign) {
+      this.verifySignature(responsePayload, this.getApiKey(context.env));
+    }
+
+    if (responsePayload.return_code !== 'SUCCESS') {
       throw httpError(
         502,
-        `WeChat Pay create order failed: ${response.status} ${responseText || 'empty response'}`
+        `WeChat Pay create order failed: ${responsePayload.return_msg ?? 'unknown return error'}`
+      );
+    }
+
+    if (responsePayload.result_code !== 'SUCCESS' || !responsePayload.code_url) {
+      throw httpError(
+        502,
+        `WeChat Pay create order failed: ${responsePayload.err_code_des ?? responsePayload.return_msg ?? 'empty response'}`
       );
     }
 
@@ -223,8 +260,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
       nextStep:
         'Render payload.codeUrl as a QR code. The order is activated after the WeChat Pay callback marks it as paid.',
       payload: {
-        codeUrl,
-        qrCodeText: codeUrl
+        codeUrl: responsePayload.code_url,
+        qrCodeText: responsePayload.code_url,
+        prepayId: responsePayload.prepay_id ?? ''
       }
     };
   }
@@ -234,69 +272,62 @@ export class WechatPayProvider implements BillingProviderAdapter {
       throw httpError(422, 'WeChat Pay is not configured');
     }
 
-    const rawBody = this.verifyNotificationSignature(context);
-    const envelope = normalizeObject(JSON.parse(rawBody)) as WechatNotificationEnvelope;
-    const providerEventId = typeof envelope.id === 'string' ? envelope.id : `wechat_${Date.now()}`;
+    const rawBody = typeof context.rawBody === 'string' ? context.rawBody : context.rawBody?.toString('utf8') ?? '';
+    if (!rawBody) {
+      throw httpError(400, 'Missing WeChat Pay callback body');
+    }
 
-    if (envelope.event_type !== 'TRANSACTION.SUCCESS') {
+    const payload = this.parseXml(rawBody);
+
+    if (payload.return_code !== 'SUCCESS') {
       return {
         kind: 'ignored',
         provider: this.code,
-        providerEventId,
-        payload: envelope,
-        reason: `Unhandled WeChat event type: ${envelope.event_type ?? 'unknown'}`
+        providerEventId: payload.out_trade_no || `wechat_${Date.now()}`,
+        payload,
+        reason: `Unhandled WeChat return_code: ${payload.return_code ?? 'unknown'}`
       };
     }
 
-    if (!envelope.resource) {
-      throw httpError(400, 'Missing WeChat Pay callback resource payload');
-    }
+    this.verifySignature(payload, this.getApiKey(context.env));
 
-    const decryptedPayload = this.decryptNotificationResource(context, envelope.resource);
-    const transaction = normalizeObject(JSON.parse(decryptedPayload)) as WechatTransaction;
-
-    if (transaction.mchid !== context.env.WECHAT_PAY_MCH_ID) {
-      throw httpError(400, 'WeChat Pay merchant id mismatch');
-    }
-
-    if (transaction.appid !== context.env.WECHAT_PAY_APP_ID) {
+    if (payload.appid && payload.appid !== context.env.WECHAT_PAY_APP_ID) {
       throw httpError(400, 'WeChat Pay app id mismatch');
     }
 
-    if (transaction.trade_state !== 'SUCCESS') {
+    if (payload.mch_id && payload.mch_id !== context.env.WECHAT_PAY_MCH_ID) {
+      throw httpError(400, 'WeChat Pay merchant id mismatch');
+    }
+
+    if (payload.result_code !== 'SUCCESS') {
       return {
         kind: 'ignored',
         provider: this.code,
-        providerEventId,
-        payload: {
-          envelope,
-          transaction
-        },
-        reason: `Unhandled WeChat trade state: ${transaction.trade_state ?? 'unknown'}`
+        providerEventId: payload.transaction_id || payload.out_trade_no || `wechat_${Date.now()}`,
+        payload,
+        reason: `Unhandled WeChat result_code: ${payload.result_code ?? 'unknown'}`
       };
     }
 
-    if (!transaction.out_trade_no || !transaction.transaction_id) {
-      throw httpError(400, 'Missing WeChat Pay order identifiers');
+    if (!payload.out_trade_no || !payload.transaction_id || !payload.total_fee) {
+      throw httpError(400, 'Missing WeChat Pay payment fields');
     }
 
-    if (typeof transaction.amount?.total !== 'number') {
-      throw httpError(400, 'Missing WeChat Pay amount.total');
+    const amount = Number.parseInt(payload.total_fee, 10);
+    if (!Number.isFinite(amount)) {
+      throw httpError(400, 'Invalid WeChat Pay total_fee');
     }
 
     return {
       kind: 'paid',
       provider: this.code,
-      providerEventId,
-      orderNo: transaction.out_trade_no,
-      providerOrderId: transaction.transaction_id,
-      amount: transaction.amount.total,
-      currency: transaction.amount.currency ?? 'CNY',
-      paidAt: transaction.success_time ? new Date(transaction.success_time) : new Date(),
-      payload: {
-        envelope,
-        transaction
-      }
+      providerEventId: payload.transaction_id,
+      orderNo: payload.out_trade_no,
+      providerOrderId: payload.transaction_id,
+      amount,
+      currency: payload.fee_type || 'CNY',
+      paidAt: this.parsePaidAt(payload.time_end),
+      payload: normalizeObject(payload)
     };
   }
 }

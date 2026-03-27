@@ -22,7 +22,12 @@ export class BillingService {
     return listBillingProviders(runtimeEnv);
   }
 
-  async createOrder(input: { userId: string; planCode: string; provider: 'wechat_pay' | 'alipay' }) {
+  async createOrder(input: {
+    userId: string;
+    planCode: string;
+    provider: 'wechat_pay' | 'alipay';
+    clientIp?: string;
+  }) {
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     const providerAdapter = getBillingProviderAdapter(input.provider);
     if (!providerAdapter.isConfigured(runtimeEnv)) {
@@ -66,6 +71,7 @@ export class BillingService {
 
     const payment = await providerAdapter.preparePayment({
       env: runtimeEnv,
+      clientIp: input.clientIp,
       order: {
         orderNo: order.orderNo,
         subject: order.subject,

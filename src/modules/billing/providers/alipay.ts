@@ -50,6 +50,10 @@ export class AlipayProvider implements BillingProviderAdapter {
     });
   }
 
+  private isF2FEnabled(context: ProviderContext['env']) {
+    return context.ALIPAY_F2F_PAY === true;
+  }
+
   async preparePayment(context: ProviderContext): Promise<PreparedPayment> {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'Alipay is not configured');
@@ -64,6 +68,50 @@ export class AlipayProvider implements BillingProviderAdapter {
       context.env.PUBLIC_BASE_URL,
       '/v1/billing/providers/alipay/notify'
     );
+
+    if (this.isF2FEnabled(context.env)) {
+      const result = await this.getSdk(context.env).exec('alipay.trade.precreate', {
+        notifyUrl,
+        bizContent: {
+          outTradeNo: context.order.orderNo,
+          subject: context.order.subject,
+          body: context.order.subject,
+          totalAmount: amountFenToYuanString(context.order.amount)
+        }
+      });
+      const qrCode =
+        typeof result.qrCode === 'string'
+          ? result.qrCode
+          : typeof result.qr_code === 'string'
+            ? result.qr_code
+            : '';
+
+      if (result.code !== '10000' || !qrCode) {
+        throw httpError(
+          502,
+          `Alipay create order failed: ${result.code ?? 'unknown'} ${result.sub_msg ?? result.msg ?? 'empty response'}`
+        );
+      }
+
+      return {
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        mode: 'native_qr',
+        configured: true,
+        integrationStatus: 'live',
+        notifyUrl,
+        nextStep:
+          'Render payload.qrCodeText as a QR code. The order is activated after the Alipay async notify callback arrives.',
+        payload: {
+          qrCode,
+          qrCodeText: qrCode,
+          codeUrl: qrCode
+        }
+      };
+    }
+
     const checkoutUrl = this.getSdk(context.env).pageExecute('alipay.trade.page.pay', 'GET', {
       notifyUrl,
       returnUrl: context.env.ALIPAY_RETURN_URL?.trim() || undefined,

@@ -1,5 +1,31 @@
 import { z } from 'zod';
 
+const booleanishEnv = z.preprocess((value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return value;
+}, z.boolean().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   APP_NAME: z.string().default('fd-core-stack'),
@@ -18,6 +44,9 @@ const envSchema = z.object({
   POSTGRES_PASSWORD: z.string().default('fd_core_password'),
   WECHAT_PAY_MCH_ID: z.string().optional(),
   WECHAT_PAY_APP_ID: z.string().optional(),
+  WECHAT_PAY_APP_SECRET: z.string().optional(),
+  WECHAT_PAY_KEY: z.string().optional(),
+  WECHAT_PAY_DISABLE_H5: booleanishEnv,
   WECHAT_PAY_CERT_SERIAL_NO: z.string().optional(),
   WECHAT_PAY_API_V3_KEY: z.string().optional(),
   WECHAT_PAY_PRIVATE_KEY: z.string().optional(),
@@ -31,6 +60,7 @@ const envSchema = z.object({
   ALIPAY_PUBLIC_KEY: z.string().optional(),
   ALIPAY_PRIVATE_KEY_PATH: z.string().optional(),
   ALIPAY_PUBLIC_KEY_PATH: z.string().optional(),
+  ALIPAY_F2F_PAY: booleanishEnv,
   ALIPAY_KEY_TYPE: z.enum(['PKCS1', 'PKCS8']).optional(),
   ALIPAY_GATEWAY: z.string().url().optional(),
   ALIPAY_NOTIFY_URL: z.string().optional(),

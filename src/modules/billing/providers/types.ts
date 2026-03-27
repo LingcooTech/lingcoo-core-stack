@@ -17,6 +17,7 @@ export type PreparedPayment = {
 
 export type ProviderContext = {
   env: AppEnv;
+  clientIp?: string;
   order: {
     orderNo: string;
     subject: string;

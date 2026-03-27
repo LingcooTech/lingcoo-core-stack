@@ -16,6 +16,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     const payload = createOrderSchema.parse(request.body);
     const result = await new BillingService(app.db, app.appEnv).createOrder({
       userId: request.user.sub,
+      clientIp: request.ip,
       ...payload
     });
 
@@ -60,16 +61,16 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         );
       }
 
-      return reply.status(200).send({
-        code: 'SUCCESS',
-        message: '成功'
-      });
+      return reply
+        .status(200)
+        .type('text/xml; charset=utf-8')
+        .send('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
     } catch (error) {
       request.log.error({ err: error }, 'wechat pay notification failed');
-      return reply.status(500).send({
-        code: 'FAIL',
-        message: error instanceof Error ? error.message : 'failed'
-      });
+      return reply
+        .status(200)
+        .type('text/xml; charset=utf-8')
+        .send('<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[FAIL]]></return_msg></xml>');
     }
   });
 
