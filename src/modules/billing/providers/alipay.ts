@@ -6,7 +6,7 @@ import {
   amountYuanStringToFen,
   normalizeFormBody,
   parseRawFormBody,
-  readSecretFile,
+  readSecretValue,
   resolveCallbackUrl
 } from './shared';
 import type {
@@ -27,16 +27,24 @@ export class AlipayProvider implements BillingProviderAdapter {
 
     return Boolean(
       context.ALIPAY_APP_ID &&
-        context.ALIPAY_PRIVATE_KEY_PATH &&
-        context.ALIPAY_PUBLIC_KEY_PATH
+        (context.ALIPAY_PRIVATE_KEY || context.ALIPAY_PRIVATE_KEY_PATH) &&
+        (context.ALIPAY_PUBLIC_KEY || context.ALIPAY_PUBLIC_KEY_PATH)
     );
   }
 
   private getSdk(context: ProviderContext['env'] | ProviderNotificationContext['env']) {
     return new AlipaySdk({
       appId: context.ALIPAY_APP_ID!,
-      privateKey: readSecretFile(context.ALIPAY_PRIVATE_KEY_PATH, 'ALIPAY_PRIVATE_KEY_PATH'),
-      alipayPublicKey: readSecretFile(context.ALIPAY_PUBLIC_KEY_PATH, 'ALIPAY_PUBLIC_KEY_PATH'),
+      privateKey: readSecretValue({
+        inlineValue: context.ALIPAY_PRIVATE_KEY,
+        filePath: context.ALIPAY_PRIVATE_KEY_PATH,
+        label: 'ALIPAY_PRIVATE_KEY'
+      }),
+      alipayPublicKey: readSecretValue({
+        inlineValue: context.ALIPAY_PUBLIC_KEY,
+        filePath: context.ALIPAY_PUBLIC_KEY_PATH,
+        label: 'ALIPAY_PUBLIC_KEY'
+      }),
       gateway: context.ALIPAY_GATEWAY?.trim() || undefined,
       keyType: context.ALIPAY_KEY_TYPE ?? 'PKCS1'
     });

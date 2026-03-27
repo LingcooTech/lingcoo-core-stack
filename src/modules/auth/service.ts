@@ -18,6 +18,31 @@ type LoginInput = {
 export class AuthService {
   constructor(private readonly db: DbClient) {}
 
+  private async ensureBootstrapAdmin(userId: string) {
+    const repository = new AuthRepository(this.db);
+    const adminCount = await repository.countAdmins();
+
+    if (adminCount > 0) {
+      return repository.findUserById(userId);
+    }
+
+    const promotedUser = await repository.updateUserRole(userId, 'admin');
+
+    if (!promotedUser) {
+      throw httpError(500, 'Failed to grant bootstrap admin role');
+    }
+
+    await new EventService(this.db).capture({
+      userId: promotedUser.id,
+      eventName: 'auth.admin_bootstrapped',
+      properties: {
+        source: 'bootstrap'
+      }
+    });
+
+    return promotedUser;
+  }
+
   async register(input: RegisterInput) {
     const existing = await new AuthRepository(this.db).findUserByEmail(input.email);
 
@@ -27,9 +52,11 @@ export class AuthService {
 
     const user = await this.db.transaction(async (tx) => {
       const repository = new AuthRepository(tx);
+      const role = (await repository.countAdmins()) === 0 ? 'admin' : 'user';
       const createdUser = await repository.createUser({
         email: input.email,
-        displayName: input.displayName
+        displayName: input.displayName,
+        role
       });
 
       await repository.createPasswordCredential({
@@ -47,7 +74,8 @@ export class AuthService {
         userId: createdUser.id,
         eventName: 'auth.registered',
         properties: {
-          provider: 'password'
+          provider: 'password',
+          role
         }
       });
 
@@ -59,7 +87,7 @@ export class AuthService {
 
   async login(input: LoginInput) {
     const repository = new AuthRepository(this.db);
-    const user = await repository.findUserByEmail(input.email);
+    let user = await repository.findUserByEmail(input.email);
 
     if (!user) {
       throw httpError(401, 'Invalid email or password');
@@ -77,6 +105,8 @@ export class AuthService {
         provider: 'password'
       }
     });
+
+    user = (await this.ensureBootstrapAdmin(user.id)) ?? user;
 
     return user;
   }

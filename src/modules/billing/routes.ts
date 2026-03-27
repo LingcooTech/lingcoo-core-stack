@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { PaymentSettingsService } from '../../lib/payment-settings';
 import { getBillingProviderAdapter } from './providers';
 import { createOrderSchema, orderNoParamsSchema } from './schemas';
 import { BillingService } from './service';
@@ -7,7 +8,7 @@ import { BillingService } from './service';
 export const billingRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/billing/providers', async () => {
     return {
-      items: new BillingService(app.db, app.appEnv).listProviders()
+      items: await new BillingService(app.db, app.appEnv).listProviders()
     };
   });
 
@@ -38,9 +39,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/billing/providers/wechat/notify', { config: { rawBody: true } }, async (request, reply) => {
     try {
+      const runtimeEnv = await new PaymentSettingsService(app.db, app.appEnv).buildRuntimeEnv();
       const provider = getBillingProviderAdapter('wechat_pay');
       const notification = await provider.parseNotification({
-        env: app.appEnv,
+        env: runtimeEnv,
         headers: request.headers as Record<string, unknown>,
         rawBody: request.rawBody,
         body: request.body
@@ -73,9 +75,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/billing/providers/alipay/notify', { config: { rawBody: true } }, async (request, reply) => {
     try {
+      const runtimeEnv = await new PaymentSettingsService(app.db, app.appEnv).buildRuntimeEnv();
       const provider = getBillingProviderAdapter('alipay');
       const notification = await provider.parseNotification({
-        env: app.appEnv,
+        env: runtimeEnv,
         headers: request.headers as Record<string, unknown>,
         rawBody: request.rawBody,
         body: request.body

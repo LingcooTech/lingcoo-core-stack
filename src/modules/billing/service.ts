@@ -1,6 +1,7 @@
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
+import { PaymentSettingsService } from '../../lib/payment-settings';
 import type { DbClient } from '../../db/types';
 import { EventService } from '../event/service';
 import { LicenseService } from '../license/service';
@@ -16,13 +17,15 @@ export class BillingService {
     private readonly env: AppEnv
   ) {}
 
-  listProviders() {
-    return listBillingProviders(this.env);
+  async listProviders() {
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
+    return listBillingProviders(runtimeEnv);
   }
 
   async createOrder(input: { userId: string; planCode: string; provider: 'wechat_pay' | 'alipay' }) {
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     const providerAdapter = getBillingProviderAdapter(input.provider);
-    if (!providerAdapter.isConfigured(this.env)) {
+    if (!providerAdapter.isConfigured(runtimeEnv)) {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
@@ -62,7 +65,7 @@ export class BillingService {
     });
 
     const payment = await providerAdapter.preparePayment({
-      env: this.env,
+      env: runtimeEnv,
       order: {
         orderNo: order.orderNo,
         subject: order.subject,

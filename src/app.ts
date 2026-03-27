@@ -11,6 +11,7 @@ import Fastify from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
 import { ZodError } from 'zod';
 
+import { AuthRepository } from './modules/auth/repository';
 import { appModules } from './modules';
 import { dbPlugin } from './plugins/db';
 import { redisPlugin } from './plugins/redis';
@@ -62,6 +63,19 @@ export async function buildApp(env: AppEnv) {
       await request.jwtVerify();
     } catch (error) {
       return reply.unauthorized('Invalid or expired access token');
+    }
+  });
+  app.decorate('requireAdmin', async (request, reply) => {
+    const authResult = await app.authenticate(request, reply);
+
+    if (authResult !== undefined) {
+      return authResult;
+    }
+
+    const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+
+    if (!user || user.role !== 'admin') {
+      return reply.forbidden('Admin access is required');
     }
   });
   await app.register(rateLimit, {

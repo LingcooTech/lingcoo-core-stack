@@ -1,3 +1,4 @@
+import { adminModule } from './admin';
 import { authModule } from './auth';
 import { billingModule } from './billing';
 import { eventModule } from './event';
@@ -9,6 +10,7 @@ import type { AppModule } from './types';
 export const appModules: AppModule[] = [
   systemModule,
   authModule,
+  adminModule,
   billingModule,
   licenseModule,
   eventModule

@@ -4,7 +4,7 @@ import { httpError } from '../../../lib/errors';
 import {
   getHeaderValue,
   normalizeObject,
-  readSecretFile,
+  readSecretValue,
   resolveCallbackUrl
 } from './shared';
 import type {
@@ -53,8 +53,8 @@ export class WechatPayProvider implements BillingProviderAdapter {
         context.WECHAT_PAY_APP_ID &&
         context.WECHAT_PAY_CERT_SERIAL_NO &&
         context.WECHAT_PAY_API_V3_KEY &&
-        context.WECHAT_PAY_PRIVATE_KEY_PATH &&
-        context.WECHAT_PAY_PLATFORM_CERT_PATH
+        (context.WECHAT_PAY_PRIVATE_KEY || context.WECHAT_PAY_PRIVATE_KEY_PATH) &&
+        (context.WECHAT_PAY_PLATFORM_CERT || context.WECHAT_PAY_PLATFORM_CERT_PATH)
     );
   }
 
@@ -81,7 +81,11 @@ export class WechatPayProvider implements BillingProviderAdapter {
     url: URL;
     body: string;
   }) {
-    const privateKey = readSecretFile(input.env.WECHAT_PAY_PRIVATE_KEY_PATH, 'WECHAT_PAY_PRIVATE_KEY_PATH');
+    const privateKey = readSecretValue({
+      inlineValue: input.env.WECHAT_PAY_PRIVATE_KEY,
+      filePath: input.env.WECHAT_PAY_PRIVATE_KEY_PATH,
+      label: 'WECHAT_PAY_PRIVATE_KEY'
+    });
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = randomBytes(16).toString('hex');
     const message = `${input.method}\n${input.url.pathname}${input.url.search}\n${timestamp}\n${nonce}\n${input.body}\n`;
@@ -100,10 +104,11 @@ export class WechatPayProvider implements BillingProviderAdapter {
       throw httpError(400, 'Incomplete WeChat Pay callback headers');
     }
 
-    const platformCert = readSecretFile(
-      context.env.WECHAT_PAY_PLATFORM_CERT_PATH,
-      'WECHAT_PAY_PLATFORM_CERT_PATH'
-    );
+    const platformCert = readSecretValue({
+      inlineValue: context.env.WECHAT_PAY_PLATFORM_CERT,
+      filePath: context.env.WECHAT_PAY_PLATFORM_CERT_PATH,
+      label: 'WECHAT_PAY_PLATFORM_CERT'
+    });
     const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
     const verified = createVerify('RSA-SHA256').update(message).end().verify(platformCert, signature, 'base64');
 

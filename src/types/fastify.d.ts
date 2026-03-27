@@ -14,6 +14,7 @@ declare module 'fastify' {
     pg: Pool;
     redis: Redis;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
 
   interface FastifyRequest {

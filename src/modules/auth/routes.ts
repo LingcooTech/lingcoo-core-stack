@@ -3,11 +3,14 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { loginSchema, registerSchema } from './schemas';
 import { AuthService } from './service';
 
-function toAuthResponse(app: FastifyInstance, user: { id: string; email: string; displayName: string | null }) {
+function toAuthResponse(
+  app: FastifyInstance,
+  user: { id: string; email: string; displayName: string | null; role: 'user' | 'admin' }
+) {
   const token = app.jwt.sign(
     {
       sub: user.id,
-      role: 'user'
+      role: user.role
     },
     {
       expiresIn: '7d'
@@ -19,7 +22,8 @@ function toAuthResponse(app: FastifyInstance, user: { id: string; email: string;
     user: {
       id: user.id,
       email: user.email,
-      displayName: user.displayName
+      displayName: user.displayName,
+      role: user.role
     }
   };
 }
@@ -62,7 +66,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       user: {
         id: user.id,
         email: user.email,
-        displayName: user.displayName
+        displayName: user.displayName,
+        role: user.role
       }
     };
   });

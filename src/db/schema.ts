@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 export const productTypeEnum = pgEnum('product_type', ['chrome_extension', 'web_app', 'service']);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
@@ -24,7 +25,17 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   displayName: varchar('display_name', { length: 120 }),
+  role: userRoleEnum('role').notNull().default('user'),
   status: userStatusEnum('status').notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const systemSettings = pgTable('system_settings', {
+  key: varchar('key', { length: 128 }).primaryKey(),
+  value: jsonb('value').notNull().default(sql`'{}'::jsonb`),
+  isEncrypted: boolean('is_encrypted').notNull().default(false),
+  updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });

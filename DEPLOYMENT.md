@@ -34,6 +34,7 @@ The server deploys the immutable SHA tag from ACR.
 3. Create the production `.env`.
 4. Ensure `docker`, `git`, and `curl` are available on the server.
 5. Open the configured public ports in the firewall or security group.
+6. If you want a dedicated master key for encrypted settings, set `SETTINGS_ENCRYPTION_KEY` in `.env`.
 
 Example:
 
