@@ -472,6 +472,9 @@ export function renderPaymentAdminPage() {
                   <span id="wechat-status" class="badge warn">未配置</span>
                 </div>
               </div>
+              <div class="locked" style="margin-bottom:18px; color:var(--ink); background:rgba(15,118,110,0.05); border-color:rgba(15,118,110,0.12);">
+                API v3 Key、商户私钥、平台证书这类敏感内容保存后不会回显到页面。刷新后看到输入框为空是正常的，以下方“已保存，不回显”为准。
+              </div>
               <div id="wechat-flash" class="flash"></div>
               <form id="wechat-form">
                 <div class="field-grid">
@@ -533,6 +536,9 @@ export function renderPaymentAdminPage() {
                   <span id="alipay-source" class="badge muted">来源未检查</span>
                   <span id="alipay-status" class="badge warn">未配置</span>
                 </div>
+              </div>
+              <div class="locked" style="margin-bottom:18px; color:var(--ink); background:rgba(15,118,110,0.05); border-color:rgba(15,118,110,0.12);">
+                应用私钥、公钥保存后不会回显到页面。刷新后文本框为空是正常的，不代表数据库里没有。
               </div>
               <div id="alipay-flash" class="flash"></div>
               <form id="alipay-form">
@@ -642,7 +648,7 @@ export function renderPaymentAdminPage() {
       }
 
       function secretText(configured) {
-        return configured ? '已保存，留空则保持不变' : '当前未保存';
+        return configured ? '已保存，不回显；留空则保持不变' : '当前未保存';
       }
 
       function applyOverview(data) {

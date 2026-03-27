@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
@@ -79,6 +82,22 @@ function normalizePem(value: string | undefined) {
 
 function secretConfigured(value: string | undefined) {
   return Boolean(value?.trim());
+}
+
+function resolvePath(filePath: string) {
+  return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+}
+
+function fileSecretConfigured(filePath: string | undefined) {
+  if (!secretConfigured(filePath)) {
+    return false;
+  }
+
+  try {
+    return fs.existsSync(resolvePath(filePath!.trim()));
+  } catch {
+    return false;
+  }
 }
 
 export function readSecretValue(input: { inlineValue?: string; fileValue?: string }) {
@@ -358,9 +377,9 @@ export class PaymentSettingsService {
               wechat.appId &&
               wechat.certSerialNo &&
               secretConfigured(wechat.apiV3Key) &&
-              (secretConfigured(wechat.privateKeyPem) || secretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH)) &&
+              (secretConfigured(wechat.privateKeyPem) || fileSecretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH)) &&
               (secretConfigured(wechat.platformCertPem) ||
-                secretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH))
+                fileSecretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH))
           ),
           values: {
             mchId: wechat?.mchId ?? '',
@@ -374,11 +393,12 @@ export class PaymentSettingsService {
               configured: secretConfigured(wechat?.apiV3Key)
             },
             privateKeyPem: {
-              configured: secretConfigured(wechat?.privateKeyPem) || secretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH)
+              configured:
+                secretConfigured(wechat?.privateKeyPem) || fileSecretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH)
             },
             platformCertPem: {
               configured:
-                secretConfigured(wechat?.platformCertPem) || secretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH)
+                secretConfigured(wechat?.platformCertPem) || fileSecretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH)
             }
           }
         },
@@ -387,8 +407,8 @@ export class PaymentSettingsService {
           source: alipaySource,
           configured: Boolean(
             alipay?.appId &&
-              (secretConfigured(alipay.privateKeyPem) || secretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)) &&
-              (secretConfigured(alipay.publicKeyPem) || secretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH))
+              (secretConfigured(alipay.privateKeyPem) || fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)) &&
+              (secretConfigured(alipay.publicKeyPem) || fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH))
           ),
           values: {
             appId: alipay?.appId ?? '',
@@ -399,10 +419,12 @@ export class PaymentSettingsService {
           },
           secrets: {
             privateKeyPem: {
-              configured: secretConfigured(alipay?.privateKeyPem) || secretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)
+              configured:
+                secretConfigured(alipay?.privateKeyPem) || fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)
             },
             publicKeyPem: {
-              configured: secretConfigured(alipay?.publicKeyPem) || secretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH)
+              configured:
+                secretConfigured(alipay?.publicKeyPem) || fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH)
             }
           }
         }
