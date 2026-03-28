@@ -50,17 +50,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
     <title>fd-core-stack 管理后台</title>
     <style>
       :root {
-        --bg: #efe6d7;
-        --panel: #fffaf2;
-        --ink: #1d2a2f;
-        --muted: #5e6b70;
-        --line: #d8cdbb;
-        --accent: #0f766e;
-        --accent-2: #b45309;
-        --danger: #b42318;
-        --success: #166534;
-        --shadow: 0 18px 40px rgba(35, 28, 16, 0.12);
-        --radius: 18px;
+        --bg: #eef4ff;
+        --bg-2: #f8fbff;
+        --panel: rgba(255, 255, 255, 0.86);
+        --panel-strong: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --line: rgba(148, 163, 184, 0.24);
+        --accent: #2563eb;
+        --accent-2: #7c3aed;
+        --danger: #dc2626;
+        --success: #16a34a;
+        --warning: #d97706;
+        --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        --shadow-soft: 0 14px 32px rgba(15, 23, 42, 0.08);
+        --radius: 22px;
       }
 
       * {
@@ -72,16 +76,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
-          radial-gradient(circle at top right, rgba(180, 83, 9, 0.14), transparent 24%),
-          linear-gradient(180deg, #f5ecde 0%, var(--bg) 100%);
+          radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 24%),
+          radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 22%),
+          linear-gradient(180deg, #fbfdff 0%, var(--bg) 48%, var(--bg-2) 100%);
         min-height: 100vh;
       }
 
       .shell {
-        width: min(1180px, calc(100vw - 32px));
+        width: min(1340px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 28px 0 56px;
+        padding: 28px 0 72px;
       }
 
       .hero,
@@ -95,30 +99,30 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .hero {
-        grid-template-columns: 1.4fr 0.9fr;
-        margin-bottom: 18px;
+        grid-template-columns: 1.55fr 0.9fr;
+        margin-bottom: 20px;
       }
 
       .layout {
-        grid-template-columns: 0.88fr 1.12fr;
+        grid-template-columns: 0.84fr 1.16fr;
         align-items: start;
       }
 
       .panel {
-        background: rgba(255, 250, 242, 0.92);
-        border: 1px solid rgba(216, 205, 187, 0.9);
+        background: var(--panel);
+        border: 1px solid var(--line);
         border-radius: var(--radius);
         box-shadow: var(--shadow);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(18px);
       }
 
       .hero-main {
-        padding: 26px 28px;
+        padding: 30px 32px;
       }
 
       .hero-side,
       .card {
-        padding: 22px;
+        padding: 24px;
       }
 
       .eyebrow {
@@ -127,7 +131,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         gap: 8px;
         padding: 6px 12px;
         border-radius: 999px;
-        background: rgba(15, 118, 110, 0.08);
+        background: rgba(37, 99, 235, 0.1);
         color: var(--accent);
         font-size: 12px;
         font-weight: 700;
@@ -136,10 +140,10 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       h1 {
-        margin: 14px 0 10px;
+        margin: 16px 0 12px;
         font-family: "Avenir Next", "Helvetica Neue", sans-serif;
-        font-size: clamp(30px, 4vw, 54px);
-        line-height: 0.96;
+        font-size: clamp(34px, 4vw, 56px);
+        line-height: 0.94;
         letter-spacing: -0.04em;
       }
 
@@ -158,20 +162,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .lead {
         margin: 0;
-        max-width: 720px;
+        max-width: 760px;
         font-size: 15px;
       }
 
       .status-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         margin-top: 24px;
       }
 
       .status-card {
-        padding: 16px;
+        padding: 18px;
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.62);
-        border: 1px solid rgba(216, 205, 187, 0.8);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.65));
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow-soft);
       }
 
       .status-card label {
@@ -188,32 +193,187 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .stack {
         display: grid;
-        gap: 18px;
+        gap: 20px;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .metric-card {
+        padding: 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(37, 99, 235, 0.12);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.9));
+        box-shadow: var(--shadow-soft);
+      }
+
+      .metric-card label {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .metric-card strong {
+        display: block;
+        font-size: 28px;
+        letter-spacing: -0.04em;
+      }
+
+      .metric-card span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .quick-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .quick-card {
+        padding: 18px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
+        color: #e2e8f0;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .quick-card h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .quick-card p {
+        margin: 0;
+        color: rgba(226, 232, 240, 0.82);
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: end;
+      }
+
+      .toolbar .field {
+        min-width: 170px;
+        flex: 1 1 180px;
+      }
+
+      .toolbar .field.compact {
+        flex: 0 1 150px;
+      }
+
+      .toolbar-note {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .entity-card {
+        padding: 18px 20px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.94));
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .entity-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+      }
+
+      .entity-title {
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(37, 99, 235, 0.08);
+        color: var(--ink);
+        border: 1px solid rgba(37, 99, 235, 0.12);
+        font-size: 12px;
+      }
+
+      .meta-chip.ghost {
+        background: rgba(148, 163, 184, 0.08);
+        border-color: rgba(148, 163, 184, 0.16);
+      }
+
+      .section-divider {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+
+      .summary-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .summary-tile {
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .summary-tile strong {
+        display: block;
+        font-size: 22px;
+        margin-top: 6px;
       }
 
       .admin-nav {
         grid-template-columns: repeat(6, minmax(0, 1fr));
-        margin-bottom: 18px;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 14px;
+        z-index: 5;
       }
 
       .nav-link {
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 54px;
-        padding: 12px 14px;
-        border-radius: 16px;
-        border: 1px solid rgba(216, 205, 187, 0.9);
-        background: rgba(255, 250, 242, 0.85);
+        min-height: 56px;
+        padding: 13px 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
         color: var(--ink);
         text-decoration: none;
         font-weight: 700;
-        box-shadow: var(--shadow);
+        box-shadow: var(--shadow-soft);
+        backdrop-filter: blur(14px);
       }
 
       .nav-link.active {
-        background: rgba(15, 118, 110, 0.12);
-        border-color: rgba(15, 118, 110, 0.3);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(124, 58, 237, 0.12));
+        border-color: rgba(37, 99, 235, 0.24);
         color: var(--accent);
       }
 
@@ -248,14 +408,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .badge.ok {
         color: var(--success);
-        background: rgba(22, 101, 52, 0.09);
-        border-color: rgba(22, 101, 52, 0.12);
+        background: rgba(22, 163, 74, 0.1);
+        border-color: rgba(22, 163, 74, 0.16);
       }
 
       .badge.warn {
-        color: var(--accent-2);
-        background: rgba(180, 83, 9, 0.08);
-        border-color: rgba(180, 83, 9, 0.12);
+        color: var(--warning);
+        background: rgba(217, 119, 6, 0.1);
+        border-color: rgba(217, 119, 6, 0.16);
       }
 
       .badge.muted {
@@ -292,20 +452,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       select,
       textarea {
         width: 100%;
-        border: 1px solid var(--line);
+        border: 1px solid rgba(148, 163, 184, 0.26);
         border-radius: 14px;
         padding: 12px 14px;
         font: inherit;
         color: var(--ink);
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.94);
         outline: none;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
       }
 
       input:focus,
+      select:focus,
       textarea:focus {
-        border-color: rgba(15, 118, 110, 0.8);
-        box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+        border-color: rgba(37, 99, 235, 0.56);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
       }
 
       textarea {
@@ -319,9 +480,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
-        border: 1px solid var(--line);
+        border: 1px solid rgba(148, 163, 184, 0.22);
         border-radius: 14px;
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.92);
       }
 
       .toggle input {
@@ -340,11 +501,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       button {
         border: 0;
         border-radius: 999px;
-        padding: 11px 16px;
+        padding: 11px 17px;
         font: inherit;
         font-weight: 700;
         cursor: pointer;
-        transition: transform 0.16s ease, opacity 0.16s ease;
+        transition: transform 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
+        box-shadow: var(--shadow-soft);
       }
 
       button:hover {
@@ -352,17 +514,17 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .primary {
-        background: var(--accent);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
         color: white;
       }
 
       .secondary {
-        background: rgba(29, 42, 47, 0.08);
+        background: rgba(15, 23, 42, 0.06);
         color: var(--ink);
       }
 
       .danger {
-        background: rgba(180, 35, 24, 0.08);
+        background: rgba(220, 38, 38, 0.08);
         color: var(--danger);
       }
 
@@ -389,13 +551,13 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .locked {
         padding: 14px 16px;
         border-radius: 14px;
-        background: rgba(15, 118, 110, 0.05);
-        border: 1px solid rgba(15, 118, 110, 0.12);
+        background: rgba(37, 99, 235, 0.05);
+        border: 1px solid rgba(37, 99, 235, 0.12);
       }
 
       .warning {
-        background: rgba(180, 35, 24, 0.05);
-        border-color: rgba(180, 35, 24, 0.12);
+        background: rgba(220, 38, 38, 0.05);
+        border-color: rgba(220, 38, 38, 0.12);
         color: var(--danger);
       }
 
@@ -418,7 +580,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         margin: 10px 0 0;
         padding: 12px;
         border-radius: 14px;
-        background: rgba(29, 42, 47, 0.06);
+        background: rgba(15, 23, 42, 0.05);
         overflow: auto;
         white-space: pre-wrap;
         word-break: break-word;
@@ -436,6 +598,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         .admin-nav,
         .layout,
         .status-grid,
+        .metric-grid,
+        .quick-grid,
+        .summary-strip,
         .auth-grid,
         .field-grid,
         .checkbox-list {
@@ -565,6 +730,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                   <p class="muted">现在按业务域拆开入口，后续模块继续按域扩展，不再把后台能力全部塞进支付页面。</p>
                 </div>
               </div>
+              <div id="dashboard-metrics" class="metric-grid" style="margin-bottom:18px;"></div>
+              <div id="dashboard-highlights" class="quick-grid" style="margin-bottom:18px;"></div>
               <div class="stack">
                 <div class="locked">支付配置: <a class="ghost-link" href="/admin/payments">/admin/payments</a></div>
                 <div class="locked">应用接入: <a class="ghost-link" href="/admin/apps">/admin/apps</a></div>
@@ -810,6 +977,38 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                 </div>
               </div>
               <div id="orders-admin-flash" class="flash"></div>
+              <div class="toolbar" style="margin-bottom:18px;">
+                <div class="field">
+                  <label for="order-query">搜索订单 / 用户 / 应用</label>
+                  <input id="order-query" type="text" placeholder="订单号、邮箱、appCode、planCode" />
+                </div>
+                <div class="field compact">
+                  <label for="order-status-filter">状态</label>
+                  <select id="order-status-filter">
+                    <option value="">全部状态</option>
+                    <option value="pending">pending</option>
+                    <option value="paid">paid</option>
+                    <option value="failed">failed</option>
+                    <option value="cancelled">cancelled</option>
+                    <option value="refunded">refunded</option>
+                  </select>
+                </div>
+                <div class="field compact">
+                  <label for="order-provider-filter">通道</label>
+                  <select id="order-provider-filter">
+                    <option value="">全部通道</option>
+                    <option value="wechat_pay">wechat_pay</option>
+                    <option value="alipay">alipay</option>
+                  </select>
+                </div>
+                <div class="field compact">
+                  <label for="order-app-filter">应用</label>
+                  <select id="order-app-filter">
+                    <option value="">全部应用</option>
+                  </select>
+                </div>
+              </div>
+              <div id="orders-summary" class="toolbar-note"></div>
               <div id="order-detail" class="stack" style="margin-bottom:18px;"></div>
               <div id="orders-list" class="stack"></div>
             </div>
@@ -865,6 +1064,11 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         apps: [],
         products: [],
         plans: [],
+        orders: [],
+        installs: [],
+        entitlements: [],
+        events: [],
+        webhooks: [],
         activeSection: '${activeSection}',
         selectedOrderNo: ''
       };
@@ -1004,6 +1208,120 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         badge.className = 'badge ' + (apps.length > 0 ? 'ok' : 'muted');
       }
 
+      function renderDashboardMetrics() {
+        const root = document.getElementById('dashboard-metrics');
+        const activeSecrets = state.apps.reduce((total, app) => total + (Array.isArray(app.secrets) ? app.secrets.filter((item) => item.status === 'active').length : 0), 0);
+        const paidOrders = state.orders.filter((item) => item.status === 'paid').length;
+        const pendingOrders = state.orders.filter((item) => item.status === 'pending').length;
+        const activeInstalls = state.installs.filter((item) => item.status === 'active').length;
+        const activeEntitlements = state.entitlements.filter((item) => item.status === 'active').length;
+
+        root.innerHTML = [
+          { label: '接入应用', value: state.apps.length, note: '已登记 app 数量' },
+          { label: '活跃 Secret', value: activeSecrets, note: '当前可换 token 的 Secret' },
+          { label: '已支付订单', value: paidOrders, note: '最近加载订单里的 paid' },
+          { label: '待处理订单', value: pendingOrders, note: '需要继续查单的 pending' },
+          { label: '有效授权', value: activeEntitlements, note: 'active entitlement 数量' }
+        ].map((item) => (
+          '<div class="metric-card">' +
+            '<label>' + escapeHtml(item.label) + '</label>' +
+            '<strong>' + escapeHtml(item.value) + '</strong>' +
+            '<span>' + escapeHtml(item.note) + '</span>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderDashboardHighlights() {
+        const root = document.getElementById('dashboard-highlights');
+        const latestOrder = state.orders[0];
+        const latestInstall = state.installs[0];
+        const latestEvent = state.events[0];
+        const configuredProviders = [
+          document.getElementById('wechat-overview').textContent,
+          document.getElementById('alipay-overview').textContent
+        ].filter((item) => item === '已配置').length;
+
+        root.innerHTML = [
+          {
+            title: '支付状态',
+            text: '当前已配置 ' + configuredProviders + ' / 2 个支付通道，可直接从后台继续维护。'
+          },
+          {
+            title: '最近订单',
+            text: latestOrder
+              ? latestOrder.orderNo + ' · ' + latestOrder.status + ' · ' + (latestOrder.amount / 100).toFixed(2) + ' ' + latestOrder.currency
+              : '最近没有订单记录'
+          },
+          {
+            title: '最近安装',
+            text: latestInstall
+              ? latestInstall.extensionInstallId + ' · ' + (latestInstall.app?.code || '-') + ' · ' + latestInstall.status
+              : '最近没有安装记录'
+          },
+          {
+            title: '最近事件',
+            text: latestEvent
+              ? latestEvent.eventName + ' · ' + formatTime(latestEvent.eventTime)
+              : '最近没有业务事件'
+          }
+        ].map((item) => (
+          '<div class="quick-card">' +
+            '<h3>' + escapeHtml(item.title) + '</h3>' +
+            '<p>' + escapeHtml(item.text) + '</p>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderOrderAppFilterOptions(items) {
+        const select = document.getElementById('order-app-filter');
+        const current = select.value;
+        const appCodes = [...new Set(items.map((item) => item.app?.code).filter(Boolean))].sort();
+        select.innerHTML =
+          '<option value="">全部应用</option>' +
+          appCodes.map((code) => '<option value="' + escapeHtml(code) + '">' + escapeHtml(code) + '</option>').join('');
+        if (appCodes.includes(current)) {
+          select.value = current;
+        }
+      }
+
+      function getFilteredOrders(items) {
+        const query = document.getElementById('order-query').value.trim().toLowerCase();
+        const status = document.getElementById('order-status-filter').value;
+        const provider = document.getElementById('order-provider-filter').value;
+        const appCode = document.getElementById('order-app-filter').value;
+
+        return items.filter((item) => {
+          if (status && item.status !== status) {
+            return false;
+          }
+          if (provider && item.provider !== provider) {
+            return false;
+          }
+          if (appCode && item.app?.code !== appCode) {
+            return false;
+          }
+
+          if (!query) {
+            return true;
+          }
+
+          const haystack = [
+            item.orderNo,
+            item.user?.email,
+            item.userId,
+            item.app?.code,
+            item.product?.code,
+            item.plan?.code,
+            item.checkoutSession?.sessionCode
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+          return haystack.includes(query);
+        });
+      }
+
       function renderAppSecretOptions(apps) {
         const select = document.getElementById('app-secret-appCode');
         const current = select.value;
@@ -1107,6 +1425,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       function renderManagedApps(apps) {
         state.apps = apps;
         setAppOverviewLabel(apps);
+        renderDashboardMetrics();
+        renderDashboardHighlights();
         renderAppSecretOptions(apps);
         renderAppEditorOptions(apps);
         syncSelectedAppEditor();
@@ -1122,21 +1442,24 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
             const secrets = Array.isArray(app.secrets) ? app.secrets : [];
             const products = Array.isArray(app.products) ? app.products : [];
             return (
-              '<div class="locked">' +
-                '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+              '<div class="entity-card">' +
+                '<div class="entity-head">' +
                   '<div>' +
-                    '<strong>' + formatText(app.name) + ' (' + formatText(app.code) + ')</strong>' +
-                    '<div class="subtle">类型: ' + formatText(app.type) + ' · 状态: ' + formatText(app.status) + '</div>' +
-                    '<div class="subtle">产品: ' + (products.length ? products.map((item) => formatText(item.code)).join(', ') : '未绑定') + '</div>' +
+                    '<div class="entity-title">' + formatText(app.name) + ' (' + formatText(app.code) + ')</div>' +
+                    '<div class="meta-row">' +
+                      '<span class="meta-chip">类型 · ' + formatText(app.type) + '</span>' +
+                      '<span class="meta-chip ghost">状态 · ' + formatText(app.status) + '</span>' +
+                      '<span class="meta-chip ghost">产品 · ' + (products.length ? products.map((item) => formatText(item.code)).join(', ') : '未绑定') + '</span>' +
+                    '</div>' +
                   '</div>' +
                   '<div class="badge-row">' +
                     '<span class="badge ' + (secrets.length ? 'ok' : 'warn') + '">Secrets: ' + secrets.length + '</span>' +
                   '</div>' +
                 '</div>' +
-                '<div style="margin-top:12px;">' +
+                '<div class="section-divider">' +
                   (secrets.length
                     ? secrets.map((secret) => (
-                        '<div class="subtle" style="padding:8px 0;border-top:1px solid rgba(216,205,187,0.8);">' +
+                        '<div class="subtle" style="padding:10px 0;">' +
                           'Name: ' + formatText(secret.name) +
                           ' · Hint: ' + formatText(secret.hint) +
                           ' · 状态: ' + formatText(secret.status) +
@@ -1157,19 +1480,28 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       function renderOrders(items) {
         const root = document.getElementById('orders-list');
-        if (!items.length) {
+        const filtered = getFilteredOrders(items);
+        const summary = document.getElementById('orders-summary');
+        summary.textContent = '当前显示 ' + filtered.length + ' / ' + items.length + ' 条订单';
+
+        if (!filtered.length) {
           root.innerHTML = '<div class="locked">当前还没有订单。</div>';
           return;
         }
 
-        root.innerHTML = items.map((item) => (
-          '<div class="locked">' +
-            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+        root.innerHTML = filtered.map((item) => (
+          '<div class="entity-card">' +
+            '<div class="entity-head">' +
               '<div>' +
-                '<strong>' + formatText(item.orderNo) + '</strong>' +
-                '<div class="subtle">状态: ' + formatText(item.status) + ' · 通道: ' + formatText(item.provider) + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</div>' +
-                '<div class="subtle">用户: ' + formatText(item.user?.email || item.userId) + '</div>' +
-                '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 套餐: ' + formatText(item.plan?.code) + '</div>' +
+                '<div class="entity-title">' + formatText(item.orderNo) + '</div>' +
+                '<div class="meta-row">' +
+                  '<span class="meta-chip">状态 · ' + formatText(item.status) + '</span>' +
+                  '<span class="meta-chip">通道 · ' + formatText(item.provider) + '</span>' +
+                  '<span class="meta-chip ghost">金额 · ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</span>' +
+                  '<span class="meta-chip ghost">应用 · ' + formatText(item.app?.code) + '</span>' +
+                  '<span class="meta-chip ghost">套餐 · ' + formatText(item.plan?.code) + '</span>' +
+                '</div>' +
+                '<div class="subtle" style="margin-top:10px;">用户: ' + formatText(item.user?.email || item.userId) + ' · 产品: ' + formatText(item.product?.code) + '</div>' +
                 '<div class="subtle">Session: ' + formatText(item.checkoutSession?.sessionCode) + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
               '</div>' +
               '<div class="actions">' +
@@ -1195,13 +1527,19 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         const events = Array.isArray(data.events) ? data.events : [];
 
         root.innerHTML =
-          '<div class="locked">' +
-            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+          '<div class="entity-card">' +
+            '<div class="entity-head">' +
               '<div>' +
-                '<strong>订单详情 · ' + formatText(item.orderNo) + '</strong>' +
-                '<div class="subtle">状态: ' + formatText(item.status) + ' · 通道: ' + formatText(item.provider) + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</div>' +
-                '<div class="subtle">用户: ' + formatText(item.user?.email || item.userId) + ' · 应用: ' + formatText(item.app?.code) + ' · 套餐: ' + formatText(item.plan?.code) + '</div>' +
-                '<div class="subtle">支付时间: ' + formatTime(item.paidAt) + ' · providerOrderId: ' + formatText(item.providerOrderId) + '</div>' +
+                '<div class="entity-title">订单详情 · ' + formatText(item.orderNo) + '</div>' +
+                '<div class="meta-row">' +
+                  '<span class="meta-chip">状态 · ' + formatText(item.status) + '</span>' +
+                  '<span class="meta-chip">通道 · ' + formatText(item.provider) + '</span>' +
+                  '<span class="meta-chip ghost">金额 · ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</span>' +
+                  '<span class="meta-chip ghost">应用 · ' + formatText(item.app?.code) + '</span>' +
+                  '<span class="meta-chip ghost">套餐 · ' + formatText(item.plan?.code) + '</span>' +
+                '</div>' +
+                '<div class="subtle" style="margin-top:10px;">用户: ' + formatText(item.user?.email || item.userId) + ' · providerOrderId: ' + formatText(item.providerOrderId) + '</div>' +
+                '<div class="subtle">支付时间: ' + formatTime(item.paidAt) + '</div>' +
               '</div>' +
               '<div class="actions">' +
                 '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
@@ -1273,10 +1611,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         }
 
         root.innerHTML = items.map((item) => (
-          '<div class="locked">' +
-            '<strong>' + formatText(item.extensionInstallId) + '</strong>' +
-            '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 状态: ' + formatText(item.status) + '</div>' +
-            '<div class="subtle">用户: ' + formatText(item.user?.email || '未绑定') + ' · 版本: ' + formatText(item.appVersion) + '</div>' +
+          '<div class="entity-card">' +
+            '<div class="entity-title">' + formatText(item.extensionInstallId) + '</div>' +
+            '<div class="meta-row">' +
+              '<span class="meta-chip">应用 · ' + formatText(item.app?.code) + '</span>' +
+              '<span class="meta-chip ghost">产品 · ' + formatText(item.product?.code) + '</span>' +
+              '<span class="meta-chip ghost">状态 · ' + formatText(item.status) + '</span>' +
+            '</div>' +
+            '<div class="subtle" style="margin-top:10px;">用户: ' + formatText(item.user?.email || '未绑定') + ' · 版本: ' + formatText(item.appVersion) + '</div>' +
             '<div class="subtle">Profile: ' + formatText(item.chromeProfileHint) + ' · 最近活跃: ' + formatTime(item.lastSeenAt) + '</div>' +
           '</div>'
         )).join('');
@@ -1290,12 +1632,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         }
 
         root.innerHTML = items.map((item) => (
-          '<div class="locked">' +
-            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+          '<div class="entity-card">' +
+            '<div class="entity-head">' +
               '<div>' +
-                '<strong>' + formatText(item.user?.email || item.userId) + '</strong>' +
-                '<div class="subtle">产品: ' + formatText(item.product?.code) + ' · 功能: ' + formatText(item.feature?.code) + ' · 状态: ' + formatText(item.status) + '</div>' +
-                '<div class="subtle">来源: ' + formatText(item.sourceType) + ' · 订单: ' + formatText(item.sourceOrder?.orderNo) + '</div>' +
+                '<div class="entity-title">' + formatText(item.user?.email || item.userId) + '</div>' +
+                '<div class="meta-row">' +
+                  '<span class="meta-chip">产品 · ' + formatText(item.product?.code) + '</span>' +
+                  '<span class="meta-chip ghost">功能 · ' + formatText(item.feature?.code) + '</span>' +
+                  '<span class="meta-chip ghost">状态 · ' + formatText(item.status) + '</span>' +
+                '</div>' +
+                '<div class="subtle" style="margin-top:10px;">来源: ' + formatText(item.sourceType) + ' · 订单: ' + formatText(item.sourceOrder?.orderNo) + '</div>' +
                 '<div class="subtle">开始: ' + formatTime(item.startsAt) + ' · 到期: ' + formatTime(item.expiresAt) + '</div>' +
               '</div>' +
               (item.status === 'active'
@@ -1314,10 +1660,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         }
 
         root.innerHTML = items.map((item) => (
-          '<div class="locked">' +
-            '<strong>' + formatText(item.eventName) + '</strong>' +
-            '<div class="subtle">时间: ' + formatTime(item.eventTime) + ' · 用户: ' + formatText(item.user?.email || item.userId) + '</div>' +
-            '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 安装: ' + formatText(item.install?.extensionInstallId) + '</div>' +
+          '<div class="entity-card">' +
+            '<div class="entity-title">' + formatText(item.eventName) + '</div>' +
+            '<div class="meta-row">' +
+              '<span class="meta-chip">时间 · ' + formatTime(item.eventTime) + '</span>' +
+              '<span class="meta-chip ghost">用户 · ' + formatText(item.user?.email || item.userId) + '</span>' +
+              '<span class="meta-chip ghost">应用 · ' + formatText(item.app?.code) + '</span>' +
+            '</div>' +
+            '<div class="subtle" style="margin-top:10px;">产品: ' + formatText(item.product?.code) + ' · 安装: ' + formatText(item.install?.extensionInstallId) + '</div>' +
             '<details>' +
               '<summary class="inline-code">properties</summary>' +
               '<pre class="json-block">' + formatJson(item.properties) + '</pre>' +
@@ -1334,10 +1684,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         }
 
         root.innerHTML = items.map((item) => (
-          '<div class="locked">' +
-            '<strong>' + formatText(item.provider) + ' · ' + formatText(item.type) + '</strong>' +
-            '<div class="subtle">事件号: ' + formatText(item.providerEventId) + '</div>' +
-            '<div class="subtle">状态: ' + formatText(item.status) + ' · 已处理: ' + formatTime(item.processedAt) + ' · 入库: ' + formatTime(item.createdAt) + '</div>' +
+          '<div class="entity-card">' +
+            '<div class="entity-title">' + formatText(item.provider) + ' · ' + formatText(item.type) + '</div>' +
+            '<div class="meta-row">' +
+              '<span class="meta-chip">状态 · ' + formatText(item.status) + '</span>' +
+              '<span class="meta-chip ghost">已处理 · ' + formatTime(item.processedAt) + '</span>' +
+              '<span class="meta-chip ghost">入库 · ' + formatTime(item.createdAt) + '</span>' +
+            '</div>' +
+            '<div class="subtle" style="margin-top:10px;">事件号: ' + formatText(item.providerEventId) + '</div>' +
             '<details>' +
               '<summary class="inline-code">payload</summary>' +
               '<pre class="json-block">' + formatJson(item.payload) + '</pre>' +
@@ -1353,9 +1707,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           api('/v1/admin/entitlements?limit=30')
         ]);
 
-        renderOrders(orders.items || []);
-        renderInstalls(installs.items || []);
-        renderEntitlements(entitlements.items || []);
+        state.orders = orders.items || [];
+        state.installs = installs.items || [];
+        state.entitlements = entitlements.items || [];
+        renderOrderAppFilterOptions(state.orders);
+        renderOrders(state.orders);
+        renderInstalls(state.installs);
+        renderEntitlements(state.entitlements);
+        renderDashboardMetrics();
+        renderDashboardHighlights();
 
         if (state.selectedOrderNo) {
           try {
@@ -1383,8 +1743,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           api('/v1/admin/billing-webhooks?limit=20')
         ]);
 
-        renderEvents(events.items || []);
-        renderWebhooks(webhooks.items || []);
+        state.events = events.items || [];
+        state.webhooks = webhooks.items || [];
+        renderEvents(state.events);
+        renderWebhooks(state.webhooks);
+        renderDashboardMetrics();
+        renderDashboardHighlights();
       }
 
       async function loadBootstrapStatus() {
@@ -1400,6 +1764,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           document.getElementById('current-user').textContent = '未登录';
           document.getElementById('access-message').textContent = '还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。';
           document.getElementById('settings-panel').classList.add('hidden');
+          state.apps = [];
+          state.orders = [];
+          state.installs = [];
+          state.entitlements = [];
+          state.events = [];
+          state.webhooks = [];
           renderManagedApps([]);
           renderOrders([]);
           renderOrderDetail(null);
@@ -1444,6 +1814,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           document.getElementById('current-user').textContent = '登录已失效';
           document.getElementById('settings-panel').classList.add('hidden');
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
+          state.apps = [];
+          state.orders = [];
+          state.installs = [];
+          state.entitlements = [];
+          state.events = [];
+          state.webhooks = [];
           renderManagedApps([]);
           renderOrders([]);
           renderOrderDetail(null);
@@ -1689,6 +2065,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         } catch (error) {
           setFlash('grant-admin-flash', error.message, 'error');
         }
+      });
+
+      ['order-query', 'order-status-filter', 'order-provider-filter', 'order-app-filter'].forEach((id) => {
+        document.getElementById(id).addEventListener(id === 'order-query' ? 'input' : 'change', () => {
+          renderOrders(state.orders);
+        });
       });
 
       document.getElementById('orders-list').addEventListener('click', async (event) => {
