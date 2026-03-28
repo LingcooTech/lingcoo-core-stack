@@ -112,17 +112,35 @@ export class AlipayProvider implements BillingProviderAdapter {
       };
     }
 
-    const checkoutUrl = this.getSdk(context.env).pageExecute('alipay.trade.page.pay', 'GET', {
-      notifyUrl,
-      returnUrl: context.env.ALIPAY_RETURN_URL?.trim() || undefined,
+    const pageParams: {
+      method: 'GET';
+      notifyUrl: string;
+      returnUrl?: string;
       bizContent: {
-        out_trade_no: context.order.orderNo,
-        product_code: 'FAST_INSTANT_TRADE_PAY',
+        outTradeNo: string;
+        productCode: string;
+        subject: string;
+        body: string;
+        totalAmount: string;
+      };
+    } = {
+      method: 'GET',
+      notifyUrl,
+      bizContent: {
+        outTradeNo: context.order.orderNo,
+        productCode: 'FAST_INSTANT_TRADE_PAY',
         subject: context.order.subject,
         body: context.order.subject,
-        total_amount: amountFenToYuanString(context.order.amount)
+        totalAmount: amountFenToYuanString(context.order.amount)
       }
-    });
+    };
+
+    const returnUrl = context.env.ALIPAY_RETURN_URL?.trim();
+    if (returnUrl) {
+      pageParams.returnUrl = returnUrl;
+    }
+
+    const checkoutUrl = this.getSdk(context.env).pageExecute('alipay.trade.page.pay', pageParams);
 
     return {
       provider: this.code,
