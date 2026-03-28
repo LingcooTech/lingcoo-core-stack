@@ -4,7 +4,7 @@ export function renderPaymentAdminPage() {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>fd-core-stack 支付配置</title>
+    <title>fd-core-stack 管理后台</title>
     <style>
       :root {
         --bg: #efe6d7;
@@ -219,6 +219,7 @@ export function renderPaymentAdminPage() {
       }
 
       input,
+      select,
       textarea {
         width: 100%;
         border: 1px solid var(--line);
@@ -348,9 +349,9 @@ export function renderPaymentAdminPage() {
       <section class="hero">
         <div class="panel hero-main">
           <span class="eyebrow">fd-core-stack / payment control</span>
-          <h1>支付配置后台</h1>
+          <h1>管理后台</h1>
           <p class="lead">
-            这里只保留你实际需要填写的字段。回调地址、网关、签名细节都由系统内置处理，不再要求你额外配置。
+            先把支付配置和应用接入 secret 管起来。回调地址、网关、签名细节都由系统内置处理，不再要求你额外配置。
           </p>
           <div class="status-grid">
             <div class="status-card">
@@ -365,6 +366,10 @@ export function renderPaymentAdminPage() {
               <label>支付宝</label>
               <strong id="alipay-overview">未检查</strong>
             </div>
+            <div class="status-card">
+              <label>应用接入</label>
+              <strong id="app-overview">未检查</strong>
+            </div>
           </div>
         </div>
 
@@ -372,7 +377,8 @@ export function renderPaymentAdminPage() {
           <h2>填写规则</h2>
           <p>1. 这里只显示和 fd-payment 对齐的字段。</p>
           <p>2. 密钥类字段保存后不会回显，输入框变空是正常的，不代表没保存。</p>
-          <p>3. 根路径返回 JSON 正常，后台页面在 <a class="ghost-link" href="/admin/payments">/admin/payments</a>。</p>
+          <p>3. 现在也可以直接给 app 签发 secret，用来换取 x-fd-app-token。</p>
+          <p>4. 根路径返回 JSON 正常，后台页面在 <a class="ghost-link" href="/admin/payments">/admin/payments</a>。</p>
           <p class="muted">
             接口文档仍然可在 <a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">/docs</a> 查看。
           </p>
@@ -546,6 +552,45 @@ export function renderPaymentAdminPage() {
                 </div>
               </form>
             </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>应用接入 Secret</h2>
+                  <p class="muted">给 Chrome 扩展、Next.js、React 应用签发 app secret。应用先用 secret 换 app token，再调用私有 app 路由。</p>
+                </div>
+                <div class="badge-row">
+                  <span id="app-count-badge" class="badge muted">应用未加载</span>
+                </div>
+              </div>
+
+              <div id="app-admin-flash" class="flash"></div>
+
+              <form id="app-secret-form">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="app-secret-appCode">应用</label>
+                    <select id="app-secret-appCode" name="appCode"></select>
+                  </div>
+                  <div class="field">
+                    <label for="app-secret-name">Secret 名称</label>
+                    <input id="app-secret-name" name="name" type="text" placeholder="prod-extension-secret" required />
+                  </div>
+                  <div class="field full">
+                    <label for="app-secret-expiresAt">过期时间</label>
+                    <input id="app-secret-expiresAt" name="expiresAt" type="datetime-local" />
+                    <div class="subtle">留空表示不过期。</div>
+                  </div>
+                </div>
+
+                <div class="actions">
+                  <button class="primary" type="submit">签发 App Secret</button>
+                </div>
+              </form>
+
+              <div id="app-secret-result" class="locked hidden" style="margin-top:18px;"></div>
+              <div id="app-list" class="stack" style="margin-top:18px;"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -553,7 +598,8 @@ export function renderPaymentAdminPage() {
 
     <script>
       const state = {
-        token: localStorage.getItem('fd_core_admin_token') || ''
+        token: localStorage.getItem('fd_core_admin_token') || '',
+        apps: []
       };
 
       function setFlash(id, message, kind) {
@@ -640,6 +686,79 @@ export function renderPaymentAdminPage() {
         }
       }
 
+      function formatTime(value) {
+        if (!value) {
+          return '永不过期';
+        }
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+
+        return date.toLocaleString('zh-CN', { hour12: false });
+      }
+
+      function setAppOverviewLabel(apps) {
+        document.getElementById('app-overview').textContent = apps.length > 0 ? ('已接入 ' + apps.length + ' 个应用') : '暂无应用';
+        const badge = document.getElementById('app-count-badge');
+        badge.textContent = apps.length > 0 ? ('应用数: ' + apps.length) : '暂无应用';
+        badge.className = 'badge ' + (apps.length > 0 ? 'ok' : 'muted');
+      }
+
+      function renderAppSecretOptions(apps) {
+        const select = document.getElementById('app-secret-appCode');
+        select.innerHTML = apps
+          .map((item) => '<option value="' + item.code + '">' + item.name + ' (' + item.code + ')</option>')
+          .join('');
+      }
+
+      function renderManagedApps(apps) {
+        state.apps = apps;
+        setAppOverviewLabel(apps);
+        renderAppSecretOptions(apps);
+
+        const root = document.getElementById('app-list');
+        if (!apps.length) {
+          root.innerHTML = '<div class="locked">当前还没有已登记的 app。</div>';
+          return;
+        }
+
+        root.innerHTML = apps
+          .map((app) => {
+            const secrets = Array.isArray(app.secrets) ? app.secrets : [];
+            const products = Array.isArray(app.products) ? app.products : [];
+            return (
+              '<div class="locked">' +
+                '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+                  '<div>' +
+                    '<strong>' + app.name + ' (' + app.code + ')</strong>' +
+                    '<div class="subtle">类型: ' + app.type + ' · 状态: ' + app.status + '</div>' +
+                    '<div class="subtle">产品: ' + (products.length ? products.map((item) => item.code).join(', ') : '未绑定') + '</div>' +
+                  '</div>' +
+                  '<div class="badge-row">' +
+                    '<span class="badge ' + (secrets.length ? 'ok' : 'warn') + '">Secrets: ' + secrets.length + '</span>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="margin-top:12px;">' +
+                  (secrets.length
+                    ? secrets.map((secret) => (
+                        '<div class="subtle" style="padding:8px 0;border-top:1px solid rgba(216,205,187,0.8);">' +
+                          'Name: ' + secret.name +
+                          ' · Hint: ' + secret.hint +
+                          ' · 状态: ' + secret.status +
+                          ' · 最近使用: ' + (secret.lastUsedAt ? formatTime(secret.lastUsedAt) : '未使用') +
+                          ' · 过期: ' + formatTime(secret.expiresAt) +
+                        '</div>'
+                      )).join('')
+                    : '<div class="subtle">还没有签发 secret。</div>') +
+                '</div>' +
+              '</div>'
+            );
+          })
+          .join('');
+      }
+
       async function loadBootstrapStatus() {
         const data = await api('/v1/admin/bootstrap-status');
         const note = document.getElementById('bootstrap-note');
@@ -653,6 +772,7 @@ export function renderPaymentAdminPage() {
           document.getElementById('current-user').textContent = '未登录';
           document.getElementById('access-message').textContent = '还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。';
           document.getElementById('settings-panel').classList.add('hidden');
+          renderManagedApps([]);
           return;
         }
 
@@ -671,12 +791,15 @@ export function renderPaymentAdminPage() {
           document.getElementById('settings-panel').classList.remove('hidden');
           const overview = await api('/v1/admin/payment-settings');
           applyOverview(overview);
+          const apps = await api('/v1/admin/apps');
+          renderManagedApps(apps.items || []);
         } catch (_error) {
           localStorage.removeItem('fd_core_admin_token');
           state.token = '';
           document.getElementById('current-user').textContent = '登录已失效';
           document.getElementById('settings-panel').classList.add('hidden');
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
+          renderManagedApps([]);
         }
       }
 
@@ -799,6 +922,41 @@ export function renderPaymentAdminPage() {
           await refresh();
         } catch (error) {
           setFlash('alipay-flash', error.message, 'error');
+        }
+      });
+
+      document.getElementById('app-secret-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setFlash('app-admin-flash', '', '');
+        const result = document.getElementById('app-secret-result');
+        result.classList.add('hidden');
+        result.textContent = '';
+
+        try {
+          const expiresAtRaw = document.getElementById('app-secret-expiresAt').value;
+          const payload = {
+            name: document.getElementById('app-secret-name').value,
+            expiresAt: expiresAtRaw ? new Date(expiresAtRaw).toISOString() : undefined
+          };
+          const appCode = document.getElementById('app-secret-appCode').value;
+          const data = await api('/v1/admin/apps/' + encodeURIComponent(appCode) + '/secrets', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          setFlash('app-admin-flash', 'App secret 已签发。请立刻保存，只会显示这一次。', 'success');
+          result.classList.remove('hidden');
+          result.textContent =
+            'appCode: ' + data.appCode + '\\n' +
+            'appName: ' + data.appName + '\\n' +
+            'secretId: ' + data.secretId + '\\n' +
+            'secret: ' + data.secret + '\\n' +
+            'hint: ' + data.hint + '\\n' +
+            'expiresAt: ' + (data.expiresAt || 'never');
+          document.getElementById('app-secret-name').value = '';
+          document.getElementById('app-secret-expiresAt').value = '';
+          await refresh();
+        } catch (error) {
+          setFlash('app-admin-flash', error.message, 'error');
         }
       });
 
