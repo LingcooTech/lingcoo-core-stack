@@ -14,11 +14,17 @@ declare module 'fastify' {
     pg: Pool;
     redis: Redis;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    authenticateApp: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
 
   interface FastifyRequest {
     rawBody?: string | Buffer;
+    appClient?: {
+      appId: string;
+      appCode: string;
+      secretId: string;
+    };
   }
 }
 
@@ -27,10 +33,18 @@ declare module '@fastify/jwt' {
     payload: {
       sub: string;
       role?: string;
+      kind?: 'user' | 'app';
+      appId?: string;
+      appCode?: string;
+      secretId?: string;
     };
     user: {
       sub: string;
       role?: string;
+      kind?: 'user' | 'app';
+      appId?: string;
+      appCode?: string;
+      secretId?: string;
     };
   }
 }

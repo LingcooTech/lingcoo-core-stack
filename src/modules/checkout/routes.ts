@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { httpError } from '../../lib/errors';
 import { renderCheckoutPage } from './page';
 import { checkoutSessionParamsSchema, createCheckoutSessionSchema } from './schemas';
 import { CheckoutService } from './service';
@@ -17,8 +18,11 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(renderCheckoutPage(params.sessionCode));
   });
 
-  app.post('/v1/checkout/sessions', { preHandler: app.authenticate }, async (request, reply) => {
+  app.post('/v1/checkout/sessions', { preHandler: [app.authenticateApp, app.authenticate] }, async (request, reply) => {
     const payload = createCheckoutSessionSchema.parse(request.body);
+    if (request.appClient?.appCode !== payload.appCode) {
+      throw httpError(403, 'App token does not match checkout app');
+    }
     const result = await new CheckoutService(app.db, app.appEnv).createSession({
       userId: request.user.sub,
       clientIp: request.ip,

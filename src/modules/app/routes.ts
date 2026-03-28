@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { appCodeParamsSchema, createAppSecretSchema, upsertAppSchema } from './schemas';
+import { appCodeParamsSchema, createAppSecretSchema, createAppSessionSchema, upsertAppSchema } from './schemas';
 import { AppService } from './service';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
@@ -20,7 +20,35 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     return new AppService(app.db).getAppCatalog(params.appCode);
   });
 
-  app.get('/v1/apps/:appCode/entitlements/me', { preHandler: app.authenticate }, async (request) => {
+  app.post('/v1/apps/:appCode/session', async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    const payload = createAppSessionSchema.parse(request.body);
+    const auth = await new AppService(app.db).authenticateAppSecret(params.appCode, payload.appSecret);
+
+    return {
+      token: app.jwt.sign(
+        {
+          sub: `app:${auth.app.id}`,
+          kind: 'app',
+          appId: auth.app.id,
+          appCode: auth.app.code,
+          secretId: auth.secret.id
+        },
+        {
+          expiresIn: '12h'
+        }
+      ),
+      expiresIn: 12 * 60 * 60,
+      app: {
+        id: auth.app.id,
+        code: auth.app.code,
+        name: auth.app.name,
+        type: auth.app.type
+      }
+    };
+  });
+
+  app.get('/v1/apps/:appCode/entitlements/me', { preHandler: [app.authenticateApp, app.authenticate] }, async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
     return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
   });

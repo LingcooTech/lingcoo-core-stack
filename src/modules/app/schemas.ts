@@ -17,3 +17,7 @@ export const createAppSecretSchema = z.object({
   name: z.string().trim().min(1).max(120),
   expiresAt: z.string().datetime().optional()
 });
+
+export const createAppSessionSchema = z.object({
+  appSecret: z.string().trim().min(16).max(255)
+});

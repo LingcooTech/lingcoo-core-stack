@@ -110,4 +110,21 @@ export class AppRepository {
 
     return this.db.select().from(appSecrets).where(inArray(appSecrets.appId, appIds));
   }
+
+  async findAppSecretById(id: string) {
+    const [secret] = await this.db.select().from(appSecrets).where(eq(appSecrets.id, id)).limit(1);
+    return secret ?? null;
+  }
+
+  async markAppSecretUsed(id: string) {
+    const [secret] = await this.db
+      .update(appSecrets)
+      .set({
+        lastUsedAt: new Date()
+      })
+      .where(eq(appSecrets.id, id))
+      .returning();
+
+    return secret ?? null;
+  }
 }

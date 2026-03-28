@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
 import { httpError } from '../../lib/errors';
-import { hashPassword } from '../../lib/security';
+import { hashPassword, verifyPassword } from '../../lib/security';
 import { EventService } from '../event/service';
 import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
@@ -14,6 +14,13 @@ type AppSecretRecord = Awaited<ReturnType<AppRepository['listAppSecretsByAppIds'
 
 export class AppService {
   constructor(private readonly db: DbClient) {}
+
+  private isSecretUsable(secret: AppSecretRecord, now = new Date()) {
+    return (
+      secret.status === 'active' &&
+      (!secret.expiresAt || secret.expiresAt.getTime() >= now.getTime())
+    );
+  }
 
   private async hydrateApps(appRecords: AppRecord[], includeSecrets = false) {
     const repository = new AppRepository(this.db);
@@ -116,6 +123,49 @@ export class AppService {
     }
 
     return app;
+  }
+
+  async authenticateAppSecret(appCode: string, plainSecret: string) {
+    const app = await this.requireActiveApp(appCode);
+    const secrets = await new AppRepository(this.db).listAppSecretsByAppIds([app.id]);
+    const matched = secrets.find(
+      (secret) => this.isSecretUsable(secret) && verifyPassword(plainSecret, secret.secretHash)
+    );
+
+    if (!matched) {
+      throw httpError(401, 'Invalid app secret');
+    }
+
+    const touched = await new AppRepository(this.db).markAppSecretUsed(matched.id);
+    const secret = touched ?? matched;
+
+    await new EventService(this.db).capture({
+      eventName: 'app.session_authenticated',
+      properties: {
+        appCode: app.code,
+        secretId: secret.id,
+        hint: secret.hint
+      }
+    });
+
+    return {
+      app,
+      secret
+    };
+  }
+
+  async requireActiveSecretById(appCode: string, secretId: string) {
+    const app = await this.requireActiveApp(appCode);
+    const secret = await new AppRepository(this.db).findAppSecretById(secretId);
+
+    if (!secret || secret.appId !== app.id || !this.isSecretUsable(secret)) {
+      throw httpError(401, 'Invalid or expired app token');
+    }
+
+    return {
+      app,
+      secret
+    };
   }
 
   async assertAppAllowsProduct(appId: string, productId: string) {

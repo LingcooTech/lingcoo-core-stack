@@ -12,10 +12,12 @@ import fastifyRawBody from 'fastify-raw-body';
 import { ZodError } from 'zod';
 
 import { AuthRepository } from './modules/auth/repository';
+import { AppService } from './modules/app/service';
 import { appModules } from './modules';
 import { dbPlugin } from './plugins/db';
 import { redisPlugin } from './plugins/redis';
 import { type AppEnv } from './lib/env';
+import { httpError } from './lib/errors';
 
 function normalizeCorsOrigin(value: string): true | string[] {
   if (value.trim() === '*') {
@@ -63,6 +65,59 @@ export async function buildApp(env: AppEnv) {
       await request.jwtVerify();
     } catch (error) {
       return reply.unauthorized('Invalid or expired access token');
+    }
+  });
+  app.decorate('authenticateApp', async (request, reply) => {
+    const tokenHeader = request.headers['x-fd-app-token'];
+    const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
+
+    if (!token || typeof token !== 'string') {
+      return reply.unauthorized('Missing app token');
+    }
+
+    try {
+      const payload = await app.jwt.verify<{
+        kind?: 'user' | 'app';
+        appId?: string;
+        appCode?: string;
+        secretId?: string;
+      }>(token);
+
+      if (payload.kind !== 'app' || !payload.appId || !payload.appCode || !payload.secretId) {
+        return reply.unauthorized('Invalid app token');
+      }
+
+      const routeAppCode =
+        request.params && typeof request.params === 'object' && 'appCode' in request.params
+          ? String((request.params as Record<string, unknown>).appCode ?? '').trim()
+          : '';
+
+      if (routeAppCode && routeAppCode !== payload.appCode) {
+        throw httpError(403, 'App token does not match requested app');
+      }
+
+      await new AppService(app.db).requireActiveSecretById(payload.appCode, payload.secretId);
+      request.appClient = {
+        appId: payload.appId,
+        appCode: payload.appCode,
+        secretId: payload.secretId
+      };
+    } catch (error) {
+      if (reply.sent) {
+        return reply;
+      }
+
+      if (error instanceof Error && 'statusCode' in error) {
+        const statusCode = typeof (error as { statusCode?: number }).statusCode === 'number'
+          ? (error as { statusCode: number }).statusCode
+          : 401;
+        return reply.status(statusCode).send({
+          error: error.name || 'UnauthorizedError',
+          message: error.message
+        });
+      }
+
+      return reply.unauthorized('Invalid or expired app token');
     }
   });
   app.decorate('requireAdmin', async (request, reply) => {
