@@ -93,6 +93,31 @@ export class BillingService {
     return new BillingRepository(this.db).listOrdersByUserId(userId);
   }
 
+  async syncOrderStatus(input: { orderNo: string; userId: string; role?: string }) {
+    const repository = new BillingRepository(this.db);
+    const order = await repository.findOrderByOrderNo(input.orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    if (order.userId !== input.userId && input.role !== 'admin') {
+      throw httpError(403, 'You can only sync your own orders');
+    }
+
+    return this.syncOrderRecord(order);
+  }
+
+  async syncOrderStatusByOrderNo(orderNo: string) {
+    const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    return this.syncOrderRecord(order);
+  }
+
   async mockPayOrder(input: { userId: string; orderNo: string }) {
     if (this.env.NODE_ENV === 'production') {
       throw httpError(404, 'Mock payment is disabled in production');
@@ -201,6 +226,80 @@ export class BillingService {
         granted: result.granted
       };
     });
+  }
+
+  private buildProviderQueryEventId(input: {
+    provider: 'wechat_pay' | 'alipay';
+    orderNo: string;
+    providerOrderId: string;
+  }) {
+    return `query_paid:${input.provider}:${input.providerOrderId}:${input.orderNo}`;
+  }
+
+  private async syncOrderRecord(order: BillingOrder) {
+    if (order.status === 'paid') {
+      return {
+        changed: false,
+        order,
+        reconciliation: {
+          status: 'paid' as const,
+          source: 'current_state' as const,
+          providerOrderId: order.providerOrderId ?? null,
+          paidAt: order.paidAt ?? null,
+          reason: 'Order already marked as paid'
+        }
+      };
+    }
+
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
+    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const query = await providerAdapter.queryPayment({
+      env: runtimeEnv,
+      order: {
+        orderNo: order.orderNo,
+        providerOrderId: order.providerOrderId,
+        amount: order.amount,
+        currency: order.currency
+      }
+    });
+
+    if (query.kind === 'paid') {
+      const result = await this.handlePaymentNotification({
+        ...query,
+        providerEventId: this.buildProviderQueryEventId({
+          provider: query.provider,
+          orderNo: query.orderNo,
+          providerOrderId: query.providerOrderId
+        })
+      });
+      const latestOrder = await new BillingRepository(this.db).findOrderByOrderNo(order.orderNo);
+
+      return {
+        changed: !result.duplicate,
+        order: latestOrder ?? order,
+        reconciliation: {
+          status: 'paid' as const,
+          source: 'provider_query' as const,
+          providerOrderId: query.providerOrderId,
+          paidAt: query.paidAt,
+          reason: result.duplicate ? 'Order was already reconciled earlier' : 'Provider query confirmed payment'
+        }
+      };
+    }
+
+    const latestOrder = await new BillingRepository(this.db).findOrderByOrderNo(order.orderNo);
+
+    return {
+      changed: false,
+      order: latestOrder ?? order,
+      reconciliation: {
+        status: query.kind,
+        source: 'provider_query' as const,
+        providerOrderId: query.providerOrderId ?? null,
+        paidAt: null,
+        reason: query.reason
+      }
+    };
   }
 
   private getOrderMeta(value: unknown) {

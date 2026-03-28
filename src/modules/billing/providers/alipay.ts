@@ -12,9 +12,11 @@ import {
 import type {
   BillingProviderAdapter,
   PaymentNotificationResult,
+  PaymentQueryResult,
   PreparedPayment,
   ProviderContext,
-  ProviderNotificationContext
+  ProviderNotificationContext,
+  ProviderQueryContext
 } from './types';
 
 export class AlipayProvider implements BillingProviderAdapter {
@@ -32,7 +34,7 @@ export class AlipayProvider implements BillingProviderAdapter {
     );
   }
 
-  private getSdk(context: ProviderContext['env'] | ProviderNotificationContext['env']) {
+  private getSdk(context: ProviderContext['env'] | ProviderNotificationContext['env'] | ProviderQueryContext['env']) {
     return new AlipaySdk({
       appId: context.ALIPAY_APP_ID!,
       privateKey: readSecretValue({
@@ -207,5 +209,76 @@ export class AlipayProvider implements BillingProviderAdapter {
       paidAt: form.gmt_payment ? new Date(form.gmt_payment) : new Date(),
       payload: form
     };
+  }
+
+  async queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult> {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'Alipay is not configured');
+    }
+
+    const result = await this.getSdk(context.env).exec('alipay.trade.query', {
+      bizContent: {
+        outTradeNo: context.order.orderNo,
+        tradeNo: context.order.providerOrderId?.trim() || undefined
+      }
+    });
+    const payload = result as Record<string, unknown>;
+    const tradeStatus = typeof result.trade_status === 'string' ? result.trade_status : '';
+    const tradeNo = typeof result.trade_no === 'string' ? result.trade_no : null;
+
+    if (result.code === '10000' && (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED')) {
+      if (typeof result.total_amount !== 'string' || !tradeNo) {
+        throw httpError(400, 'Missing Alipay query payment fields');
+      }
+
+      return {
+        kind: 'paid',
+        provider: this.code,
+        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        providerOrderId: tradeNo,
+        amount: amountYuanStringToFen(result.total_amount),
+        currency: 'CNY',
+        paidAt: typeof result.send_pay_date === 'string' ? new Date(result.send_pay_date) : new Date(),
+        payload
+      };
+    }
+
+    if (result.code === '10000' && tradeStatus === 'WAIT_BUYER_PAY') {
+      return {
+        kind: 'pending',
+        provider: this.code,
+        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        providerOrderId: tradeNo,
+        payload,
+        reason: tradeStatus
+      };
+    }
+
+    if (result.code === '10000' && tradeStatus === 'TRADE_CLOSED') {
+      return {
+        kind: 'closed',
+        provider: this.code,
+        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        providerOrderId: tradeNo,
+        payload,
+        reason: tradeStatus
+      };
+    }
+
+    if (result.code === '40004') {
+      return {
+        kind: 'not_found',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: tradeNo,
+        payload,
+        reason: typeof result.sub_msg === 'string' ? result.sub_msg : 'Order not found in Alipay'
+      };
+    }
+
+    throw httpError(
+      502,
+      `Alipay query order failed: ${result.code ?? 'unknown'} ${result.sub_msg ?? result.msg ?? 'empty response'}`
+    );
   }
 }

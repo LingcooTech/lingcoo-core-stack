@@ -29,6 +29,16 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
+  app.post('/v1/billing/orders/:orderNo/sync', { preHandler: app.authenticate }, async (request) => {
+    const params = orderNoParamsSchema.parse(request.params);
+
+    return new BillingService(app.db, app.appEnv).syncOrderStatus({
+      orderNo: params.orderNo,
+      userId: request.user.sub,
+      role: request.user.role
+    });
+  });
+
   app.post('/v1/billing/orders/:orderNo/mock-pay', { preHandler: app.authenticate }, async (request) => {
     const params = orderNoParamsSchema.parse(request.params);
 

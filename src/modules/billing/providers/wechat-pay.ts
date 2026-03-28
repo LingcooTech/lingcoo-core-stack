@@ -5,14 +5,17 @@ import { normalizeObject, resolveCallbackUrl } from './shared';
 import type {
   BillingProviderAdapter,
   PaymentNotificationResult,
+  PaymentQueryResult,
   PreparedPayment,
   ProviderContext,
-  ProviderNotificationContext
+  ProviderNotificationContext,
+  ProviderQueryContext
 } from './types';
 
 type WechatXmlPayload = Record<string, string>;
 
 const WECHAT_NATIVE_API_PATH = '/pay/unifiedorder';
+const WECHAT_ORDER_QUERY_API_PATH = '/pay/orderquery';
 const WECHAT_NOTIFY_PATH = '/v1/billing/providers/wechat/notify';
 
 export class WechatPayProvider implements BillingProviderAdapter {
@@ -328,6 +331,114 @@ export class WechatPayProvider implements BillingProviderAdapter {
       currency: payload.fee_type || 'CNY',
       paidAt: this.parsePaidAt(payload.time_end),
       payload: normalizeObject(payload)
+    };
+  }
+
+  async queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult> {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'WeChat Pay is not configured');
+    }
+
+    const requestPayload: Record<string, string> = {
+      appid: context.env.WECHAT_PAY_APP_ID!.trim(),
+      mch_id: context.env.WECHAT_PAY_MCH_ID!.trim(),
+      nonce_str: randomBytes(16).toString('hex'),
+      sign_type: 'HMAC-SHA256',
+      out_trade_no: context.order.orderNo
+    };
+
+    if (context.order.providerOrderId?.trim()) {
+      requestPayload.transaction_id = context.order.providerOrderId.trim();
+    }
+
+    requestPayload.sign = this.createSignature(requestPayload, this.getApiKey(context.env), 'HMAC-SHA256');
+
+    const response = await fetch(new URL(WECHAT_ORDER_QUERY_API_PATH, this.getApiBaseUrl(context.env)), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/xml, text/xml, */*',
+        'Content-Type': 'text/xml; charset=utf-8'
+      },
+      body: this.buildXml(requestPayload),
+      signal: AbortSignal.timeout(10_000)
+    });
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw httpError(502, `WeChat Pay query order failed: ${response.status} ${responseText || 'empty response'}`);
+    }
+
+    const payload = this.parseXml(responseText);
+
+    if (payload.return_code === 'SUCCESS' && payload.sign) {
+      this.verifySignature(payload, this.getApiKey(context.env));
+    }
+
+    if (payload.return_code !== 'SUCCESS') {
+      throw httpError(502, `WeChat Pay query order failed: ${payload.return_msg ?? 'unknown return error'}`);
+    }
+
+    if (payload.result_code !== 'SUCCESS') {
+      const errorCode = payload.err_code?.trim().toUpperCase();
+      if (errorCode === 'ORDERNOTEXIST') {
+        return {
+          kind: 'not_found',
+          provider: this.code,
+          orderNo: context.order.orderNo,
+          payload: normalizeObject(payload),
+          reason: payload.err_code_des ?? 'Order not found in WeChat Pay'
+        };
+      }
+
+      throw httpError(
+        502,
+        `WeChat Pay query order failed: ${payload.err_code_des ?? payload.return_msg ?? 'empty response'}`
+      );
+    }
+
+    const tradeState = payload.trade_state?.trim().toUpperCase() || 'UNKNOWN';
+    const normalizedPayload = normalizeObject(payload);
+
+    if (tradeState === 'SUCCESS') {
+      if (!payload.transaction_id || !payload.total_fee) {
+        throw httpError(400, 'Missing WeChat Pay query payment fields');
+      }
+
+      const amount = Number.parseInt(payload.total_fee, 10);
+      if (!Number.isFinite(amount)) {
+        throw httpError(400, 'Invalid WeChat Pay total_fee');
+      }
+
+      return {
+        kind: 'paid',
+        provider: this.code,
+        orderNo: payload.out_trade_no || context.order.orderNo,
+        providerOrderId: payload.transaction_id,
+        amount,
+        currency: payload.fee_type || context.order.currency,
+        paidAt: this.parsePaidAt(payload.time_end),
+        payload: normalizedPayload
+      };
+    }
+
+    if (tradeState === 'NOTPAY' || tradeState === 'USERPAYING') {
+      return {
+        kind: 'pending',
+        provider: this.code,
+        orderNo: payload.out_trade_no || context.order.orderNo,
+        providerOrderId: payload.transaction_id ?? null,
+        payload: normalizedPayload,
+        reason: payload.trade_state_desc ?? tradeState
+      };
+    }
+
+    return {
+      kind: 'closed',
+      provider: this.code,
+      orderNo: payload.out_trade_no || context.order.orderNo,
+      providerOrderId: payload.transaction_id ?? null,
+      payload: normalizedPayload,
+      reason: payload.trade_state_desc ?? tradeState
     };
   }
 }

@@ -46,4 +46,9 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
     const params = checkoutSessionParamsSchema.parse(request.params);
     return new CheckoutService(app.db, app.appEnv).getSessionStatus(params.sessionCode);
   });
+
+  app.post('/v1/checkout/sessions/:sessionCode/reconcile', async (request) => {
+    const params = checkoutSessionParamsSchema.parse(request.params);
+    return new CheckoutService(app.db, app.appEnv).reconcileSession(params.sessionCode);
+  });
 };

@@ -328,4 +328,28 @@ export class CheckoutService {
       expiresAt: detail.session.expiresAt
     };
   }
+
+  async reconcileSession(sessionCode: string) {
+    const detail = await this.loadSessionDetail(sessionCode);
+    const reconciliation =
+      detail.order.status === 'paid'
+        ? {
+            changed: false,
+            reconciliation: {
+              status: 'paid' as const,
+              source: 'current_state' as const,
+              providerOrderId: detail.order.providerOrderId ?? null,
+              paidAt: detail.order.paidAt ?? null,
+              reason: 'Order already marked as paid'
+            }
+          }
+        : await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(detail.order.orderNo);
+    const status = await this.getSessionStatus(sessionCode);
+
+    return {
+      ...status,
+      changed: reconciliation.changed,
+      reconciliation: reconciliation.reconciliation
+    };
+  }
 }

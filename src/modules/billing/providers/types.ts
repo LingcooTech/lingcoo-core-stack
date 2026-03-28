@@ -33,6 +33,16 @@ export type ProviderNotificationContext = {
   body: unknown;
 };
 
+export type ProviderQueryContext = {
+  env: AppEnv;
+  order: {
+    orderNo: string;
+    providerOrderId?: string | null;
+    amount: number;
+    currency: string;
+  };
+};
+
 export type PaymentNotificationResult =
   | {
       kind: 'paid';
@@ -53,9 +63,30 @@ export type PaymentNotificationResult =
       reason: string;
     };
 
+export type PaymentQueryResult =
+  | {
+      kind: 'paid';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId: string;
+      amount: number;
+      currency: string;
+      paidAt: Date;
+      payload: Record<string, unknown>;
+    }
+  | {
+      kind: 'pending' | 'closed' | 'not_found';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    };
+
 export interface BillingProviderAdapter {
   code: BillingProviderCode;
   isConfigured(env?: AppEnv): boolean;
   preparePayment(context: ProviderContext): Promise<PreparedPayment>;
   parseNotification(context: ProviderNotificationContext): Promise<PaymentNotificationResult>;
+  queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult>;
 }

@@ -257,7 +257,7 @@ export function renderCheckoutPage(sessionCode: string) {
             <p class="muted">正在准备支付动作。</p>
           </div>
           <div class="actions">
-            <button id="refresh-button" class="secondary" type="button">刷新状态</button>
+            <button id="refresh-button" class="primary" type="button">已支付，立即验单</button>
             <a id="success-link" class="button primary hidden" href="#" target="_self" rel="noreferrer">返回应用</a>
             <a id="cancel-link" class="button secondary hidden" href="#" target="_self" rel="noreferrer">取消并返回</a>
           </div>
@@ -272,7 +272,7 @@ export function renderCheckoutPage(sessionCode: string) {
             <div class="fact"><label>过期时间</label><strong id="expires-at">-</strong></div>
             <div class="fact"><label>完成时间</label><strong id="completed-at">-</strong></div>
           </div>
-          <div id="detail-hint" class="hint">如果支付成功，页面会自动刷新状态并显示完成结果。</div>
+          <div id="detail-hint" class="hint">如果异步回调稍慢，可以在支付完成后点击“已支付，立即验单”主动查单。</div>
         </div>
       </section>
     </div>
@@ -382,8 +382,8 @@ export function renderCheckoutPage(sessionCode: string) {
         }
       }
 
-      async function fetchJson(path) {
-        const response = await fetch(path);
+      async function fetchJson(path, init) {
+        const response = await fetch(path, init);
         const text = await response.text();
         const payload = text ? JSON.parse(text) : null;
 
@@ -422,6 +422,33 @@ export function renderCheckoutPage(sessionCode: string) {
         }
       }
 
+      async function reconcileSession() {
+        const button = byId('refresh-button');
+        const previousLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = '验单中...';
+
+        try {
+          const data = await fetchJson(
+            '/v1/checkout/sessions/' + encodeURIComponent(sessionCode) + '/reconcile',
+            { method: 'POST' }
+          );
+
+          if (!state.publicData) {
+            return;
+          }
+
+          state.publicData.status = data.status;
+          state.publicData.completedAt = data.completedAt;
+          setStatus(data.status);
+          byId('completed-at').textContent = formatTime(data.completedAt);
+          renderPaymentAction(state.publicData);
+        } finally {
+          button.disabled = false;
+          button.textContent = previousLabel;
+        }
+      }
+
       async function boot() {
         try {
           await loadPublicData();
@@ -440,7 +467,7 @@ export function renderCheckoutPage(sessionCode: string) {
       }
 
       byId('refresh-button').addEventListener('click', () => {
-        void refreshStatus();
+        void reconcileSession();
       });
 
       void boot();
