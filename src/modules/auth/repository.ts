@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 import { authIdentities, passwordCredentials, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -19,6 +19,14 @@ export class AuthRepository {
   async findUserById(userId: string) {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     return user ?? null;
+  }
+
+  async listUsersByIds(userIds: string[]) {
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(users).where(inArray(users.id, userIds));
   }
 
   async createUser(input: { email: string; displayName?: string; role?: 'user' | 'admin' }) {

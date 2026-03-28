@@ -22,6 +22,10 @@ export class AppService {
     );
   }
 
+  private createDefaultSecretName(appCode: string) {
+    return `${appCode}-secret-${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)}`;
+  }
+
   private async hydrateApps(appRecords: AppRecord[], includeSecrets = false) {
     const repository = new AppRepository(this.db);
     const appIds = appRecords.map((app) => app.id);
@@ -266,7 +270,7 @@ export class AppService {
   async issueSecret(
     appCode: string,
     input: {
-      name: string;
+      name?: string;
       expiresAt?: string;
     },
     actorUserId: string
@@ -279,7 +283,7 @@ export class AppService {
     const plainSecret = `fds_${randomBytes(24).toString('base64url')}`;
     const secret = await new AppRepository(this.db).createAppSecret({
       appId: app.id,
-      name: input.name,
+      name: input.name?.trim() || this.createDefaultSecretName(app.code),
       secretHash: hashPassword(plainSecret),
       hint: plainSecret.slice(-6),
       expiresAt: input.expiresAt ? new Date(input.expiresAt) : null

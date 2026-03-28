@@ -18,3 +18,11 @@ export const alipayPaymentSettingsSchema = z.object({
   privateKeyPem: z.string().trim().optional(),
   publicKeyPem: z.string().trim().optional()
 });
+
+export const adminListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50)
+});
+
+export const adminOrderParamsSchema = z.object({
+  orderNo: z.string().trim().min(8).max(64)
+});

@@ -20,6 +20,14 @@ export class AppRepository {
     return app ?? null;
   }
 
+  async listAppsByIds(appIds: string[]) {
+    if (appIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(apps).where(inArray(apps.id, appIds));
+  }
+
   async upsertApp(input: {
     code: string;
     name: string;

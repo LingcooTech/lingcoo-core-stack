@@ -127,4 +127,8 @@ export class LicenseRepository {
       )
       .orderBy(desc(entitlements.createdAt));
   }
+
+  async listRecentEntitlements(limit = 50) {
+    return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
+  }
 }

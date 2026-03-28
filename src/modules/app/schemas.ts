@@ -14,7 +14,7 @@ export const upsertAppSchema = z.object({
 });
 
 export const createAppSecretSchema = z.object({
-  name: z.string().trim().min(1).max(120),
+  name: z.string().trim().min(1).max(120).optional(),
   expiresAt: z.string().datetime().optional()
 });
 

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
 import { installs } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -49,6 +49,10 @@ export class InstallRepository {
       .returning();
 
     return install;
+  }
+
+  async listRecentInstalls(limit = 50) {
+    return this.db.select().from(installs).orderBy(desc(installs.createdAt)).limit(limit);
   }
 
   async updateInstall(

@@ -572,10 +572,6 @@ export function renderPaymentAdminPage() {
                     <label for="app-secret-appCode">应用</label>
                     <select id="app-secret-appCode" name="appCode"></select>
                   </div>
-                  <div class="field">
-                    <label for="app-secret-name">Secret 名称</label>
-                    <input id="app-secret-name" name="name" type="text" placeholder="prod-extension-secret" required />
-                  </div>
                   <div class="field full">
                     <label for="app-secret-expiresAt">过期时间</label>
                     <input id="app-secret-expiresAt" name="expiresAt" type="datetime-local" />
@@ -584,12 +580,43 @@ export function renderPaymentAdminPage() {
                 </div>
 
                 <div class="actions">
-                  <button class="primary" type="submit">签发 App Secret</button>
+                  <button class="primary" type="submit">一键生成 App Secret</button>
                 </div>
               </form>
 
               <div id="app-secret-result" class="locked hidden" style="margin-top:18px;"></div>
               <div id="app-list" class="stack" style="margin-top:18px;"></div>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>订单运营</h2>
+                  <p class="muted">查看最近订单，并手动触发查单 / 补单。</p>
+                </div>
+              </div>
+              <div id="orders-admin-flash" class="flash"></div>
+              <div id="orders-list" class="stack"></div>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>安装实例</h2>
+                  <p class="muted">查看 app 安装实例、绑定用户、最近活跃时间。</p>
+                </div>
+              </div>
+              <div id="installs-list" class="stack"></div>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>授权明细</h2>
+                  <p class="muted">查看 entitlement 明细、来源订单和当前状态。</p>
+                </div>
+              </div>
+              <div id="entitlements-list" class="stack"></div>
             </div>
           </div>
         </div>
@@ -759,6 +786,77 @@ export function renderPaymentAdminPage() {
           .join('');
       }
 
+      function renderOrders(items) {
+        const root = document.getElementById('orders-list');
+        if (!items.length) {
+          root.innerHTML = '<div class="locked">当前还没有订单。</div>';
+          return;
+        }
+
+        root.innerHTML = items.map((item) => (
+          '<div class="locked">' +
+            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+              '<div>' +
+                '<strong>' + item.orderNo + '</strong>' +
+                '<div class="subtle">状态: ' + item.status + ' · 通道: ' + item.provider + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + item.currency + '</div>' +
+                '<div class="subtle">用户: ' + (item.user?.email || item.userId) + '</div>' +
+                '<div class="subtle">应用: ' + (item.app?.code || '-') + ' · 产品: ' + (item.product?.code || '-') + ' · 套餐: ' + (item.plan?.code || '-') + '</div>' +
+                '<div class="subtle">Session: ' + (item.checkoutSession?.sessionCode || '-') + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
+              '</div>' +
+              '<div class="actions">' +
+                '<button class="secondary" type="button" data-order-reconcile="' + item.orderNo + '">同步订单</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderInstalls(items) {
+        const root = document.getElementById('installs-list');
+        if (!items.length) {
+          root.innerHTML = '<div class="locked">当前还没有安装实例。</div>';
+          return;
+        }
+
+        root.innerHTML = items.map((item) => (
+          '<div class="locked">' +
+            '<strong>' + item.extensionInstallId + '</strong>' +
+            '<div class="subtle">应用: ' + (item.app?.code || '-') + ' · 产品: ' + (item.product?.code || '-') + ' · 状态: ' + item.status + '</div>' +
+            '<div class="subtle">用户: ' + (item.user?.email || '未绑定') + ' · 版本: ' + (item.appVersion || '-') + '</div>' +
+            '<div class="subtle">Profile: ' + (item.chromeProfileHint || '-') + ' · 最近活跃: ' + formatTime(item.lastSeenAt) + '</div>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderEntitlements(items) {
+        const root = document.getElementById('entitlements-list');
+        if (!items.length) {
+          root.innerHTML = '<div class="locked">当前还没有授权明细。</div>';
+          return;
+        }
+
+        root.innerHTML = items.map((item) => (
+          '<div class="locked">' +
+            '<strong>' + (item.user?.email || item.userId) + '</strong>' +
+            '<div class="subtle">产品: ' + (item.product?.code || '-') + ' · 功能: ' + (item.feature?.code || '-') + ' · 状态: ' + item.status + '</div>' +
+            '<div class="subtle">来源: ' + item.sourceType + ' · 订单: ' + (item.sourceOrder?.orderNo || '-') + '</div>' +
+            '<div class="subtle">开始: ' + formatTime(item.startsAt) + ' · 到期: ' + formatTime(item.expiresAt) + '</div>' +
+          '</div>'
+        )).join('');
+      }
+
+      async function loadAdminOperations() {
+        const [orders, installs, entitlements] = await Promise.all([
+          api('/v1/admin/orders?limit=30'),
+          api('/v1/admin/installs?limit=30'),
+          api('/v1/admin/entitlements?limit=30')
+        ]);
+
+        renderOrders(orders.items || []);
+        renderInstalls(installs.items || []);
+        renderEntitlements(entitlements.items || []);
+      }
+
       async function loadBootstrapStatus() {
         const data = await api('/v1/admin/bootstrap-status');
         const note = document.getElementById('bootstrap-note');
@@ -773,6 +871,9 @@ export function renderPaymentAdminPage() {
           document.getElementById('access-message').textContent = '还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。';
           document.getElementById('settings-panel').classList.add('hidden');
           renderManagedApps([]);
+          renderOrders([]);
+          renderInstalls([]);
+          renderEntitlements([]);
           return;
         }
 
@@ -793,6 +894,7 @@ export function renderPaymentAdminPage() {
           applyOverview(overview);
           const apps = await api('/v1/admin/apps');
           renderManagedApps(apps.items || []);
+          await loadAdminOperations();
         } catch (_error) {
           localStorage.removeItem('fd_core_admin_token');
           state.token = '';
@@ -800,6 +902,9 @@ export function renderPaymentAdminPage() {
           document.getElementById('settings-panel').classList.add('hidden');
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
           renderManagedApps([]);
+          renderOrders([]);
+          renderInstalls([]);
+          renderEntitlements([]);
         }
       }
 
@@ -935,7 +1040,6 @@ export function renderPaymentAdminPage() {
         try {
           const expiresAtRaw = document.getElementById('app-secret-expiresAt').value;
           const payload = {
-            name: document.getElementById('app-secret-name').value,
             expiresAt: expiresAtRaw ? new Date(expiresAtRaw).toISOString() : undefined
           };
           const appCode = document.getElementById('app-secret-appCode').value;
@@ -952,11 +1056,44 @@ export function renderPaymentAdminPage() {
             'secret: ' + data.secret + '\\n' +
             'hint: ' + data.hint + '\\n' +
             'expiresAt: ' + (data.expiresAt || 'never');
-          document.getElementById('app-secret-name').value = '';
           document.getElementById('app-secret-expiresAt').value = '';
           await refresh();
         } catch (error) {
           setFlash('app-admin-flash', error.message, 'error');
+        }
+      });
+
+      document.getElementById('orders-list').addEventListener('click', async (event) => {
+        const target = event.target instanceof Element ? event.target.closest('[data-order-reconcile]') : null;
+        if (!target) {
+          return;
+        }
+
+        const orderNo = target.getAttribute('data-order-reconcile');
+        if (!orderNo) {
+          return;
+        }
+
+        const previousText = target.textContent;
+        target.setAttribute('disabled', 'disabled');
+        target.textContent = '同步中...';
+        setFlash('orders-admin-flash', '', '');
+
+        try {
+          const data = await api('/v1/admin/orders/' + encodeURIComponent(orderNo) + '/reconcile', {
+            method: 'POST'
+          });
+          setFlash(
+            'orders-admin-flash',
+            '订单已同步: ' + orderNo + ' -> ' + data.reconciliation.status + ' (' + data.reconciliation.reason + ')',
+            'success'
+          );
+          await loadAdminOperations();
+        } catch (error) {
+          setFlash('orders-admin-flash', error.message, 'error');
+        } finally {
+          target.removeAttribute('disabled');
+          target.textContent = previousText || '同步订单';
         }
       });
 

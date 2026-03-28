@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ne, or, isNull } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, ne, or, isNull } from 'drizzle-orm';
 
 import { checkoutSessions, paymentAttempts } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -115,6 +115,14 @@ export class CheckoutRepository {
       .limit(1);
 
     return session ?? null;
+  }
+
+  async listSessionsByOrderIds(orderIds: string[]) {
+    if (orderIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(checkoutSessions).where(inArray(checkoutSessions.orderId, orderIds));
   }
 
   async markSessionPaidByOrderId(orderId: string, completedAt: Date) {

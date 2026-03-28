@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 
 import { billingWebhookEvents, orders } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -40,6 +40,18 @@ export class BillingRepository {
 
   async listOrdersByUserId(userId: string) {
     return this.db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+  }
+
+  async listRecentOrders(limit = 50) {
+    return this.db.select().from(orders).orderBy(desc(orders.createdAt)).limit(limit);
+  }
+
+  async listOrdersByIds(orderIds: string[]) {
+    if (orderIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(orders).where(inArray(orders.id, orderIds));
   }
 
   async markOrderPaidIfUnpaid(input: {
