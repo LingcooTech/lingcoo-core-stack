@@ -50,21 +50,24 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
     <title>fd-core-stack 管理后台</title>
     <style>
       :root {
-        --bg: #eef4ff;
-        --bg-2: #f8fbff;
+        --bg: #f3f4ef;
+        --bg-2: #fbfbf8;
         --panel: rgba(255, 255, 255, 0.86);
-        --panel-strong: #ffffff;
-        --ink: #0f172a;
-        --muted: #64748b;
-        --line: rgba(148, 163, 184, 0.24);
-        --accent: #2563eb;
-        --accent-2: #7c3aed;
+        --panel-strong: rgba(255, 255, 255, 0.96);
+        --panel-soft: rgba(246, 247, 243, 0.92);
+        --ink: #122033;
+        --muted: #5f6f83;
+        --line: rgba(15, 23, 42, 0.08);
+        --line-strong: rgba(15, 23, 42, 0.12);
+        --accent: #0f766e;
+        --accent-2: #ea580c;
+        --accent-3: #1d4ed8;
         --danger: #dc2626;
         --success: #16a34a;
-        --warning: #d97706;
-        --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
-        --shadow-soft: 0 14px 32px rgba(15, 23, 42, 0.08);
-        --radius: 22px;
+        --warning: #c2410c;
+        --shadow: 0 28px 80px rgba(15, 23, 42, 0.12);
+        --shadow-soft: 0 18px 42px rgba(15, 23, 42, 0.08);
+        --radius: 30px;
       }
 
       * {
@@ -73,19 +76,210 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       body {
         margin: 0;
-        font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 24%),
-          radial-gradient(circle at top right, rgba(124, 58, 237, 0.16), transparent 22%),
-          linear-gradient(180deg, #fbfdff 0%, var(--bg) 48%, var(--bg-2) 100%);
+          radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.18), transparent 24%),
+          radial-gradient(circle at 100% 0%, rgba(234, 88, 12, 0.14), transparent 22%),
+          radial-gradient(circle at 50% 100%, rgba(29, 78, 216, 0.12), transparent 28%),
+          linear-gradient(180deg, #fbfcf8 0%, var(--bg) 48%, var(--bg-2) 100%);
         min-height: 100vh;
+        position: relative;
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: auto;
+        width: 32vw;
+        height: 32vw;
+        border-radius: 999px;
+        pointer-events: none;
+        filter: blur(80px);
+        opacity: 0.4;
+      }
+
+      body::before {
+        top: -12vw;
+        left: -8vw;
+        background: rgba(15, 118, 110, 0.14);
+      }
+
+      body::after {
+        right: -10vw;
+        bottom: -14vw;
+        background: rgba(234, 88, 12, 0.12);
       }
 
       .shell {
-        width: min(1340px, calc(100vw - 32px));
+        width: min(1560px, calc(100vw - 40px));
         margin: 0 auto;
-        padding: 28px 0 72px;
+        padding: 24px 0 84px;
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+        position: relative;
+        z-index: 1;
+      }
+
+      .workspace {
+        display: grid;
+        gap: 24px;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 24px;
+        padding: 28px;
+        max-height: calc(100vh - 40px);
+        overflow: auto;
+        background:
+          radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.12), transparent 28%),
+          linear-gradient(180deg, rgba(12, 19, 31, 0.98), rgba(18, 30, 45, 0.96));
+        color: #e2e8f0;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 34px;
+      }
+
+      .sidebar::before {
+        content: "";
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        width: 88px;
+        height: 88px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(59, 130, 246, 0.04));
+        border: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .sidebar .muted,
+      .sidebar .subtle,
+      .sidebar p {
+        color: rgba(226, 232, 240, 0.7);
+      }
+
+      .brand-lockup {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 24px;
+        position: relative;
+      }
+
+      .brand-mark {
+        width: 54px;
+        height: 54px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(45, 212, 191, 0.92), rgba(29, 78, 216, 0.88));
+        color: white;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        box-shadow: 0 18px 34px rgba(15, 118, 110, 0.24);
+      }
+
+      .sidebar-title {
+        margin: 0;
+        font-size: 40px;
+        line-height: 0.92;
+        letter-spacing: -0.04em;
+        color: #f8fafc;
+      }
+
+      .sidebar-copy {
+        margin: 0;
+        max-width: 220px;
+      }
+
+      .sidebar-label {
+        display: block;
+        margin-bottom: 10px;
+        color: rgba(226, 232, 240, 0.66);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sidebar-user {
+        font-size: 16px;
+        font-weight: 700;
+        color: #f8fafc;
+      }
+
+      .sidebar-note {
+        margin-top: 22px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+      }
+
+      .sidebar-block {
+        margin-top: 22px;
+        padding: 18px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+      }
+
+      .workspace-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 20px 24px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 248, 0.82));
+      }
+
+      .workspace-bar p {
+        margin: 6px 0 0;
+      }
+
+      .workspace-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(15, 118, 110, 0.08);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .workspace-title {
+        margin-top: 10px;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .command-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
       }
 
       .hero,
@@ -99,12 +293,13 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .hero {
-        grid-template-columns: 1.55fr 0.9fr;
-        margin-bottom: 20px;
+        grid-template-columns: minmax(0, 1.35fr) 360px;
+        margin: 0;
+        align-items: stretch;
       }
 
       .layout {
-        grid-template-columns: 0.84fr 1.16fr;
+        grid-template-columns: 360px minmax(0, 1fr);
         align-items: start;
       }
 
@@ -114,15 +309,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         border-radius: var(--radius);
         box-shadow: var(--shadow);
         backdrop-filter: blur(18px);
+        position: relative;
+        overflow: hidden;
       }
 
       .hero-main {
-        padding: 30px 32px;
+        padding: 34px 36px;
+        background:
+          radial-gradient(circle at top right, rgba(45, 212, 191, 0.12), transparent 26%),
+          radial-gradient(circle at bottom left, rgba(234, 88, 12, 0.1), transparent 28%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 248, 244, 0.84));
       }
 
       .hero-side,
       .card {
-        padding: 24px;
+        padding: 26px;
       }
 
       .eyebrow {
@@ -131,7 +332,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         gap: 8px;
         padding: 6px 12px;
         border-radius: 999px;
-        background: rgba(37, 99, 235, 0.1);
+        background: rgba(15, 118, 110, 0.1);
         color: var(--accent);
         font-size: 12px;
         font-weight: 700;
@@ -141,15 +342,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       h1 {
         margin: 16px 0 12px;
-        font-family: "Avenir Next", "Helvetica Neue", sans-serif;
-        font-size: clamp(34px, 4vw, 56px);
+        font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+        font-size: clamp(38px, 4.4vw, 64px);
         line-height: 0.94;
         letter-spacing: -0.04em;
       }
 
       h2 {
         margin: 0 0 10px;
-        font-size: 18px;
+        font-size: 20px;
         letter-spacing: -0.02em;
       }
 
@@ -163,32 +364,101 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .lead {
         margin: 0;
         max-width: 760px;
-        font-size: 15px;
+        font-size: 16px;
+      }
+
+      .hero-actions,
+      .hero-ribbon {
+        display: grid;
+        gap: 14px;
+      }
+
+      .hero-actions {
+        margin-top: 24px;
+        grid-template-columns: repeat(2, minmax(0, max-content));
+      }
+
+      .hero-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 800;
+      }
+
+      .hero-link.primary-link {
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        color: white;
+        border-color: transparent;
+      }
+
+      .hero-ribbon {
+        margin-top: 22px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .ribbon-item {
+        padding: 16px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .ribbon-item label,
+      .spotlight-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .ribbon-item strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .ribbon-item span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.55;
       }
 
       .status-grid {
-        grid-template-columns: repeat(4, 1fr);
-        margin-top: 24px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 22px;
       }
 
       .status-card {
-        padding: 18px;
-        border-radius: 16px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.65));
-        border: 1px solid var(--line);
-        box-shadow: var(--shadow-soft);
+        padding: 15px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        box-shadow: none;
       }
 
       .status-card label {
         display: block;
-        color: var(--muted);
+        color: rgba(226, 232, 240, 0.64);
         font-size: 12px;
         margin-bottom: 6px;
       }
 
       .status-card strong {
         display: block;
-        font-size: 18px;
+        font-size: 16px;
+        color: #f8fafc;
       }
 
       .stack {
@@ -203,11 +473,22 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .metric-card {
-        padding: 18px;
-        border-radius: 18px;
-        border: 1px solid rgba(37, 99, 235, 0.12);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.9));
+        padding: 20px;
+        border-radius: 22px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 247, 243, 0.92));
         box-shadow: var(--shadow-soft);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .metric-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
       }
 
       .metric-card label {
@@ -238,9 +519,11 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .quick-card {
-        padding: 18px;
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
+        padding: 20px;
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at top right, rgba(45, 212, 191, 0.16), transparent 28%),
+          linear-gradient(180deg, rgba(14, 23, 36, 0.98), rgba(21, 33, 49, 0.96));
         color: #e2e8f0;
         box-shadow: var(--shadow-soft);
       }
@@ -278,11 +561,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .entity-card {
-        padding: 18px 20px;
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.94));
+        padding: 22px;
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 248, 244, 0.92));
         border: 1px solid var(--line);
         box-shadow: var(--shadow-soft);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .entity-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
       }
 
       .entity-head {
@@ -348,33 +641,75 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .admin-nav {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        margin-bottom: 20px;
-        position: sticky;
-        top: 14px;
-        z-index: 5;
+        grid-template-columns: 1fr;
+        margin: 20px 0 0;
+        position: static;
       }
 
       .nav-link {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 56px;
-        padding: 13px 14px;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.78);
-        color: var(--ink);
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        min-height: 68px;
+        padding: 14px 16px;
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: rgba(255, 255, 255, 0.06);
+        color: #cbd5e1;
         text-decoration: none;
         font-weight: 700;
-        box-shadow: var(--shadow-soft);
-        backdrop-filter: blur(14px);
+        box-shadow: none;
+        backdrop-filter: blur(10px);
       }
 
       .nav-link.active {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(124, 58, 237, 0.12));
-        border-color: rgba(37, 99, 235, 0.24);
-        color: var(--accent);
+        background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(59, 130, 246, 0.14));
+        border-color: rgba(45, 212, 191, 0.24);
+        color: #eff6ff;
+      }
+
+      .nav-title {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .nav-note {
+        margin-top: 4px;
+        color: rgba(226, 232, 240, 0.64);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.45;
+      }
+
+      .hero-side {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        background: transparent;
+        padding: 0;
+      }
+
+      .hero-spotlight {
+        padding: 20px;
+        border-radius: 24px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 248, 244, 0.86));
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .hero-spotlight strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .hero-spotlight span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        line-height: 1.6;
       }
 
       .card-head {
@@ -382,7 +717,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         justify-content: space-between;
         gap: 12px;
         align-items: start;
-        margin-bottom: 18px;
+        margin-bottom: 20px;
       }
 
       .card-head p {
@@ -452,12 +787,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       select,
       textarea {
         width: 100%;
-        border: 1px solid rgba(148, 163, 184, 0.26);
-        border-radius: 14px;
-        padding: 12px 14px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 16px;
+        padding: 13px 15px;
         font: inherit;
         color: var(--ink);
-        background: rgba(255, 255, 255, 0.94);
+        background: rgba(255, 255, 255, 0.98);
         outline: none;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
       }
@@ -479,10 +814,10 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 14px;
-        border: 1px solid rgba(148, 163, 184, 0.22);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.92);
+        padding: 14px 16px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 248, 244, 0.92));
       }
 
       .toggle input {
@@ -500,8 +835,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       button {
         border: 0;
-        border-radius: 999px;
-        padding: 11px 17px;
+        border-radius: 16px;
+        padding: 12px 18px;
         font: inherit;
         font-weight: 700;
         cursor: pointer;
@@ -514,12 +849,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        background: linear-gradient(135deg, var(--accent), var(--accent-3));
         color: white;
       }
 
       .secondary {
-        background: rgba(15, 23, 42, 0.06);
+        background: rgba(15, 23, 42, 0.05);
         color: var(--ink);
       }
 
@@ -549,10 +884,10 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .locked {
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: rgba(37, 99, 235, 0.05);
-        border: 1px solid rgba(37, 99, 235, 0.12);
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: rgba(15, 118, 110, 0.05);
+        border: 1px solid rgba(15, 118, 110, 0.12);
       }
 
       .warning {
@@ -593,17 +928,35 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: none !important;
       }
 
+      .content-stack {
+        display: grid;
+        gap: 20px;
+      }
+
       @media (max-width: 980px) {
+        .shell,
+        .workspace-bar,
         .hero,
-        .admin-nav,
         .layout,
         .status-grid,
         .metric-grid,
         .quick-grid,
+        .hero-ribbon,
         .summary-strip,
         .auth-grid,
         .field-grid,
         .checkbox-list {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          position: static;
+          max-height: none;
+        }
+
+        .chip-row,
+        .hero-actions {
+          justify-content: flex-start;
           grid-template-columns: 1fr;
         }
       }
@@ -611,56 +964,126 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
   </head>
   <body>
     <div class="shell">
-      <section class="hero">
-        <div class="panel hero-main">
-          <span class="eyebrow">${section.eyebrow}</span>
-          <h1>${section.title}</h1>
-          <p class="lead">
-            ${section.lead}
-          </p>
-          <div class="status-grid">
-            <div class="status-card">
-              <label>当前用户</label>
-              <strong id="current-user">未登录</strong>
-            </div>
-            <div class="status-card">
-              <label>微信支付</label>
-              <strong id="wechat-overview">未检查</strong>
-            </div>
-            <div class="status-card">
-              <label>支付宝</label>
-              <strong id="alipay-overview">未检查</strong>
-            </div>
-            <div class="status-card">
-              <label>应用接入</label>
-              <strong id="app-overview">未检查</strong>
-            </div>
+      <aside class="sidebar panel">
+        <div class="brand-lockup">
+          <div class="brand-mark">FD</div>
+          <div>
+            <span class="eyebrow">fd-core-stack / control center</span>
+            <h1 class="sidebar-title">Core Stack</h1>
+            <p class="sidebar-copy">自托管核心中台，统一承接支付、授权、应用接入和运营链路。</p>
           </div>
         </div>
 
-        <aside class="panel hero-side">
-          <h2>填写规则</h2>
-          <p>1. 管理入口现在是 <a class="ghost-link" href="/admin">/admin</a>，支付、应用、授权、运营、观测各自有独立页面。</p>
-          <p>2. 密钥类字段保存后不会回显，输入框变空是正常的，不代表没保存。</p>
-          <p>3. 现在也可以直接给 app 签发 secret，用来换取 x-fd-app-token。</p>
-          <p>4. 旧地址 <a class="ghost-link" href="/admin/payments">/admin/payments</a> 继续保留兼容。</p>
-          <p class="muted">
-            接口文档仍然可在 <a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">/docs</a> 查看。
-          </p>
-        </aside>
-      </section>
+        <nav class="admin-nav">
+          <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></a>
+          <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></a>
+          <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></a>
+          <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></a>
+          <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></a>
+          <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></a>
+        </nav>
 
-      <nav class="admin-nav">
-        <a class="nav-link" data-nav-section="dashboard" href="/admin">总览</a>
-        <a class="nav-link" data-nav-section="payments" href="/admin/payments">支付</a>
-        <a class="nav-link" data-nav-section="apps" href="/admin/apps">应用</a>
-        <a class="nav-link" data-nav-section="licenses" href="/admin/licenses">授权</a>
-        <a class="nav-link" data-nav-section="operations" href="/admin/operations">运营</a>
-        <a class="nav-link" data-nav-section="observability" href="/admin/observability">观测</a>
-      </nav>
+        <div class="sidebar-block">
+          <label class="sidebar-label">当前用户</label>
+          <div id="current-user" class="sidebar-user">未登录</div>
+        </div>
 
-      <section class="layout">
-        <div class="stack">
+        <div class="status-grid">
+          <div class="status-card">
+            <label>微信支付</label>
+            <strong id="wechat-overview">未检查</strong>
+          </div>
+          <div class="status-card">
+            <label>支付宝</label>
+            <strong id="alipay-overview">未检查</strong>
+          </div>
+          <div class="status-card">
+            <label>应用接入</label>
+            <strong id="app-overview">未检查</strong>
+          </div>
+          <div class="status-card">
+            <label>后台入口</label>
+            <strong>/admin</strong>
+          </div>
+        </div>
+
+        <div class="sidebar-note">
+          <label class="sidebar-label">使用说明</label>
+          <p>管理入口按业务域拆分，不再全部挤在支付页。</p>
+          <p>密钥保存后不回显，输入框变空属于正常表现。</p>
+          <p>旧地址 <a class="ghost-link" href="/admin/payments">/admin/payments</a> 继续兼容。</p>
+          <p><a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a></p>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="workspace-bar panel">
+          <div>
+            <span class="workspace-tag">Self-hosted</span>
+            <div class="workspace-title">独立核心中台后台</div>
+            <p class="muted">单机 Docker 部署、独立支付接入、统一授权与应用接入，不让业务应用重复接后端能力。</p>
+          </div>
+          <div class="chip-row">
+            <span class="command-chip">Docker Deploy</span>
+            <span class="command-chip">GitHub Actions</span>
+            <span class="command-chip">ACR Image Pull</span>
+            <span class="command-chip">Admin + API</span>
+          </div>
+        </section>
+
+        <section class="hero">
+          <div class="hero-main panel">
+            <span class="eyebrow">${section.eyebrow}</span>
+            <h1>${section.title}</h1>
+            <p class="lead">
+              ${section.lead}
+            </p>
+
+            <div class="hero-actions">
+              <a class="hero-link primary-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a>
+              <a class="hero-link" href="/admin/payments">打开支付配置</a>
+            </div>
+
+            <div class="hero-ribbon">
+              <div class="ribbon-item">
+                <label>部署形态</label>
+                <strong>单机 Docker</strong>
+                <span>适配当前 2C4G 资源，控制成本，同时保留标准化发布路径。</span>
+              </div>
+              <div class="ribbon-item">
+                <label>集成目标</label>
+                <strong>统一后端能力</strong>
+                <span>Chrome 扩展、Next.js、React 应用都只调中台 API，不重复接支付和授权 SDK。</span>
+              </div>
+              <div class="ribbon-item">
+                <label>当前方向</label>
+                <strong>生产级 MVP</strong>
+                <span>从一开始把工程流程、安全、可观测、运营后台一起建好，不走 demo 路线。</span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="hero-side">
+            <div class="hero-spotlight">
+              <span class="spotlight-label">Payments</span>
+              <strong>支付配置</strong>
+              <span>微信支付、支付宝配置通过后台表单直接维护，不再要求长期写死在服务器环境变量。</span>
+            </div>
+            <div class="hero-spotlight">
+              <span class="spotlight-label">Apps</span>
+              <strong>应用接入</strong>
+              <span>Chrome 扩展、Next.js、React 应用统一走 app secret / app token，不再重复接 SDK。</span>
+            </div>
+            <div class="hero-spotlight">
+              <span class="spotlight-label">Operations</span>
+              <strong>运营排障</strong>
+              <span>订单详情、支付尝试、授权结果、事件回溯都在后台里直接串起来。</span>
+            </div>
+          </aside>
+        </section>
+
+        <section class="layout">
+          <div class="stack">
           <div class="panel card">
             <div class="card-head">
               <div>
@@ -719,10 +1142,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
               还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。
             </div>
           </div>
-        </div>
+          </div>
 
-        <div class="stack">
-          <div id="settings-panel" class="hidden">
+          <div id="settings-panel" class="content-stack hidden">
             <div class="panel card" data-admin-section="dashboard">
               <div class="card-head">
                 <div>
@@ -1054,8 +1476,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
               <div id="webhooks-list" class="stack"></div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
 
     <script>
