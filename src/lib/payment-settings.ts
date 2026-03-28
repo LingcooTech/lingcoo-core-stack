@@ -204,9 +204,9 @@ export class PaymentSettingsService {
     const mchId = normalizeString(String(raw.mchId ?? raw.mchid ?? ''));
     const apiKey = normalizeString(String(raw.apiKey ?? raw.apiV3Key ?? raw.key ?? ''));
     const disableH5 = normalizeBoolean(raw.disableH5 ?? raw.disable_h5, false);
-    const notifyUrl = normalizeUrlLikeValue(String(raw.notifyUrl ?? ''));
+    const notifyUrl = '';
 
-    if (!appId && !appSecret && !mchId && !apiKey && !notifyUrl) {
+    if (!appId && !appSecret && !mchId && !apiKey) {
       return null;
     }
 
@@ -225,14 +225,13 @@ export class PaymentSettingsService {
     const appId = normalizeString(String(raw.appId ?? raw.appid ?? ''));
     const privateKeyPem = normalizePem(String(raw.privateKeyPem ?? raw.privateKey ?? ''));
     const publicKeyPem = normalizePem(String(raw.publicKeyPem ?? raw.publicKey ?? ''));
-    const gateway =
-      normalizeUrlLikeValue(String(raw.gateway ?? '')) || 'https://openapi.alipay.com/gateway.do';
-    const notifyUrl = normalizeUrlLikeValue(String(raw.notifyUrl ?? ''));
-    const returnUrl = normalizeUrlLikeValue(String(raw.returnUrl ?? ''));
+    const gateway = 'https://openapi.alipay.com/gateway.do';
+    const notifyUrl = '';
+    const returnUrl = '';
     const keyType = raw.keyType === 'PKCS8' ? 'PKCS8' : 'PKCS1';
     const f2fPay = normalizeBoolean(raw.f2fPay ?? raw.f2fpay, false);
 
-    if (!appId && !privateKeyPem && !publicKeyPem && !notifyUrl && !returnUrl) {
+    if (!appId && !privateKeyPem && !publicKeyPem) {
       return null;
     }
 
