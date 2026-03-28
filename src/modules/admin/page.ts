@@ -1,4 +1,47 @@
-export function renderPaymentAdminPage() {
+export type AdminSectionKey = 'dashboard' | 'payments' | 'apps' | 'licenses' | 'operations' | 'observability';
+
+const adminSectionMeta: Record<
+  AdminSectionKey,
+  {
+    eyebrow: string;
+    title: string;
+    lead: string;
+  }
+> = {
+  dashboard: {
+    eyebrow: 'fd-core-stack / admin console',
+    title: '管理后台',
+    lead: '中台后台入口。支付、应用接入、授权、运营和可观测能力都从这里分域进入，不再继续堆在一个 payment 页面里。'
+  },
+  payments: {
+    eyebrow: 'fd-core-stack / payments',
+    title: '支付配置',
+    lead: '只处理支付相关能力。微信支付、支付宝配置和支付侧状态在这里维护，不再承接其他后台模块。'
+  },
+  apps: {
+    eyebrow: 'fd-core-stack / apps',
+    title: '应用接入',
+    lead: '维护中台接入应用、产品绑定和 App Secret。Chrome 扩展、Next.js、React 应用统一从这里拿接入能力。'
+  },
+  licenses: {
+    eyebrow: 'fd-core-stack / licenses',
+    title: '授权管理',
+    lead: '查看和处理 entitlement。人工发放、撤销、核对授权链路都放在这里，避免和支付配置混在一起。'
+  },
+  operations: {
+    eyebrow: 'fd-core-stack / operations',
+    title: '运营台',
+    lead: '订单和安装实例归运营域处理。这里负责补单、查单、安装追踪，不和配置页混排。'
+  },
+  observability: {
+    eyebrow: 'fd-core-stack / observability',
+    title: '事件与观测',
+    lead: '查看事件流与支付回调，定位登录、安装、支付、授权等关键链路问题。'
+  }
+};
+
+export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
+  const section = adminSectionMeta[activeSection] ?? adminSectionMeta.dashboard;
   return `<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -45,7 +88,8 @@ export function renderPaymentAdminPage() {
       .layout,
       .status-grid,
       .auth-grid,
-      .field-grid {
+      .field-grid,
+      .admin-nav {
         display: grid;
         gap: 18px;
       }
@@ -145,6 +189,32 @@ export function renderPaymentAdminPage() {
       .stack {
         display: grid;
         gap: 18px;
+      }
+
+      .admin-nav {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        margin-bottom: 18px;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(216, 205, 187, 0.9);
+        background: rgba(255, 250, 242, 0.85);
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 700;
+        box-shadow: var(--shadow);
+      }
+
+      .nav-link.active {
+        background: rgba(15, 118, 110, 0.12);
+        border-color: rgba(15, 118, 110, 0.3);
+        color: var(--accent);
       }
 
       .card-head {
@@ -363,6 +433,7 @@ export function renderPaymentAdminPage() {
 
       @media (max-width: 980px) {
         .hero,
+        .admin-nav,
         .layout,
         .status-grid,
         .auth-grid,
@@ -377,10 +448,10 @@ export function renderPaymentAdminPage() {
     <div class="shell">
       <section class="hero">
         <div class="panel hero-main">
-          <span class="eyebrow">fd-core-stack / payment control</span>
-          <h1>管理后台</h1>
+          <span class="eyebrow">${section.eyebrow}</span>
+          <h1>${section.title}</h1>
           <p class="lead">
-            先把支付配置和应用接入 secret 管起来。回调地址、网关、签名细节都由系统内置处理，不再要求你额外配置。
+            ${section.lead}
           </p>
           <div class="status-grid">
             <div class="status-card">
@@ -404,15 +475,24 @@ export function renderPaymentAdminPage() {
 
         <aside class="panel hero-side">
           <h2>填写规则</h2>
-          <p>1. 这里只显示和 fd-payment 对齐的字段。</p>
+          <p>1. 管理入口现在是 <a class="ghost-link" href="/admin">/admin</a>，支付、应用、授权、运营、观测各自有独立页面。</p>
           <p>2. 密钥类字段保存后不会回显，输入框变空是正常的，不代表没保存。</p>
           <p>3. 现在也可以直接给 app 签发 secret，用来换取 x-fd-app-token。</p>
-          <p>4. 根路径返回 JSON 正常，后台页面在 <a class="ghost-link" href="/admin/payments">/admin/payments</a>。</p>
+          <p>4. 旧地址 <a class="ghost-link" href="/admin/payments">/admin/payments</a> 继续保留兼容。</p>
           <p class="muted">
             接口文档仍然可在 <a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">/docs</a> 查看。
           </p>
         </aside>
       </section>
+
+      <nav class="admin-nav">
+        <a class="nav-link" data-nav-section="dashboard" href="/admin">总览</a>
+        <a class="nav-link" data-nav-section="payments" href="/admin/payments">支付</a>
+        <a class="nav-link" data-nav-section="apps" href="/admin/apps">应用</a>
+        <a class="nav-link" data-nav-section="licenses" href="/admin/licenses">授权</a>
+        <a class="nav-link" data-nav-section="operations" href="/admin/operations">运营</a>
+        <a class="nav-link" data-nav-section="observability" href="/admin/observability">观测</a>
+      </nav>
 
       <section class="layout">
         <div class="stack">
@@ -478,7 +558,23 @@ export function renderPaymentAdminPage() {
 
         <div class="stack">
           <div id="settings-panel" class="hidden">
-            <div class="panel card">
+            <div class="panel card" data-admin-section="dashboard">
+              <div class="card-head">
+                <div>
+                  <h2>后台分区</h2>
+                  <p class="muted">现在按业务域拆开入口，后续模块继续按域扩展，不再把后台能力全部塞进支付页面。</p>
+                </div>
+              </div>
+              <div class="stack">
+                <div class="locked">支付配置: <a class="ghost-link" href="/admin/payments">/admin/payments</a></div>
+                <div class="locked">应用接入: <a class="ghost-link" href="/admin/apps">/admin/apps</a></div>
+                <div class="locked">授权管理: <a class="ghost-link" href="/admin/licenses">/admin/licenses</a></div>
+                <div class="locked">订单与安装: <a class="ghost-link" href="/admin/operations">/admin/operations</a></div>
+                <div class="locked">事件与支付回调: <a class="ghost-link" href="/admin/observability">/admin/observability</a></div>
+              </div>
+            </div>
+
+            <div class="panel card" data-admin-section="payments">
               <div class="card-head">
                 <div>
                   <h2>微信支付</h2>
@@ -532,7 +628,7 @@ export function renderPaymentAdminPage() {
               </form>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="payments">
               <div class="card-head">
                 <div>
                   <h2>支付宝</h2>
@@ -582,7 +678,7 @@ export function renderPaymentAdminPage() {
               </form>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="apps">
               <div class="card-head">
                 <div>
                   <h2>应用管理</h2>
@@ -641,7 +737,7 @@ export function renderPaymentAdminPage() {
               </form>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="apps">
               <div class="card-head">
                 <div>
                   <h2>应用接入 Secret</h2>
@@ -676,7 +772,7 @@ export function renderPaymentAdminPage() {
               <div id="app-list" class="stack" style="margin-top:18px;"></div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="licenses">
               <div class="card-head">
                 <div>
                   <h2>人工授权</h2>
@@ -706,7 +802,7 @@ export function renderPaymentAdminPage() {
               </form>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="operations">
               <div class="card-head">
                 <div>
                   <h2>订单运营</h2>
@@ -717,7 +813,7 @@ export function renderPaymentAdminPage() {
               <div id="orders-list" class="stack"></div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="operations">
               <div class="card-head">
                 <div>
                   <h2>安装实例</h2>
@@ -727,7 +823,7 @@ export function renderPaymentAdminPage() {
               <div id="installs-list" class="stack"></div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="licenses">
               <div class="card-head">
                 <div>
                   <h2>授权明细</h2>
@@ -738,7 +834,7 @@ export function renderPaymentAdminPage() {
               <div id="entitlements-list" class="stack"></div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="observability">
               <div class="card-head">
                 <div>
                   <h2>业务事件</h2>
@@ -748,7 +844,7 @@ export function renderPaymentAdminPage() {
               <div id="events-list" class="stack"></div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card" data-admin-section="observability">
               <div class="card-head">
                 <div>
                   <h2>支付回调</h2>
@@ -767,7 +863,8 @@ export function renderPaymentAdminPage() {
         token: localStorage.getItem('fd_core_admin_token') || '',
         apps: [],
         products: [],
-        plans: []
+        plans: [],
+        activeSection: '${activeSection}'
       };
 
       function setFlash(id, message, kind) {
@@ -829,6 +926,16 @@ export function renderPaymentAdminPage() {
         const el = document.getElementById(id);
         el.textContent = text;
         el.className = 'badge ' + (ok ? 'ok' : 'warn');
+      }
+
+      function applyActiveSection(section) {
+        document.querySelectorAll('[data-admin-section]').forEach((el) => {
+          el.classList.toggle('hidden', el.getAttribute('data-admin-section') !== section);
+        });
+
+        document.querySelectorAll('[data-nav-section]').forEach((el) => {
+          el.classList.toggle('active', el.getAttribute('data-nav-section') === section);
+        });
       }
 
       function updateSourceBadge(id, source) {
@@ -1242,6 +1349,7 @@ export function renderPaymentAdminPage() {
       }
 
       async function refresh() {
+        applyActiveSection(state.activeSection);
         await loadBootstrapStatus();
         await loadSession();
       }

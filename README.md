@@ -76,7 +76,7 @@ docker compose up --build
 - API: `http://localhost:8080`
 - Health: `http://localhost:8080/health`
 - Docs: `http://localhost:8080/docs`
-- Admin: `http://localhost:8080/admin/payments`
+- Admin: `http://localhost:8080/admin`
 
 生产部署：
 
@@ -95,13 +95,15 @@ docker compose -f docker-compose.prod.yml up -d api worker caddy
 - API: `http://<server-ip>:18080`
 - Health: `http://<server-ip>:18080/health`
 - Docs: `http://<server-ip>:18080/docs`
-- Admin: `http://<server-ip>:18080/admin/payments`
+- Admin: `http://<server-ip>:18080/admin`
 
 如果服务器已经有统一入口层占用 `80/443`，只需要在 `.env` 里改 `FD_CORE_HTTP_PORT` / `FD_CORE_HTTPS_PORT` 即可。
 
 支付配置存储说明：
 
-- 微信支付和支付宝参数现在可以通过 `/admin/payments` 页面直接填写
+- 管理后台主入口是 `/admin`
+- 支付配置页面是 `/admin/payments`
+- 微信支付和支付宝参数现在可以通过后台页面直接填写
 - 敏感值以加密方式写入数据库，不再要求把支付密钥长期写在服务器 `.env`
 - `SETTINGS_ENCRYPTION_KEY` 可单独配置；如果留空，当前版本会回退使用 `JWT_SECRET` 做加密派生密钥
 - 如果系统还没有 admin，首个完成注册或登录的账号会自动成为 admin，用来做初始化配置

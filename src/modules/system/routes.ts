@@ -8,7 +8,7 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
       version: app.appEnv.APP_VERSION,
       status: 'ok',
       docs: '/docs',
-      admin: '/admin/payments'
+      admin: '/admin'
     };
   });
 

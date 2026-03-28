@@ -1,8 +1,8 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { AuthRepository } from '../auth/repository';
-import { renderPaymentAdminPage } from './page';
+import { renderAdminPage, type AdminSectionKey } from './page';
 import { AdminService } from './service';
 import {
   adminEntitlementParamsSchema,
@@ -15,7 +15,7 @@ import {
 } from './schemas';
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/admin/payments', async (_request, reply) => {
+  const sendAdminPage = (section: AdminSectionKey) => async (_request: unknown, reply: FastifyReply) => {
     reply
       .type('text/html; charset=utf-8')
       .header(
@@ -23,8 +23,15 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
       );
 
-    return reply.send(renderPaymentAdminPage());
-  });
+    return reply.send(renderAdminPage(section));
+  };
+
+  app.get('/admin', sendAdminPage('dashboard'));
+  app.get('/admin/payments', sendAdminPage('payments'));
+  app.get('/admin/apps', sendAdminPage('apps'));
+  app.get('/admin/licenses', sendAdminPage('licenses'));
+  app.get('/admin/operations', sendAdminPage('operations'));
+  app.get('/admin/observability', sendAdminPage('observability'));
 
   app.get('/v1/admin/bootstrap-status', async () => {
     return {
