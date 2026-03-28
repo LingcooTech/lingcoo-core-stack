@@ -50,24 +50,24 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
     <title>fd-core-stack 管理后台</title>
     <style>
       :root {
-        --bg: #f3f4ef;
-        --bg-2: #fbfbf8;
-        --panel: rgba(255, 255, 255, 0.86);
-        --panel-strong: rgba(255, 255, 255, 0.96);
-        --panel-soft: rgba(246, 247, 243, 0.92);
-        --ink: #122033;
-        --muted: #5f6f83;
-        --line: rgba(15, 23, 42, 0.08);
-        --line-strong: rgba(15, 23, 42, 0.12);
-        --accent: #0f766e;
-        --accent-2: #ea580c;
-        --accent-3: #1d4ed8;
+        --bg: #f4f7fb;
+        --bg-2: #eef3fb;
+        --panel: rgba(255, 255, 255, 0.96);
+        --panel-strong: #ffffff;
+        --panel-soft: #f8fbff;
+        --ink: #172033;
+        --muted: #6b7280;
+        --line: #e4eaf2;
+        --line-strong: #d6deea;
+        --accent: #2563eb;
+        --accent-2: #1d4ed8;
+        --accent-soft: #eff6ff;
         --danger: #dc2626;
         --success: #16a34a;
-        --warning: #c2410c;
-        --shadow: 0 28px 80px rgba(15, 23, 42, 0.12);
-        --shadow-soft: 0 18px 42px rgba(15, 23, 42, 0.08);
-        --radius: 30px;
+        --warning: #d97706;
+        --shadow: 0 22px 50px rgba(15, 23, 42, 0.08);
+        --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+        --radius: 24px;
       }
 
       * {
@@ -79,177 +79,144 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.18), transparent 24%),
-          radial-gradient(circle at 100% 0%, rgba(234, 88, 12, 0.14), transparent 22%),
-          radial-gradient(circle at 50% 100%, rgba(29, 78, 216, 0.12), transparent 28%),
-          linear-gradient(180deg, #fbfcf8 0%, var(--bg) 48%, var(--bg-2) 100%);
+          radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 22%),
+          linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
         min-height: 100vh;
-        position: relative;
-      }
-
-      body::before,
-      body::after {
-        content: "";
-        position: fixed;
-        inset: auto;
-        width: 32vw;
-        height: 32vw;
-        border-radius: 999px;
-        pointer-events: none;
-        filter: blur(80px);
-        opacity: 0.4;
-      }
-
-      body::before {
-        top: -12vw;
-        left: -8vw;
-        background: rgba(15, 118, 110, 0.14);
-      }
-
-      body::after {
-        right: -10vw;
-        bottom: -14vw;
-        background: rgba(234, 88, 12, 0.12);
       }
 
       .shell {
-        width: min(1560px, calc(100vw - 40px));
+        width: min(1480px, calc(100vw - 32px));
         margin: 0 auto;
-        padding: 24px 0 84px;
+        padding: 20px 0 40px;
         display: grid;
-        grid-template-columns: 320px minmax(0, 1fr);
-        gap: 24px;
+        grid-template-columns: 252px minmax(0, 1fr);
+        gap: 18px;
         align-items: start;
-        position: relative;
-        z-index: 1;
       }
 
       .workspace {
         display: grid;
-        gap: 24px;
+        gap: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
       }
 
       .sidebar {
         position: sticky;
-        top: 24px;
-        padding: 28px;
+        top: 20px;
+        padding: 18px;
         max-height: calc(100vh - 40px);
         overflow: auto;
-        background:
-          radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 34%),
-          radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.12), transparent 28%),
-          linear-gradient(180deg, rgba(12, 19, 31, 0.98), rgba(18, 30, 45, 0.96));
-        color: #e2e8f0;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        border-radius: 34px;
-      }
-
-      .sidebar::before {
-        content: "";
-        position: absolute;
-        top: 18px;
-        right: 18px;
-        width: 88px;
-        height: 88px;
-        border-radius: 24px;
-        background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(59, 130, 246, 0.04));
-        border: 1px solid rgba(148, 163, 184, 0.12);
+        background: var(--panel);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: var(--shadow-soft);
       }
 
       .sidebar .muted,
       .sidebar .subtle,
       .sidebar p {
-        color: rgba(226, 232, 240, 0.7);
+        color: var(--muted);
       }
 
       .brand-lockup {
         display: grid;
-        gap: 16px;
-        margin-bottom: 24px;
-        position: relative;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .brand-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
       }
 
       .brand-mark {
-        width: 54px;
-        height: 54px;
+        width: 48px;
+        height: 48px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 18px;
-        background: linear-gradient(135deg, rgba(45, 212, 191, 0.92), rgba(29, 78, 216, 0.88));
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent), #4f8cff);
         color: white;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 800;
         letter-spacing: -0.04em;
-        box-shadow: 0 18px 34px rgba(15, 118, 110, 0.24);
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2);
       }
 
       .sidebar-title {
         margin: 0;
-        font-size: 40px;
-        line-height: 0.92;
+        font-size: 20px;
+        line-height: 1.1;
         letter-spacing: -0.04em;
-        color: #f8fafc;
+        color: var(--ink);
       }
 
       .sidebar-copy {
         margin: 0;
-        max-width: 220px;
+        font-size: 13px;
+        line-height: 1.6;
       }
 
       .sidebar-label {
         display: block;
-        margin-bottom: 10px;
-        color: rgba(226, 232, 240, 0.66);
-        font-size: 12px;
+        margin-bottom: 8px;
+        color: #94a3b8;
+        font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.12em;
       }
 
       .sidebar-user {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 700;
-        color: #f8fafc;
+        color: var(--ink);
       }
 
       .sidebar-note {
-        margin-top: 22px;
-        padding-top: 22px;
-        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
       }
 
       .sidebar-block {
-        margin-top: 22px;
-        padding: 18px;
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(148, 163, 184, 0.14);
+        margin-top: 18px;
+        padding: 14px;
+        border-radius: 18px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
       }
 
       .workspace-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 18px;
-        padding: 20px 24px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 248, 0.82));
+        gap: 16px;
+        padding: 22px 28px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-strong);
       }
 
       .workspace-bar p {
-        margin: 6px 0 0;
+        margin: 4px 0 0;
       }
 
       .workspace-tag {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 7px 12px;
+        padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(15, 118, 110, 0.08);
+        background: var(--accent-soft);
         color: var(--accent);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -257,15 +224,25 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .workspace-title {
         margin-top: 10px;
-        font-size: 24px;
+        font-size: 34px;
         font-weight: 800;
         letter-spacing: -0.04em;
+      }
+
+      .workspace-subtitle {
+        max-width: 720px;
+      }
+
+      .workspace-tools {
+        display: flex;
+        gap: 12px;
+        align-items: center;
       }
 
       .chip-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
         justify-content: flex-end;
       }
 
@@ -273,13 +250,52 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 14px;
+        padding: 8px 12px;
         border-radius: 999px;
-        background: rgba(15, 23, 42, 0.04);
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #f8fafc;
+        border: 1px solid var(--line);
         color: var(--ink);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
+      }
+
+      .workspace-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 10px 8px 8px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+      }
+
+      .user-avatar {
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .user-copy strong,
+      .user-copy span {
+        display: block;
+      }
+
+      .user-copy strong {
+        font-size: 13px;
+        line-height: 1.2;
+      }
+
+      .user-copy span {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
       }
 
       .hero,
@@ -289,68 +305,68 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .field-grid,
       .admin-nav {
         display: grid;
-        gap: 18px;
+        gap: 16px;
       }
 
       .hero {
-        grid-template-columns: minmax(0, 1.35fr) 360px;
+        grid-template-columns: minmax(0, 1.3fr) 320px;
         margin: 0;
         align-items: stretch;
+        padding: 24px 28px 20px;
+        border-bottom: 1px solid var(--line);
       }
 
       .layout {
-        grid-template-columns: 360px minmax(0, 1fr);
+        grid-template-columns: 320px minmax(0, 1fr);
         align-items: start;
+        padding: 20px 28px 28px;
       }
 
       .panel {
         background: var(--panel);
         border: 1px solid var(--line);
         border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(18px);
+        box-shadow: none;
+        backdrop-filter: none;
         position: relative;
         overflow: hidden;
       }
 
       .hero-main {
-        padding: 34px 36px;
-        background:
-          radial-gradient(circle at top right, rgba(45, 212, 191, 0.12), transparent 26%),
-          radial-gradient(circle at bottom left, rgba(234, 88, 12, 0.1), transparent 28%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 248, 244, 0.84));
+        padding: 24px;
+        background: var(--panel-soft);
       }
 
       .hero-side,
       .card {
-        padding: 26px;
+        padding: 20px;
       }
 
       .eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 12px;
+        padding: 5px 10px;
         border-radius: 999px;
-        background: rgba(15, 118, 110, 0.1);
+        background: var(--accent-soft);
         color: var(--accent);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
       h1 {
         margin: 16px 0 12px;
         font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
-        font-size: clamp(38px, 4.4vw, 64px);
-        line-height: 0.94;
+        font-size: clamp(32px, 3vw, 42px);
+        line-height: 1.05;
         letter-spacing: -0.04em;
       }
 
       h2 {
-        margin: 0 0 10px;
-        font-size: 20px;
+        margin: 0 0 8px;
+        font-size: 18px;
         letter-spacing: -0.02em;
       }
 
@@ -364,13 +380,13 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .lead {
         margin: 0;
         max-width: 760px;
-        font-size: 16px;
+        font-size: 15px;
       }
 
       .hero-actions,
       .hero-ribbon {
         display: grid;
-        gap: 14px;
+        gap: 12px;
       }
 
       .hero-actions {
@@ -382,18 +398,18 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 48px;
-        padding: 0 18px;
-        border-radius: 16px;
-        background: rgba(15, 23, 42, 0.04);
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 12px;
+        background: #ffffff;
+        border: 1px solid var(--line);
         color: var(--ink);
         text-decoration: none;
-        font-weight: 800;
+        font-weight: 700;
       }
 
       .hero-link.primary-link {
-        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
         color: white;
         border-color: transparent;
       }
@@ -405,26 +421,26 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .ribbon-item {
         padding: 16px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.7);
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: var(--shadow-soft);
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid var(--line);
+        box-shadow: none;
       }
 
       .ribbon-item label,
       .spotlight-label {
         display: block;
         margin-bottom: 8px;
-        color: var(--muted);
-        font-size: 12px;
+        color: #94a3b8;
+        font-size: 11px;
         font-weight: 800;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
       .ribbon-item strong {
         display: block;
-        font-size: 18px;
+        font-size: 17px;
         letter-spacing: -0.03em;
       }
 
@@ -436,34 +452,37 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .status-grid {
-        grid-template-columns: 1fr 1fr;
-        margin-top: 22px;
+        grid-template-columns: 1fr;
+        margin-top: 16px;
       }
 
       .status-card {
-        padding: 15px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(148, 163, 184, 0.16);
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #ffffff;
+        border: 1px solid var(--line);
         box-shadow: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
 
       .status-card label {
         display: block;
-        color: rgba(226, 232, 240, 0.64);
+        color: var(--muted);
         font-size: 12px;
-        margin-bottom: 6px;
+        margin-bottom: 0;
       }
 
       .status-card strong {
         display: block;
-        font-size: 16px;
-        color: #f8fafc;
+        font-size: 13px;
+        color: var(--ink);
       }
 
       .stack {
         display: grid;
-        gap: 20px;
+        gap: 16px;
       }
 
       .metric-grid {
@@ -473,35 +492,26 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .metric-card {
-        padding: 20px;
-        border-radius: 22px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 247, 243, 0.92));
-        box-shadow: var(--shadow-soft);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .metric-card::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto auto 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        box-shadow: none;
       }
 
       .metric-card label {
         display: block;
         margin-bottom: 10px;
-        color: var(--muted);
-        font-size: 12px;
+        color: #94a3b8;
+        font-size: 11px;
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
 
       .metric-card strong {
         display: block;
-        font-size: 28px;
+        font-size: 24px;
         letter-spacing: -0.04em;
       }
 
@@ -519,13 +529,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .quick-card {
-        padding: 20px;
-        border-radius: 22px;
-        background:
-          radial-gradient(circle at top right, rgba(45, 212, 191, 0.16), transparent 28%),
-          linear-gradient(180deg, rgba(14, 23, 36, 0.98), rgba(21, 33, 49, 0.96));
-        color: #e2e8f0;
-        box-shadow: var(--shadow-soft);
+        padding: 18px;
+        border-radius: 16px;
+        background: #ffffff;
+        color: var(--ink);
+        box-shadow: none;
+        border: 1px solid var(--line);
       }
 
       .quick-card h3 {
@@ -535,7 +544,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .quick-card p {
         margin: 0;
-        color: rgba(226, 232, 240, 0.82);
+        color: var(--muted);
       }
 
       .toolbar {
@@ -561,21 +570,11 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .entity-card {
-        padding: 22px;
-        border-radius: 24px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 248, 244, 0.92));
+        padding: 18px 20px;
+        border-radius: 16px;
+        background: #ffffff;
         border: 1px solid var(--line);
-        box-shadow: var(--shadow-soft);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .entity-card::before {
-        content: "";
-        position: absolute;
-        inset: 0 auto 0 0;
-        width: 4px;
-        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        box-shadow: none;
       }
 
       .entity-head {
@@ -604,15 +603,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         gap: 6px;
         padding: 7px 10px;
         border-radius: 999px;
-        background: rgba(37, 99, 235, 0.08);
-        color: var(--ink);
-        border: 1px solid rgba(37, 99, 235, 0.12);
+        background: var(--accent-soft);
+        color: var(--accent);
+        border: 1px solid #dbeafe;
         font-size: 12px;
       }
 
       .meta-chip.ghost {
-        background: rgba(148, 163, 184, 0.08);
-        border-color: rgba(148, 163, 184, 0.16);
+        background: #f8fafc;
+        border-color: var(--line);
+        color: var(--ink);
       }
 
       .section-divider {
@@ -642,7 +642,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .admin-nav {
         grid-template-columns: 1fr;
-        margin: 20px 0 0;
+        margin: 6px 0 0;
         position: static;
       }
 
@@ -651,32 +651,43 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         flex-direction: column;
         align-items: flex-start;
         justify-content: flex-start;
-        min-height: 68px;
-        padding: 14px 16px;
-        border-radius: 20px;
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        background: rgba(255, 255, 255, 0.06);
-        color: #cbd5e1;
+        min-height: 56px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--ink);
         text-decoration: none;
         font-weight: 700;
         box-shadow: none;
-        backdrop-filter: blur(10px);
+        position: relative;
       }
 
       .nav-link.active {
-        background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(59, 130, 246, 0.14));
-        border-color: rgba(45, 212, 191, 0.24);
-        color: #eff6ff;
+        background: var(--accent-soft);
+        border-color: #dbeafe;
+        color: var(--accent);
+      }
+
+      .nav-link.active::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 10px;
+        bottom: 10px;
+        width: 3px;
+        border-radius: 999px;
+        background: var(--accent);
       }
 
       .nav-title {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 800;
       }
 
       .nav-note {
         margin-top: 4px;
-        color: rgba(226, 232, 240, 0.64);
+        color: var(--muted);
         font-size: 12px;
         font-weight: 500;
         line-height: 1.45;
@@ -684,24 +695,23 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .hero-side {
         display: grid;
-        gap: 16px;
+        gap: 12px;
         align-content: start;
         background: transparent;
         padding: 0;
       }
 
       .hero-spotlight {
-        padding: 20px;
-        border-radius: 24px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 248, 244, 0.86));
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: var(--shadow-soft);
+        padding: 18px;
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid var(--line);
+        box-shadow: none;
       }
 
       .hero-spotlight strong {
         display: block;
-        font-size: 18px;
+        font-size: 16px;
         letter-spacing: -0.03em;
       }
 
@@ -717,7 +727,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         justify-content: space-between;
         gap: 12px;
         align-items: start;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
       }
 
       .card-head p {
@@ -749,14 +759,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .badge.warn {
         color: var(--warning);
-        background: rgba(217, 119, 6, 0.1);
-        border-color: rgba(217, 119, 6, 0.16);
+        background: #fff7ed;
+        border-color: #fed7aa;
       }
 
       .badge.muted {
         color: var(--muted);
-        background: rgba(94, 107, 112, 0.08);
-        border-color: rgba(94, 107, 112, 0.12);
+        background: #f8fafc;
+        border-color: var(--line);
       }
 
       form {
@@ -787,12 +797,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       select,
       textarea {
         width: 100%;
-        border: 1px solid rgba(15, 23, 42, 0.1);
-        border-radius: 16px;
-        padding: 13px 15px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        padding: 12px 14px;
         font: inherit;
         color: var(--ink);
-        background: rgba(255, 255, 255, 0.98);
+        background: #ffffff;
         outline: none;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
       }
@@ -801,7 +811,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       select:focus,
       textarea:focus {
         border-color: rgba(37, 99, 235, 0.56);
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
       }
 
       textarea {
@@ -814,10 +824,10 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 14px 16px;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 18px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 248, 244, 0.92));
+        padding: 13px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
       }
 
       .toggle input {
@@ -835,13 +845,13 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       button {
         border: 0;
-        border-radius: 16px;
-        padding: 12px 18px;
+        border-radius: 12px;
+        padding: 11px 16px;
         font: inherit;
         font-weight: 700;
         cursor: pointer;
         transition: transform 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
-        box-shadow: var(--shadow-soft);
+        box-shadow: none;
       }
 
       button:hover {
@@ -849,17 +859,19 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent-3));
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
         color: white;
       }
 
       .secondary {
-        background: rgba(15, 23, 42, 0.05);
+        background: #f8fafc;
+        border: 1px solid var(--line);
         color: var(--ink);
       }
 
       .danger {
-        background: rgba(220, 38, 38, 0.08);
+        background: #fef2f2;
+        border: 1px solid #fecaca;
         color: var(--danger);
       }
 
@@ -884,15 +896,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .locked {
-        padding: 16px 18px;
-        border-radius: 18px;
-        background: rgba(15, 118, 110, 0.05);
-        border: 1px solid rgba(15, 118, 110, 0.12);
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #f8fbff;
+        border: 1px solid var(--line);
       }
 
       .warning {
-        background: rgba(220, 38, 38, 0.05);
-        border-color: rgba(220, 38, 38, 0.12);
+        background: #fef2f2;
+        border-color: #fecaca;
         color: var(--danger);
       }
 
@@ -914,8 +926,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       pre.json-block {
         margin: 10px 0 0;
         padding: 12px;
-        border-radius: 14px;
-        background: rgba(15, 23, 42, 0.05);
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
         overflow: auto;
         white-space: pre-wrap;
         word-break: break-word;
@@ -930,15 +943,13 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .content-stack {
         display: grid;
-        gap: 20px;
+        gap: 16px;
       }
 
       @media (max-width: 980px) {
         .shell,
-        .workspace-bar,
         .hero,
         .layout,
-        .status-grid,
         .metric-grid,
         .quick-grid,
         .hero-ribbon,
@@ -954,10 +965,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           max-height: none;
         }
 
+        .workspace-bar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
         .chip-row,
         .hero-actions {
           justify-content: flex-start;
           grid-template-columns: 1fr;
+        }
+
+        .workspace-tools {
+          width: 100%;
+          flex-direction: column;
+          align-items: stretch;
         }
       }
     </style>
@@ -966,12 +988,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
     <div class="shell">
       <aside class="sidebar panel">
         <div class="brand-lockup">
-          <div class="brand-mark">FD</div>
-          <div>
-            <span class="eyebrow">fd-core-stack / control center</span>
-            <h1 class="sidebar-title">Core Stack</h1>
-            <p class="sidebar-copy">自托管核心中台，统一承接支付、授权、应用接入和运营链路。</p>
+          <div class="brand-row">
+            <div class="brand-mark">FD</div>
+            <div>
+              <span class="eyebrow">fd-core-stack</span>
+              <h1 class="sidebar-title">Core Stack</h1>
+            </div>
           </div>
+          <p class="sidebar-copy">统一承接支付、授权、应用接入和运营链路的独立核心中台。</p>
         </div>
 
         <nav class="admin-nav">
@@ -1017,17 +1041,25 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       </aside>
 
       <main class="workspace">
-        <section class="workspace-bar panel">
+        <section class="workspace-bar">
           <div>
             <span class="workspace-tag">Self-hosted</span>
             <div class="workspace-title">独立核心中台后台</div>
-            <p class="muted">单机 Docker 部署、独立支付接入、统一授权与应用接入，不让业务应用重复接后端能力。</p>
+            <p class="muted workspace-subtitle">单机 Docker 部署，统一支付、授权、应用接入与运营链路。业务应用只做前端交互，不再重复接后端能力。</p>
           </div>
-          <div class="chip-row">
-            <span class="command-chip">Docker Deploy</span>
-            <span class="command-chip">GitHub Actions</span>
-            <span class="command-chip">ACR Image Pull</span>
-            <span class="command-chip">Admin + API</span>
+          <div class="workspace-tools">
+            <div class="chip-row">
+              <span class="command-chip">Docker Deploy</span>
+              <span class="command-chip">GitHub Actions</span>
+              <span class="command-chip">ACR Pull</span>
+            </div>
+            <div class="workspace-user">
+              <div id="current-user-avatar" class="user-avatar">FD</div>
+              <div class="user-copy">
+                <strong id="current-user-chip">未登录</strong>
+                <span id="current-user-role">等待管理员会话</span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1046,19 +1078,19 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
             <div class="hero-ribbon">
               <div class="ribbon-item">
-                <label>部署形态</label>
+                <label>部署</label>
                 <strong>单机 Docker</strong>
-                <span>适配当前 2C4G 资源，控制成本，同时保留标准化发布路径。</span>
+                <span>贴合当前服务器资源，保持可维护和可迁移。</span>
               </div>
               <div class="ribbon-item">
-                <label>集成目标</label>
+                <label>定位</label>
                 <strong>统一后端能力</strong>
-                <span>Chrome 扩展、Next.js、React 应用都只调中台 API，不重复接支付和授权 SDK。</span>
+                <span>扩展、Web 应用都统一走中台 API，不再分散接 SDK。</span>
               </div>
               <div class="ribbon-item">
-                <label>当前方向</label>
+                <label>目标</label>
                 <strong>生产级 MVP</strong>
-                <span>从一开始把工程流程、安全、可观测、运营后台一起建好，不走 demo 路线。</span>
+                <span>从第一天把工程流程、安全和运营能力一起建好。</span>
               </div>
             </div>
           </div>
@@ -1623,6 +1655,41 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         return date.toLocaleString('zh-CN', { hour12: false });
       }
 
+      function getInitials(value) {
+        const source = String(value || 'FD').trim();
+        if (!source) {
+          return 'FD';
+        }
+
+        const cleaned = source
+          .replace(/@.*$/, '')
+          .split(/[\s._-]+/)
+          .filter(Boolean);
+
+        if (!cleaned.length) {
+          return source.slice(0, 2).toUpperCase();
+        }
+
+        return cleaned
+          .slice(0, 2)
+          .map((part) => part[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase();
+      }
+
+      function setSessionIdentity(label, role, avatarSource, chipLabel) {
+        const sidebarUser = document.getElementById('current-user');
+        const userChip = document.getElementById('current-user-chip');
+        const userRole = document.getElementById('current-user-role');
+        const userAvatar = document.getElementById('current-user-avatar');
+
+        sidebarUser.textContent = label;
+        userChip.textContent = chipLabel || label;
+        userRole.textContent = role;
+        userAvatar.textContent = getInitials(avatarSource || label);
+      }
+
       function setAppOverviewLabel(apps) {
         document.getElementById('app-overview').textContent = apps.length > 0 ? ('已接入 ' + apps.length + ' 个应用') : '暂无应用';
         const badge = document.getElementById('app-count-badge');
@@ -2183,7 +2250,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       async function loadSession() {
         if (!state.token) {
-          document.getElementById('current-user').textContent = '未登录';
+          setSessionIdentity('未登录', '等待管理员会话', 'FD');
           document.getElementById('access-message').textContent = '还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。';
           document.getElementById('settings-panel').classList.add('hidden');
           state.apps = [];
@@ -2206,8 +2273,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
         try {
           const me = await api('/v1/me');
-          const label = me.user.displayName ? me.user.displayName + ' · ' + me.user.email : me.user.email;
-          document.getElementById('current-user').textContent = label + ' · ' + me.user.role;
+          const identityLabel = me.user.displayName || me.user.email;
+          const sidebarLabel = me.user.displayName ? me.user.displayName + ' · ' + me.user.email + ' · ' + me.user.role : me.user.email + ' · ' + me.user.role;
+          setSessionIdentity(sidebarLabel, me.user.role === 'admin' ? 'Administrator' : me.user.role, identityLabel, identityLabel);
 
           if (me.user.role !== 'admin') {
             document.getElementById('settings-panel').classList.add('hidden');
@@ -2233,7 +2301,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         } catch (_error) {
           localStorage.removeItem('fd_core_admin_token');
           state.token = '';
-          document.getElementById('current-user').textContent = '登录已失效';
+          setSessionIdentity('登录已失效', '请重新登录', 'FD');
           document.getElementById('settings-panel').classList.add('hidden');
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
           state.apps = [];
