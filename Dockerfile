@@ -13,6 +13,7 @@ FROM deps AS build
 
 COPY tsconfig.json ./
 COPY drizzle.config.ts ./
+COPY scripts ./scripts
 COPY src ./src
 COPY drizzle ./drizzle
 
@@ -36,6 +37,7 @@ COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/tsconfig.json ./
 COPY --from=build /app/drizzle.config.ts ./
+COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/dist ./dist
 

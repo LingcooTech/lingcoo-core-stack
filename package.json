@@ -14,7 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:mvp": "tsx src/scripts/seed-mvp.ts"
+    "seed:mvp": "node scripts/run-seed-mvp.cjs"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",
