@@ -37,6 +37,13 @@ export class BillingService {
 
     const { plan, product } = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
 
+    if (plan.interval === 'one_time') {
+      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, product.id);
+      if (ownership) {
+        throw httpError(409, 'You already own this one-time product');
+      }
+    }
+
     if (plan.priceAmount <= 0) {
       throw httpError(422, 'Plan price is not configured');
     }

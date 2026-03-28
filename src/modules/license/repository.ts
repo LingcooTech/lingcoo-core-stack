@@ -32,6 +32,14 @@ export class LicenseRepository {
     return plan ?? null;
   }
 
+  async listPlansByIds(planIds: string[]) {
+    if (planIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(plans).where(inArray(plans.id, planIds));
+  }
+
   async getProductById(productId: string) {
     const [product] = await this.db.select().from(products).where(eq(products.id, productId)).limit(1);
     return product ?? null;
@@ -98,6 +106,21 @@ export class LicenseRepository {
       .where(
         and(
           eq(entitlements.userId, userId),
+          eq(entitlements.status, 'active'),
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
+        )
+      )
+      .orderBy(desc(entitlements.createdAt));
+  }
+
+  async listEffectiveEntitlementsByUserIdAndProductId(userId: string, productId: string, now = new Date()) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(
+        and(
+          eq(entitlements.userId, userId),
+          eq(entitlements.productId, productId),
           eq(entitlements.status, 'active'),
           or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
         )

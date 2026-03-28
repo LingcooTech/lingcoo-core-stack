@@ -87,6 +87,74 @@ export class CheckoutService {
     };
   }
 
+  private toCreatedSessionPayload(input: {
+    session: {
+      id: string;
+      sessionCode: string;
+      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
+      expiresAt: Date | null;
+      createdAt: Date;
+    };
+    app: {
+      code: string;
+      name: string;
+      type: string;
+    };
+    product: {
+      code: string;
+      name: string;
+    };
+    plan: {
+      code: string;
+      name: string;
+      interval: 'month' | 'year' | 'one_time';
+      priceAmount: number;
+      currency: string;
+    };
+    order: {
+      id: string;
+      orderNo: string;
+      amount: number;
+      currency: string;
+      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+    };
+  }) {
+    return {
+      sessionId: input.session.id,
+      sessionCode: input.session.sessionCode,
+      status: input.session.status,
+      app: {
+        code: input.app.code,
+        name: input.app.name,
+        type: input.app.type
+      },
+      product: {
+        code: input.product.code,
+        name: input.product.name
+      },
+      plan: {
+        code: input.plan.code,
+        name: input.plan.name,
+        interval: input.plan.interval,
+        priceAmount: input.plan.priceAmount,
+        currency: input.plan.currency
+      },
+      order: {
+        id: input.order.id,
+        orderNo: input.order.orderNo,
+        amount: input.order.amount,
+        currency: input.order.currency,
+        status: input.order.status
+      },
+      presentation: {
+        type: 'hosted_page' as const,
+        url: this.buildHostedUrl(input.session.sessionCode)
+      },
+      expiresAt: input.session.expiresAt,
+      createdAt: input.session.createdAt
+    };
+  }
+
   async createSession(input: {
     userId: string;
     appCode: string;
@@ -97,11 +165,51 @@ export class CheckoutService {
     clientIp?: string;
   }) {
     const appService = new AppService(this.db);
+    const licenseService = new LicenseService(this.db);
     const app = await appService.requireActiveApp(input.appCode);
-    const { plan, product } = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
+    const { plan, product } = await licenseService.getPlanForCheckout(input.planCode);
     await appService.assertAppAllowsProduct(app.id, product.id);
 
+    if (plan.interval === 'one_time') {
+      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, product.id);
+      if (ownership) {
+        throw httpError(409, 'You already own this one-time product');
+      }
+    }
+
     const provider = await this.resolveProvider(input.providerPreference);
+    const reusableSession = await new CheckoutRepository(this.db).findLatestReusablePendingSession({
+      userId: input.userId,
+      appId: app.id,
+      planId: plan.id,
+      provider
+    });
+
+    if (reusableSession) {
+      const existingOrder = await new BillingRepository(this.db).findOrderById(reusableSession.orderId);
+      if (existingOrder?.status === 'pending') {
+        await new EventService(this.db).capture({
+          userId: input.userId,
+          productId: product.id,
+          eventName: 'checkout.session_reused',
+          properties: {
+            sessionCode: reusableSession.sessionCode,
+            appCode: app.code,
+            orderNo: existingOrder.orderNo,
+            provider
+          }
+        });
+
+        return this.toCreatedSessionPayload({
+          session: reusableSession,
+          app,
+          product,
+          plan,
+          order: existingOrder
+        });
+      }
+    }
+
     const billingResult = await new BillingService(this.db, this.env).createOrder({
       userId: input.userId,
       planCode: input.planCode,
@@ -167,40 +275,13 @@ export class CheckoutService {
       return created;
     });
 
-    return {
-      sessionId: session.id,
-      sessionCode: session.sessionCode,
-      status: session.status,
-      app: {
-        code: app.code,
-        name: app.name,
-        type: app.type
-      },
-      product: {
-        code: product.code,
-        name: product.name
-      },
-      plan: {
-        code: plan.code,
-        name: plan.name,
-        interval: plan.interval,
-        priceAmount: plan.priceAmount,
-        currency: plan.currency
-      },
-      order: {
-        id: billingResult.order.id,
-        orderNo: billingResult.order.orderNo,
-        amount: billingResult.order.amount,
-        currency: billingResult.order.currency,
-        status: billingResult.order.status
-      },
-      presentation: {
-        type: 'hosted_page',
-        url: this.buildHostedUrl(session.sessionCode)
-      },
-      expiresAt: session.expiresAt,
-      createdAt: session.createdAt
-    };
+    return this.toCreatedSessionPayload({
+      session,
+      app,
+      product,
+      plan,
+      order: billingResult.order
+    });
   }
 
   async getOwnedSession(input: { sessionCode: string; userId: string; role?: string }) {

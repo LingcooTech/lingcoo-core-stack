@@ -1,4 +1,4 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, gte, ne, or, isNull } from 'drizzle-orm';
 
 import { checkoutSessions, paymentAttempts } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -87,6 +87,31 @@ export class CheckoutRepository {
       .select()
       .from(checkoutSessions)
       .where(eq(checkoutSessions.sessionCode, sessionCode))
+      .limit(1);
+
+    return session ?? null;
+  }
+
+  async findLatestReusablePendingSession(input: {
+    userId: string;
+    appId: string;
+    planId: string;
+    provider: 'wechat_pay' | 'alipay';
+  }) {
+    const [session] = await this.db
+      .select()
+      .from(checkoutSessions)
+      .where(
+        and(
+          eq(checkoutSessions.userId, input.userId),
+          eq(checkoutSessions.appId, input.appId),
+          eq(checkoutSessions.planId, input.planId),
+          eq(checkoutSessions.provider, input.provider),
+          eq(checkoutSessions.status, 'pending'),
+          or(isNull(checkoutSessions.expiresAt), gte(checkoutSessions.expiresAt, new Date()))
+        )
+      )
+      .orderBy(desc(checkoutSessions.createdAt))
       .limit(1);
 
     return session ?? null;
