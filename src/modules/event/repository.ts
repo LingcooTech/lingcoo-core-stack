@@ -1,3 +1,5 @@
+import { desc } from 'drizzle-orm';
+
 import { events } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
@@ -31,5 +33,9 @@ export class EventRepository {
         }))
       )
       .returning();
+  }
+
+  async listRecentEvents(limit = 50) {
+    return this.db.select().from(events).orderBy(desc(events.eventTime)).limit(limit);
   }
 }

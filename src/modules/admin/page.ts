@@ -329,6 +329,34 @@ export function renderPaymentAdminPage() {
         color: var(--danger);
       }
 
+      .checkbox-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .inline-code {
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+      }
+
+      details {
+        margin-top: 10px;
+      }
+
+      pre.json-block {
+        margin: 10px 0 0;
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(29, 42, 47, 0.06);
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
       .hidden {
         display: none !important;
       }
@@ -338,7 +366,8 @@ export function renderPaymentAdminPage() {
         .layout,
         .status-grid,
         .auth-grid,
-        .field-grid {
+        .field-grid,
+        .checkbox-list {
           grid-template-columns: 1fr;
         }
       }
@@ -556,6 +585,65 @@ export function renderPaymentAdminPage() {
             <div class="panel card">
               <div class="card-head">
                 <div>
+                  <h2>应用管理</h2>
+                  <p class="muted">先登记应用和绑定产品，再签发 secret。这里直接维护中台接入清单。</p>
+                </div>
+              </div>
+
+              <div id="apps-admin-flash" class="flash"></div>
+
+              <form id="app-editor-form">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="app-editor-selected">已接入应用</label>
+                    <select id="app-editor-selected" name="selectedAppCode"></select>
+                    <div class="subtle">选择已有应用可编辑，选择“新建应用”可创建新接入项。</div>
+                  </div>
+                  <div class="field">
+                    <label for="app-editor-code">应用标识</label>
+                    <input id="app-editor-code" name="code" type="text" placeholder="ai_web_translator_ext" required />
+                  </div>
+                  <div class="field">
+                    <label for="app-editor-name">应用名称</label>
+                    <input id="app-editor-name" name="name" type="text" placeholder="AI Web Translator" required />
+                  </div>
+                  <div class="field">
+                    <label for="app-editor-type">应用类型</label>
+                    <select id="app-editor-type" name="type">
+                      <option value="chrome_extension">Chrome 扩展</option>
+                      <option value="web_app">Web 应用</option>
+                      <option value="service">服务</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="app-editor-status">状态</label>
+                    <select id="app-editor-status" name="status">
+                      <option value="active">active</option>
+                      <option value="inactive">inactive</option>
+                      <option value="cancelled">cancelled</option>
+                      <option value="expired">expired</option>
+                    </select>
+                  </div>
+                  <div class="field full">
+                    <label for="app-editor-description">描述</label>
+                    <input id="app-editor-description" name="description" type="text" placeholder="简要说明这个应用的用途" />
+                  </div>
+                  <div class="field full">
+                    <label>绑定产品</label>
+                    <div id="app-product-options" class="checkbox-list"></div>
+                  </div>
+                </div>
+
+                <div class="actions">
+                  <button class="secondary" type="button" id="app-editor-new">新建应用</button>
+                  <button class="primary" type="submit">保存应用</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
                   <h2>应用接入 Secret</h2>
                   <p class="muted">给 Chrome 扩展、Next.js、React 应用签发 app secret。应用先用 secret 换 app token，再调用私有 app 路由。</p>
                 </div>
@@ -591,6 +679,36 @@ export function renderPaymentAdminPage() {
             <div class="panel card">
               <div class="card-head">
                 <div>
+                  <h2>人工授权</h2>
+                  <p class="muted">运营或客服需要手动开通时，直接按用户邮箱和套餐发放授权。</p>
+                </div>
+              </div>
+              <div id="grant-admin-flash" class="flash"></div>
+              <form id="grant-form">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="grant-userEmail">用户邮箱</label>
+                    <input id="grant-userEmail" name="userEmail" type="email" placeholder="user@example.com" required />
+                  </div>
+                  <div class="field">
+                    <label for="grant-planCode">套餐</label>
+                    <select id="grant-planCode" name="planCode"></select>
+                  </div>
+                  <div class="field full">
+                    <label for="grant-reason">备注</label>
+                    <input id="grant-reason" name="reason" type="text" placeholder="例如：补偿、人工开通、迁移老系统用户" />
+                  </div>
+                </div>
+
+                <div class="actions">
+                  <button class="primary" type="submit">发放授权</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
                   <h2>订单运营</h2>
                   <p class="muted">查看最近订单，并手动触发查单 / 补单。</p>
                 </div>
@@ -613,10 +731,31 @@ export function renderPaymentAdminPage() {
               <div class="card-head">
                 <div>
                   <h2>授权明细</h2>
-                  <p class="muted">查看 entitlement 明细、来源订单和当前状态。</p>
+                  <p class="muted">查看 entitlement 明细、来源订单和当前状态。支持按来源整组撤销。</p>
                 </div>
               </div>
+              <div id="entitlements-admin-flash" class="flash"></div>
               <div id="entitlements-list" class="stack"></div>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>业务事件</h2>
+                  <p class="muted">中台自身记录的事件流，便于排查登录、安装、支付、授权链路。</p>
+                </div>
+              </div>
+              <div id="events-list" class="stack"></div>
+            </div>
+
+            <div class="panel card">
+              <div class="card-head">
+                <div>
+                  <h2>支付回调</h2>
+                  <p class="muted">查看微信支付和支付宝通知入库、处理状态与原始负载。</p>
+                </div>
+              </div>
+              <div id="webhooks-list" class="stack"></div>
             </div>
           </div>
         </div>
@@ -626,13 +765,36 @@ export function renderPaymentAdminPage() {
     <script>
       const state = {
         token: localStorage.getItem('fd_core_admin_token') || '',
-        apps: []
+        apps: [],
+        products: [],
+        plans: []
       };
 
       function setFlash(id, message, kind) {
         const el = document.getElementById(id);
         el.textContent = message || '';
         el.className = 'flash' + (kind ? ' ' + kind : '');
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatText(value, fallback = '-') {
+        return escapeHtml(value || fallback);
+      }
+
+      function formatJson(value) {
+        try {
+          return escapeHtml(JSON.stringify(value ?? {}, null, 2));
+        } catch {
+          return escapeHtml(String(value ?? '{}'));
+        }
       }
 
       async function api(path, options = {}) {
@@ -735,15 +897,110 @@ export function renderPaymentAdminPage() {
 
       function renderAppSecretOptions(apps) {
         const select = document.getElementById('app-secret-appCode');
+        const current = select.value;
+
+        if (!apps.length) {
+          select.innerHTML = '<option value="">请先创建应用</option>';
+          select.value = '';
+          return;
+        }
+
         select.innerHTML = apps
-          .map((item) => '<option value="' + item.code + '">' + item.name + ' (' + item.code + ')</option>')
+          .map((item) => '<option value="' + escapeHtml(item.code) + '">' + escapeHtml(item.name) + ' (' + escapeHtml(item.code) + ')</option>')
           .join('');
+
+        if (apps.some((item) => item.code === current)) {
+          select.value = current;
+        }
+      }
+
+      function renderAppEditorOptions(apps) {
+        const select = document.getElementById('app-editor-selected');
+        const current = select.value || '__new__';
+        select.innerHTML =
+          '<option value="__new__">新建应用</option>' +
+          apps
+            .map((item) => '<option value="' + escapeHtml(item.code) + '">' + escapeHtml(item.name) + ' (' + escapeHtml(item.code) + ')</option>')
+            .join('');
+
+        if (apps.some((item) => item.code === current)) {
+          select.value = current;
+        } else {
+          select.value = '__new__';
+        }
+      }
+
+      function renderPlanOptions(plans) {
+        const select = document.getElementById('grant-planCode');
+        const activePlans = plans.filter((item) => item.status === 'active');
+        select.innerHTML = activePlans.length
+          ? activePlans
+              .map((item) => (
+                '<option value="' + escapeHtml(item.code) + '">' +
+                  escapeHtml(item.name) + ' (' + escapeHtml(item.code) + ' / ' + escapeHtml(item.interval) + ' / ' + (item.priceAmount / 100).toFixed(2) + ' ' + escapeHtml(item.currency) + ')' +
+                '</option>'
+              ))
+              .join('')
+          : '<option value="">暂无可用套餐</option>';
+      }
+
+      function renderProductOptions(products, selectedCodes) {
+        const root = document.getElementById('app-product-options');
+        if (!products.length) {
+          root.innerHTML = '<div class="locked">当前没有产品数据，无法绑定应用。</div>';
+          return;
+        }
+
+        const selected = new Set(selectedCodes || []);
+        root.innerHTML = products
+          .map((item) => (
+            '<label class="toggle" for="product-' + escapeHtml(item.code) + '">' +
+              '<input id="product-' + escapeHtml(item.code) + '" name="productCodes" type="checkbox" value="' + escapeHtml(item.code) + '"' + (selected.has(item.code) ? ' checked' : '') + ' />' +
+              '<span>' + escapeHtml(item.name) + ' (' + escapeHtml(item.code) + ')</span>' +
+            '</label>'
+          ))
+          .join('');
+      }
+
+      function fillAppEditor(app) {
+        if (!app) {
+          document.getElementById('app-editor-code').value = '';
+          document.getElementById('app-editor-name').value = '';
+          document.getElementById('app-editor-description').value = '';
+          document.getElementById('app-editor-type').value = 'chrome_extension';
+          document.getElementById('app-editor-status').value = 'active';
+          renderProductOptions(state.products, []);
+          return;
+        }
+
+        document.getElementById('app-editor-code').value = app.code || '';
+        document.getElementById('app-editor-name').value = app.name || '';
+        document.getElementById('app-editor-description').value = app.description || '';
+        document.getElementById('app-editor-type').value = app.type || 'chrome_extension';
+        document.getElementById('app-editor-status').value = app.status || 'active';
+        renderProductOptions(state.products, Array.isArray(app.products) ? app.products.map((item) => item.code) : []);
+      }
+
+      function syncSelectedAppEditor() {
+        const selectedCode = document.getElementById('app-editor-selected').value;
+        if (!selectedCode || selectedCode === '__new__') {
+          fillAppEditor(null);
+          return;
+        }
+
+        fillAppEditor(state.apps.find((item) => item.code === selectedCode) || null);
+      }
+
+      function getCheckedProductCodes() {
+        return Array.from(document.querySelectorAll('input[name="productCodes"]:checked')).map((item) => item.value);
       }
 
       function renderManagedApps(apps) {
         state.apps = apps;
         setAppOverviewLabel(apps);
         renderAppSecretOptions(apps);
+        renderAppEditorOptions(apps);
+        syncSelectedAppEditor();
 
         const root = document.getElementById('app-list');
         if (!apps.length) {
@@ -759,9 +1016,9 @@ export function renderPaymentAdminPage() {
               '<div class="locked">' +
                 '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
                   '<div>' +
-                    '<strong>' + app.name + ' (' + app.code + ')</strong>' +
-                    '<div class="subtle">类型: ' + app.type + ' · 状态: ' + app.status + '</div>' +
-                    '<div class="subtle">产品: ' + (products.length ? products.map((item) => item.code).join(', ') : '未绑定') + '</div>' +
+                    '<strong>' + formatText(app.name) + ' (' + formatText(app.code) + ')</strong>' +
+                    '<div class="subtle">类型: ' + formatText(app.type) + ' · 状态: ' + formatText(app.status) + '</div>' +
+                    '<div class="subtle">产品: ' + (products.length ? products.map((item) => formatText(item.code)).join(', ') : '未绑定') + '</div>' +
                   '</div>' +
                   '<div class="badge-row">' +
                     '<span class="badge ' + (secrets.length ? 'ok' : 'warn') + '">Secrets: ' + secrets.length + '</span>' +
@@ -771,11 +1028,14 @@ export function renderPaymentAdminPage() {
                   (secrets.length
                     ? secrets.map((secret) => (
                         '<div class="subtle" style="padding:8px 0;border-top:1px solid rgba(216,205,187,0.8);">' +
-                          'Name: ' + secret.name +
-                          ' · Hint: ' + secret.hint +
-                          ' · 状态: ' + secret.status +
+                          'Name: ' + formatText(secret.name) +
+                          ' · Hint: ' + formatText(secret.hint) +
+                          ' · 状态: ' + formatText(secret.status) +
                           ' · 最近使用: ' + (secret.lastUsedAt ? formatTime(secret.lastUsedAt) : '未使用') +
                           ' · 过期: ' + formatTime(secret.expiresAt) +
+                          (secret.status === 'active'
+                            ? ' <button class="danger" type="button" data-app-secret-revoke="' + escapeHtml(app.code) + '" data-secret-id="' + escapeHtml(secret.id) + '">停用 Secret</button>'
+                            : '') +
                         '</div>'
                       )).join('')
                     : '<div class="subtle">还没有签发 secret。</div>') +
@@ -797,14 +1057,14 @@ export function renderPaymentAdminPage() {
           '<div class="locked">' +
             '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
               '<div>' +
-                '<strong>' + item.orderNo + '</strong>' +
-                '<div class="subtle">状态: ' + item.status + ' · 通道: ' + item.provider + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + item.currency + '</div>' +
-                '<div class="subtle">用户: ' + (item.user?.email || item.userId) + '</div>' +
-                '<div class="subtle">应用: ' + (item.app?.code || '-') + ' · 产品: ' + (item.product?.code || '-') + ' · 套餐: ' + (item.plan?.code || '-') + '</div>' +
-                '<div class="subtle">Session: ' + (item.checkoutSession?.sessionCode || '-') + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
+                '<strong>' + formatText(item.orderNo) + '</strong>' +
+                '<div class="subtle">状态: ' + formatText(item.status) + ' · 通道: ' + formatText(item.provider) + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</div>' +
+                '<div class="subtle">用户: ' + formatText(item.user?.email || item.userId) + '</div>' +
+                '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 套餐: ' + formatText(item.plan?.code) + '</div>' +
+                '<div class="subtle">Session: ' + formatText(item.checkoutSession?.sessionCode) + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
               '</div>' +
               '<div class="actions">' +
-                '<button class="secondary" type="button" data-order-reconcile="' + item.orderNo + '">同步订单</button>' +
+                '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
               '</div>' +
             '</div>' +
           '</div>'
@@ -820,10 +1080,10 @@ export function renderPaymentAdminPage() {
 
         root.innerHTML = items.map((item) => (
           '<div class="locked">' +
-            '<strong>' + item.extensionInstallId + '</strong>' +
-            '<div class="subtle">应用: ' + (item.app?.code || '-') + ' · 产品: ' + (item.product?.code || '-') + ' · 状态: ' + item.status + '</div>' +
-            '<div class="subtle">用户: ' + (item.user?.email || '未绑定') + ' · 版本: ' + (item.appVersion || '-') + '</div>' +
-            '<div class="subtle">Profile: ' + (item.chromeProfileHint || '-') + ' · 最近活跃: ' + formatTime(item.lastSeenAt) + '</div>' +
+            '<strong>' + formatText(item.extensionInstallId) + '</strong>' +
+            '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 状态: ' + formatText(item.status) + '</div>' +
+            '<div class="subtle">用户: ' + formatText(item.user?.email || '未绑定') + ' · 版本: ' + formatText(item.appVersion) + '</div>' +
+            '<div class="subtle">Profile: ' + formatText(item.chromeProfileHint) + ' · 最近活跃: ' + formatTime(item.lastSeenAt) + '</div>' +
           '</div>'
         )).join('');
       }
@@ -837,10 +1097,57 @@ export function renderPaymentAdminPage() {
 
         root.innerHTML = items.map((item) => (
           '<div class="locked">' +
-            '<strong>' + (item.user?.email || item.userId) + '</strong>' +
-            '<div class="subtle">产品: ' + (item.product?.code || '-') + ' · 功能: ' + (item.feature?.code || '-') + ' · 状态: ' + item.status + '</div>' +
-            '<div class="subtle">来源: ' + item.sourceType + ' · 订单: ' + (item.sourceOrder?.orderNo || '-') + '</div>' +
-            '<div class="subtle">开始: ' + formatTime(item.startsAt) + ' · 到期: ' + formatTime(item.expiresAt) + '</div>' +
+            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+              '<div>' +
+                '<strong>' + formatText(item.user?.email || item.userId) + '</strong>' +
+                '<div class="subtle">产品: ' + formatText(item.product?.code) + ' · 功能: ' + formatText(item.feature?.code) + ' · 状态: ' + formatText(item.status) + '</div>' +
+                '<div class="subtle">来源: ' + formatText(item.sourceType) + ' · 订单: ' + formatText(item.sourceOrder?.orderNo) + '</div>' +
+                '<div class="subtle">开始: ' + formatTime(item.startsAt) + ' · 到期: ' + formatTime(item.expiresAt) + '</div>' +
+              '</div>' +
+              (item.status === 'active'
+                ? '<div class="actions"><button class="danger" type="button" data-entitlement-revoke="' + escapeHtml(item.id) + '">撤销授权</button></div>'
+                : '') +
+            '</div>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderEvents(items) {
+        const root = document.getElementById('events-list');
+        if (!items.length) {
+          root.innerHTML = '<div class="locked">当前还没有业务事件。</div>';
+          return;
+        }
+
+        root.innerHTML = items.map((item) => (
+          '<div class="locked">' +
+            '<strong>' + formatText(item.eventName) + '</strong>' +
+            '<div class="subtle">时间: ' + formatTime(item.eventTime) + ' · 用户: ' + formatText(item.user?.email || item.userId) + '</div>' +
+            '<div class="subtle">应用: ' + formatText(item.app?.code) + ' · 产品: ' + formatText(item.product?.code) + ' · 安装: ' + formatText(item.install?.extensionInstallId) + '</div>' +
+            '<details>' +
+              '<summary class="inline-code">properties</summary>' +
+              '<pre class="json-block">' + formatJson(item.properties) + '</pre>' +
+            '</details>' +
+          '</div>'
+        )).join('');
+      }
+
+      function renderWebhooks(items) {
+        const root = document.getElementById('webhooks-list');
+        if (!items.length) {
+          root.innerHTML = '<div class="locked">当前还没有支付回调记录。</div>';
+          return;
+        }
+
+        root.innerHTML = items.map((item) => (
+          '<div class="locked">' +
+            '<strong>' + formatText(item.provider) + ' · ' + formatText(item.type) + '</strong>' +
+            '<div class="subtle">事件号: ' + formatText(item.providerEventId) + '</div>' +
+            '<div class="subtle">状态: ' + formatText(item.status) + ' · 已处理: ' + formatTime(item.processedAt) + ' · 入库: ' + formatTime(item.createdAt) + '</div>' +
+            '<details>' +
+              '<summary class="inline-code">payload</summary>' +
+              '<pre class="json-block">' + formatJson(item.payload) + '</pre>' +
+            '</details>' +
           '</div>'
         )).join('');
       }
@@ -855,6 +1162,16 @@ export function renderPaymentAdminPage() {
         renderOrders(orders.items || []);
         renderInstalls(installs.items || []);
         renderEntitlements(entitlements.items || []);
+      }
+
+      async function loadObservability() {
+        const [events, webhooks] = await Promise.all([
+          api('/v1/admin/events?limit=20'),
+          api('/v1/admin/billing-webhooks?limit=20')
+        ]);
+
+        renderEvents(events.items || []);
+        renderWebhooks(webhooks.items || []);
       }
 
       async function loadBootstrapStatus() {
@@ -874,6 +1191,10 @@ export function renderPaymentAdminPage() {
           renderOrders([]);
           renderInstalls([]);
           renderEntitlements([]);
+          renderEvents([]);
+          renderWebhooks([]);
+          renderPlanOptions([]);
+          renderProductOptions([], []);
           return;
         }
 
@@ -890,11 +1211,19 @@ export function renderPaymentAdminPage() {
 
           document.getElementById('access-message').textContent = '当前账号拥有 admin 权限，可以直接保存和清空支付配置。';
           document.getElementById('settings-panel').classList.remove('hidden');
-          const overview = await api('/v1/admin/payment-settings');
+          const [overview, apps, products, plans] = await Promise.all([
+            api('/v1/admin/payment-settings'),
+            api('/v1/admin/apps'),
+            api('/v1/products'),
+            api('/v1/plans')
+          ]);
           applyOverview(overview);
-          const apps = await api('/v1/admin/apps');
+          state.products = products.items || [];
+          state.plans = plans.items || [];
+          renderPlanOptions(state.plans);
+          renderProductOptions(state.products, []);
           renderManagedApps(apps.items || []);
-          await loadAdminOperations();
+          await Promise.all([loadAdminOperations(), loadObservability()]);
         } catch (_error) {
           localStorage.removeItem('fd_core_admin_token');
           state.token = '';
@@ -905,6 +1234,10 @@ export function renderPaymentAdminPage() {
           renderOrders([]);
           renderInstalls([]);
           renderEntitlements([]);
+          renderEvents([]);
+          renderWebhooks([]);
+          renderPlanOptions([]);
+          renderProductOptions([], []);
         }
       }
 
@@ -1038,11 +1371,15 @@ export function renderPaymentAdminPage() {
         result.textContent = '';
 
         try {
+          const appCode = document.getElementById('app-secret-appCode').value;
+          if (!appCode) {
+            throw new Error('请先创建应用，再签发 secret');
+          }
+
           const expiresAtRaw = document.getElementById('app-secret-expiresAt').value;
           const payload = {
             expiresAt: expiresAtRaw ? new Date(expiresAtRaw).toISOString() : undefined
           };
-          const appCode = document.getElementById('app-secret-appCode').value;
           const data = await api('/v1/admin/apps/' + encodeURIComponent(appCode) + '/secrets', {
             method: 'POST',
             body: JSON.stringify(payload)
@@ -1060,6 +1397,81 @@ export function renderPaymentAdminPage() {
           await refresh();
         } catch (error) {
           setFlash('app-admin-flash', error.message, 'error');
+        }
+      });
+
+      document.getElementById('app-editor-selected').addEventListener('change', () => {
+        syncSelectedAppEditor();
+      });
+
+      document.getElementById('app-editor-new').addEventListener('click', () => {
+        document.getElementById('app-editor-selected').value = '__new__';
+        syncSelectedAppEditor();
+        setFlash('apps-admin-flash', '已切换到新建应用模式', 'success');
+      });
+
+      document.getElementById('app-editor-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setFlash('apps-admin-flash', '', '');
+
+        try {
+          const code = document.getElementById('app-editor-code').value.trim();
+          const productCodes = getCheckedProductCodes();
+
+          if (!code) {
+            throw new Error('应用标识不能为空');
+          }
+
+          if (!productCodes.length) {
+            throw new Error('至少绑定一个产品');
+          }
+
+          await api('/v1/admin/apps/' + encodeURIComponent(code), {
+            method: 'PUT',
+            body: JSON.stringify({
+              name: document.getElementById('app-editor-name').value.trim(),
+              description: document.getElementById('app-editor-description').value.trim() || undefined,
+              type: document.getElementById('app-editor-type').value,
+              status: document.getElementById('app-editor-status').value,
+              productCodes
+            })
+          });
+
+          setFlash('apps-admin-flash', '应用配置已保存', 'success');
+          await refresh();
+          document.getElementById('app-editor-selected').value = code;
+          syncSelectedAppEditor();
+        } catch (error) {
+          setFlash('apps-admin-flash', error.message, 'error');
+        }
+      });
+
+      document.getElementById('grant-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        setFlash('grant-admin-flash', '', '');
+
+        try {
+          const data = await api('/v1/admin/entitlements/grant', {
+            method: 'POST',
+            body: JSON.stringify({
+              userEmail: document.getElementById('grant-userEmail').value.trim(),
+              planCode: document.getElementById('grant-planCode').value,
+              reason: document.getElementById('grant-reason').value.trim() || undefined
+            })
+          });
+
+          setFlash(
+            'grant-admin-flash',
+            data.granted
+              ? '授权已发放给 ' + data.user.email + '，套餐 ' + data.plan.code + '，共 ' + data.entitlementCount + ' 条权限'
+              : '未重复发放：' + data.user.email + ' 已拥有该 one_time 权益',
+            data.granted ? 'success' : 'error'
+          );
+          document.getElementById('grant-userEmail').value = '';
+          document.getElementById('grant-reason').value = '';
+          await Promise.all([loadAdminOperations(), loadObservability()]);
+        } catch (error) {
+          setFlash('grant-admin-flash', error.message, 'error');
         }
       });
 
@@ -1094,6 +1506,67 @@ export function renderPaymentAdminPage() {
         } finally {
           target.removeAttribute('disabled');
           target.textContent = previousText || '同步订单';
+        }
+      });
+
+      document.getElementById('app-list').addEventListener('click', async (event) => {
+        const target = event.target instanceof Element ? event.target.closest('[data-app-secret-revoke]') : null;
+        if (!target) {
+          return;
+        }
+
+        const appCode = target.getAttribute('data-app-secret-revoke');
+        const secretId = target.getAttribute('data-secret-id');
+        if (!appCode || !secretId) {
+          return;
+        }
+
+        if (!window.confirm('确认停用这个 App Secret？停用后现有 secret 将不能继续换取 app token。')) {
+          return;
+        }
+
+        try {
+          await api('/v1/admin/apps/' + encodeURIComponent(appCode) + '/secrets/' + encodeURIComponent(secretId) + '/revoke', {
+            method: 'POST'
+          });
+          setFlash('app-admin-flash', 'App Secret 已停用', 'success');
+          await refresh();
+        } catch (error) {
+          setFlash('app-admin-flash', error.message, 'error');
+        }
+      });
+
+      document.getElementById('entitlements-list').addEventListener('click', async (event) => {
+        const target = event.target instanceof Element ? event.target.closest('[data-entitlement-revoke]') : null;
+        if (!target) {
+          return;
+        }
+
+        const entitlementId = target.getAttribute('data-entitlement-revoke');
+        if (!entitlementId) {
+          return;
+        }
+
+        if (!window.confirm('确认撤销这条授权？如果它属于同一来源的一组权限，会整组一起撤销。')) {
+          return;
+        }
+
+        const previousText = target.textContent;
+        target.setAttribute('disabled', 'disabled');
+        target.textContent = '撤销中...';
+        setFlash('entitlements-admin-flash', '', '');
+
+        try {
+          const data = await api('/v1/admin/entitlements/' + encodeURIComponent(entitlementId) + '/revoke', {
+            method: 'POST'
+          });
+          setFlash('entitlements-admin-flash', '授权已撤销，共处理 ' + data.revokedCount + ' 条记录', 'success');
+          await Promise.all([loadAdminOperations(), loadObservability()]);
+        } catch (error) {
+          setFlash('entitlements-admin-flash', error.message, 'error');
+        } finally {
+          target.removeAttribute('disabled');
+          target.textContent = previousText || '撤销授权';
         }
       });
 

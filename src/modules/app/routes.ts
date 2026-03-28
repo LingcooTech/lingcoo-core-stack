@@ -1,6 +1,12 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { appCodeParamsSchema, createAppSecretSchema, createAppSessionSchema, upsertAppSchema } from './schemas';
+import {
+  appCodeParamsSchema,
+  appSecretParamsSchema,
+  createAppSecretSchema,
+  createAppSessionSchema,
+  upsertAppSchema
+} from './schemas';
 import { AppService } from './service';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
@@ -72,5 +78,10 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     const result = await new AppService(app.db).issueSecret(params.appCode, payload, request.user.sub);
 
     return reply.status(201).send(result);
+  });
+
+  app.post('/v1/admin/apps/:appCode/secrets/:secretId/revoke', { preHandler: app.requireAdmin }, async (request) => {
+    const params = appSecretParamsSchema.parse(request.params);
+    return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
   });
 };

@@ -309,4 +309,45 @@ export class AppService {
       createdAt: secret.createdAt
     };
   }
+
+  async revokeSecret(appCode: string, secretId: string, actorUserId: string) {
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    if (!app) {
+      throw httpError(404, 'App not found');
+    }
+
+    const repository = new AppRepository(this.db);
+    const secret = await repository.findAppSecretById(secretId);
+
+    if (!secret || secret.appId !== app.id) {
+      throw httpError(404, 'App secret not found');
+    }
+
+    const updated = secret.status === 'cancelled' ? secret : await repository.updateAppSecretStatus(secret.id, 'cancelled');
+
+    if (!updated) {
+      throw httpError(500, 'Failed to revoke app secret');
+    }
+
+    await new EventService(this.db).capture({
+      userId: actorUserId,
+      eventName: 'app.secret_revoked',
+      properties: {
+        appCode: app.code,
+        secretId: updated.id,
+        hint: updated.hint,
+        previousStatus: secret.status
+      }
+    });
+
+    return {
+      appCode: app.code,
+      appName: app.name,
+      secretId: updated.id,
+      hint: updated.hint,
+      status: updated.status,
+      expiresAt: updated.expiresAt,
+      lastUsedAt: updated.lastUsedAt
+    };
+  }
 }

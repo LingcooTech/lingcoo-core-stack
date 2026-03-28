@@ -4,6 +4,10 @@ export const appCodeParamsSchema = z.object({
   appCode: z.string().trim().min(1).max(64)
 });
 
+export const appSecretParamsSchema = appCodeParamsSchema.extend({
+  secretId: z.string().uuid()
+});
+
 export const upsertAppSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(255).optional(),

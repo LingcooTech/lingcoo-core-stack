@@ -135,4 +135,16 @@ export class AppRepository {
 
     return secret ?? null;
   }
+
+  async updateAppSecretStatus(id: string, status: 'active' | 'inactive' | 'cancelled' | 'expired') {
+    const [secret] = await this.db
+      .update(appSecrets)
+      .set({
+        status
+      })
+      .where(eq(appSecrets.id, id))
+      .returning();
+
+    return secret ?? null;
+  }
 }

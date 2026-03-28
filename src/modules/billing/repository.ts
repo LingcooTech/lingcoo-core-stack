@@ -54,6 +54,10 @@ export class BillingRepository {
     return this.db.select().from(orders).where(inArray(orders.id, orderIds));
   }
 
+  async listRecentWebhookEvents(limit = 50) {
+    return this.db.select().from(billingWebhookEvents).orderBy(desc(billingWebhookEvents.createdAt)).limit(limit);
+  }
+
   async markOrderPaidIfUnpaid(input: {
     orderId: string;
     providerOrderId?: string | null;

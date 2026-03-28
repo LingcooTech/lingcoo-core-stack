@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, ne, or } from 'drizzle-orm';
 
 import { entitlements, features, planFeatures, plans, products } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -25,6 +25,11 @@ export class LicenseRepository {
   async getPlanByCode(code: string) {
     const [plan] = await this.db.select().from(plans).where(eq(plans.code, code)).limit(1);
     return plan ?? null;
+  }
+
+  async findEntitlementById(entitlementId: string) {
+    const [entitlement] = await this.db.select().from(entitlements).where(eq(entitlements.id, entitlementId)).limit(1);
+    return entitlement ?? null;
   }
 
   async getPlanById(planId: string) {
@@ -130,5 +135,39 @@ export class LicenseRepository {
 
   async listRecentEntitlements(limit = 50) {
     return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
+  }
+
+  async cancelEntitlementById(entitlementId: string, effectiveAt = new Date()) {
+    const [entitlement] = await this.db
+      .update(entitlements)
+      .set({
+        status: 'cancelled',
+        expiresAt: effectiveAt
+      })
+      .where(and(eq(entitlements.id, entitlementId), ne(entitlements.status, 'cancelled')))
+      .returning();
+
+    return entitlement ?? null;
+  }
+
+  async cancelEntitlementsBySource(
+    sourceType: 'order' | 'subscription' | 'grant' | 'trial',
+    sourceId: string,
+    effectiveAt = new Date()
+  ) {
+    return this.db
+      .update(entitlements)
+      .set({
+        status: 'cancelled',
+        expiresAt: effectiveAt
+      })
+      .where(
+        and(
+          eq(entitlements.sourceType, sourceType),
+          eq(entitlements.sourceId, sourceId),
+          ne(entitlements.status, 'cancelled')
+        )
+      )
+      .returning();
   }
 }

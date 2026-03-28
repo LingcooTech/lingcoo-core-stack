@@ -1,12 +1,18 @@
+import { randomUUID } from 'node:crypto';
+
 import type { DbClient } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
+import { httpError } from '../../lib/errors';
 import { AppRepository } from '../app/repository';
 import { AuthRepository } from '../auth/repository';
 import { BillingRepository } from '../billing/repository';
 import { BillingService } from '../billing/service';
 import { CheckoutRepository } from '../checkout/repository';
+import { EventService } from '../event/service';
+import { EventRepository } from '../event/repository';
 import { InstallRepository } from '../install/repository';
 import { LicenseRepository } from '../license/repository';
+import { LicenseService } from '../license/service';
 
 export class AdminService {
   constructor(
@@ -213,6 +219,194 @@ export class AdminService {
             : null
         };
       })
+    };
+  }
+
+  async listEvents(limit = 50) {
+    const events = await new EventRepository(this.db).listRecentEvents(limit);
+    const userIds = [...new Set(events.map((item) => item.userId).filter((item): item is string => Boolean(item)))];
+    const installIds = [...new Set(events.map((item) => item.installId).filter((item): item is string => Boolean(item)))];
+    const installs = await new InstallRepository(this.db).listInstallsByIds(installIds);
+    const appIds = [...new Set(installs.map((item) => item.appId).filter((item): item is string => Boolean(item)))];
+    const productIds = [
+      ...new Set(
+        events
+          .map((item) => item.productId)
+          .concat(installs.map((item) => item.productId))
+          .filter((item): item is string => Boolean(item))
+      )
+    ];
+
+    const [users, apps, products] = await Promise.all([
+      new AuthRepository(this.db).listUsersByIds(userIds),
+      new AppRepository(this.db).listAppsByIds(appIds),
+      new LicenseRepository(this.db).listProductsByIds(productIds)
+    ]);
+
+    const userMap = new Map(users.map((item) => [item.id, item]));
+    const installMap = new Map(installs.map((item) => [item.id, item]));
+    const appMap = new Map(apps.map((item) => [item.id, item]));
+    const productMap = new Map(products.map((item) => [item.id, item]));
+
+    return {
+      items: events.map((event) => {
+        const install = event.installId ? installMap.get(event.installId) ?? null : null;
+        const app = install?.appId ? appMap.get(install.appId) ?? null : null;
+        const product = productMap.get(event.productId ?? install?.productId ?? '') ?? null;
+        const user = event.userId ? userMap.get(event.userId) ?? null : null;
+
+        return {
+          ...event,
+          user: user
+            ? {
+                id: user.id,
+                email: user.email,
+                displayName: user.displayName
+              }
+            : null,
+          install: install
+            ? {
+                id: install.id,
+                extensionInstallId: install.extensionInstallId,
+                status: install.status
+              }
+            : null,
+          app: app
+            ? {
+                id: app.id,
+                code: app.code,
+                name: app.name,
+                type: app.type
+              }
+            : null,
+          product: product
+            ? {
+                id: product.id,
+                code: product.code,
+                name: product.name
+              }
+            : null
+        };
+      })
+    };
+  }
+
+  async listBillingWebhookEvents(limit = 50) {
+    return {
+      items: await new BillingRepository(this.db).listRecentWebhookEvents(limit)
+    };
+  }
+
+  async grantEntitlement(
+    input: {
+      userEmail: string;
+      planCode: string;
+      reason?: string;
+    },
+    actorUserId: string
+  ) {
+    const user = await new AuthRepository(this.db).findUserByEmail(input.userEmail);
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+
+    const checkoutPlan = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
+    const sourceId = randomUUID();
+    const result = await this.db.transaction(async (tx) => {
+      const txDb = tx as DbClient;
+      const grant = await new LicenseService(txDb).grantEntitlementsForPlan({
+        userId: user.id,
+        planId: checkoutPlan.plan.id,
+        sourceType: 'grant',
+        sourceId
+      });
+
+      await new EventService(txDb).capture({
+        userId: user.id,
+        productId: grant.product.id,
+        eventName: 'admin.entitlements_granted',
+        properties: {
+          actorUserId,
+          planId: grant.plan.id,
+          planCode: grant.plan.code,
+          sourceId,
+          reason: input.reason ?? null,
+          granted: grant.granted,
+          grantReason: grant.reason
+        }
+      });
+
+      return grant;
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName
+      },
+      plan: {
+        id: result.plan.id,
+        code: result.plan.code,
+        name: result.plan.name,
+        interval: result.plan.interval
+      },
+      product: {
+        id: result.product.id,
+        code: result.product.code,
+        name: result.product.name
+      },
+      granted: result.granted,
+      reason: result.reason,
+      sourceId,
+      entitlementCount: result.entitlements.length
+    };
+  }
+
+  async revokeEntitlement(entitlementId: string, actorUserId: string) {
+    const repository = new LicenseRepository(this.db);
+    const entitlement = await repository.findEntitlementById(entitlementId);
+
+    if (!entitlement) {
+      throw httpError(404, 'Entitlement not found');
+    }
+
+    const revoked = await this.db.transaction(async (tx) => {
+      const txDb = tx as DbClient;
+      const txRepository = new LicenseRepository(txDb);
+      const changed =
+        entitlement.sourceId && entitlement.sourceType
+          ? await txRepository.cancelEntitlementsBySource(entitlement.sourceType, entitlement.sourceId)
+          : (() => {
+              const row = txRepository.cancelEntitlementById(entitlement.id);
+              return row.then((item) => (item ? [item] : []));
+            })();
+
+      const items = await changed;
+
+      await new EventService(txDb).capture({
+        userId: entitlement.userId,
+        productId: entitlement.productId,
+        eventName: 'admin.entitlements_revoked',
+        properties: {
+          actorUserId,
+          sourceType: entitlement.sourceType,
+          sourceId: entitlement.sourceId ?? null,
+          entitlementId: entitlement.id,
+          revokedCount: items.length
+        }
+      });
+
+      return items;
+    });
+
+    return {
+      entitlementId: entitlement.id,
+      sourceType: entitlement.sourceType,
+      sourceId: entitlement.sourceId,
+      revokedCount: revoked.length,
+      userId: entitlement.userId,
+      productId: entitlement.productId
     };
   }
 }

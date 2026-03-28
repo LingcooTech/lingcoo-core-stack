@@ -26,3 +26,13 @@ export const adminListQuerySchema = z.object({
 export const adminOrderParamsSchema = z.object({
   orderNo: z.string().trim().min(8).max(64)
 });
+
+export const adminEntitlementParamsSchema = z.object({
+  entitlementId: z.string().uuid()
+});
+
+export const adminGrantEntitlementSchema = z.object({
+  userEmail: z.string().trim().email(),
+  planCode: z.string().trim().min(1).max(64),
+  reason: z.string().trim().min(1).max(255).optional()
+});
