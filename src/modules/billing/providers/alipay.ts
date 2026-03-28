@@ -223,22 +223,57 @@ export class AlipayProvider implements BillingProviderAdapter {
       }
     });
     const payload = result as Record<string, unknown>;
-    const tradeStatus = typeof result.trade_status === 'string' ? result.trade_status : '';
-    const tradeNo = typeof result.trade_no === 'string' ? result.trade_no : null;
+    const tradeStatus =
+      typeof result.tradeStatus === 'string'
+        ? result.tradeStatus
+        : typeof result.trade_status === 'string'
+          ? result.trade_status
+          : '';
+    const tradeNo =
+      typeof result.tradeNo === 'string'
+        ? result.tradeNo
+        : typeof result.trade_no === 'string'
+          ? result.trade_no
+          : null;
+    const outTradeNo =
+      typeof result.outTradeNo === 'string'
+        ? result.outTradeNo
+        : typeof result.out_trade_no === 'string'
+          ? result.out_trade_no
+          : context.order.orderNo;
+    const totalAmount =
+      typeof result.totalAmount === 'string'
+        ? result.totalAmount
+        : typeof result.total_amount === 'string'
+          ? result.total_amount
+          : '';
+    const sendPayDate =
+      typeof result.sendPayDate === 'string'
+        ? result.sendPayDate
+        : typeof result.send_pay_date === 'string'
+          ? result.send_pay_date
+          : '';
+    const subMsg =
+      typeof result.subMsg === 'string'
+        ? result.subMsg
+        : typeof result.sub_msg === 'string'
+          ? result.sub_msg
+          : '';
+    const msg = typeof result.msg === 'string' ? result.msg : '';
 
     if (result.code === '10000' && (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED')) {
-      if (typeof result.total_amount !== 'string' || !tradeNo) {
+      if (!totalAmount || !tradeNo) {
         throw httpError(400, 'Missing Alipay query payment fields');
       }
 
       return {
         kind: 'paid',
         provider: this.code,
-        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        orderNo: outTradeNo,
         providerOrderId: tradeNo,
-        amount: amountYuanStringToFen(result.total_amount),
+        amount: amountYuanStringToFen(totalAmount),
         currency: 'CNY',
-        paidAt: typeof result.send_pay_date === 'string' ? new Date(result.send_pay_date) : new Date(),
+        paidAt: sendPayDate ? new Date(sendPayDate) : new Date(),
         payload
       };
     }
@@ -247,7 +282,7 @@ export class AlipayProvider implements BillingProviderAdapter {
       return {
         kind: 'pending',
         provider: this.code,
-        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        orderNo: outTradeNo,
         providerOrderId: tradeNo,
         payload,
         reason: tradeStatus
@@ -258,7 +293,7 @@ export class AlipayProvider implements BillingProviderAdapter {
       return {
         kind: 'closed',
         provider: this.code,
-        orderNo: typeof result.out_trade_no === 'string' ? result.out_trade_no : context.order.orderNo,
+        orderNo: outTradeNo,
         providerOrderId: tradeNo,
         payload,
         reason: tradeStatus
@@ -272,13 +307,13 @@ export class AlipayProvider implements BillingProviderAdapter {
         orderNo: context.order.orderNo,
         providerOrderId: tradeNo,
         payload,
-        reason: typeof result.sub_msg === 'string' ? result.sub_msg : 'Order not found in Alipay'
+        reason: subMsg || 'Order not found in Alipay'
       };
     }
 
     throw httpError(
       502,
-      `Alipay query order failed: ${result.code ?? 'unknown'} ${result.sub_msg ?? result.msg ?? 'empty response'}`
+      `Alipay query order failed: ${result.code ?? 'unknown'} ${subMsg || msg || 'empty response'}`
     );
   }
 }
