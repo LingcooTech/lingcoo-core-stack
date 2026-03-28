@@ -15,11 +15,26 @@ import {
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 export const productTypeEnum = pgEnum('product_type', ['chrome_extension', 'web_app', 'service']);
+export const appTypeEnum = pgEnum('app_type', ['chrome_extension', 'web_app', 'service']);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
 export const recordStatusEnum = pgEnum('record_status', ['active', 'inactive', 'cancelled', 'expired']);
 export const paymentProviderEnum = pgEnum('payment_provider', ['wechat_pay', 'alipay']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'failed', 'cancelled', 'refunded']);
+export const checkoutSessionStatusEnum = pgEnum('checkout_session_status', [
+  'pending',
+  'paid',
+  'failed',
+  'cancelled',
+  'expired'
+]);
+export const checkoutActionTypeEnum = pgEnum('checkout_action_type', ['qr_code', 'redirect_url']);
+export const paymentAttemptStatusEnum = pgEnum('payment_attempt_status', [
+  'prepared',
+  'paid',
+  'failed',
+  'cancelled'
+]);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -36,6 +51,18 @@ export const systemSettings = pgTable('system_settings', {
   value: jsonb('value').notNull().default(sql`'{}'::jsonb`),
   isEncrypted: boolean('is_encrypted').notNull().default(false),
   updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const apps = pgTable('apps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  description: varchar('description', { length: 255 }),
+  type: appTypeEnum('type').notNull().default('chrome_extension'),
+  status: recordStatusEnum('status').notNull().default('active'),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
@@ -59,6 +86,20 @@ export const passwordCredentials = pgTable('password_credentials', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const appSecrets = pgTable('app_secrets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(),
+  secretHash: varchar('secret_hash', { length: 255 }).notNull(),
+  hint: varchar('hint', { length: 16 }).notNull(),
+  status: recordStatusEnum('status').notNull().default('active'),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const products = pgTable('products', {
@@ -115,6 +156,22 @@ export const planFeatures = pgTable(
   })
 );
 
+export const appProducts = pgTable(
+  'app_products',
+  {
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.appId, table.productId] })
+  })
+);
+
 export const customers = pgTable('customers', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -166,6 +223,66 @@ export const orders = pgTable('orders', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const checkoutSessions = pgTable('checkout_sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sessionCode: varchar('session_code', { length: 64 }).notNull().unique(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'restrict' }),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'restrict' }),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => plans.id, { onDelete: 'restrict' }),
+  orderId: uuid('order_id')
+    .notNull()
+    .references(() => orders.id, { onDelete: 'cascade' })
+    .unique(),
+  provider: paymentProviderEnum('provider').notNull(),
+  status: checkoutSessionStatusEnum('status').notNull().default('pending'),
+  actionType: checkoutActionTypeEnum('action_type').notNull(),
+  actionPayload: jsonb('action_payload').notNull().default(sql`'{}'::jsonb`),
+  successUrl: varchar('success_url', { length: 2048 }),
+  cancelUrl: varchar('cancel_url', { length: 2048 }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const paymentAttempts = pgTable(
+  'payment_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    checkoutSessionId: uuid('checkout_session_id')
+      .notNull()
+      .references(() => checkoutSessions.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    attemptNo: integer('attempt_no').notNull().default(1),
+    provider: paymentProviderEnum('provider').notNull(),
+    actionType: checkoutActionTypeEnum('action_type').notNull(),
+    status: paymentAttemptStatusEnum('status').notNull().default('prepared'),
+    providerReference: varchar('provider_reference', { length: 128 }),
+    requestPayload: jsonb('request_payload').notNull().default(sql`'{}'::jsonb`),
+    responsePayload: jsonb('response_payload').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    sessionAttemptKey: uniqueIndex('payment_attempts_session_attempt_idx').on(
+      table.checkoutSessionId,
+      table.attemptNo
+    )
+  })
+);
+
 export const entitlements = pgTable('entitlements', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -189,6 +306,7 @@ export const entitlements = pgTable('entitlements', {
 export const installs = pgTable('installs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
   productId: uuid('product_id')
     .notNull()
     .references(() => products.id, { onDelete: 'cascade' }),
@@ -198,7 +316,8 @@ export const installs = pgTable('installs', {
   appVersion: varchar('app_version', { length: 32 }),
   status: recordStatusEnum('status').notNull().default('active'),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const events = pgTable('events', {

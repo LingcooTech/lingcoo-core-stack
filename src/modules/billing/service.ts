@@ -3,6 +3,7 @@ import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import type { DbClient } from '../../db/types';
+import { CheckoutRepository } from '../checkout/repository';
 import { EventService } from '../event/service';
 import { LicenseService } from '../license/service';
 import { getBillingProviderAdapter, listBillingProviders } from './providers';
@@ -248,6 +249,10 @@ export class BillingService {
       sourceId: input.order.id,
       startsAt: updatedOrder.paidAt ?? new Date()
     });
+
+    const checkoutRepository = new CheckoutRepository(tx);
+    await checkoutRepository.markSessionPaidByOrderId(input.order.id, updatedOrder.paidAt ?? new Date());
+    await checkoutRepository.markPaymentAttemptsPaidByOrderId(input.order.id, input.providerOrderId);
 
     await new EventService(tx).capture({
       userId: input.order.userId,

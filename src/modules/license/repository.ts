@@ -57,6 +57,14 @@ export class LicenseRepository {
     return this.db.select().from(products).where(inArray(products.id, productIds));
   }
 
+  async listProductsByCodes(productCodes: string[]) {
+    if (productCodes.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(products).where(inArray(products.code, productCodes));
+  }
+
   async deleteEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
     await this.db
       .delete(entitlements)

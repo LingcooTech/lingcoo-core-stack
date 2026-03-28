@@ -1,0 +1,19 @@
+import { z } from 'zod';
+
+export const appCodeParamsSchema = z.object({
+  appCode: z.string().trim().min(1).max(64)
+});
+
+export const upsertAppSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().min(1).max(255).optional(),
+  type: z.enum(['chrome_extension', 'web_app', 'service']).default('chrome_extension'),
+  status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
+  productCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(50),
+  meta: z.record(z.string(), z.unknown()).optional()
+});
+
+export const createAppSecretSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  expiresAt: z.string().datetime().optional()
+});

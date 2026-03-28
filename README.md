@@ -108,6 +108,8 @@ docker compose -f docker-compose.prod.yml up -d api worker caddy
 
 完整自动化发布说明见 [DEPLOYMENT.md](/Users/admin/Desktop/fd-core-stack/DEPLOYMENT.md)。
 
+中台目标架构说明见 [docs/platform-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/platform-architecture.md)。
+
 ## MVP 初始化
 
 开发环境第一次启动后，执行数据库迁移：
@@ -133,7 +135,9 @@ docker compose exec api npm run seed:mvp
 - 邮箱密码注册 / 登录
 - JWT 鉴权
 - 产品、套餐、功能、授权的数据模型
-- 创建订单
+- 多应用接入模型
+- 创建 checkout session
+- 托管支付页
 - 微信支付 Native 真实下单
 - 微信支付回调验签与 AES-GCM 解密
 - 支付宝页面支付真实下单
@@ -158,7 +162,7 @@ docker compose exec api npm run seed:mvp
 
 - 支付状态主动查询与补单
 - 退款、关单、对账
-- Admin 后台
+- 完整 Admin 后台
 - 真正的异步任务队列
 - 订阅续费与周期性扣费
 - 风控、限流和审计后台
@@ -185,6 +189,14 @@ docker compose exec api npm run seed:mvp
   - 健康检查、模块自检
 - `auth`
   - 注册、登录、`/v1/me`
+- `admin`
+  - 支付配置、应用管理接口
+- `app`
+  - 接入应用、产品绑定、应用密钥
+- `install`
+  - 扩展安装实例注册、绑定、heartbeat、按实例查询授权
+- `checkout`
+  - checkout session、托管支付页、支付状态轮询
 - `billing`
   - 下单、订单查询、支付 provider 适配、模拟支付
 - `license`
@@ -225,21 +237,20 @@ curl -X POST http://localhost:8080/v1/auth/login \
 curl http://localhost:8080/v1/catalog
 ```
 
-4. 创建订单并发起支付
+4. 创建 checkout session 并发起支付
 
 ```bash
-curl -X POST http://localhost:8080/v1/billing/orders \
+curl -X POST http://localhost:8080/v1/checkout/sessions \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
+    "appCode": "ai_web_translator_ext",
     "planCode": "translator_pro_monthly",
-    "provider": "wechat_pay"
+    "providerPreference": "wechat_pay"
   }'
 ```
 
-如果 `provider` 是 `wechat_pay`，响应里的 `payment.payload.codeUrl` 就是二维码内容，前端自己渲染二维码即可。
-
-如果 `provider` 是 `alipay`，响应里的 `payment.payload.checkoutUrl` 直接打开即可拉起支付宝支付页。
+响应里的 `presentation.url` 就是中台托管支付页，直接打开即可完成扫码或跳转支付测试。
 
 5. 模拟支付成功
 
@@ -259,7 +270,8 @@ curl http://localhost:8080/v1/entitlements/me \
 
 - 注册
 - 登录
-- 创建订单
+- 创建 checkout session
+- 打开中台托管支付页
 - 发起微信 / 支付宝真实支付
 - 异步通知验签
 - 支付回调幂等处理
@@ -274,10 +286,9 @@ curl http://localhost:8080/v1/entitlements/me \
 
 - `WECHAT_PAY_MCH_ID`
 - `WECHAT_PAY_APP_ID`
-- `WECHAT_PAY_CERT_SERIAL_NO`
-- `WECHAT_PAY_API_V3_KEY`
-- `WECHAT_PAY_PRIVATE_KEY_PATH`
-- `WECHAT_PAY_PLATFORM_CERT_PATH`
+- `WECHAT_PAY_APP_SECRET`
+- `WECHAT_PAY_KEY`
+- `WECHAT_PAY_DISABLE_H5`
 - `WECHAT_PAY_API_BASE_URL`
 - `WECHAT_PAY_NOTIFY_URL`
 
@@ -288,14 +299,18 @@ curl http://localhost:8080/v1/entitlements/me \
 需要配置：
 
 - `ALIPAY_APP_ID`
-- `ALIPAY_PRIVATE_KEY_PATH`
-- `ALIPAY_PUBLIC_KEY_PATH`
+- `ALIPAY_PRIVATE_KEY_PATH` 或 `ALIPAY_PRIVATE_KEY`
+- `ALIPAY_PUBLIC_KEY_PATH` 或 `ALIPAY_PUBLIC_KEY`
+- `ALIPAY_F2F_PAY`
 - `ALIPAY_KEY_TYPE`
 - `ALIPAY_GATEWAY`
 - `ALIPAY_NOTIFY_URL`
 - `ALIPAY_RETURN_URL`
 
-当前固定走 `alipay.trade.page.pay`，返回可直接打开的支付 URL。
+当前支持两种模式：
+
+- 关闭 `ALIPAY_F2F_PAY` 时，走 `alipay.trade.page.pay`
+- 开启 `ALIPAY_F2F_PAY` 时，走 `alipay.trade.precreate` 并返回二维码
 
 ### 回调幂等
 
@@ -320,7 +335,7 @@ curl http://localhost:8080/v1/entitlements/me \
 
 下一步应该做的是：
 
-1. 增加订单状态查询、关单和补单
+1. 增加订单状态主动查询、关单和补单
 2. 增加退款和对账
-3. 增加管理接口和后台
+3. 扩展完整 Admin 后台
 4. 增加异步任务处理和告警

@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 import { loadEnv } from '../lib/env';
-import { features, planFeatures, plans, products } from '../db/schema';
+import { appProducts, apps, features, planFeatures, plans, products } from '../db/schema';
 
 async function main() {
   const env = loadEnv();
@@ -126,11 +126,46 @@ async function main() {
       }
     }
 
+    const [seededApp] = await db
+      .insert(apps)
+      .values({
+        code: 'ai_web_translator_ext',
+        name: 'AI Web Translator Extension',
+        description: 'Chrome extension client for AI Web Translator',
+        type: 'chrome_extension',
+        status: 'active',
+        meta: {
+          seededBy: 'seed-mvp'
+        }
+      })
+      .onConflictDoUpdate({
+        target: apps.code,
+        set: {
+          name: 'AI Web Translator Extension',
+          description: 'Chrome extension client for AI Web Translator',
+          type: 'chrome_extension',
+          status: 'active',
+          meta: {
+            seededBy: 'seed-mvp'
+          }
+        }
+      })
+      .returning();
+
+    await db
+      .insert(appProducts)
+      .values({
+        appId: seededApp.id,
+        productId: product.id
+      })
+      .onConflictDoNothing();
+
     console.log(
       JSON.stringify(
         {
           ok: true,
           product: product.code,
+          app: seededApp.code,
           plans: seededPlans.map((plan) => plan.code),
           features: seededFeatures.map((feature) => feature.code)
         },
