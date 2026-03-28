@@ -56,6 +56,19 @@ export class AlipayProvider implements BillingProviderAdapter {
     return context.ALIPAY_F2F_PAY === true;
   }
 
+  private parsePaidAt(value: string | undefined) {
+    if (!value) {
+      return new Date();
+    }
+
+    const normalized = value.trim();
+    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized)) {
+      return new Date(normalized);
+    }
+
+    return new Date(normalized.replace(' ', 'T') + '+08:00');
+  }
+
   async preparePayment(context: ProviderContext): Promise<PreparedPayment> {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'Alipay is not configured');
@@ -206,7 +219,7 @@ export class AlipayProvider implements BillingProviderAdapter {
       providerOrderId: form.trade_no,
       amount: amountYuanStringToFen(form.total_amount),
       currency: 'CNY',
-      paidAt: form.gmt_payment ? new Date(form.gmt_payment) : new Date(),
+      paidAt: this.parsePaidAt(form.gmt_payment),
       payload: form
     };
   }
@@ -273,7 +286,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         providerOrderId: tradeNo,
         amount: amountYuanStringToFen(totalAmount),
         currency: 'CNY',
-        paidAt: sendPayDate ? new Date(sendPayDate) : new Date(),
+        paidAt: this.parsePaidAt(sendPayDate),
         payload
       };
     }
