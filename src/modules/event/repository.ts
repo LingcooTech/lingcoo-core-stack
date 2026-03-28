@@ -1,4 +1,4 @@
-import { desc } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 
 import { events } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -37,5 +37,14 @@ export class EventRepository {
 
   async listRecentEvents(limit = 50) {
     return this.db.select().from(events).orderBy(desc(events.eventTime)).limit(limit);
+  }
+
+  async listRecentEventsByOrderNo(orderNo: string, limit = 30) {
+    return this.db
+      .select()
+      .from(events)
+      .where(sql`${events.properties} ->> 'orderNo' = ${orderNo}`)
+      .orderBy(desc(events.eventTime))
+      .limit(limit);
   }
 }

@@ -137,6 +137,14 @@ export class LicenseRepository {
     return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
   }
 
+  async listEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(and(eq(entitlements.sourceType, sourceType), eq(entitlements.sourceId, sourceId)))
+      .orderBy(desc(entitlements.createdAt));
+  }
+
   async cancelEntitlementById(entitlementId: string, effectiveAt = new Date()) {
     const [entitlement] = await this.db
       .update(entitlements)

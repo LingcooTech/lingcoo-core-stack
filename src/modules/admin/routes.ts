@@ -53,6 +53,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new AdminService(app.db, app.appEnv).reconcileOrder(params.orderNo);
   });
 
+  app.get('/v1/admin/orders/:orderNo', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminOrderParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).getOrderDetail(params.orderNo);
+  });
+
   app.get('/v1/admin/installs', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
     return new AdminService(app.db, app.appEnv).listInstalls(query.limit);

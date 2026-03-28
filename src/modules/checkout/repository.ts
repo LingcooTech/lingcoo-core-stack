@@ -125,6 +125,18 @@ export class CheckoutRepository {
     return this.db.select().from(checkoutSessions).where(inArray(checkoutSessions.orderId, orderIds));
   }
 
+  async listPaymentAttemptsByOrderIds(orderIds: string[]) {
+    if (orderIds.length === 0) {
+      return [];
+    }
+
+    return this.db
+      .select()
+      .from(paymentAttempts)
+      .where(inArray(paymentAttempts.orderId, orderIds))
+      .orderBy(desc(paymentAttempts.createdAt));
+  }
+
   async markSessionPaidByOrderId(orderId: string, completedAt: Date) {
     const [session] = await this.db
       .update(checkoutSessions)

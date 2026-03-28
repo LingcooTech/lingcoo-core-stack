@@ -20,9 +20,9 @@ export class AdminService {
     private readonly env: AppEnv
   ) {}
 
-  async listOrders(limit = 50) {
-    const repository = new BillingRepository(this.db);
-    const orders = await repository.listRecentOrders(limit);
+  private async hydrateOrderRows(
+    orders: Array<Awaited<ReturnType<BillingRepository['listRecentOrders']>>[number]>
+  ) {
     const userIds = [...new Set(orders.map((item) => item.userId))];
     const productIds = [...new Set(orders.map((item) => item.productId))];
     const planIds = [...new Set(orders.map((item) => item.planId))];
@@ -42,57 +42,110 @@ export class AdminService {
     const appMap = new Map(apps.map((item) => [item.id, item]));
     const sessionMap = new Map(sessions.map((item) => [item.orderId, item]));
 
+    return orders.map((order) => {
+      const session = sessionMap.get(order.id) ?? null;
+      const app = session ? appMap.get(session.appId) ?? null : null;
+      const user = userMap.get(order.userId) ?? null;
+      const product = productMap.get(order.productId) ?? null;
+      const plan = planMap.get(order.planId) ?? null;
+
+      return {
+        ...order,
+        user: user
+          ? {
+              id: user.id,
+              email: user.email,
+              displayName: user.displayName
+            }
+          : null,
+        product: product
+          ? {
+              id: product.id,
+              code: product.code,
+              name: product.name
+            }
+          : null,
+        plan: plan
+          ? {
+              id: plan.id,
+              code: plan.code,
+              name: plan.name,
+              interval: plan.interval
+            }
+          : null,
+        checkoutSession: session
+          ? {
+              id: session.id,
+              sessionCode: session.sessionCode,
+              status: session.status,
+              provider: session.provider,
+              actionType: session.actionType,
+              actionPayload: session.actionPayload,
+              successUrl: session.successUrl,
+              cancelUrl: session.cancelUrl,
+              expiresAt: session.expiresAt,
+              completedAt: session.completedAt,
+              createdAt: session.createdAt,
+              updatedAt: session.updatedAt
+            }
+          : null,
+        app: app
+          ? {
+              id: app.id,
+              code: app.code,
+              name: app.name,
+              type: app.type
+            }
+          : null
+      };
+    });
+  }
+
+  async listOrders(limit = 50) {
+    const repository = new BillingRepository(this.db);
+    const orders = await repository.listRecentOrders(limit);
+
     return {
-      items: orders.map((order) => {
-        const session = sessionMap.get(order.id) ?? null;
-        const app = session ? appMap.get(session.appId) ?? null : null;
-        const user = userMap.get(order.userId) ?? null;
-        const product = productMap.get(order.productId) ?? null;
-        const plan = planMap.get(order.planId) ?? null;
+      items: await this.hydrateOrderRows(orders)
+    };
+  }
+
+  async getOrderDetail(orderNo: string) {
+    const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    const [hydratedOrder] = await this.hydrateOrderRows([order]);
+    const [attempts, entitlements, events] = await Promise.all([
+      new CheckoutRepository(this.db).listPaymentAttemptsByOrderIds([order.id]),
+      new LicenseRepository(this.db).listEntitlementsBySource('order', order.id),
+      new EventRepository(this.db).listRecentEventsByOrderNo(orderNo, 20)
+    ]);
+    const featureIds = [...new Set(entitlements.map((item) => item.featureId))];
+    const features = await new LicenseRepository(this.db).listFeaturesByIds(featureIds);
+    const featureMap = new Map(features.map((item) => [item.id, item]));
+
+    return {
+      item: hydratedOrder,
+      paymentAttempts: attempts,
+      entitlements: entitlements.map((entitlement) => {
+        const feature = featureMap.get(entitlement.featureId) ?? null;
 
         return {
-          ...order,
-          user: user
+          ...entitlement,
+          feature: feature
             ? {
-                id: user.id,
-                email: user.email,
-                displayName: user.displayName
-              }
-            : null,
-          product: product
-            ? {
-                id: product.id,
-                code: product.code,
-                name: product.name
-              }
-            : null,
-          plan: plan
-            ? {
-                id: plan.id,
-                code: plan.code,
-                name: plan.name,
-                interval: plan.interval
-              }
-            : null,
-          checkoutSession: session
-            ? {
-                id: session.id,
-                sessionCode: session.sessionCode,
-                status: session.status,
-                expiresAt: session.expiresAt,
-                completedAt: session.completedAt
-              }
-            : null,
-          app: app
-            ? {
-                id: app.id,
-                code: app.code,
-                name: app.name,
-                type: app.type
+                id: feature.id,
+                code: feature.code,
+                name: feature.name,
+                kind: feature.kind
               }
             : null
         };
-      })
+      }),
+      events
     };
   }
 

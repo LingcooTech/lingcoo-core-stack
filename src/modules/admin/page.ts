@@ -810,6 +810,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                 </div>
               </div>
               <div id="orders-admin-flash" class="flash"></div>
+              <div id="order-detail" class="stack" style="margin-bottom:18px;"></div>
               <div id="orders-list" class="stack"></div>
             </div>
 
@@ -864,7 +865,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         apps: [],
         products: [],
         plans: [],
-        activeSection: '${activeSection}'
+        activeSection: '${activeSection}',
+        selectedOrderNo: ''
       };
 
       function setFlash(id, message, kind) {
@@ -1171,11 +1173,96 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                 '<div class="subtle">Session: ' + formatText(item.checkoutSession?.sessionCode) + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
               '</div>' +
               '<div class="actions">' +
+                '<button class="secondary" type="button" data-order-detail="' + escapeHtml(item.orderNo) + '">查看详情</button>' +
                 '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
               '</div>' +
             '</div>' +
           '</div>'
         )).join('');
+      }
+
+      function renderOrderDetail(data) {
+        const root = document.getElementById('order-detail');
+        if (!data || !data.item) {
+          root.innerHTML = '<div class="locked">点击订单“查看详情”，这里会显示 session、支付尝试、授权和事件。</div>';
+          return;
+        }
+
+        const item = data.item;
+        const session = item.checkoutSession;
+        const attempts = Array.isArray(data.paymentAttempts) ? data.paymentAttempts : [];
+        const entitlements = Array.isArray(data.entitlements) ? data.entitlements : [];
+        const events = Array.isArray(data.events) ? data.events : [];
+
+        root.innerHTML =
+          '<div class="locked">' +
+            '<div style="display:flex;justify-content:space-between;gap:12px;align-items:start;">' +
+              '<div>' +
+                '<strong>订单详情 · ' + formatText(item.orderNo) + '</strong>' +
+                '<div class="subtle">状态: ' + formatText(item.status) + ' · 通道: ' + formatText(item.provider) + ' · 金额: ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</div>' +
+                '<div class="subtle">用户: ' + formatText(item.user?.email || item.userId) + ' · 应用: ' + formatText(item.app?.code) + ' · 套餐: ' + formatText(item.plan?.code) + '</div>' +
+                '<div class="subtle">支付时间: ' + formatTime(item.paidAt) + ' · providerOrderId: ' + formatText(item.providerOrderId) + '</div>' +
+              '</div>' +
+              '<div class="actions">' +
+                '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
+              '</div>' +
+            '</div>' +
+            '<details open>' +
+              '<summary class="inline-code">checkout session</summary>' +
+              (session
+                ? '<div class="subtle" style="margin-top:10px;">sessionCode: ' + formatText(session.sessionCode) + ' · status: ' + formatText(session.status) + ' · actionType: ' + formatText(session.actionType) + '</div>' +
+                  '<div class="subtle">expiresAt: ' + formatTime(session.expiresAt) + ' · completedAt: ' + formatTime(session.completedAt) + '</div>' +
+                  '<pre class="json-block">' + formatJson(session.actionPayload) + '</pre>'
+                : '<div class="subtle" style="margin-top:10px;">没有 checkout session</div>') +
+            '</details>' +
+            '<details open>' +
+              '<summary class="inline-code">payment attempts (' + attempts.length + ')</summary>' +
+              (attempts.length
+                ? attempts.map((attempt) => (
+                    '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(216,205,187,0.8);">' +
+                      '<div class="subtle">attemptNo: ' + formatText(attempt.attemptNo) + ' · status: ' + formatText(attempt.status) + ' · actionType: ' + formatText(attempt.actionType) + '</div>' +
+                      '<div class="subtle">providerReference: ' + formatText(attempt.providerReference) + ' · createdAt: ' + formatTime(attempt.createdAt) + '</div>' +
+                      '<details>' +
+                        '<summary class="inline-code">request payload</summary>' +
+                        '<pre class="json-block">' + formatJson(attempt.requestPayload) + '</pre>' +
+                      '</details>' +
+                      '<details>' +
+                        '<summary class="inline-code">response payload</summary>' +
+                        '<pre class="json-block">' + formatJson(attempt.responsePayload) + '</pre>' +
+                      '</details>' +
+                    '</div>'
+                  )).join('')
+                : '<div class="subtle" style="margin-top:10px;">没有 payment attempt</div>') +
+            '</details>' +
+            '<details open>' +
+              '<summary class="inline-code">entitlements (' + entitlements.length + ')</summary>' +
+              (entitlements.length
+                ? entitlements.map((entry) => (
+                    '<div class="subtle" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(216,205,187,0.8);">' +
+                      'feature: ' + formatText(entry.feature?.code) +
+                      ' · status: ' + formatText(entry.status) +
+                      ' · startsAt: ' + formatTime(entry.startsAt) +
+                      ' · expiresAt: ' + formatTime(entry.expiresAt) +
+                    '</div>'
+                  )).join('')
+                : '<div class="subtle" style="margin-top:10px;">这笔订单还没有发放 entitlement</div>') +
+            '</details>' +
+            '<details open>' +
+              '<summary class="inline-code">related events (' + events.length + ')</summary>' +
+              (events.length
+                ? events.map((entry) => (
+                    '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(216,205,187,0.8);">' +
+                      '<div class="subtle">' + formatText(entry.eventName) + ' · ' + formatTime(entry.eventTime) + '</div>' +
+                      '<pre class="json-block">' + formatJson(entry.properties) + '</pre>' +
+                    '</div>'
+                  )).join('')
+                : '<div class="subtle" style="margin-top:10px;">当前没有关联业务事件</div>') +
+            '</details>' +
+            '<details>' +
+              '<summary class="inline-code">order meta</summary>' +
+              '<pre class="json-block">' + formatJson(item.meta) + '</pre>' +
+            '</details>' +
+          '</div>';
       }
 
       function renderInstalls(items) {
@@ -1269,6 +1356,25 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         renderOrders(orders.items || []);
         renderInstalls(installs.items || []);
         renderEntitlements(entitlements.items || []);
+
+        if (state.selectedOrderNo) {
+          try {
+            const detail = await api('/v1/admin/orders/' + encodeURIComponent(state.selectedOrderNo));
+            renderOrderDetail(detail);
+          } catch {
+            state.selectedOrderNo = '';
+            renderOrderDetail(null);
+          }
+        } else {
+          renderOrderDetail(null);
+        }
+      }
+
+      async function loadOrderDetail(orderNo) {
+        const data = await api('/v1/admin/orders/' + encodeURIComponent(orderNo));
+        state.selectedOrderNo = orderNo;
+        renderOrderDetail(data);
+        return data;
       }
 
       async function loadObservability() {
@@ -1296,6 +1402,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           document.getElementById('settings-panel').classList.add('hidden');
           renderManagedApps([]);
           renderOrders([]);
+          renderOrderDetail(null);
           renderInstalls([]);
           renderEntitlements([]);
           renderEvents([]);
@@ -1339,6 +1446,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
           renderManagedApps([]);
           renderOrders([]);
+          renderOrderDetail(null);
           renderInstalls([]);
           renderEntitlements([]);
           renderEvents([]);
@@ -1584,6 +1692,31 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       });
 
       document.getElementById('orders-list').addEventListener('click', async (event) => {
+        const detailTarget = event.target instanceof Element ? event.target.closest('[data-order-detail]') : null;
+        if (detailTarget) {
+          const orderNo = detailTarget.getAttribute('data-order-detail');
+          if (!orderNo) {
+            return;
+          }
+
+          const previousText = detailTarget.textContent;
+          detailTarget.setAttribute('disabled', 'disabled');
+          detailTarget.textContent = '加载中...';
+          setFlash('orders-admin-flash', '', '');
+
+          try {
+            await loadOrderDetail(orderNo);
+            setFlash('orders-admin-flash', '已加载订单详情: ' + orderNo, 'success');
+          } catch (error) {
+            setFlash('orders-admin-flash', error.message, 'error');
+          } finally {
+            detailTarget.removeAttribute('disabled');
+            detailTarget.textContent = previousText || '查看详情';
+          }
+
+          return;
+        }
+
         const target = event.target instanceof Element ? event.target.closest('[data-order-reconcile]') : null;
         if (!target) {
           return;
@@ -1609,6 +1742,44 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
             'success'
           );
           await loadAdminOperations();
+          if (state.selectedOrderNo === orderNo) {
+            await loadOrderDetail(orderNo);
+          }
+        } catch (error) {
+          setFlash('orders-admin-flash', error.message, 'error');
+        } finally {
+          target.removeAttribute('disabled');
+          target.textContent = previousText || '同步订单';
+        }
+      });
+
+      document.getElementById('order-detail').addEventListener('click', async (event) => {
+        const target = event.target instanceof Element ? event.target.closest('[data-order-reconcile]') : null;
+        if (!target) {
+          return;
+        }
+
+        const orderNo = target.getAttribute('data-order-reconcile');
+        if (!orderNo) {
+          return;
+        }
+
+        const previousText = target.textContent;
+        target.setAttribute('disabled', 'disabled');
+        target.textContent = '同步中...';
+        setFlash('orders-admin-flash', '', '');
+
+        try {
+          const data = await api('/v1/admin/orders/' + encodeURIComponent(orderNo) + '/reconcile', {
+            method: 'POST'
+          });
+          setFlash(
+            'orders-admin-flash',
+            '订单已同步: ' + orderNo + ' -> ' + data.reconciliation.status + ' (' + data.reconciliation.reason + ')',
+            'success'
+          );
+          await loadAdminOperations();
+          await loadOrderDetail(orderNo);
         } catch (error) {
           setFlash('orders-admin-flash', error.message, 'error');
         } finally {
