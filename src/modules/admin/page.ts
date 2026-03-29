@@ -42,6 +42,14 @@ const adminSectionMeta: Record<
 
 export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
   const section = adminSectionMeta[activeSection] ?? adminSectionMeta.dashboard;
+  const sectionPathMap: Record<AdminSectionKey, string> = {
+    dashboard: '/admin',
+    payments: '/admin/payments',
+    apps: '/admin/apps',
+    licenses: '/admin/licenses',
+    operations: '/admin/operations',
+    observability: '/admin/observability'
+  };
   return `<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -99,22 +107,22 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         gap: 0;
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 28px;
-        box-shadow: var(--shadow);
+        border-radius: 18px;
+        box-shadow: var(--shadow-soft);
         overflow: hidden;
       }
 
       .sidebar {
         position: sticky;
         top: 20px;
-        padding: 18px;
+        padding: 18px 14px 16px;
         max-height: calc(100vh - 40px);
         overflow: auto;
-        background: var(--panel);
+        background: #f6f9fd;
         color: var(--ink);
         border: 1px solid var(--line);
-        border-radius: 28px;
-        box-shadow: var(--shadow-soft);
+        border-radius: 18px;
+        box-shadow: none;
       }
 
       .sidebar .muted,
@@ -125,8 +133,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .brand-lockup {
         display: grid;
-        gap: 14px;
-        margin-bottom: 18px;
+        gap: 12px;
+        margin-bottom: 14px;
       }
 
       .brand-row {
@@ -136,23 +144,23 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .brand-mark {
-        width: 48px;
-        height: 48px;
+        width: 40px;
+        height: 40px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 14px;
+        border-radius: 12px;
         background: linear-gradient(135deg, var(--accent), #4f8cff);
         color: white;
-        font-size: 18px;
+        font-size: 15px;
         font-weight: 800;
         letter-spacing: -0.04em;
-        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2);
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
       }
 
       .sidebar-title {
         margin: 0;
-        font-size: 20px;
+        font-size: 18px;
         line-height: 1.1;
         letter-spacing: -0.04em;
         color: var(--ink);
@@ -160,8 +168,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .sidebar-copy {
         margin: 0;
-        font-size: 13px;
-        line-height: 1.6;
+        font-size: 12px;
+        line-height: 1.55;
       }
 
       .sidebar-label {
@@ -188,9 +196,9 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .sidebar-block {
         margin-top: 18px;
-        padding: 14px;
-        border-radius: 18px;
-        background: var(--panel-soft);
+        padding: 12px;
+        border-radius: 14px;
+        background: #ffffff;
         border: 1px solid var(--line);
       }
 
@@ -199,73 +207,93 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 22px 28px;
+        padding: 14px 20px;
         border-bottom: 1px solid var(--line);
         background: var(--panel-strong);
       }
 
-      .workspace-bar p {
-        margin: 4px 0 0;
+      .search-shell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        width: min(420px, 100%);
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #f8fafc;
       }
 
-      .workspace-tag {
+      .search-icon {
+        width: 14px;
+        height: 14px;
+        border: 2px solid #94a3b8;
+        border-radius: 50%;
+        position: relative;
+        flex: 0 0 auto;
+      }
+
+      .search-icon::after {
+        content: "";
+        position: absolute;
+        right: -5px;
+        bottom: -4px;
+        width: 6px;
+        height: 2px;
+        border-radius: 999px;
+        background: #94a3b8;
+        transform: rotate(45deg);
+        transform-origin: center;
+      }
+
+      .search-shell .search-input {
+        flex: 1 1 auto;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: #94a3b8;
+        font-size: 14px;
+        box-shadow: none;
+      }
+
+      .search-shell .search-input:focus {
+        box-shadow: none;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .topbar-link {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: var(--accent-soft);
-        color: var(--accent);
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .workspace-title {
-        margin-top: 10px;
-        font-size: 34px;
-        font-weight: 800;
-        letter-spacing: -0.04em;
-      }
-
-      .workspace-subtitle {
-        max-width: 720px;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
       }
 
       .workspace-tools {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         align-items: center;
-      }
-
-      .chip-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: flex-end;
-      }
-
-      .command-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: #f8fafc;
-        border: 1px solid var(--line);
-        color: var(--ink);
-        font-size: 12px;
-        font-weight: 700;
       }
 
       .workspace-user {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 8px 10px 8px 8px;
-        border-radius: 16px;
-        background: #f8fafc;
+        gap: 10px;
+        padding: 6px 10px 6px 6px;
+        border-radius: 12px;
+        background: #ffffff;
         border: 1px solid var(--line);
       }
 
@@ -276,7 +304,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        background: linear-gradient(135deg, #e0e7ff, #eff6ff);
         color: var(--accent);
         font-size: 12px;
         font-weight: 800;
@@ -309,23 +337,24 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .hero {
-        grid-template-columns: minmax(0, 1.3fr) 320px;
+        grid-template-columns: minmax(0, 1fr) 280px;
         margin: 0;
-        align-items: stretch;
-        padding: 24px 28px 20px;
+        align-items: center;
+        padding: 20px;
         border-bottom: 1px solid var(--line);
+        background: #f6f9fd;
       }
 
       .layout {
-        grid-template-columns: 320px minmax(0, 1fr);
+        grid-template-columns: 280px minmax(0, 1fr);
         align-items: start;
-        padding: 20px 28px 28px;
+        padding: 20px;
       }
 
       .panel {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: var(--radius);
+        border-radius: 14px;
         box-shadow: none;
         backdrop-filter: none;
         position: relative;
@@ -333,34 +362,37 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       .hero-main {
-        padding: 24px;
-        background: var(--panel-soft);
+        display: grid;
+        gap: 12px;
+        padding: 0;
+        background: transparent;
       }
 
       .hero-side,
       .card {
-        padding: 20px;
+        padding: 18px;
       }
 
       .eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 5px 10px;
+        padding: 4px 8px;
         border-radius: 999px;
-        background: var(--accent-soft);
-        color: var(--accent);
-        font-size: 11px;
+        background: #ffffff;
+        color: #64748b;
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
+        border: 1px solid var(--line);
       }
 
       h1 {
-        margin: 16px 0 12px;
+        margin: 10px 0 8px;
         font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
-        font-size: clamp(32px, 3vw, 42px);
-        line-height: 1.05;
+        font-size: 28px;
+        line-height: 1.08;
         letter-spacing: -0.04em;
       }
 
@@ -380,88 +412,86 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .lead {
         margin: 0;
         max-width: 760px;
-        font-size: 15px;
+        font-size: 14px;
       }
 
-      .hero-actions,
-      .hero-ribbon {
-        display: grid;
-        gap: 12px;
-      }
-
-      .hero-actions {
-        margin-top: 24px;
-        grid-template-columns: repeat(2, minmax(0, max-content));
-      }
-
-      .hero-link {
-        display: inline-flex;
+      .breadcrumb-row {
+        display: flex;
         align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        padding: 0 16px;
-        border-radius: 12px;
-        background: #ffffff;
-        border: 1px solid var(--line);
-        color: var(--ink);
-        text-decoration: none;
+        gap: 8px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .breadcrumb-row strong {
+        color: var(--accent);
         font-weight: 700;
       }
 
-      .hero-link.primary-link {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: white;
-        border-color: transparent;
+      .hero-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 4px;
       }
 
-      .hero-ribbon {
-        margin-top: 22px;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+      .hero-side {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        justify-items: end;
+        padding: 0;
       }
 
-      .ribbon-item {
-        padding: 16px;
-        border-radius: 16px;
+      .hero-spotlight {
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 12px;
         background: #ffffff;
         border: 1px solid var(--line);
-        box-shadow: none;
       }
 
-      .ribbon-item label,
+      .hero-spotlight strong {
+        display: block;
+        font-size: 13px;
+        letter-spacing: -0.01em;
+      }
+
       .spotlight-label {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: #94a3b8;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
-      .ribbon-item strong {
+      .hero-spotlight span {
         display: block;
-        font-size: 17px;
-        letter-spacing: -0.03em;
+        margin-top: 6px;
+        color: var(--muted);
+        line-height: 1.5;
       }
 
-      .ribbon-item span {
-        display: block;
-        margin-top: 8px;
-        color: var(--muted);
-        line-height: 1.55;
+      .stack {
+        display: grid;
+        gap: 16px;
       }
 
       .status-grid {
-        grid-template-columns: 1fr;
-        margin-top: 16px;
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
       }
 
       .status-card {
         padding: 12px 14px;
-        border-radius: 14px;
+        border-radius: 12px;
         background: #ffffff;
         border: 1px solid var(--line);
-        box-shadow: none;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -478,11 +508,6 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: block;
         font-size: 13px;
         color: var(--ink);
-      }
-
-      .stack {
-        display: grid;
-        gap: 16px;
       }
 
       .metric-grid {
@@ -577,6 +602,31 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         box-shadow: none;
       }
 
+      .record-list {
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .record-list .entity-card {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        padding: 16px 18px;
+      }
+
+      .record-list .entity-card:last-child {
+        border-bottom: 0;
+      }
+
+      .record-list > .locked {
+        border: 0;
+        border-radius: 0;
+        background: #ffffff;
+      }
+
       .entity-head {
         display: flex;
         justify-content: space-between;
@@ -646,6 +696,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         position: static;
       }
 
+      .nav-group {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      .nav-group-label {
+        padding: 0 12px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
       .nav-link {
         display: flex;
         flex-direction: column;
@@ -691,35 +756,6 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         font-size: 12px;
         font-weight: 500;
         line-height: 1.45;
-      }
-
-      .hero-side {
-        display: grid;
-        gap: 12px;
-        align-content: start;
-        background: transparent;
-        padding: 0;
-      }
-
-      .hero-spotlight {
-        padding: 18px;
-        border-radius: 16px;
-        background: #ffffff;
-        border: 1px solid var(--line);
-        box-shadow: none;
-      }
-
-      .hero-spotlight strong {
-        display: block;
-        font-size: 16px;
-        letter-spacing: -0.03em;
-      }
-
-      .hero-spotlight span {
-        display: block;
-        margin-top: 8px;
-        color: var(--muted);
-        line-height: 1.6;
       }
 
       .card-head {
@@ -952,7 +988,6 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         .layout,
         .metric-grid,
         .quick-grid,
-        .hero-ribbon,
         .summary-strip,
         .auth-grid,
         .field-grid,
@@ -970,10 +1005,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           align-items: flex-start;
         }
 
-        .chip-row,
         .hero-actions {
           justify-content: flex-start;
-          grid-template-columns: 1fr;
         }
 
         .workspace-tools {
@@ -999,12 +1032,21 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         </div>
 
         <nav class="admin-nav">
-          <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></a>
-          <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></a>
-          <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></a>
-          <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></a>
-          <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></a>
-          <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></a>
+          <div class="nav-group">
+            <div class="nav-group-label">Dashboards</div>
+            <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Resources</div>
+            <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></a>
+            <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></a>
+            <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></a>
+          </div>
+          <div class="nav-group">
+            <div class="nav-group-label">Operations</div>
+            <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></a>
+            <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></a>
+          </div>
         </nav>
 
         <div class="sidebar-block">
@@ -1032,26 +1074,23 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         </div>
 
         <div class="sidebar-note">
-          <label class="sidebar-label">使用说明</label>
-          <p>管理入口按业务域拆分，不再全部挤在支付页。</p>
-          <p>密钥保存后不回显，输入框变空属于正常表现。</p>
-          <p>旧地址 <a class="ghost-link" href="/admin/payments">/admin/payments</a> 继续兼容。</p>
-          <p><a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a></p>
+          <label class="sidebar-label">Quick Links</label>
+          <p><a class="ghost-link" href="/docs" target="_blank" rel="noreferrer">API 文档</a></p>
+          <p><a class="ghost-link" href="/admin/payments">支付配置</a></p>
+          <p>密钥保存后不回显，刷新为空属于正常表现。</p>
         </div>
       </aside>
 
       <main class="workspace">
         <section class="workspace-bar">
-          <div>
-            <span class="workspace-tag">Self-hosted</span>
-            <div class="workspace-title">独立核心中台后台</div>
-            <p class="muted workspace-subtitle">单机 Docker 部署，统一支付、授权、应用接入与运营链路。业务应用只做前端交互，不再重复接后端能力。</p>
+          <div class="search-shell">
+            <span class="search-icon"></span>
+            <input class="search-input" type="text" placeholder="Press / to search" readonly />
           </div>
           <div class="workspace-tools">
-            <div class="chip-row">
-              <span class="command-chip">Docker Deploy</span>
-              <span class="command-chip">GitHub Actions</span>
-              <span class="command-chip">ACR Pull</span>
+            <div class="topbar-actions">
+              <a class="topbar-link" href="/">Status</a>
+              <a class="topbar-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
             </div>
             <div class="workspace-user">
               <div id="current-user-avatar" class="user-avatar">FD</div>
@@ -1064,52 +1103,33 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         </section>
 
         <section class="hero">
-          <div class="hero-main panel">
-            <span class="eyebrow">${section.eyebrow}</span>
+          <div class="hero-main">
+            <div class="breadcrumb-row">
+              <span>Resources</span>
+              <span>/</span>
+              <strong>${section.title}</strong>
+            </div>
             <h1>${section.title}</h1>
             <p class="lead">
               ${section.lead}
             </p>
 
             <div class="hero-actions">
-              <a class="hero-link primary-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a>
-              <a class="hero-link" href="/admin/payments">打开支付配置</a>
-            </div>
-
-            <div class="hero-ribbon">
-              <div class="ribbon-item">
-                <label>部署</label>
-                <strong>单机 Docker</strong>
-                <span>贴合当前服务器资源，保持可维护和可迁移。</span>
-              </div>
-              <div class="ribbon-item">
-                <label>定位</label>
-                <strong>统一后端能力</strong>
-                <span>扩展、Web 应用都统一走中台 API，不再分散接 SDK。</span>
-              </div>
-              <div class="ribbon-item">
-                <label>目标</label>
-                <strong>生产级 MVP</strong>
-                <span>从第一天把工程流程、安全和运营能力一起建好。</span>
-              </div>
+              <a class="topbar-link" href="${sectionPathMap[activeSection]}">当前资源</a>
+              <a class="topbar-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a>
             </div>
           </div>
 
           <aside class="hero-side">
             <div class="hero-spotlight">
-              <span class="spotlight-label">Payments</span>
-              <strong>支付配置</strong>
-              <span>微信支付、支付宝配置通过后台表单直接维护，不再要求长期写死在服务器环境变量。</span>
+              <span class="spotlight-label">Deploy</span>
+              <strong>Docker + GitHub Actions</strong>
+              <span>镜像构建在 GitHub，服务器只拉取并启动。</span>
             </div>
             <div class="hero-spotlight">
-              <span class="spotlight-label">Apps</span>
-              <strong>应用接入</strong>
-              <span>Chrome 扩展、Next.js、React 应用统一走 app secret / app token，不再重复接 SDK。</span>
-            </div>
-            <div class="hero-spotlight">
-              <span class="spotlight-label">Operations</span>
-              <strong>运营排障</strong>
-              <span>订单详情、支付尝试、授权结果、事件回溯都在后台里直接串起来。</span>
+              <span class="spotlight-label">Route</span>
+              <strong>${sectionPathMap[activeSection]}</strong>
+              <span>当前模块入口，按资源域拆分维护。</span>
             </div>
           </aside>
         </section>
@@ -1390,7 +1410,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
               </form>
 
               <div id="app-secret-result" class="locked hidden" style="margin-top:18px;"></div>
-              <div id="app-list" class="stack" style="margin-top:18px;"></div>
+              <div id="app-list" class="stack record-list" style="margin-top:18px;"></div>
             </div>
 
             <div class="panel card" data-admin-section="licenses">
@@ -1464,7 +1484,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
               </div>
               <div id="orders-summary" class="toolbar-note"></div>
               <div id="order-detail" class="stack" style="margin-bottom:18px;"></div>
-              <div id="orders-list" class="stack"></div>
+              <div id="orders-list" class="stack record-list"></div>
             </div>
 
             <div class="panel card" data-admin-section="operations">
@@ -1474,7 +1494,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                   <p class="muted">查看 app 安装实例、绑定用户、最近活跃时间。</p>
                 </div>
               </div>
-              <div id="installs-list" class="stack"></div>
+              <div id="installs-list" class="stack record-list"></div>
             </div>
 
             <div class="panel card" data-admin-section="licenses">
@@ -1485,7 +1505,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                 </div>
               </div>
               <div id="entitlements-admin-flash" class="flash"></div>
-              <div id="entitlements-list" class="stack"></div>
+              <div id="entitlements-list" class="stack record-list"></div>
             </div>
 
             <div class="panel card" data-admin-section="observability">
@@ -1495,7 +1515,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                   <p class="muted">中台自身记录的事件流，便于排查登录、安装、支付、授权链路。</p>
                 </div>
               </div>
-              <div id="events-list" class="stack"></div>
+              <div id="events-list" class="stack record-list"></div>
             </div>
 
             <div class="panel card" data-admin-section="observability">
@@ -1505,7 +1525,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
                   <p class="muted">查看微信支付和支付宝通知入库、处理状态与原始负载。</p>
                 </div>
               </div>
-              <div id="webhooks-list" class="stack"></div>
+              <div id="webhooks-list" class="stack record-list"></div>
             </div>
           </div>
         </section>
