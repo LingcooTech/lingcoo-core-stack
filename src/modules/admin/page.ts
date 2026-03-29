@@ -86,42 +86,44 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         margin: 0;
         font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
         color: var(--ink);
-        background:
-          radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 22%),
-          linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+        background: #edf2f7;
         min-height: 100vh;
       }
 
       .shell {
-        width: min(1480px, calc(100vw - 32px));
-        margin: 0 auto;
-        padding: 20px 0 40px;
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
         display: grid;
-        grid-template-columns: 252px minmax(0, 1fr);
-        gap: 18px;
-        align-items: start;
+        grid-template-columns: 268px minmax(0, 1fr);
+        gap: 0;
+        align-items: stretch;
+      }
+
+      .shell.sidebar-collapsed {
+        grid-template-columns: 84px minmax(0, 1fr);
       }
 
       .workspace {
         display: grid;
         gap: 0;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        box-shadow: var(--shadow-soft);
+        min-height: 100vh;
+        background: #ffffff;
+        border: 0;
         overflow: hidden;
       }
 
       .sidebar {
         position: sticky;
-        top: 20px;
+        top: 0;
+        height: 100vh;
         padding: 18px 14px 16px;
-        max-height: calc(100vh - 40px);
         overflow: auto;
-        background: #f6f9fd;
+        background: #f3f5f8;
         color: var(--ink);
-        border: 1px solid var(--line);
-        border-radius: 18px;
+        border: 0;
+        border-right: 1px solid var(--line);
         box-shadow: none;
       }
 
@@ -134,7 +136,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       .brand-lockup {
         display: grid;
         gap: 12px;
-        margin-bottom: 14px;
+        margin-bottom: 18px;
       }
 
       .brand-row {
@@ -207,9 +209,30 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 14px 20px;
+        min-height: 64px;
+        padding: 12px 20px;
         border-bottom: 1px solid var(--line);
         background: var(--panel-strong);
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .sidebar-toggle {
+        min-width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1;
       }
 
       .search-shell {
@@ -217,7 +240,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         align-items: center;
         gap: 10px;
         min-height: 42px;
-        width: min(420px, 100%);
+        width: min(460px, 100%);
         padding: 0 14px;
         border-radius: 999px;
         border: 1px solid var(--line);
@@ -285,6 +308,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         display: flex;
         gap: 10px;
         align-items: center;
+        justify-content: flex-end;
       }
 
       .workspace-user {
@@ -340,15 +364,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         grid-template-columns: minmax(0, 1fr) 280px;
         margin: 0;
         align-items: center;
-        padding: 20px;
+        padding: 20px 24px 18px;
         border-bottom: 1px solid var(--line);
-        background: #f6f9fd;
+        background: #ffffff;
       }
 
       .layout {
         grid-template-columns: 280px minmax(0, 1fr);
         align-items: start;
-        padding: 20px;
+        padding: 20px 24px 24px;
+        background: #ffffff;
       }
 
       .panel {
@@ -713,7 +738,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       .nav-link {
         display: flex;
-        flex-direction: column;
+        gap: 10px;
         align-items: flex-start;
         justify-content: flex-start;
         min-height: 56px;
@@ -728,9 +753,34 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         position: relative;
       }
 
+      .nav-icon {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid var(--line);
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+
+      .nav-copy {
+        min-width: 0;
+      }
+
       .nav-link.active {
         background: var(--accent-soft);
         border-color: #dbeafe;
+        color: var(--accent);
+      }
+
+      .nav-link.active .nav-icon {
+        background: #dbeafe;
+        border-color: #bfdbfe;
         color: var(--accent);
       }
 
@@ -982,6 +1032,43 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         gap: 16px;
       }
 
+      .shell.sidebar-collapsed .sidebar {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .shell.sidebar-collapsed .sidebar-title,
+      .shell.sidebar-collapsed .sidebar-copy,
+      .shell.sidebar-collapsed .nav-note,
+      .shell.sidebar-collapsed .nav-group-label,
+      .shell.sidebar-collapsed .sidebar-block,
+      .shell.sidebar-collapsed .sidebar-note {
+        display: none;
+      }
+
+      .shell.sidebar-collapsed .brand-row {
+        justify-content: center;
+      }
+
+      .shell.sidebar-collapsed .brand-lockup {
+        justify-items: center;
+      }
+
+      .shell.sidebar-collapsed .nav-link {
+        min-height: 48px;
+        padding: 10px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .shell.sidebar-collapsed .nav-title {
+        display: none;
+      }
+
+      .shell.sidebar-collapsed .nav-group {
+        justify-items: center;
+      }
+
       @media (max-width: 980px) {
         .shell,
         .hero,
@@ -997,12 +1084,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
         .sidebar {
           position: static;
-          max-height: none;
+          height: auto;
         }
 
         .workspace-bar {
           flex-direction: column;
           align-items: flex-start;
+        }
+
+        .topbar-left {
+          width: 100%;
         }
 
         .hero-actions {
@@ -1018,8 +1109,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
     </style>
   </head>
   <body>
-    <div class="shell">
-      <aside class="sidebar panel">
+    <div id="admin-shell" class="shell">
+      <aside class="sidebar">
         <div class="brand-lockup">
           <div class="brand-row">
             <div class="brand-mark">FD</div>
@@ -1034,18 +1125,18 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         <nav class="admin-nav">
           <div class="nav-group">
             <div class="nav-group-label">Dashboards</div>
-            <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></a>
+            <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-icon">总</span><span class="nav-copy"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></span></a>
           </div>
           <div class="nav-group">
             <div class="nav-group-label">Resources</div>
-            <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></a>
-            <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></a>
-            <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></a>
+            <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-icon">支</span><span class="nav-copy"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></span></a>
+            <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-icon">应</span><span class="nav-copy"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></span></a>
+            <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-icon">授</span><span class="nav-copy"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></span></a>
           </div>
           <div class="nav-group">
             <div class="nav-group-label">Operations</div>
-            <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></a>
-            <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></a>
+            <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-icon">营</span><span class="nav-copy"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></span></a>
+            <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-icon">观</span><span class="nav-copy"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></span></a>
           </div>
         </nav>
 
@@ -1083,9 +1174,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       <main class="workspace">
         <section class="workspace-bar">
-          <div class="search-shell">
-            <span class="search-icon"></span>
-            <input class="search-input" type="text" placeholder="Press / to search" readonly />
+          <div class="topbar-left">
+            <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="切换侧边栏">☰</button>
+            <div class="search-shell">
+              <span class="search-icon"></span>
+              <input class="search-input" type="text" placeholder="Press / to search" readonly />
+            </div>
           </div>
           <div class="workspace-tools">
             <div class="topbar-actions">
@@ -1544,7 +1638,8 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         events: [],
         webhooks: [],
         activeSection: '${activeSection}',
-        selectedOrderNo: ''
+        selectedOrderNo: '',
+        sidebarCollapsed: localStorage.getItem('fd_core_admin_sidebar_collapsed') === '1'
       };
 
       function setFlash(id, message, kind) {
@@ -1606,6 +1701,14 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         const el = document.getElementById(id);
         el.textContent = text;
         el.className = 'badge ' + (ok ? 'ok' : 'warn');
+      }
+
+      function applySidebarState() {
+        const shell = document.getElementById('admin-shell');
+        const toggle = document.getElementById('sidebar-toggle');
+        shell.classList.toggle('sidebar-collapsed', Boolean(state.sidebarCollapsed));
+        toggle.textContent = state.sidebarCollapsed ? '>' : '<';
+        toggle.setAttribute('aria-label', state.sidebarCollapsed ? '展开侧边栏' : '收起侧边栏');
       }
 
       function applyActiveSection(section) {
@@ -2344,9 +2447,16 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       async function refresh() {
         applyActiveSection(state.activeSection);
+        applySidebarState();
         await loadBootstrapStatus();
         await loadSession();
       }
+
+      document.getElementById('sidebar-toggle').addEventListener('click', () => {
+        state.sidebarCollapsed = !state.sidebarCollapsed;
+        localStorage.setItem('fd_core_admin_sidebar_collapsed', state.sidebarCollapsed ? '1' : '0');
+        applySidebarState();
+      });
 
       document.getElementById('login-form').addEventListener('submit', async (event) => {
         event.preventDefault();
