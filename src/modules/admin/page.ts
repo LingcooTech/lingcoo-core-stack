@@ -1,55 +1,19 @@
-export type AdminSectionKey = 'dashboard' | 'payments' | 'apps' | 'licenses' | 'operations' | 'observability';
+import {
+  adminCommandItems,
+  adminSectionMeta,
+  renderAdminHeroActions,
+  renderAdminNavigation,
+  renderAdminSectionContext,
+  renderAdminTopbarLinks,
+  type AdminSectionKey
+} from './ui-foundation';
 
-const adminSectionMeta: Record<
-  AdminSectionKey,
-  {
-    eyebrow: string;
-    title: string;
-    lead: string;
-  }
-> = {
-  dashboard: {
-    eyebrow: 'fd-core-stack / admin console',
-    title: '管理后台',
-    lead: '中台后台入口。支付、应用接入、授权、运营和可观测能力都从这里分域进入，不再继续堆在一个 payment 页面里。'
-  },
-  payments: {
-    eyebrow: 'fd-core-stack / payments',
-    title: '支付配置',
-    lead: '只处理支付相关能力。微信支付、支付宝配置和支付侧状态在这里维护，不再承接其他后台模块。'
-  },
-  apps: {
-    eyebrow: 'fd-core-stack / apps',
-    title: '应用接入',
-    lead: '维护中台接入应用、产品绑定和 App Secret。Chrome 扩展、Next.js、React 应用统一从这里拿接入能力。'
-  },
-  licenses: {
-    eyebrow: 'fd-core-stack / licenses',
-    title: '授权管理',
-    lead: '查看和处理 entitlement。人工发放、撤销、核对授权链路都放在这里，避免和支付配置混在一起。'
-  },
-  operations: {
-    eyebrow: 'fd-core-stack / operations',
-    title: '运营台',
-    lead: '订单和安装实例归运营域处理。这里负责补单、查单、安装追踪，不和配置页混排。'
-  },
-  observability: {
-    eyebrow: 'fd-core-stack / observability',
-    title: '事件与观测',
-    lead: '查看事件流与支付回调，定位登录、安装、支付、授权等关键链路问题。'
-  }
-};
+export type { AdminSectionKey } from './ui-foundation';
 
 export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
   const section = adminSectionMeta[activeSection] ?? adminSectionMeta.dashboard;
-  const sectionPathMap: Record<AdminSectionKey, string> = {
-    dashboard: '/admin',
-    payments: '/admin/payments',
-    apps: '/admin/apps',
-    licenses: '/admin/licenses',
-    operations: '/admin/operations',
-    observability: '/admin/observability'
-  };
+  const commandItemsJson = JSON.stringify(adminCommandItems).replace(/</g, '\\u003c');
+  const pageDataScopesJson = JSON.stringify(section.pageDataScopes);
   return `<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
@@ -247,6 +211,17 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         background: #f8fafc;
       }
 
+      .search-shell.command-trigger {
+        padding: 0 14px;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .search-shell.command-trigger:hover {
+        transform: none;
+      }
+
       .search-icon {
         width: 14px;
         height: 14px;
@@ -283,6 +258,46 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         box-shadow: none;
       }
 
+      .search-copy {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        color: #94a3b8;
+        font-size: 14px;
+      }
+
+      .search-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .search-hint kbd,
+      .command-kbd {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        min-height: 22px;
+        padding: 0 6px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        color: #64748b;
+        font-family: "SFMono-Regular", "IBM Plex Mono", monospace;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+
       .topbar-actions {
         display: flex;
         align-items: center;
@@ -302,6 +317,53 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         text-decoration: none;
         font-size: 12px;
         font-weight: 700;
+      }
+
+      .topbar-link-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-color: transparent;
+        color: #ffffff;
+      }
+
+      .topbar-link-icon,
+      .topbar-link-primary {
+        gap: 8px;
+      }
+
+      .topbar-link-glyph {
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .topbar-link-primary .topbar-link-glyph {
+        background: rgba(255, 255, 255, 0.16);
+        color: #ffffff;
+      }
+
+      .topbar-shortcut {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        min-height: 22px;
+        padding: 0 7px;
+        border-radius: 8px;
+        background: rgba(148, 163, 184, 0.14);
+        color: inherit;
+        font-family: "SFMono-Regular", "IBM Plex Mono", monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0;
+        opacity: 0.82;
       }
 
       .workspace-tools {
@@ -1069,6 +1131,561 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         justify-items: center;
       }
 
+      :root {
+        --bg: #f4f7fb;
+        --bg-2: #eef2f8;
+        --panel: #ffffff;
+        --panel-strong: #ffffff;
+        --panel-soft: #f8fafc;
+        --ink: #213047;
+        --muted: #6b7a90;
+        --line: #e4eaf3;
+        --line-strong: #d7e0ec;
+        --accent: #2582f4;
+        --accent-2: #0f6bdc;
+        --accent-soft: #edf5ff;
+        --danger: #e25454;
+        --success: #12805c;
+        --warning: #c67a20;
+        --shadow: 0 16px 40px rgba(31, 45, 61, 0.08);
+        --shadow-soft: 0 8px 18px rgba(31, 45, 61, 0.05);
+        --radius: 18px;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .shell {
+        grid-template-columns: 250px minmax(0, 1fr);
+        background: var(--bg);
+      }
+
+      .shell.sidebar-collapsed {
+        grid-template-columns: 82px minmax(0, 1fr);
+      }
+
+      .sidebar {
+        padding: 18px 14px 18px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.88)),
+          var(--bg-2);
+        border-right: 1px solid var(--line);
+      }
+
+      .workspace {
+        background: var(--bg);
+      }
+
+      .workspace-bar {
+        min-height: 58px;
+        padding: 10px 22px;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(14px);
+      }
+
+      .search-shell,
+      .topbar-link,
+      .workspace-user,
+      .sidebar-block,
+      .status-card,
+      .hero-spotlight {
+        box-shadow: var(--shadow-soft);
+      }
+
+      .sidebar-toggle,
+      .topbar-link,
+      .workspace-user,
+      .search-shell {
+        border-color: var(--line);
+      }
+
+      .search-shell {
+        min-height: 40px;
+        width: min(430px, 100%);
+        background: #f8fafc;
+      }
+
+      .topbar-link {
+        min-height: 36px;
+        padding: 0 13px;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #516179;
+      }
+
+      .workspace-user {
+        border-radius: 14px;
+        background: #ffffff;
+      }
+
+      .hero {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 18px;
+        padding: 22px 24px 16px;
+        background: transparent;
+        border-bottom: 0;
+      }
+
+      .hero-main {
+        gap: 10px;
+        padding: 0;
+      }
+
+      .breadcrumb-row {
+        font-size: 12px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin: 4px 0 4px;
+        font-size: 34px;
+        line-height: 1.02;
+      }
+
+      .lead {
+        max-width: 720px;
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .hero-actions {
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .hero-side {
+        gap: 12px;
+      }
+
+      .hero-spotlight {
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+      }
+
+      .layout {
+        grid-template-columns: 312px minmax(0, 1fr);
+        gap: 18px;
+        padding: 0 24px 24px;
+        background: transparent;
+      }
+
+      .layout > .stack {
+        position: sticky;
+        top: 80px;
+        align-self: start;
+      }
+
+      .panel {
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .card,
+      .hero-side,
+      .hero-main {
+        min-width: 0;
+      }
+
+      .hero-side,
+      .card {
+        padding: 18px;
+      }
+
+      .card-head {
+        margin-bottom: 16px;
+      }
+
+      .card-head h2 {
+        font-size: 19px;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric-card,
+      .quick-card,
+      .summary-tile,
+      .entity-card {
+        border-radius: 16px;
+        border-color: var(--line);
+        box-shadow: none;
+      }
+
+      .metric-card {
+        padding: 16px;
+      }
+
+      .metric-card strong {
+        font-size: 22px;
+      }
+
+      .quick-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .quick-card {
+        padding: 16px;
+        background: linear-gradient(180deg, #ffffff, #fbfdff);
+      }
+
+      .record-list {
+        border: 0;
+        background: transparent;
+      }
+
+      .record-list .entity-card {
+        margin-bottom: 12px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+
+      .record-list .entity-card:last-child {
+        margin-bottom: 0;
+      }
+
+      .record-list > .locked {
+        border-radius: 16px;
+      }
+
+      .badge,
+      .meta-chip {
+        font-weight: 800;
+      }
+
+      button {
+        border-radius: 12px;
+      }
+
+      .secondary {
+        background: #f8fafc;
+      }
+
+      .toolbar {
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .toolbar .field {
+        margin: 0;
+      }
+
+      .table-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .table-scroll {
+        width: 100%;
+        overflow: auto;
+      }
+
+      .data-table {
+        width: 100%;
+        min-width: 720px;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+
+      .data-table thead th {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        background: #f8fafc;
+        color: #7c8ba1;
+        font-size: 11px;
+        font-weight: 800;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+      }
+
+      .data-table thead th.align-right,
+      .data-table tbody td.align-right {
+        text-align: right;
+      }
+
+      .data-table tbody td {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        background: #ffffff;
+      }
+
+      .data-table tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .data-table tbody tr:hover td {
+        background: #fbfdff;
+      }
+
+      .cell-stack {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .cell-primary {
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.4;
+      }
+
+      .cell-secondary,
+      .cell-tertiary {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .cell-tertiary {
+        color: #90a0b7;
+      }
+
+      .cell-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .cell-actions button {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .pill.neutral {
+        background: #f8fafc;
+        border-color: var(--line);
+        color: #69798f;
+      }
+
+      .pill.ok {
+        background: #edf9f4;
+        border-color: #ccebdd;
+        color: var(--success);
+      }
+
+      .pill.warn {
+        background: #fff6e8;
+        border-color: #f4dbb3;
+        color: var(--warning);
+      }
+
+      .pill.danger {
+        background: #fff1f1;
+        border-color: #f3caca;
+        color: var(--danger);
+      }
+
+      .inline-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .table-sublist {
+        display: grid;
+        gap: 10px;
+      }
+
+      .table-subitem {
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .table-subitem:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .panel-note {
+        margin-bottom: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .command-palette {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+      }
+
+      .command-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.34);
+        backdrop-filter: blur(10px);
+      }
+
+      .command-dialog {
+        position: relative;
+        width: min(760px, calc(100vw - 32px));
+        margin: 11vh auto 0;
+        border-radius: 22px;
+        border: 1px solid rgba(226, 234, 243, 0.96);
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+        overflow: hidden;
+      }
+
+      .command-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .command-header .search-icon {
+        flex: 0 0 auto;
+      }
+
+      .command-input {
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        font-size: 15px;
+        box-shadow: none;
+      }
+
+      .command-input:focus {
+        box-shadow: none;
+      }
+
+      .command-results {
+        max-height: min(52vh, 520px);
+        overflow: auto;
+        padding: 10px;
+      }
+
+      .command-group {
+        margin: 8px 10px 6px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .command-item {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .command-item:hover,
+      .command-item.active {
+        transform: none;
+        background: #edf5ff;
+      }
+
+      .command-item-icon {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        color: #516179;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      .command-item-title {
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .command-item-note {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .command-item-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .command-empty {
+        padding: 28px 18px 34px;
+        color: var(--muted);
+        text-align: center;
+        font-size: 13px;
+      }
+
+      .command-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--line);
+        background: #f8fafc;
+        color: #7c8ba1;
+        font-size: 12px;
+      }
+
+      .command-footer-copy {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
       @media (max-width: 980px) {
         .shell,
         .hero,
@@ -1105,6 +1722,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           flex-direction: column;
           align-items: stretch;
         }
+
+        .command-dialog {
+          width: min(760px, calc(100vw - 20px));
+          margin-top: 6vh;
+        }
+
+        .layout > .stack {
+          position: static;
+        }
       }
     </style>
   </head>
@@ -1122,23 +1748,7 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           <p class="sidebar-copy">统一承接支付、授权、应用接入和运营链路的独立核心中台。</p>
         </div>
 
-        <nav class="admin-nav">
-          <div class="nav-group">
-            <div class="nav-group-label">Dashboards</div>
-            <a class="nav-link" data-nav-section="dashboard" href="/admin"><span class="nav-icon">总</span><span class="nav-copy"><span class="nav-title">总览</span><span class="nav-note">系统状态与关键入口</span></span></a>
-          </div>
-          <div class="nav-group">
-            <div class="nav-group-label">Resources</div>
-            <a class="nav-link" data-nav-section="payments" href="/admin/payments"><span class="nav-icon">支</span><span class="nav-copy"><span class="nav-title">支付</span><span class="nav-note">微信支付、支付宝配置</span></span></a>
-            <a class="nav-link" data-nav-section="apps" href="/admin/apps"><span class="nav-icon">应</span><span class="nav-copy"><span class="nav-title">应用</span><span class="nav-note">接入应用与 App Secret</span></span></a>
-            <a class="nav-link" data-nav-section="licenses" href="/admin/licenses"><span class="nav-icon">授</span><span class="nav-copy"><span class="nav-title">授权</span><span class="nav-note">人工授权与 entitlement</span></span></a>
-          </div>
-          <div class="nav-group">
-            <div class="nav-group-label">Operations</div>
-            <a class="nav-link" data-nav-section="operations" href="/admin/operations"><span class="nav-icon">营</span><span class="nav-copy"><span class="nav-title">运营</span><span class="nav-note">订单、安装与补单排障</span></span></a>
-            <a class="nav-link" data-nav-section="observability" href="/admin/observability"><span class="nav-icon">观</span><span class="nav-copy"><span class="nav-title">观测</span><span class="nav-note">事件流与支付回调</span></span></a>
-          </div>
-        </nav>
+        <nav class="admin-nav">${renderAdminNavigation(activeSection)}</nav>
 
         <div class="sidebar-block">
           <label class="sidebar-label">当前用户</label>
@@ -1176,16 +1786,19 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         <section class="workspace-bar">
           <div class="topbar-left">
             <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="切换侧边栏">☰</button>
-            <div class="search-shell">
+            <button id="command-trigger" class="search-shell command-trigger" type="button" aria-label="打开命令搜索">
               <span class="search-icon"></span>
-              <input class="search-input" type="text" placeholder="Press / to search" readonly />
-            </div>
+              <span class="search-copy">
+                <span>Press / or Cmd K to search</span>
+                <span class="search-hint">
+                  <kbd>/</kbd>
+                  <kbd>K</kbd>
+                </span>
+              </span>
+            </button>
           </div>
           <div class="workspace-tools">
-            <div class="topbar-actions">
-              <a class="topbar-link" href="/">Status</a>
-              <a class="topbar-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
-            </div>
+            <div class="topbar-actions">${renderAdminTopbarLinks()}</div>
             <div class="workspace-user">
               <div id="current-user-avatar" class="user-avatar">FD</div>
               <div class="user-copy">
@@ -1199,33 +1812,19 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         <section class="hero">
           <div class="hero-main">
             <div class="breadcrumb-row">
-              <span>Resources</span>
+              <span>${section.groupLabel}</span>
               <span>/</span>
-              <strong>${section.title}</strong>
+              <strong>${section.navTitle}</strong>
             </div>
             <h1>${section.title}</h1>
             <p class="lead">
               ${section.lead}
             </p>
 
-            <div class="hero-actions">
-              <a class="topbar-link" href="${sectionPathMap[activeSection]}">当前资源</a>
-              <a class="topbar-link" href="/docs" target="_blank" rel="noreferrer">查看 API 文档</a>
-            </div>
+            <div class="hero-actions">${renderAdminHeroActions(activeSection)}</div>
           </div>
 
-          <aside class="hero-side">
-            <div class="hero-spotlight">
-              <span class="spotlight-label">Deploy</span>
-              <strong>Docker + GitHub Actions</strong>
-              <span>镜像构建在 GitHub，服务器只拉取并启动。</span>
-            </div>
-            <div class="hero-spotlight">
-              <span class="spotlight-label">Route</span>
-              <strong>${sectionPathMap[activeSection]}</strong>
-              <span>当前模块入口，按资源域拆分维护。</span>
-            </div>
-          </aside>
+          <aside class="hero-side">${renderAdminSectionContext(activeSection)}</aside>
         </section>
 
         <section class="layout">
@@ -1626,6 +2225,38 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       </main>
     </div>
 
+    <div id="command-palette" class="command-palette hidden" aria-hidden="true">
+      <div id="command-backdrop" class="command-backdrop"></div>
+      <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="command-input">
+        <div class="command-header">
+          <span class="search-icon"></span>
+          <input
+            id="command-input"
+            class="command-input"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="搜索页面、资源或快速入口"
+          />
+        </div>
+        <div id="command-results" class="command-results"></div>
+        <div class="command-footer">
+          <div class="command-footer-copy">
+            <span class="command-kbd">↑</span>
+            <span class="command-kbd">↓</span>
+            <span>切换</span>
+            <span class="command-kbd">Enter</span>
+            <span>打开</span>
+          </div>
+          <div class="command-footer-copy">
+            <span class="command-kbd">Esc</span>
+            <span>关闭</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       const state = {
         token: localStorage.getItem('fd_core_admin_token') || '',
@@ -1639,7 +2270,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         webhooks: [],
         activeSection: '${activeSection}',
         selectedOrderNo: '',
-        sidebarCollapsed: localStorage.getItem('fd_core_admin_sidebar_collapsed') === '1'
+        sidebarCollapsed: localStorage.getItem('fd_core_admin_sidebar_collapsed') === '1',
+        pageDataScopes: ${pageDataScopesJson},
+        commandQuery: '',
+        commandItems: ${commandItemsJson},
+        filteredCommandItems: [],
+        activeCommandIndex: 0
       };
 
       function setFlash(id, message, kind) {
@@ -1719,6 +2355,163 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         document.querySelectorAll('[data-nav-section]').forEach((el) => {
           el.classList.toggle('active', el.getAttribute('data-nav-section') === section);
         });
+      }
+
+      function hasDataScope(scope) {
+        return Array.isArray(state.pageDataScopes) && state.pageDataScopes.includes(scope);
+      }
+
+      function isEditableTarget(target) {
+        return (
+          target instanceof HTMLElement &&
+          (
+            target.isContentEditable ||
+            target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT'
+          )
+        );
+      }
+
+      function getCommandPaletteElements() {
+        return {
+          palette: document.getElementById('command-palette'),
+          input: document.getElementById('command-input'),
+          results: document.getElementById('command-results'),
+          trigger: document.getElementById('command-trigger')
+        };
+      }
+
+      function isCommandPaletteOpen() {
+        const { palette } = getCommandPaletteElements();
+        return !palette.classList.contains('hidden');
+      }
+
+      function getMatchedCommandItems(query) {
+        const normalized = String(query || '').trim().toLowerCase();
+        const items = Array.isArray(state.commandItems) ? state.commandItems : [];
+
+        if (!normalized) {
+          return items.slice(0, 8);
+        }
+
+        return items
+          .map((item) => {
+            const keywords = Array.isArray(item.keywords) ? item.keywords : [];
+            const haystack = [item.label, item.note, ...keywords].join(' ').toLowerCase();
+
+            if (!haystack.includes(normalized)) {
+              return null;
+            }
+
+            const primary = String(item.label || '').toLowerCase();
+            const note = String(item.note || '').toLowerCase();
+            const score =
+              (primary.startsWith(normalized) ? 0 : 3) +
+              (keywords.some((entry) => String(entry).toLowerCase().startsWith(normalized)) ? 1 : 4) +
+              (note.includes(normalized) ? 1 : 4);
+
+            return { item, score };
+          })
+          .filter(Boolean)
+          .sort((left, right) => left.score - right.score)
+          .map((entry) => entry.item)
+          .slice(0, 12);
+      }
+
+      function setActiveCommandIndex(nextIndex) {
+        const buttons = Array.from(document.querySelectorAll('[data-command-index]'));
+        if (!buttons.length) {
+          state.activeCommandIndex = 0;
+          return;
+        }
+
+        const bounded = Math.max(0, Math.min(nextIndex, buttons.length - 1));
+        state.activeCommandIndex = bounded;
+
+        buttons.forEach((button, index) => {
+          button.classList.toggle('active', index === bounded);
+        });
+
+        const activeButton = buttons[bounded];
+        if (activeButton instanceof HTMLElement) {
+          activeButton.scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      function renderCommandResults() {
+        const { results } = getCommandPaletteElements();
+        const items = getMatchedCommandItems(state.commandQuery);
+        state.filteredCommandItems = items;
+        state.activeCommandIndex = items.length ? Math.min(state.activeCommandIndex, items.length - 1) : 0;
+
+        if (!items.length) {
+          results.innerHTML = '<div class="command-empty">没有匹配项。试试输入资源名、页面别名或快捷入口。</div>';
+          return;
+        }
+
+        let lastGroup = '';
+        results.innerHTML = items
+          .map((item, index) => {
+            const groupMarkup =
+              item.group !== lastGroup
+                ? '<div class="command-group">' + escapeHtml(item.group) + '</div>'
+                : '';
+            lastGroup = item.group;
+
+            return (
+              groupMarkup +
+              '<button class="command-item' + (index === state.activeCommandIndex ? ' active' : '') + '" type="button" data-command-index="' + index + '">' +
+                '<span class="command-item-icon">' + escapeHtml(item.icon) + '</span>' +
+                '<span>' +
+                  '<span class="command-item-title">' + escapeHtml(item.label) + '</span>' +
+                  '<span class="command-item-note">' + escapeHtml(item.note) + '</span>' +
+                '</span>' +
+                '<span class="command-item-meta">' +
+                  (item.shortcut ? '<span class="command-kbd">' + escapeHtml(item.shortcut) + '</span>' : '') +
+                  (item.external ? '<span>External</span>' : '<span>Open</span>') +
+                '</span>' +
+              '</button>'
+            );
+          })
+          .join('');
+      }
+
+      function openCommandPalette(seed = '') {
+        const { palette, input } = getCommandPaletteElements();
+        state.commandQuery = seed;
+        state.activeCommandIndex = 0;
+        palette.classList.remove('hidden');
+        palette.setAttribute('aria-hidden', 'false');
+        input.value = seed;
+        renderCommandResults();
+        window.requestAnimationFrame(() => input.focus());
+      }
+
+      function closeCommandPalette() {
+        const { palette, input, trigger } = getCommandPaletteElements();
+        state.commandQuery = '';
+        palette.classList.add('hidden');
+        palette.setAttribute('aria-hidden', 'true');
+        input.value = '';
+        if (trigger instanceof HTMLElement) {
+          trigger.focus();
+        }
+      }
+
+      function activateCommandByIndex(index) {
+        const item = state.filteredCommandItems[index];
+        if (!item) {
+          return;
+        }
+
+        if (item.external) {
+          window.open(item.href, '_blank', 'noopener,noreferrer');
+          closeCommandPalette();
+          return;
+        }
+
+        window.location.href = item.href;
       }
 
       function updateSourceBadge(id, source) {
@@ -1814,8 +2607,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
       }
 
       function setAppOverviewLabel(apps) {
-        document.getElementById('app-overview').textContent = apps.length > 0 ? ('已接入 ' + apps.length + ' 个应用') : '暂无应用';
         const badge = document.getElementById('app-count-badge');
+        if (!hasDataScope('apps')) {
+          document.getElementById('app-overview').textContent = '按需加载';
+          badge.textContent = '按需加载';
+          badge.className = 'badge muted';
+          return;
+        }
+
+        document.getElementById('app-overview').textContent = apps.length > 0 ? ('已接入 ' + apps.length + ' 个应用') : '暂无应用';
         badge.textContent = apps.length > 0 ? ('应用数: ' + apps.length) : '暂无应用';
         badge.className = 'badge ' + (apps.length > 0 ? 'ok' : 'muted');
       }
@@ -1882,6 +2682,126 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
             '<p>' + escapeHtml(item.text) + '</p>' +
           '</div>'
         )).join('');
+      }
+
+      function formatDateTime(value, fallback = '-') {
+        if (!value) {
+          return fallback;
+        }
+
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return escapeHtml(value);
+        }
+
+        return escapeHtml(date.toLocaleString('zh-CN', { hour12: false }));
+      }
+
+      function formatMoney(amount, currency) {
+        if (typeof amount !== 'number') {
+          return '-';
+        }
+
+        return escapeHtml((amount / 100).toFixed(2) + ' ' + String(currency || '').trim());
+      }
+
+      function formatProvider(provider) {
+        if (!provider) {
+          return '-';
+        }
+
+        return provider === 'wechat_pay' ? 'wechat' : provider;
+      }
+
+      function getToneFromStatus(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+
+        if (!normalized) {
+          return 'neutral';
+        }
+
+        if (
+          normalized === 'paid' ||
+          normalized === 'active' ||
+          normalized === 'configured' ||
+          normalized === 'processed' ||
+          normalized === 'success'
+        ) {
+          return 'ok';
+        }
+
+        if (
+          normalized === 'pending' ||
+          normalized === 'expiring' ||
+          normalized === 'inactive' ||
+          normalized === 'database' ||
+          normalized === 'env'
+        ) {
+          return 'warn';
+        }
+
+        if (
+          normalized === 'failed' ||
+          normalized === 'cancelled' ||
+          normalized === 'revoked' ||
+          normalized === 'expired' ||
+          normalized === 'refunded' ||
+          normalized === 'error'
+        ) {
+          return 'danger';
+        }
+
+        return 'neutral';
+      }
+
+      function renderPill(value, tone) {
+        const label = String(value || '-');
+        return '<span class="pill ' + (tone || getToneFromStatus(label)) + '">' + escapeHtml(label) + '</span>';
+      }
+
+      function renderCellStack(primary, secondary = '', tertiary = '') {
+        return (
+          '<div class="cell-stack">' +
+            '<div class="cell-primary">' + primary + '</div>' +
+            (secondary ? '<div class="cell-secondary">' + secondary + '</div>' : '') +
+            (tertiary ? '<div class="cell-tertiary">' + tertiary + '</div>' : '') +
+          '</div>'
+        );
+      }
+
+      function renderTableCard(columns, rows, emptyMessage) {
+        if (!rows.length) {
+          return '<div class="locked">' + escapeHtml(emptyMessage) + '</div>';
+        }
+
+        return (
+          '<div class="table-card">' +
+            '<div class="table-scroll">' +
+              '<table class="data-table">' +
+                '<thead><tr>' +
+                  columns
+                    .map((column) => (
+                      '<th class="' + escapeHtml(column.className || '') + '">' + escapeHtml(column.label) + '</th>'
+                    ))
+                    .join('') +
+                '</tr></thead>' +
+                '<tbody>' +
+                  rows
+                    .map((row) => (
+                      '<tr>' +
+                        row
+                          .map((cell) => (
+                            '<td class="' + escapeHtml(cell.className || '') + '">' + cell.html + '</td>'
+                          ))
+                          .join('') +
+                      '</tr>'
+                    ))
+                    .join('') +
+                '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</div>'
+        );
       }
 
       function renderOrderAppFilterOptions(items) {
@@ -2044,50 +2964,71 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         syncSelectedAppEditor();
 
         const root = document.getElementById('app-list');
-        if (!apps.length) {
-          root.innerHTML = '<div class="locked">当前还没有已登记的 app。</div>';
-          return;
-        }
-
-        root.innerHTML = apps
-          .map((app) => {
+        root.innerHTML = renderTableCard(
+          [
+            { label: '应用' },
+            { label: '类型 / 状态' },
+            { label: '绑定产品' },
+            { label: 'Secrets' }
+          ],
+          apps.map((app) => {
             const secrets = Array.isArray(app.secrets) ? app.secrets : [];
             const products = Array.isArray(app.products) ? app.products : [];
-            return (
-              '<div class="entity-card">' +
-                '<div class="entity-head">' +
-                  '<div>' +
-                    '<div class="entity-title">' + formatText(app.name) + ' (' + formatText(app.code) + ')</div>' +
-                    '<div class="meta-row">' +
-                      '<span class="meta-chip">类型 · ' + formatText(app.type) + '</span>' +
-                      '<span class="meta-chip ghost">状态 · ' + formatText(app.status) + '</span>' +
-                      '<span class="meta-chip ghost">产品 · ' + (products.length ? products.map((item) => formatText(item.code)).join(', ') : '未绑定') + '</span>' +
+
+            return [
+              {
+                html: renderCellStack(
+                  formatText(app.name) + ' (' + formatText(app.code) + ')',
+                  formatText(app.description || '暂无描述'),
+                  '创建时间 · ' + formatDateTime(app.createdAt)
+                )
+              },
+              {
+                html:
+                  '<div class="cell-stack">' +
+                    '<div class="inline-actions">' +
+                      renderPill(app.type, 'neutral') +
+                      renderPill(app.status) +
                     '</div>' +
-                  '</div>' +
-                  '<div class="badge-row">' +
-                    '<span class="badge ' + (secrets.length ? 'ok' : 'warn') + '">Secrets: ' + secrets.length + '</span>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="section-divider">' +
-                  (secrets.length
-                    ? secrets.map((secret) => (
-                        '<div class="subtle" style="padding:10px 0;">' +
-                          'Name: ' + formatText(secret.name) +
-                          ' · Hint: ' + formatText(secret.hint) +
-                          ' · 状态: ' + formatText(secret.status) +
-                          ' · 最近使用: ' + (secret.lastUsedAt ? formatTime(secret.lastUsedAt) : '未使用') +
-                          ' · 过期: ' + formatTime(secret.expiresAt) +
-                          (secret.status === 'active'
-                            ? ' <button class="danger" type="button" data-app-secret-revoke="' + escapeHtml(app.code) + '" data-secret-id="' + escapeHtml(secret.id) + '">停用 Secret</button>'
-                            : '') +
-                        '</div>'
-                      )).join('')
-                    : '<div class="subtle">还没有签发 secret。</div>') +
-                '</div>' +
-              '</div>'
-            );
-          })
-          .join('');
+                    '<div class="cell-secondary">更新时间 · ' + formatDateTime(app.updatedAt) + '</div>' +
+                  '</div>'
+              },
+              {
+                html: products.length
+                  ? renderCellStack(
+                      formatText(products.map((item) => item.code).join(', ')),
+                      '产品数 · ' + escapeHtml(products.length),
+                      formatText(products.map((item) => item.name).join(' / '))
+                    )
+                  : renderCellStack('未绑定产品')
+              },
+              {
+                html: secrets.length
+                  ? '<div class="table-sublist">' +
+                      secrets
+                        .map((secret) => (
+                          '<div class="table-subitem">' +
+                            renderCellStack(
+                              'Name · ' + formatText(secret.name),
+                              'Hint · ' + formatText(secret.hint) + ' · 最近使用 · ' + formatDateTime(secret.lastUsedAt, '未使用'),
+                              '过期 · ' + formatDateTime(secret.expiresAt, '永不过期')
+                            ) +
+                            '<div class="inline-actions" style="margin-top:8px;">' +
+                              renderPill(secret.status) +
+                              (secret.status === 'active'
+                                ? '<button class="danger" type="button" data-app-secret-revoke="' + escapeHtml(app.code) + '" data-secret-id="' + escapeHtml(secret.id) + '">停用 Secret</button>'
+                                : '') +
+                            '</div>' +
+                          '</div>'
+                        ))
+                        .join('') +
+                    '</div>'
+                  : '<div class="cell-secondary">还没有签发 secret。</div>'
+              }
+            ];
+          }),
+          '当前还没有已登记的 app。'
+        );
       }
 
       function renderOrders(items) {
@@ -2096,33 +3037,57 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         const summary = document.getElementById('orders-summary');
         summary.textContent = '当前显示 ' + filtered.length + ' / ' + items.length + ' 条订单';
 
-        if (!filtered.length) {
-          root.innerHTML = '<div class="locked">当前还没有订单。</div>';
-          return;
-        }
-
-        root.innerHTML = filtered.map((item) => (
-          '<div class="entity-card">' +
-            '<div class="entity-head">' +
-              '<div>' +
-                '<div class="entity-title">' + formatText(item.orderNo) + '</div>' +
-                '<div class="meta-row">' +
-                  '<span class="meta-chip">状态 · ' + formatText(item.status) + '</span>' +
-                  '<span class="meta-chip">通道 · ' + formatText(item.provider) + '</span>' +
-                  '<span class="meta-chip ghost">金额 · ' + (item.amount / 100).toFixed(2) + ' ' + formatText(item.currency) + '</span>' +
-                  '<span class="meta-chip ghost">应用 · ' + formatText(item.app?.code) + '</span>' +
-                  '<span class="meta-chip ghost">套餐 · ' + formatText(item.plan?.code) + '</span>' +
-                '</div>' +
-                '<div class="subtle" style="margin-top:10px;">用户: ' + formatText(item.user?.email || item.userId) + ' · 产品: ' + formatText(item.product?.code) + '</div>' +
-                '<div class="subtle">Session: ' + formatText(item.checkoutSession?.sessionCode) + ' · 支付时间: ' + formatTime(item.paidAt) + '</div>' +
-              '</div>' +
-              '<div class="actions">' +
-                '<button class="secondary" type="button" data-order-detail="' + escapeHtml(item.orderNo) + '">查看详情</button>' +
-                '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>'
-        )).join('');
+        root.innerHTML = renderTableCard(
+          [
+            { label: '订单' },
+            { label: '状态' },
+            { label: '用户 / 应用' },
+            { label: '金额 / 支付' },
+            { label: '动作', className: 'align-right' }
+          ],
+          filtered.map((item) => [
+            {
+              html: renderCellStack(
+                formatText(item.orderNo),
+                'Session · ' + formatText(item.checkoutSession?.sessionCode),
+                '产品 / 套餐 · ' + formatText(item.product?.code) + ' / ' + formatText(item.plan?.code)
+              )
+            },
+            {
+              html:
+                '<div class="cell-stack">' +
+                  '<div class="inline-actions">' +
+                    renderPill(item.status) +
+                    renderPill(formatProvider(item.provider), 'neutral') +
+                  '</div>' +
+                  '<div class="cell-secondary">providerOrderId · ' + formatText(item.providerOrderId) + '</div>' +
+                '</div>'
+            },
+            {
+              html: renderCellStack(
+                formatText(item.user?.email || item.userId),
+                '应用 · ' + formatText(item.app?.code),
+                '用户 ID · ' + formatText(item.userId)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatMoney(item.amount, item.currency),
+                '支付时间 · ' + formatDateTime(item.paidAt, '未支付'),
+                '创建时间 · ' + formatDateTime(item.createdAt)
+              )
+            },
+            {
+              html:
+                '<div class="cell-actions">' +
+                  '<button class="secondary" type="button" data-order-detail="' + escapeHtml(item.orderNo) + '">查看详情</button>' +
+                  '<button class="secondary" type="button" data-order-reconcile="' + escapeHtml(item.orderNo) + '">同步订单</button>' +
+                '</div>',
+              className: 'align-right'
+            }
+          ]),
+          '当前还没有订单。'
+        );
       }
 
       function renderOrderDetail(data) {
@@ -2217,99 +3182,209 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
       function renderInstalls(items) {
         const root = document.getElementById('installs-list');
-        if (!items.length) {
-          root.innerHTML = '<div class="locked">当前还没有安装实例。</div>';
-          return;
-        }
-
-        root.innerHTML = items.map((item) => (
-          '<div class="entity-card">' +
-            '<div class="entity-title">' + formatText(item.extensionInstallId) + '</div>' +
-            '<div class="meta-row">' +
-              '<span class="meta-chip">应用 · ' + formatText(item.app?.code) + '</span>' +
-              '<span class="meta-chip ghost">产品 · ' + formatText(item.product?.code) + '</span>' +
-              '<span class="meta-chip ghost">状态 · ' + formatText(item.status) + '</span>' +
-            '</div>' +
-            '<div class="subtle" style="margin-top:10px;">用户: ' + formatText(item.user?.email || '未绑定') + ' · 版本: ' + formatText(item.appVersion) + '</div>' +
-            '<div class="subtle">Profile: ' + formatText(item.chromeProfileHint) + ' · 最近活跃: ' + formatTime(item.lastSeenAt) + '</div>' +
-          '</div>'
-        )).join('');
+        root.innerHTML = renderTableCard(
+          [
+            { label: '安装实例' },
+            { label: '应用 / 产品' },
+            { label: '用户' },
+            { label: '状态' },
+            { label: '最近活跃' }
+          ],
+          items.map((item) => [
+            {
+              html: renderCellStack(
+                formatText(item.extensionInstallId),
+                'Profile · ' + formatText(item.chromeProfileHint),
+                '版本 · ' + formatText(item.appVersion)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatText(item.app?.code),
+                '产品 · ' + formatText(item.product?.code),
+                '应用类型 · ' + formatText(item.app?.type)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatText(item.user?.email || '未绑定'),
+                '用户名称 · ' + formatText(item.user?.displayName || '-')
+              )
+            },
+            {
+              html:
+                '<div class="cell-stack">' +
+                  '<div class="inline-actions">' + renderPill(item.status) + '</div>' +
+                  '<div class="cell-secondary">创建时间 · ' + formatDateTime(item.createdAt) + '</div>' +
+                '</div>'
+            },
+            {
+              html: renderCellStack(
+                formatDateTime(item.lastSeenAt, '暂无活跃'),
+                '更新时间 · ' + formatDateTime(item.updatedAt)
+              )
+            }
+          ]),
+          '当前还没有安装实例。'
+        );
       }
 
       function renderEntitlements(items) {
         const root = document.getElementById('entitlements-list');
-        if (!items.length) {
-          root.innerHTML = '<div class="locked">当前还没有授权明细。</div>';
-          return;
-        }
-
-        root.innerHTML = items.map((item) => (
-          '<div class="entity-card">' +
-            '<div class="entity-head">' +
-              '<div>' +
-                '<div class="entity-title">' + formatText(item.user?.email || item.userId) + '</div>' +
-                '<div class="meta-row">' +
-                  '<span class="meta-chip">产品 · ' + formatText(item.product?.code) + '</span>' +
-                  '<span class="meta-chip ghost">功能 · ' + formatText(item.feature?.code) + '</span>' +
-                  '<span class="meta-chip ghost">状态 · ' + formatText(item.status) + '</span>' +
-                '</div>' +
-                '<div class="subtle" style="margin-top:10px;">来源: ' + formatText(item.sourceType) + ' · 订单: ' + formatText(item.sourceOrder?.orderNo) + '</div>' +
-                '<div class="subtle">开始: ' + formatTime(item.startsAt) + ' · 到期: ' + formatTime(item.expiresAt) + '</div>' +
-              '</div>' +
-              (item.status === 'active'
-                ? '<div class="actions"><button class="danger" type="button" data-entitlement-revoke="' + escapeHtml(item.id) + '">撤销授权</button></div>'
-                : '') +
-            '</div>' +
-          '</div>'
-        )).join('');
+        root.innerHTML = renderTableCard(
+          [
+            { label: '用户' },
+            { label: '产品 / 功能' },
+            { label: '状态' },
+            { label: '来源' },
+            { label: '有效期' },
+            { label: '动作', className: 'align-right' }
+          ],
+          items.map((item) => [
+            {
+              html: renderCellStack(
+                formatText(item.user?.email || item.userId),
+                '显示名称 · ' + formatText(item.user?.displayName || '-'),
+                '授权 ID · ' + formatText(item.id)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatText(item.product?.code),
+                '功能 · ' + formatText(item.feature?.code),
+                '来源产品 · ' + formatText(item.product?.name || '-')
+              )
+            },
+            {
+              html:
+                '<div class="cell-stack">' +
+                  '<div class="inline-actions">' + renderPill(item.status) + '</div>' +
+                  '<div class="cell-secondary">来源类型 · ' + formatText(item.sourceType) + '</div>' +
+                '</div>'
+            },
+            {
+              html: renderCellStack(
+                formatText(item.sourceOrder?.orderNo || item.sourceId),
+                'sourceType · ' + formatText(item.sourceType),
+                'sourceId · ' + formatText(item.sourceId)
+              )
+            },
+            {
+              html: renderCellStack(
+                '开始 · ' + formatDateTime(item.startsAt),
+                '到期 · ' + formatDateTime(item.expiresAt, '永不过期'),
+                '更新时间 · ' + formatDateTime(item.updatedAt)
+              )
+            },
+            {
+              html:
+                item.status === 'active'
+                  ? '<div class="cell-actions"><button class="danger" type="button" data-entitlement-revoke="' + escapeHtml(item.id) + '">撤销授权</button></div>'
+                  : '<div class="cell-actions">' + renderPill('locked', 'neutral') + '</div>',
+              className: 'align-right'
+            }
+          ]),
+          '当前还没有授权明细。'
+        );
       }
 
       function renderEvents(items) {
         const root = document.getElementById('events-list');
-        if (!items.length) {
-          root.innerHTML = '<div class="locked">当前还没有业务事件。</div>';
-          return;
-        }
-
-        root.innerHTML = items.map((item) => (
-          '<div class="entity-card">' +
-            '<div class="entity-title">' + formatText(item.eventName) + '</div>' +
-            '<div class="meta-row">' +
-              '<span class="meta-chip">时间 · ' + formatTime(item.eventTime) + '</span>' +
-              '<span class="meta-chip ghost">用户 · ' + formatText(item.user?.email || item.userId) + '</span>' +
-              '<span class="meta-chip ghost">应用 · ' + formatText(item.app?.code) + '</span>' +
-            '</div>' +
-            '<div class="subtle" style="margin-top:10px;">产品: ' + formatText(item.product?.code) + ' · 安装: ' + formatText(item.install?.extensionInstallId) + '</div>' +
-            '<details>' +
-              '<summary class="inline-code">properties</summary>' +
-              '<pre class="json-block">' + formatJson(item.properties) + '</pre>' +
-            '</details>' +
-          '</div>'
-        )).join('');
+        root.innerHTML = renderTableCard(
+          [
+            { label: '事件' },
+            { label: '时间' },
+            { label: '用户 / 应用' },
+            { label: '上下文' },
+            { label: 'Payload' }
+          ],
+          items.map((item) => [
+            {
+              html: renderCellStack(
+                formatText(item.eventName),
+                '产品 · ' + formatText(item.product?.code),
+                '安装 · ' + formatText(item.install?.extensionInstallId)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatDateTime(item.eventTime),
+                '创建时间 · ' + formatDateTime(item.createdAt)
+              )
+            },
+            {
+              html: renderCellStack(
+                formatText(item.user?.email || item.userId),
+                '应用 · ' + formatText(item.app?.code),
+                '用户名称 · ' + formatText(item.user?.displayName || '-')
+              )
+            },
+            {
+              html: renderCellStack(
+                'orderNo · ' + formatText(item.orderNo),
+                'installId · ' + formatText(item.installId),
+                'appId · ' + formatText(item.appId)
+              )
+            },
+            {
+              html:
+                '<details>' +
+                  '<summary class="inline-code">properties</summary>' +
+                  '<pre class="json-block">' + formatJson(item.properties) + '</pre>' +
+                '</details>'
+            }
+          ]),
+          '当前还没有业务事件。'
+        );
       }
 
       function renderWebhooks(items) {
         const root = document.getElementById('webhooks-list');
-        if (!items.length) {
-          root.innerHTML = '<div class="locked">当前还没有支付回调记录。</div>';
-          return;
-        }
-
-        root.innerHTML = items.map((item) => (
-          '<div class="entity-card">' +
-            '<div class="entity-title">' + formatText(item.provider) + ' · ' + formatText(item.type) + '</div>' +
-            '<div class="meta-row">' +
-              '<span class="meta-chip">状态 · ' + formatText(item.status) + '</span>' +
-              '<span class="meta-chip ghost">已处理 · ' + formatTime(item.processedAt) + '</span>' +
-              '<span class="meta-chip ghost">入库 · ' + formatTime(item.createdAt) + '</span>' +
-            '</div>' +
-            '<div class="subtle" style="margin-top:10px;">事件号: ' + formatText(item.providerEventId) + '</div>' +
-            '<details>' +
-              '<summary class="inline-code">payload</summary>' +
-              '<pre class="json-block">' + formatJson(item.payload) + '</pre>' +
-            '</details>' +
-          '</div>'
-        )).join('');
+        root.innerHTML = renderTableCard(
+          [
+            { label: '回调' },
+            { label: '状态' },
+            { label: '事件号' },
+            { label: '处理时间' },
+            { label: 'Payload' }
+          ],
+          items.map((item) => [
+            {
+              html: renderCellStack(
+                formatText(item.provider) + ' / ' + formatText(item.type),
+                '来源 provider · ' + formatText(item.provider),
+                '回调类型 · ' + formatText(item.type)
+              )
+            },
+            {
+              html:
+                '<div class="cell-stack">' +
+                  '<div class="inline-actions">' + renderPill(item.status) + '</div>' +
+                  '<div class="cell-secondary">入库时间 · ' + formatDateTime(item.createdAt) + '</div>' +
+                '</div>'
+            },
+            {
+              html: renderCellStack(
+                formatText(item.providerEventId),
+                '记录 ID · ' + formatText(item.id)
+              )
+            },
+            {
+              html: renderCellStack(
+                '已处理 · ' + formatDateTime(item.processedAt, '未处理'),
+                '更新时间 · ' + formatDateTime(item.updatedAt)
+              )
+            },
+            {
+              html:
+                '<details>' +
+                  '<summary class="inline-code">payload</summary>' +
+                  '<pre class="json-block">' + formatJson(item.payload) + '</pre>' +
+                '</details>'
+            }
+          ]),
+          '当前还没有支付回调记录。'
+        );
       }
 
       async function loadAdminOperations() {
@@ -2342,6 +3417,12 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         }
       }
 
+      async function loadEntitlementIndex() {
+        const entitlements = await api('/v1/admin/entitlements?limit=30');
+        state.entitlements = entitlements.items || [];
+        renderEntitlements(state.entitlements);
+      }
+
       async function loadOrderDetail(orderNo) {
         const data = await api('/v1/admin/orders/' + encodeURIComponent(orderNo));
         state.selectedOrderNo = orderNo;
@@ -2371,26 +3452,94 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
           : '系统里还没有管理员。首个完成注册或登录的账号会自动成为 admin。';
       }
 
+      function resetAdminState() {
+        state.apps = [];
+        state.products = [];
+        state.plans = [];
+        state.orders = [];
+        state.installs = [];
+        state.entitlements = [];
+        state.events = [];
+        state.webhooks = [];
+        state.selectedOrderNo = '';
+
+        document.getElementById('wechat-overview').textContent = hasDataScope('paymentSettings') ? '未检查' : '按需加载';
+        document.getElementById('alipay-overview').textContent = hasDataScope('paymentSettings') ? '未检查' : '按需加载';
+        document.getElementById('app-overview').textContent = hasDataScope('apps') ? '未检查' : '按需加载';
+
+        renderManagedApps([]);
+        renderOrders([]);
+        renderOrderDetail(null);
+        renderInstalls([]);
+        renderEntitlements([]);
+        renderEvents([]);
+        renderWebhooks([]);
+        renderPlanOptions([]);
+        renderProductOptions([], []);
+      }
+
+      async function loadScopedAdminData() {
+        const tasks = [];
+
+        if (hasDataScope('paymentSettings')) {
+          tasks.push(
+            api('/v1/admin/payment-settings').then((overview) => {
+              applyOverview(overview);
+            })
+          );
+        }
+
+        if (hasDataScope('apps')) {
+          tasks.push(
+            api('/v1/admin/apps').then((apps) => {
+              renderManagedApps(apps.items || []);
+            })
+          );
+        }
+
+        if (hasDataScope('products')) {
+          tasks.push(
+            api('/v1/products').then((products) => {
+              state.products = products.items || [];
+              if (state.apps.length) {
+                syncSelectedAppEditor();
+              } else {
+                renderProductOptions(state.products, []);
+              }
+            })
+          );
+        }
+
+        if (hasDataScope('plans')) {
+          tasks.push(
+            api('/v1/plans').then((plans) => {
+              state.plans = plans.items || [];
+              renderPlanOptions(state.plans);
+            })
+          );
+        }
+
+        if (hasDataScope('operations')) {
+          tasks.push(loadAdminOperations());
+        }
+
+        if (hasDataScope('entitlements')) {
+          tasks.push(loadEntitlementIndex());
+        }
+
+        if (hasDataScope('observability')) {
+          tasks.push(loadObservability());
+        }
+
+        await Promise.all(tasks);
+      }
+
       async function loadSession() {
         if (!state.token) {
           setSessionIdentity('未登录', '等待管理员会话', 'FD');
           document.getElementById('access-message').textContent = '还没有管理员会话。请先登录，或者在系统还没有 admin 的情况下先注册一个账号。';
           document.getElementById('settings-panel').classList.add('hidden');
-          state.apps = [];
-          state.orders = [];
-          state.installs = [];
-          state.entitlements = [];
-          state.events = [];
-          state.webhooks = [];
-          renderManagedApps([]);
-          renderOrders([]);
-          renderOrderDetail(null);
-          renderInstalls([]);
-          renderEntitlements([]);
-          renderEvents([]);
-          renderWebhooks([]);
-          renderPlanOptions([]);
-          renderProductOptions([], []);
+          resetAdminState();
           return;
         }
 
@@ -2408,40 +3557,15 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
 
           document.getElementById('access-message').textContent = '当前账号拥有 admin 权限，可以直接保存和清空支付配置。';
           document.getElementById('settings-panel').classList.remove('hidden');
-          const [overview, apps, products, plans] = await Promise.all([
-            api('/v1/admin/payment-settings'),
-            api('/v1/admin/apps'),
-            api('/v1/products'),
-            api('/v1/plans')
-          ]);
-          applyOverview(overview);
-          state.products = products.items || [];
-          state.plans = plans.items || [];
-          renderPlanOptions(state.plans);
-          renderProductOptions(state.products, []);
-          renderManagedApps(apps.items || []);
-          await Promise.all([loadAdminOperations(), loadObservability()]);
+          resetAdminState();
+          await loadScopedAdminData();
         } catch (_error) {
           localStorage.removeItem('fd_core_admin_token');
           state.token = '';
           setSessionIdentity('登录已失效', '请重新登录', 'FD');
           document.getElementById('settings-panel').classList.add('hidden');
           document.getElementById('access-message').textContent = '当前登录态已失效，请重新登录。';
-          state.apps = [];
-          state.orders = [];
-          state.installs = [];
-          state.entitlements = [];
-          state.events = [];
-          state.webhooks = [];
-          renderManagedApps([]);
-          renderOrders([]);
-          renderOrderDetail(null);
-          renderInstalls([]);
-          renderEntitlements([]);
-          renderEvents([]);
-          renderWebhooks([]);
-          renderPlanOptions([]);
-          renderProductOptions([], []);
+          resetAdminState();
         }
       }
 
@@ -2451,6 +3575,80 @@ export function renderAdminPage(activeSection: AdminSectionKey = 'dashboard') {
         await loadBootstrapStatus();
         await loadSession();
       }
+
+      document.getElementById('command-trigger').addEventListener('click', () => {
+        openCommandPalette('');
+      });
+
+      document.getElementById('command-backdrop').addEventListener('click', () => {
+        closeCommandPalette();
+      });
+
+      document.getElementById('command-input').addEventListener('input', (event) => {
+        state.commandQuery = event.target.value;
+        state.activeCommandIndex = 0;
+        renderCommandResults();
+      });
+
+      document.getElementById('command-input').addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          setActiveCommandIndex(state.activeCommandIndex + 1);
+          return;
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          setActiveCommandIndex(state.activeCommandIndex - 1);
+          return;
+        }
+
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          activateCommandByIndex(state.activeCommandIndex);
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeCommandPalette();
+        }
+      });
+
+      document.getElementById('command-results').addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target.closest('[data-command-index]') : null;
+        if (!target) {
+          return;
+        }
+
+        const index = Number(target.getAttribute('data-command-index'));
+        if (Number.isNaN(index)) {
+          return;
+        }
+
+        activateCommandByIndex(index);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        const key = event.key.toLowerCase();
+
+        if ((event.metaKey || event.ctrlKey) && key === 'k') {
+          event.preventDefault();
+          openCommandPalette('');
+          return;
+        }
+
+        if (event.key === '/' && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(event.target)) {
+          event.preventDefault();
+          openCommandPalette('');
+          return;
+        }
+
+        if (event.key === 'Escape' && isCommandPaletteOpen()) {
+          event.preventDefault();
+          closeCommandPalette();
+        }
+      });
 
       document.getElementById('sidebar-toggle').addEventListener('click', () => {
         state.sidebarCollapsed = !state.sidebarCollapsed;
