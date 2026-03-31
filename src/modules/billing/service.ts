@@ -4,6 +4,7 @@ import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import type { DbClient } from '../../db/types';
 import { CheckoutRepository } from '../checkout/repository';
+import { AppService } from '../app/service';
 import { EventService } from '../event/service';
 import { LicenseService } from '../license/service';
 import { getBillingProviderAdapter, listBillingProviders } from './providers';
@@ -25,7 +26,9 @@ export class BillingService {
 
   async createOrder(input: {
     userId: string;
+    appCode: string;
     planCode: string;
+    offerCode?: string;
     provider: 'wechat_pay' | 'alipay';
     clientIp?: string;
   }) {
@@ -35,7 +38,10 @@ export class BillingService {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
-    const { plan, product } = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
+    const { plan, product, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
+      planCode: input.planCode,
+      offerCode: input.offerCode
+    });
 
     if (plan.interval === 'one_time') {
       const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, product.id);
@@ -44,8 +50,8 @@ export class BillingService {
       }
     }
 
-    if (plan.priceAmount <= 0) {
-      throw httpError(422, 'Plan price is not configured');
+    if (offer.priceAmount <= 0) {
+      throw httpError(422, 'Checkout offer price is not configured');
     }
 
     const repository = new BillingRepository(this.db);
@@ -55,10 +61,13 @@ export class BillingService {
       planId: plan.id,
       orderNo: createOrderNo(),
       provider: input.provider,
-      subject: `${product.name} - ${plan.name}`,
-      amount: plan.priceAmount,
-      currency: plan.currency,
+      subject: `${product.name} - ${offer.title}`,
+      amount: offer.priceAmount,
+      currency: offer.currency,
       meta: {
+        appCode: input.appCode,
+        offerCode: offer.code,
+        offerTitle: offer.title,
         planCode: plan.code,
         productCode: product.code
       }
@@ -70,6 +79,7 @@ export class BillingService {
       eventName: 'billing.order_created',
       properties: {
         orderNo: order.orderNo,
+        offerCode: offer.code,
         planCode: plan.code,
         provider: input.provider,
         amount: order.amount,
@@ -92,6 +102,7 @@ export class BillingService {
       order,
       plan,
       product,
+      offer,
       payment
     };
   }

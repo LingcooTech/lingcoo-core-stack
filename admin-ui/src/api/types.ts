@@ -10,6 +10,8 @@ export interface ProductSummary {
   id: string;
   code: string;
   name: string;
+  type?: string;
+  status?: string;
 }
 
 export interface PlanSummary {
@@ -97,6 +99,23 @@ export interface App {
 export interface AppWithDetails extends App {
   products: ProductSummary[];
   plans: PlanSummary[];
+  checkoutOffers: Array<{
+    code: string;
+    planCode: string;
+    planId: string;
+    productId: string;
+    productCode: string;
+    productName: string;
+    title: string;
+    description: string | null;
+    badge: string | null;
+    interval: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    isDefault: boolean;
+    sortOrder: number;
+  }>;
   secrets: AppSecret[];
 }
 

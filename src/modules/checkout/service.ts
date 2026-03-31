@@ -159,6 +159,7 @@ export class CheckoutService {
     userId: string;
     appCode: string;
     planCode: string;
+    offerCode?: string;
     providerPreference?: 'wechat_pay' | 'alipay';
     successUrl?: string;
     cancelUrl?: string;
@@ -166,9 +167,11 @@ export class CheckoutService {
   }) {
     const appService = new AppService(this.db);
     const licenseService = new LicenseService(this.db);
-    const app = await appService.requireActiveApp(input.appCode);
-    const { plan, product } = await licenseService.getPlanForCheckout(input.planCode);
-    await appService.assertAppAllowsProduct(app.id, product.id);
+    const selection = await appService.resolveCheckoutOffer(input.appCode, {
+      planCode: input.planCode,
+      offerCode: input.offerCode
+    });
+    const { app, plan, product, offer } = selection;
 
     if (plan.interval === 'one_time') {
       const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, product.id);
@@ -178,12 +181,15 @@ export class CheckoutService {
     }
 
     const provider = await this.resolveProvider(input.providerPreference);
-    const reusableSession = await new CheckoutRepository(this.db).findLatestReusablePendingSession({
-      userId: input.userId,
-      appId: app.id,
-      planId: plan.id,
-      provider
-    });
+    const reusableSession =
+      input.offerCode || offer.code !== plan.code || offer.priceAmount !== plan.priceAmount || offer.currency !== plan.currency
+        ? null
+        : await new CheckoutRepository(this.db).findLatestReusablePendingSession({
+            userId: input.userId,
+            appId: app.id,
+            planId: plan.id,
+            provider
+          });
 
     if (reusableSession) {
       const existingOrder = await new BillingRepository(this.db).findOrderById(reusableSession.orderId);
@@ -212,7 +218,9 @@ export class CheckoutService {
 
     const billingResult = await new BillingService(this.db, this.env).createOrder({
       userId: input.userId,
+      appCode: input.appCode,
       planCode: input.planCode,
+      offerCode: input.offerCode,
       provider,
       clientIp: input.clientIp
     });
@@ -236,6 +244,10 @@ export class CheckoutService {
         cancelUrl: input.cancelUrl,
         expiresAt,
         meta: {
+          offerCode: billingResult.offer.code,
+          offerTitle: billingResult.offer.title,
+          offerPriceAmount: billingResult.offer.priceAmount,
+          offerCurrency: billingResult.offer.currency,
           paymentMode: billingResult.payment.mode,
           integrationStatus: billingResult.payment.integrationStatus
         }
@@ -267,6 +279,7 @@ export class CheckoutService {
         properties: {
           sessionCode,
           appCode: app.code,
+          offerCode: billingResult.offer.code,
           orderNo: billingResult.order.orderNo,
           provider
         }

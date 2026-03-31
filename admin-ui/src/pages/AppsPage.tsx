@@ -1,12 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { createAppSecret, listAppsAdmin, revokeAppSecret, upsertApp, type UpsertAppInput } from '@/api/apps';
-import type { AppWithDetails } from '@/api/types';
+import {
+  createAppSecret,
+  listAppsAdmin,
+  listCatalogPlans,
+  listCatalogProducts,
+  revokeAppSecret,
+  upsertApp
+} from '@/api/apps';
+import type { AppWithDetails, PlanSummary } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -34,112 +41,157 @@ const appSchema = z.object({
 });
 type AppFormValues = z.infer<typeof appSchema>;
 
-type EditablePlan = {
+type EditableOffer = {
+  id: string;
   code: string;
-  name: string;
-  interval: string;
+  planCode: string;
+  title: string;
+  description: string;
+  badge: string;
   priceYuan: string;
   currency: string;
   status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  productCode: string;
-  productName: string;
+  isDefault: boolean;
 };
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+}
 
 function formatPriceYuan(priceAmount?: number) {
   return ((priceAmount ?? 0) / 100).toFixed(2);
 }
 
 function formatPlanInterval(interval: string | null | undefined) {
-  if (interval === 'month') {
-    return '月付';
-  }
-
-  if (interval === 'year') {
-    return '年付';
-  }
-
-  if (interval === 'one_time') {
-    return '一次性';
-  }
-
+  if (interval === 'month') return '月付';
+  if (interval === 'year') return '年付';
+  if (interval === 'one_time') return '一次性';
   return interval || '未设置';
 }
 
-function getCheckoutPlanCode(app: AppWithDetails | null) {
-  if (!app?.meta || typeof app.meta !== 'object' || Array.isArray(app.meta)) {
-    return '';
-  }
-
-  const value = app.meta.checkoutPlanCode;
-  return typeof value === 'string' ? value : '';
+function createOfferId() {
+  return `offer_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toEditablePlans(app: AppWithDetails | null): EditablePlan[] {
-  return (app?.plans ?? []).map((plan) => ({
-    code: plan.code,
-    name: plan.name,
-    interval: plan.interval ?? '',
-    priceYuan: formatPriceYuan(plan.priceAmount),
-    currency: plan.currency ?? 'CNY',
-    status: (plan.status as EditablePlan['status']) ?? 'active',
-    productCode: plan.productCode ?? '',
-    productName: plan.productName ?? ''
+function createEmptyOffer(plan?: PlanSummary): EditableOffer {
+  return {
+    id: createOfferId(),
+    code: slugify(plan?.code || `offer_${Date.now().toString(36)}`),
+    planCode: plan?.code || '',
+    title: plan?.name || '',
+    description: '',
+    badge: '',
+    priceYuan: formatPriceYuan(plan?.priceAmount),
+    currency: plan?.currency || 'CNY',
+    status: (plan?.status as EditableOffer['status']) || 'active',
+    isDefault: false
+  };
+}
+
+function offersFromApp(app: AppWithDetails | null): EditableOffer[] {
+  return (app?.checkoutOffers ?? []).map((offer) => ({
+    id: createOfferId(),
+    code: offer.code,
+    planCode: offer.planCode,
+    title: offer.title,
+    description: offer.description || '',
+    badge: offer.badge || '',
+    priceYuan: formatPriceYuan(offer.priceAmount),
+    currency: offer.currency,
+    status: offer.status as EditableOffer['status'],
+    isDefault: offer.isDefault
   }));
-}
-
-// We need product list for checkbox - get from apps
-function useProducts(apps: AppWithDetails[]) {
-  const productMap = new Map<string, { code: string; name: string }>();
-  apps.forEach((app) => {
-    app.products?.forEach((p) => productMap.set(p.code, p));
-  });
-  return [...productMap.values()];
 }
 
 export function AppsPage() {
   const qc = useQueryClient();
   const [selectedApp, setSelectedApp] = useState<AppWithDetails | null>(null);
   const [isNew, setIsNew] = useState(false);
-  const [editablePlans, setEditablePlans] = useState<EditablePlan[]>([]);
-  const [checkoutPlanCode, setCheckoutPlanCode] = useState('');
+  const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
   const [secretResult, setSecretResult] = useState<{ secret: string; secretId: string; appCode: string } | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const [secretAppCode, setSecretAppCode] = useState('');
   const [secretExpiresAt, setSecretExpiresAt] = useState('');
 
-  const { data, isLoading } = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
-  const apps = data?.items ?? [];
-  const products = useProducts(apps);
+  const { data: appsData, isLoading: isAppsLoading } = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
+  const { data: productsData } = useQuery({ queryKey: ['catalog-products'], queryFn: listCatalogProducts });
+  const { data: plansData } = useQuery({ queryKey: ['catalog-plans'], queryFn: listCatalogPlans });
+
+  const apps = appsData?.items ?? [];
+  const products = productsData?.items ?? [];
+  const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const allPlans = useMemo(
+    () =>
+      (plansData?.items ?? []).map((plan) => {
+        const product = plan.productId ? productMap.get(plan.productId) : null;
+        return {
+          ...plan,
+          productCode: plan.productCode || product?.code,
+          productName: plan.productName || product?.name
+        };
+      }),
+    [plansData?.items, productMap]
+  );
 
   const appForm = useForm<AppFormValues>({
     resolver: zodResolver(appSchema),
     defaultValues: { name: '', description: '', type: 'web_app', status: 'active', productCodes: [] }
   });
 
+  const selectedProductCodes = appForm.watch('productCodes');
+  const availablePlans = useMemo(
+    () =>
+      allPlans
+        .filter((plan) => plan.productCode && selectedProductCodes.includes(plan.productCode))
+        .sort((left, right) => (left.productCode || '').localeCompare(right.productCode || '') || left.code.localeCompare(right.code)),
+    [allPlans, selectedProductCodes]
+  );
+  const availablePlanMap = useMemo(() => new Map(availablePlans.map((plan) => [plan.code, plan])), [availablePlans]);
+
   const upsertMutation = useMutation({
-    mutationFn: ({
-      code,
-      values,
-      planConfigs,
-      meta
-    }: {
-      code: string;
-      values: AppFormValues;
-      planConfigs: UpsertAppInput['planConfigs'];
-      meta: Record<string, unknown>;
-    }) =>
-      upsertApp(code, {
+    mutationFn: ({ code, values }: { code: string; values: AppFormValues }) => {
+      const checkoutOffers = editableOffers
+        .map((offer, index) => ({
+          code: slugify(offer.code),
+          planCode: offer.planCode,
+          title: offer.title.trim(),
+          description: offer.description.trim(),
+          badge: offer.badge.trim(),
+          priceAmount: Math.round(Number(offer.priceYuan || '0') * 100),
+          currency: offer.currency.trim().toUpperCase() || 'CNY',
+          status: offer.status,
+          isDefault: offer.isDefault,
+          sortOrder: index
+        }))
+        .filter((offer) => offer.code && offer.planCode && offer.title);
+
+      const defaultOfferCode =
+        checkoutOffers.find((offer) => offer.isDefault)?.code ||
+        checkoutOffers[0]?.code ||
+        undefined;
+      const meta = { ...(selectedApp?.meta ?? {}) };
+      delete meta.checkoutPlanCode;
+      delete meta.checkoutOffers;
+      delete meta.checkoutDefaultOfferCode;
+
+      return upsertApp(code, {
         ...values,
-        planConfigs,
+        checkoutOffers,
+        checkoutDefaultOfferCode: defaultOfferCode,
         meta
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success('应用配置已保存');
       void qc.invalidateQueries({ queryKey: ['apps'] });
       setSelectedApp(null);
       setIsNew(false);
-      setEditablePlans([]);
-      setCheckoutPlanCode('');
+      setEditableOffers([]);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -158,8 +210,7 @@ export function AppsPage() {
   });
 
   const revokeMutation = useMutation({
-    mutationFn: ({ appCode, secretId }: { appCode: string; secretId: string }) =>
-      revokeAppSecret(appCode, secretId),
+    mutationFn: ({ appCode, secretId }: { appCode: string; secretId: string }) => revokeAppSecret(appCode, secretId),
     onSuccess: () => {
       toast.success('Secret 已撤销');
       void qc.invalidateQueries({ queryKey: ['apps'] });
@@ -170,23 +221,55 @@ export function AppsPage() {
   const openEdit = (app: AppWithDetails) => {
     setIsNew(false);
     setSelectedApp(app);
-    setEditablePlans(toEditablePlans(app));
-    setCheckoutPlanCode(getCheckoutPlanCode(app));
+    setEditableOffers(offersFromApp(app));
     appForm.reset({
       name: app.name,
       description: app.description ?? '',
       type: app.type as AppFormValues['type'],
       status: app.status as AppFormValues['status'],
-      productCodes: app.products?.map((p) => p.code) ?? []
+      productCodes: app.products?.map((product) => product.code) ?? []
     });
   };
 
   const openNew = () => {
     setIsNew(true);
     setSelectedApp(null);
-    setEditablePlans([]);
-    setCheckoutPlanCode('');
+    setEditableOffers([]);
     appForm.reset({ name: '', description: '', type: 'web_app', status: 'active', productCodes: [] });
+  };
+
+  const updateOffer = (offerId: string, updater: (current: EditableOffer) => EditableOffer) => {
+    setEditableOffers((current) => current.map((offer) => (offer.id === offerId ? updater(offer) : offer)));
+  };
+
+  const markDefaultOffer = (offerId: string) => {
+    setEditableOffers((current) =>
+      current.map((offer) => ({
+        ...offer,
+        isDefault: offer.id === offerId
+      }))
+    );
+  };
+
+  const addOffer = () => {
+    const seedPlan = availablePlans[0];
+    setEditableOffers((current) => {
+      const next = [...current, createEmptyOffer(seedPlan)];
+      if (next.length === 1) {
+        next[0] = { ...next[0], isDefault: true };
+      }
+      return next;
+    });
+  };
+
+  const removeOffer = (offerId: string) => {
+    setEditableOffers((current) => {
+      const next = current.filter((offer) => offer.id !== offerId);
+      if (next.length > 0 && !next.some((offer) => offer.isDefault)) {
+        next[0] = { ...next[0], isDefault: true };
+      }
+      return next;
+    });
   };
 
   const appColumns: Column<AppWithDetails>[] = [
@@ -212,23 +295,33 @@ export function AppsPage() {
       )
     },
     {
-      key: 'products',
-      header: '产品 / 价格',
+      key: 'offers',
+      header: '产品 / 定价梯度',
       cell: (row) => (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1">
-            {row.products?.map((p) => (
-              <span key={p.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
-                {p.code}
+            {row.products?.map((product) => (
+              <span key={product.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
+                {product.code}
               </span>
-            )) ?? <span className="text-xs text-muted-foreground">—</span>}
+            ))}
           </div>
           <div className="flex flex-wrap gap-1">
-            {row.plans?.map((plan) => (
-              <span key={plan.code} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded px-1.5 py-0.5 font-mono">
-                {plan.code} ¥{formatPriceYuan(plan.priceAmount)}/{formatPlanInterval(plan.interval)}
+            {row.checkoutOffers?.map((offer) => (
+              <span
+                key={offer.code}
+                className={`text-xs rounded px-1.5 py-0.5 font-mono border ${
+                  offer.isDefault
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                }`}
+              >
+                {offer.title} ¥{formatPriceYuan(offer.priceAmount)}/{formatPlanInterval(offer.interval)}
               </span>
-            )) ?? <span className="text-xs text-muted-foreground">—</span>}
+            ))}
+            {(!row.checkoutOffers || row.checkoutOffers.length === 0) && (
+              <span className="text-xs text-muted-foreground">未配置自定义 offer，前端将回退到基础 plan</span>
+            )}
           </div>
         </div>
       )
@@ -237,7 +330,7 @@ export function AppsPage() {
       key: 'secrets',
       header: 'Secrets',
       cell: (row) => {
-        const active = row.secrets?.filter((s) => !s.expiresAt || new Date(s.expiresAt) > new Date()).length ?? 0;
+        const active = row.secrets?.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date()).length ?? 0;
         return <span className="text-xs text-muted-foreground">{active} 个有效</span>;
       }
     },
@@ -245,41 +338,37 @@ export function AppsPage() {
       key: 'actions',
       header: '操作',
       cell: (row) => (
-        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
+        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); openEdit(row); }}>
           编辑
         </Button>
       )
     }
   ];
 
-  const editingCode = isNew
-    ? ''
-    : selectedApp?.code ?? '';
-  const selectedProductCodes = appForm.watch('productCodes');
-  const visiblePlans = editablePlans.filter((plan) => selectedProductCodes.includes(plan.productCode));
+  const editingCode = isNew ? '' : selectedApp?.code ?? '';
 
   return (
     <div>
       <SectionHeader sectionKey="apps" />
       <div className="p-6">
         <Tabs defaultValue="apps">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="apps">应用列表</TabsTrigger>
               <TabsTrigger value="secrets">Secret 管理</TabsTrigger>
             </TabsList>
             <Button size="sm" onClick={openNew}>
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               新建应用
             </Button>
           </div>
 
           <TabsContent value="apps">
-            <div className="rounded-2xl border border-border overflow-hidden bg-white">
+            <div className="overflow-hidden rounded-2xl border border-border bg-white">
               <DataTable
                 columns={appColumns}
                 data={apps}
-                isLoading={isLoading}
+                isLoading={isAppsLoading}
                 emptyMessage="暂无应用"
                 getRowKey={(row) => row.id}
               />
@@ -289,46 +378,49 @@ export function AppsPage() {
           <TabsContent value="secrets">
             <div className="max-w-xl space-y-6">
               <div className="rounded-2xl border border-border bg-white p-5">
-                <h3 className="text-sm font-black mb-4">生成 App Secret</h3>
+                <h3 className="mb-4 text-sm font-black">生成 App Secret</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-bold block mb-1.5">选择应用</label>
+                    <label className="mb-1.5 block text-sm font-bold">选择应用</label>
                     <Select value={secretAppCode} onValueChange={setSecretAppCode}>
                       <SelectTrigger>
                         <SelectValue placeholder="选择应用..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {apps.map((a) => (
-                          <SelectItem key={a.code} value={a.code}>{a.name} ({a.code})</SelectItem>
+                        {apps.map((app) => (
+                          <SelectItem key={app.code} value={app.code}>
+                            {app.name} ({app.code})
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-bold block mb-1.5">过期时间（留空永不过期）</label>
-                    <Input type="datetime-local" value={secretExpiresAt} onChange={(e) => setSecretExpiresAt(e.target.value)} />
+                    <label className="mb-1.5 block text-sm font-bold">过期时间（留空永不过期）</label>
+                    <Input type="datetime-local" value={secretExpiresAt} onChange={(event) => setSecretExpiresAt(event.target.value)} />
                   </div>
                   <Button
                     disabled={!secretAppCode || secretMutation.isPending}
-                    onClick={() => secretMutation.mutate({
-                      appCode: secretAppCode,
-                      expiresAt: secretExpiresAt ? new Date(secretExpiresAt).toISOString() : undefined
-                    })}
+                    onClick={() =>
+                      secretMutation.mutate({
+                        appCode: secretAppCode,
+                        expiresAt: secretExpiresAt ? new Date(secretExpiresAt).toISOString() : undefined
+                      })
+                    }
                   >
                     {secretMutation.isPending ? '生成中...' : '一键生成 Secret'}
                   </Button>
                 </div>
               </div>
 
-              {/* Secret list by app */}
-              {apps.filter((a) => (a.secrets?.length ?? 0) > 0).map((app) => (
-                <div key={app.code} className="rounded-2xl border border-border bg-white overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border bg-muted/30">
+              {apps.filter((app) => (app.secrets?.length ?? 0) > 0).map((app) => (
+                <div key={app.code} className="overflow-hidden rounded-2xl border border-border bg-white">
+                  <div className="border-b border-border bg-muted/30 px-4 py-3">
                     <p className="text-sm font-black">{app.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{app.code}</p>
+                    <p className="text-xs font-mono text-muted-foreground">{app.code}</p>
                   </div>
                   {app.secrets?.map((secret) => (
-                    <div key={secret.id} className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border last:border-0">
+                    <div key={secret.id} className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0">
                       <div className="min-w-0">
                         <p className="text-xs font-mono text-foreground">{secret.hint}</p>
                         <p className="text-xs text-muted-foreground">{formatTime(secret.expiresAt)}</p>
@@ -343,7 +435,7 @@ export function AppsPage() {
                           }
                         }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ))}
@@ -354,201 +446,291 @@ export function AppsPage() {
         </Tabs>
       </div>
 
-      {/* App Editor Dialog */}
-      <Dialog open={isNew || !!selectedApp} onOpenChange={(open) => { if (!open) { setSelectedApp(null); setIsNew(false); } }}>
-        <DialogContent className="max-w-lg">
+      <Dialog
+        open={isNew || !!selectedApp}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedApp(null);
+            setIsNew(false);
+            setEditableOffers([]);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isNew ? '新建应用' : `编辑 ${selectedApp?.name}`}</DialogTitle>
-            <DialogDescription>
-              {isNew ? '创建新的接入应用' : `应用标识: ${selectedApp?.code}`}
-            </DialogDescription>
+            <DialogDescription>{isNew ? '创建新的接入应用' : `应用标识: ${selectedApp?.code}`}</DialogDescription>
           </DialogHeader>
+
           <Form {...appForm}>
-            <form onSubmit={appForm.handleSubmit((v) => {
-              const code = isNew ? v.name.toLowerCase().replace(/\s+/g, '_') : editingCode;
-              const meta = { ...(selectedApp?.meta ?? {}) };
-              const nextCheckoutPlanCode = visiblePlans.some((plan) => plan.code === checkoutPlanCode) ? checkoutPlanCode : '';
+            <form
+              onSubmit={appForm.handleSubmit((values) => {
+                const code = isNew ? slugify(values.name) : editingCode;
+                upsertMutation.mutate({ code, values });
+              })}
+              className="space-y-5"
+            >
+              <FormField
+                control={appForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>应用名称</FormLabel>
+                    <FormControl>
+                      <Input placeholder="My App" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              if (nextCheckoutPlanCode) {
-                meta.checkoutPlanCode = nextCheckoutPlanCode;
-              } else {
-                delete meta.checkoutPlanCode;
-              }
-
-              upsertMutation.mutate({
-                code,
-                values: v,
-                meta,
-                planConfigs: visiblePlans.map((plan) => ({
-                  code: plan.code,
-                  priceAmount: Math.round(Number(plan.priceYuan || '0') * 100),
-                  currency: plan.currency,
-                  status: plan.status
-                }))
-              });
-            })} className="space-y-4">
-              {isNew && (
-                <div>
-                  <label className="text-sm font-bold block mb-1.5">应用标识 (code)</label>
-                  <p className="text-xs text-muted-foreground mb-2">创建后不可修改，用于 API 调用</p>
-                  <Input placeholder="ai_web_translator_ext" />
-                </div>
-              )}
-              <FormField control={appForm.control} name="name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>应用名称</FormLabel>
-                  <FormControl><Input placeholder="My App" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
               <div className="grid grid-cols-2 gap-4">
-                <FormField control={appForm.control} name="type" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>类型</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="chrome_extension">Chrome Extension</SelectItem>
-                        <SelectItem value="web_app">Web App</SelectItem>
-                        <SelectItem value="service">Service</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={appForm.control} name="status" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>状态</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                        <SelectItem value="expired">Expired</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-              <FormField control={appForm.control} name="description" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>描述（可选）</FormLabel>
-                  <FormControl><Input placeholder="应用简介" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              {products.length > 0 && (
-                <FormField control={appForm.control} name="productCodes" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>绑定产品</FormLabel>
-                    <div className="space-y-2">
-                      {products.map((p) => (
-                        <label key={p.code} className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={field.value.includes(p.code)}
-                            onCheckedChange={(checked) => {
-                              const next = checked
-                                ? [...field.value, p.code]
-                                : field.value.filter((c) => c !== p.code);
-                              field.onChange(next);
-                            }}
-                          />
-                          <span className="text-sm font-mono">{p.code}</span>
-                          <span className="text-xs text-muted-foreground">{p.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              )}
-              <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-4">
-                <div>
-                  <p className="text-sm font-black">订阅与价格</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    这里直接管理该应用可售计划的价格，并指定扩展默认发起的 checkout 计划。
-                  </p>
-                </div>
-                {visiblePlans.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">当前选中的产品下还没有可管理的计划。</p>
-                ) : (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-bold block mb-1.5">默认 Checkout 计划</label>
-                      <Select value={checkoutPlanCode} onValueChange={setCheckoutPlanCode}>
+                <FormField
+                  control={appForm.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>类型</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger>
-                          <SelectValue placeholder="按月付优先自动选择" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {visiblePlans.map((plan) => (
-                            <SelectItem key={plan.code} value={plan.code}>
-                              {plan.name} ({plan.code})
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="chrome_extension">Chrome Extension</SelectItem>
+                          <SelectItem value="web_app">Web App</SelectItem>
+                          <SelectItem value="service">Service</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    {visiblePlans.map((plan) => (
-                      <div key={plan.code} className="rounded-xl border border-border bg-white p-3 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-black">{plan.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {plan.code} · {plan.productCode} · {formatPlanInterval(plan.interval)}
-                            </p>
-                          </div>
-                          <StatusPill tone={statusToTone(plan.status)} label={plan.status} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs font-bold block mb-1.5">价格（元）</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={plan.priceYuan}
-                              onChange={(event) => {
-                                setEditablePlans((current) =>
-                                  current.map((item) =>
-                                    item.code === plan.code ? { ...item, priceYuan: event.target.value } : item
-                                  )
-                                );
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={appForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>状态</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={appForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>描述（可选）</FormLabel>
+                    <FormControl>
+                      <Input placeholder="应用简介" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {products.length > 0 && (
+                <FormField
+                  control={appForm.control}
+                  name="productCodes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>绑定产品</FormLabel>
+                      <div className="space-y-2">
+                        {products.map((product) => (
+                          <label key={product.code} className="flex cursor-pointer items-center gap-2">
+                            <Checkbox
+                              checked={field.value.includes(product.code)}
+                              onCheckedChange={(checked) => {
+                                const next = checked
+                                  ? [...field.value, product.code]
+                                  : field.value.filter((code) => code !== product.code);
+                                field.onChange(next);
                               }}
                             />
+                            <span className="text-sm font-mono">{product.code}</span>
+                            <span className="text-xs text-muted-foreground">{product.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-black">应用定价梯度</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      这里管理该应用对外展示的全部订阅价格选项。每个 offer 绑定一个基础 plan，但价格、标题、标签都可以按应用单独设置。
+                    </p>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" onClick={addOffer} disabled={availablePlans.length === 0}>
+                    <Plus className="mr-1 h-4 w-4" />
+                    添加 Offer
+                  </Button>
+                </div>
+
+                {availablePlans.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">先选择产品，才能配置该应用的价格选项。</p>
+                ) : editableOffers.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border bg-white/70 p-4 text-xs text-muted-foreground">
+                    当前还没有配置应用级 offer。保存后，前端会回退到基础 plan；如果你要自定义价格梯度，请先点“添加 Offer”。
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {editableOffers.map((offer, index) => {
+                      const boundPlan = availablePlanMap.get(offer.planCode) ?? allPlans.find((plan) => plan.code === offer.planCode) ?? null;
+                      return (
+                        <div key={offer.id} className="space-y-3 rounded-xl border border-border bg-white p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-black">{offer.title || `Offer ${index + 1}`}</p>
+                              <p className="text-xs font-mono text-muted-foreground">
+                                {offer.code || '未设置 code'} · 绑定 {offer.planCode || '未选择 plan'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {offer.isDefault && <StatusPill tone="warn" label="default" />}
+                              <StatusPill tone={statusToTone(offer.status)} label={offer.status} />
+                              <Button type="button" size="icon" variant="ghost" onClick={() => removeOffer(offer.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">Offer Code</label>
+                              <Input
+                                value={offer.code}
+                                onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, code: slugify(event.target.value) }))}
+                                placeholder="translator_monthly_launch"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">绑定基础 Plan</label>
+                              <Select
+                                value={offer.planCode}
+                                onValueChange={(value) =>
+                                  updateOffer(offer.id, (current) => {
+                                    const nextPlan = availablePlanMap.get(value);
+                                    return {
+                                      ...current,
+                                      planCode: value,
+                                      currency: nextPlan?.currency || current.currency,
+                                      status: (nextPlan?.status as EditableOffer['status']) || current.status,
+                                      title: current.title || nextPlan?.name || '',
+                                      priceYuan: current.priceYuan || formatPriceYuan(nextPlan?.priceAmount)
+                                    };
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="选择 plan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availablePlans.map((plan) => (
+                                    <SelectItem key={plan.code} value={plan.code}>
+                                      {plan.name} ({plan.code}) · {formatPlanInterval(plan.interval)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">展示标题</label>
+                              <Input
+                                value={offer.title}
+                                onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, title: event.target.value }))}
+                                placeholder="Pro 月付"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">标签（可选）</label>
+                              <Input
+                                value={offer.badge}
+                                onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, badge: event.target.value }))}
+                                placeholder="限时优惠"
+                              />
+                            </div>
+                          </div>
+
                           <div>
-                            <label className="text-xs font-bold block mb-1.5">状态</label>
-                            <Select
-                              value={plan.status}
-                              onValueChange={(value) => {
-                                setEditablePlans((current) =>
-                                  current.map((item) =>
-                                    item.code === plan.code
-                                      ? { ...item, status: value as EditablePlan['status'] }
-                                      : item
-                                  )
-                                );
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                                <SelectItem value="expired">Expired</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <label className="mb-1.5 block text-xs font-bold">描述（可选）</label>
+                            <Input
+                              value={offer.description}
+                              onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, description: event.target.value }))}
+                              placeholder={boundPlan ? `${formatPlanInterval(boundPlan.interval)} · 绑定 ${boundPlan.productCode}` : '用于前端展示的简短说明'}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-3">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">价格（元）</label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={offer.priceYuan}
+                                onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, priceYuan: event.target.value }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">币种</label>
+                              <Input
+                                value={offer.currency}
+                                onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-xs font-bold">状态</label>
+                              <Select
+                                value={offer.status}
+                                onValueChange={(value) => updateOffer(offer.id, (current) => ({ ...current, status: value as EditableOffer['status'] }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="inactive">Inactive</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  <SelectItem value="expired">Expired</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-end">
+                              <Button type="button" variant={offer.isDefault ? 'default' : 'outline'} className="w-full" onClick={() => markDefaultOffer(offer.id)}>
+                                {offer.isDefault ? '默认 Offer' : '设为默认'}
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
+
               <Button type="submit" className="w-full" disabled={upsertMutation.isPending}>
                 {upsertMutation.isPending ? '保存中...' : '保存应用'}
               </Button>
@@ -557,34 +739,36 @@ export function AppsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Secret Result Dialog */}
       <Dialog open={!!secretResult} onOpenChange={(open) => { if (!open) setSecretResult(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Secret 已生成 ⚠️</DialogTitle>
-            <DialogDescription>
-              此 Secret 只显示一次，请立即复制保存。关闭后将无法再次查看。
-            </DialogDescription>
+            <DialogDescription>此 Secret 只显示一次，请立即复制保存。关闭后将无法再次查看。</DialogDescription>
           </DialogHeader>
           {secretResult && (
             <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
-                <p className="font-black text-amber-800 mb-1">appCode: {secretResult.appCode}</p>
-                <p className="font-black text-amber-800 mb-1">secretId: {secretResult.secretId}</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
+                <p className="mb-1 font-black text-amber-800">appCode: {secretResult.appCode}</p>
+                <p className="mb-1 font-black text-amber-800">secretId: {secretResult.secretId}</p>
               </div>
               <div className="relative">
-                <div className="p-3 rounded-xl bg-slate-950 font-mono text-xs text-green-400 pr-16 break-all">
+                <div className="break-all rounded-xl bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
                   {secretVisible ? secretResult.secret : '•'.repeat(Math.min(secretResult.secret.length, 40))}
                 </div>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => setSecretVisible((v) => !v)}>
-                    {secretVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => setSecretVisible((value) => !value)}>
+                    {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => {
-                    void navigator.clipboard.writeText(secretResult.secret);
-                    toast.success('已复制到剪贴板');
-                  }}>
-                    <Copy className="w-3.5 h-3.5" />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(secretResult.secret);
+                      toast.success('已复制到剪贴板');
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

@@ -12,9 +12,184 @@ type AppRecord = NonNullable<Awaited<ReturnType<AppRepository['findAppByCode']>>
 type ProductRecord = Awaited<ReturnType<LicenseRepository['listProductsByIds']>>[number];
 type PlanRecord = Awaited<ReturnType<LicenseRepository['listPlansByProductIds']>>[number];
 type AppSecretRecord = Awaited<ReturnType<AppRepository['listAppSecretsByAppIds']>>[number];
+type CheckoutOfferStatus = 'active' | 'inactive' | 'cancelled' | 'expired';
+type CheckoutOfferInput = {
+  code: string;
+  planCode: string;
+  title?: string;
+  description?: string;
+  badge?: string;
+  priceAmount: number;
+  currency: string;
+  status: CheckoutOfferStatus;
+  isDefault?: boolean;
+  sortOrder?: number;
+};
+type CheckoutOffer = {
+  code: string;
+  planCode: string;
+  planId: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  title: string;
+  description: string | null;
+  badge: string | null;
+  interval: 'month' | 'year' | 'one_time';
+  priceAmount: number;
+  currency: string;
+  status: CheckoutOfferStatus;
+  isDefault: boolean;
+  sortOrder: number;
+};
 
 export class AppService {
   constructor(private readonly db: DbClient) {}
+
+  private normalizeMeta(meta: unknown) {
+    return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+  }
+
+  private readCheckoutDefaultOfferCode(meta: unknown) {
+    const normalized = this.normalizeMeta(meta);
+    const offerCode =
+      typeof normalized.checkoutDefaultOfferCode === 'string'
+        ? normalized.checkoutDefaultOfferCode.trim()
+        : typeof normalized.checkoutPlanCode === 'string'
+          ? normalized.checkoutPlanCode.trim()
+          : '';
+
+    return offerCode;
+  }
+
+  private readCheckoutOffers(meta: unknown) {
+    const normalized = this.normalizeMeta(meta);
+    return Array.isArray(normalized.checkoutOffers) ? normalized.checkoutOffers : [];
+  }
+
+  private buildCheckoutOffers(input: {
+    app: {
+      meta: unknown;
+    };
+    products: Array<{
+      id: string;
+      code: string;
+      name: string;
+    }>;
+    plans: Array<{
+      id: string;
+      productId: string;
+      code: string;
+      name: string;
+      interval: 'month' | 'year' | 'one_time';
+      priceAmount: number;
+      currency: string;
+      status: CheckoutOfferStatus;
+    }>;
+  }) {
+    const productMap = new Map(input.products.map((product) => [product.id, product]));
+    const planMap = new Map(input.plans.map((plan) => [plan.code, plan]));
+    const configuredDefaultOfferCode = this.readCheckoutDefaultOfferCode(input.app.meta);
+    const rawOffers = this.readCheckoutOffers(input.app.meta);
+
+    const configuredOffers = rawOffers
+      .map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return null;
+        }
+
+        const raw = item as Record<string, unknown>;
+        const offerCode = typeof raw.code === 'string' ? raw.code.trim() : '';
+        const planCode = typeof raw.planCode === 'string' ? raw.planCode.trim() : '';
+        const plan = planMap.get(planCode);
+        if (!offerCode || !plan) {
+          return null;
+        }
+
+        const product = productMap.get(plan.productId);
+        if (!product) {
+          return null;
+        }
+
+        return {
+          code: offerCode,
+          planCode: plan.code,
+          planId: plan.id,
+          productId: plan.productId,
+          productCode: product.code,
+          productName: product.name,
+          title: typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : plan.name,
+          description: typeof raw.description === 'string' && raw.description.trim() ? raw.description.trim() : null,
+          badge: typeof raw.badge === 'string' && raw.badge.trim() ? raw.badge.trim() : null,
+          interval: plan.interval,
+          priceAmount:
+            typeof raw.priceAmount === 'number' && Number.isInteger(raw.priceAmount) && raw.priceAmount >= 0
+              ? raw.priceAmount
+              : plan.priceAmount,
+          currency:
+            typeof raw.currency === 'string' && raw.currency.trim()
+              ? raw.currency.trim().toUpperCase()
+              : plan.currency,
+          status:
+            raw.status === 'active' || raw.status === 'inactive' || raw.status === 'cancelled' || raw.status === 'expired'
+              ? raw.status
+              : plan.status,
+          isDefault:
+            raw.isDefault === true || (configuredDefaultOfferCode ? configuredDefaultOfferCode === offerCode : index === 0),
+          sortOrder:
+            typeof raw.sortOrder === 'number' && Number.isFinite(raw.sortOrder) ? raw.sortOrder : index
+        } satisfies CheckoutOffer;
+      })
+      .filter((item): item is CheckoutOffer => item !== null);
+
+    if (configuredOffers.length > 0) {
+      const ordered = configuredOffers
+        .sort((left, right) => left.sortOrder - right.sortOrder || left.code.localeCompare(right.code))
+        .map((offer, index) => ({
+          ...offer,
+          isDefault:
+            configuredDefaultOfferCode
+              ? offer.code === configuredDefaultOfferCode
+              : configuredOffers.every((item) => item.isDefault === false)
+                ? index === 0
+                : offer.isDefault
+        }));
+
+      if (!ordered.some((offer) => offer.isDefault) && ordered[0]) {
+        ordered[0] = { ...ordered[0], isDefault: true };
+      }
+
+      return ordered;
+    }
+
+    const fallbackPlans = input.plans
+      .filter((plan) => plan.status === 'active')
+      .sort((left, right) => {
+        const weight = { month: 0, year: 1, one_time: 2 };
+        return weight[left.interval] - weight[right.interval] || left.code.localeCompare(right.code);
+      });
+
+    return fallbackPlans.map((plan, index) => {
+      const product = productMap.get(plan.productId);
+      return {
+        code: plan.code,
+        planCode: plan.code,
+        planId: plan.id,
+        productId: plan.productId,
+        productCode: product?.code ?? '',
+        productName: product?.name ?? '',
+        title: plan.name,
+        description: null,
+        badge: null,
+        interval: plan.interval,
+        priceAmount: plan.priceAmount,
+        currency: plan.currency,
+        status: plan.status,
+        isDefault: configuredDefaultOfferCode ? configuredDefaultOfferCode === plan.code : index === 0,
+        sortOrder: index
+      } satisfies CheckoutOffer;
+    });
+  }
 
   private isSecretUsable(secret: AppSecretRecord, now = new Date()) {
     return (
@@ -73,24 +248,9 @@ export class AppService {
       }
     }
 
-    return appRecords.map((app) => ({
-      id: app.id,
-      code: app.code,
-      name: app.name,
-      description: app.description,
-      type: app.type,
-      status: app.status,
-      meta: app.meta,
-      createdAt: app.createdAt,
-      updatedAt: app.updatedAt,
-      products: (productsByAppId.get(app.id) ?? []).map((product) => ({
-        id: product.id,
-        code: product.code,
-        name: product.name,
-        type: product.type,
-        status: product.status
-      })),
-      plans: (productsByAppId.get(app.id) ?? []).flatMap((product) =>
+    return appRecords.map((app) => {
+      const appProducts = productsByAppId.get(app.id) ?? [];
+      const appPlans = appProducts.flatMap((product) =>
         (plansByProductId.get(product.id) ?? []).map((plan) => ({
           id: plan.id,
           productId: plan.productId,
@@ -103,19 +263,57 @@ export class AppService {
           currency: plan.currency,
           status: plan.status
         }))
-      ),
-      secrets: includeSecrets
-        ? (secretsByAppId.get(app.id) ?? []).map((secret) => ({
-            id: secret.id,
-            name: secret.name,
-            hint: secret.hint,
-            status: secret.status,
-            lastUsedAt: secret.lastUsedAt,
-            expiresAt: secret.expiresAt,
-            createdAt: secret.createdAt
+      );
+
+      return {
+        id: app.id,
+        code: app.code,
+        name: app.name,
+        description: app.description,
+        type: app.type,
+        status: app.status,
+        meta: app.meta,
+        createdAt: app.createdAt,
+        updatedAt: app.updatedAt,
+        products: appProducts.map((product) => ({
+          id: product.id,
+          code: product.code,
+          name: product.name,
+          type: product.type,
+          status: product.status
+        })),
+        plans: appPlans,
+        checkoutOffers: this.buildCheckoutOffers({
+          app,
+          products: appProducts.map((product) => ({
+            id: product.id,
+            code: product.code,
+            name: product.name
+          })),
+          plans: appPlans.map((plan) => ({
+            id: plan.id,
+            productId: plan.productId,
+            code: plan.code,
+            name: plan.name,
+            interval: plan.interval,
+            priceAmount: plan.priceAmount,
+            currency: plan.currency,
+            status: plan.status
           }))
-        : undefined
-    }));
+        }),
+        secrets: includeSecrets
+          ? (secretsByAppId.get(app.id) ?? []).map((secret) => ({
+              id: secret.id,
+              name: secret.name,
+              hint: secret.hint,
+              status: secret.status,
+              lastUsedAt: secret.lastUsedAt,
+              expiresAt: secret.expiresAt,
+              createdAt: secret.createdAt
+            }))
+          : undefined
+      };
+    });
   }
 
   async listActiveApps() {
@@ -219,15 +417,90 @@ export class AppService {
     const features = snapshot.features.filter((feature) => productIds.has(feature.productId));
     const planIds = new Set(plans.map((plan) => plan.id));
     const featureIds = new Set(features.map((feature) => feature.id));
+    const offers = this.buildCheckoutOffers({
+      app,
+      products: products.map((product) => ({
+        id: product.id,
+        code: product.code,
+        name: product.name
+      })),
+      plans: plans.map((plan) => ({
+        id: plan.id,
+        productId: plan.productId,
+        code: plan.code,
+        name: plan.name,
+        interval: plan.interval,
+        priceAmount: plan.priceAmount,
+        currency: plan.currency,
+        status: plan.status
+      }))
+    });
 
     return {
       app,
       products,
       plans,
+      offers,
       features,
       planFeatures: snapshot.planFeatures.filter(
         (mapping) => planIds.has(mapping.planId) && featureIds.has(mapping.featureId)
       )
+    };
+  }
+
+  async resolveCheckoutOffer(
+    appCode: string,
+    input: {
+      planCode?: string;
+      offerCode?: string;
+    }
+  ) {
+    const catalog = await this.getAppCatalog(appCode);
+    const activeOffers = catalog.offers.filter((offer) => offer.status === 'active');
+
+    if (activeOffers.length === 0) {
+      throw httpError(422, 'No active checkout offers are configured for this app');
+    }
+
+    let offer =
+      (input.offerCode ? activeOffers.find((item) => item.code === input.offerCode) : null) ??
+      null;
+
+    if (input.offerCode && !offer) {
+      throw httpError(404, `Checkout offer not found: ${input.offerCode}`);
+    }
+
+    if (!offer && input.planCode) {
+      const matchedOffers = activeOffers.filter((item) => item.planCode === input.planCode);
+      if (matchedOffers.length === 1) {
+        [offer] = matchedOffers;
+      } else if (matchedOffers.length > 1) {
+        offer = matchedOffers.find((item) => item.isDefault) ?? matchedOffers[0] ?? null;
+      } else {
+        throw httpError(404, `Checkout plan is not available for this app: ${input.planCode}`);
+      }
+    }
+
+    if (!offer) {
+      offer = activeOffers.find((item) => item.isDefault) ?? activeOffers[0] ?? null;
+    }
+
+    if (!offer) {
+      throw httpError(404, 'Checkout offer not found');
+    }
+
+    const product = catalog.products.find((item) => item.id === offer.productId);
+    const plan = catalog.plans.find((item) => item.id === offer.planId);
+
+    if (!product || !plan) {
+      throw httpError(500, 'Checkout offer is missing related product or plan');
+    }
+
+    return {
+      app: catalog.app,
+      product,
+      plan,
+      offer
     };
   }
 
@@ -251,6 +524,8 @@ export class AppService {
       type: 'chrome_extension' | 'web_app' | 'service';
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
       productCodes: string[];
+      checkoutOffers?: CheckoutOfferInput[];
+      checkoutDefaultOfferCode?: string;
       planConfigs?: Array<{
         code: string;
         priceAmount: number;
@@ -306,7 +581,54 @@ export class AppService {
       throw httpError(422, `Plans are not available to this app: ${disallowedPlans.map((plan) => plan.code).join(', ')}`);
     }
 
+    const checkoutOffers = (input.checkoutOffers ?? []).map((item, index) => ({
+      code: item.code.trim(),
+      planCode: item.planCode.trim(),
+      title: (item.title ?? '').trim(),
+      description: item.description?.trim() || '',
+      badge: item.badge?.trim() || '',
+      priceAmount: item.priceAmount,
+      currency: item.currency.trim().toUpperCase() || 'CNY',
+      status: item.status,
+      isDefault: item.isDefault === true,
+      sortOrder: item.sortOrder ?? index
+    })).filter((item) => item.code && item.planCode && item.title);
+    const checkoutDefaultOfferCode = input.checkoutDefaultOfferCode?.trim() || '';
+    const offerPlanCodes = [...new Set(checkoutOffers.map((item) => item.planCode))];
+    const offerPlans =
+      offerPlanCodes.length > 0 ? await licenseRepository.listPlansByCodes(offerPlanCodes) : [];
+
+    if (offerPlans.length !== offerPlanCodes.length) {
+      const found = new Set(offerPlans.map((plan) => plan.code));
+      const missing = offerPlanCodes.filter((code) => !found.has(code));
+      throw httpError(404, `Offer plans not found: ${missing.join(', ')}`);
+    }
+
+    const disallowedOfferPlans = offerPlans.filter((plan) => !allowedProductIds.has(plan.productId));
+    if (disallowedOfferPlans.length > 0) {
+      throw httpError(
+        422,
+        `Offer plans are not available to this app: ${disallowedOfferPlans.map((plan) => plan.code).join(', ')}`
+      );
+    }
+
+    if (checkoutDefaultOfferCode && !checkoutOffers.some((offer) => offer.code === checkoutDefaultOfferCode)) {
+      throw httpError(422, `Default checkout offer not found: ${checkoutDefaultOfferCode}`);
+    }
+
     const normalizedMeta = { ...(input.meta ?? {}) };
+    if (checkoutOffers.length > 0) {
+      normalizedMeta.checkoutOffers = checkoutOffers;
+      normalizedMeta.checkoutDefaultOfferCode =
+        checkoutDefaultOfferCode ||
+        checkoutOffers.find((offer) => offer.isDefault)?.code ||
+        checkoutOffers[0]?.code ||
+        null;
+    } else {
+      delete normalizedMeta.checkoutOffers;
+      delete normalizedMeta.checkoutDefaultOfferCode;
+    }
+
     if (checkoutPlanCode) {
       normalizedMeta.checkoutPlanCode = checkoutPlanCode;
     } else {
@@ -350,6 +672,8 @@ export class AppService {
         properties: {
           appCode,
           productCodes,
+          checkoutOfferCodes: checkoutOffers.map((offer) => offer.code),
+          checkoutDefaultOfferCode: normalizedMeta.checkoutDefaultOfferCode ?? null,
           checkoutPlanCode: checkoutPlanCode || null,
           updatedPlanCodes: planConfigs.map((plan) => plan.code),
           status: input.status,

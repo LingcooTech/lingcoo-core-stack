@@ -5,6 +5,7 @@ import { billingProviderSchema } from '../billing/schemas';
 export const createCheckoutSessionSchema = z.object({
   appCode: z.string().trim().min(1).max(64),
   planCode: z.string().trim().min(1).max(64),
+  offerCode: z.string().trim().min(1).max(64).optional(),
   providerPreference: billingProviderSchema.optional(),
   successUrl: z.string().url().max(2048).optional(),
   cancelUrl: z.string().url().max(2048).optional()

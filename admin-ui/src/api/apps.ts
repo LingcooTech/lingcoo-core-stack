@@ -1,8 +1,16 @@
 import { apiClient } from './client';
-import type { AppSecretCreated, AppWithDetails } from './types';
+import type { AppSecretCreated, AppWithDetails, PlanSummary, ProductSummary } from './types';
 
 export async function listAppsAdmin(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/admin/apps');
+}
+
+export async function listCatalogProducts(): Promise<{ items: ProductSummary[] }> {
+  return apiClient<{ items: ProductSummary[] }>('/v1/products');
+}
+
+export async function listCatalogPlans(): Promise<{ items: PlanSummary[] }> {
+  return apiClient<{ items: PlanSummary[] }>('/v1/plans');
 }
 
 export interface UpsertAppInput {
@@ -11,6 +19,19 @@ export interface UpsertAppInput {
   type: string;
   status: string;
   productCodes: string[];
+  checkoutOffers?: Array<{
+    code: string;
+    planCode: string;
+    title: string;
+    description?: string;
+    badge?: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    isDefault?: boolean;
+    sortOrder?: number;
+  }>;
+  checkoutDefaultOfferCode?: string;
   planConfigs?: Array<{
     code: string;
     priceAmount: number;
