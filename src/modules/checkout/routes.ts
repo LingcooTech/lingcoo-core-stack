@@ -1,6 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { httpError } from '../../lib/errors';
 import { renderCheckoutPage } from './page';
 import { checkoutSessionParamsSchema, createCheckoutSessionSchema } from './schemas';
 import { CheckoutService } from './service';
@@ -18,11 +17,11 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(renderCheckoutPage(params.sessionCode));
   });
 
-  app.post('/v1/checkout/sessions', { preHandler: [app.authenticateApp, app.authenticate] }, async (request, reply) => {
+  // POST /v1/checkout/sessions
+  // 公开客户端（Chrome 扩展等）只需用户 JWT + appCode。
+  // appCode 是公开标识符（非秘密），服务层负责验证 App 是否激活并允许该产品。
+  app.post('/v1/checkout/sessions', { preHandler: app.authenticate }, async (request, reply) => {
     const payload = createCheckoutSessionSchema.parse(request.body);
-    if (request.appClient?.appCode !== payload.appCode) {
-      throw httpError(403, 'App token does not match checkout app');
-    }
     const result = await new CheckoutService(app.db, app.appEnv).createSession({
       userId: request.user.sub,
       clientIp: request.ip,
