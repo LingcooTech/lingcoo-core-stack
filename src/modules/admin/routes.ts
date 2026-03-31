@@ -1,8 +1,11 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { AuthRepository } from '../auth/repository';
-import { renderAdminPage, type AdminSectionKey } from './page';
 import { AdminService } from './service';
 import {
   adminEntitlementParamsSchema,
@@ -14,24 +17,53 @@ import {
   wechatPaymentSettingsSchema
 } from './schemas';
 
+// Resolve admin-ui/dist relative to this module's compiled location
+const adminUiDist = path.resolve(__dirname, '../../../admin-ui/dist');
+
+// Load SPA index.html once at startup (fallback if not built)
+let spaHtml: string;
+try {
+  spaHtml = readFileSync(path.join(adminUiDist, 'index.html'), 'utf-8');
+} catch {
+  spaHtml = '<!DOCTYPE html><html><body><p>Admin UI not built. Run <code>npm run build:admin</code>.</p></body></html>';
+}
+
+const SPA_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "connect-src 'self'"
+].join('; ');
+
 export const adminRoutes: FastifyPluginAsync = async (app) => {
-  const sendAdminPage = (section: AdminSectionKey) => async (_request: unknown, reply: FastifyReply) => {
+  // Serve Vite-built assets (hashed filenames) at /assets/
+  const assetsDir = path.join(adminUiDist, 'assets');
+  if (existsSync(assetsDir)) {
+    await app.register(fastifyStatic, {
+      root: assetsDir,
+      prefix: '/assets/',
+      decorateReply: false
+    });
+  }
+
+  // SPA handler — serves index.html for all /admin* HTML routes
+  const sendSPA = async (_request: unknown, reply: FastifyReply) => {
     reply
       .type('text/html; charset=utf-8')
-      .header(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';"
-      );
-
-    return reply.send(renderAdminPage(section));
+      .header('Content-Security-Policy', SPA_CSP);
+    return reply.send(spaHtml);
   };
 
-  app.get('/admin', sendAdminPage('dashboard'));
-  app.get('/admin/payments', sendAdminPage('payments'));
-  app.get('/admin/apps', sendAdminPage('apps'));
-  app.get('/admin/licenses', sendAdminPage('licenses'));
-  app.get('/admin/operations', sendAdminPage('operations'));
-  app.get('/admin/observability', sendAdminPage('observability'));
+  app.get('/admin', sendSPA);
+  app.get('/admin/login', sendSPA);
+  app.get('/admin/payments', sendSPA);
+  app.get('/admin/apps', sendSPA);
+  app.get('/admin/licenses', sendSPA);
+  app.get('/admin/operations', sendSPA);
+  app.get('/admin/observability', sendSPA);
+
+  // ─── API Routes (unchanged) ───────────────────────────────────────────────
 
   app.get('/v1/admin/bootstrap-status', async () => {
     return {
@@ -90,23 +122,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.put('/v1/admin/payment-settings/wechat', { preHandler: app.requireAdmin }, async (request) => {
     const payload = wechatPaymentSettingsSchema.parse(request.body);
-
     return new PaymentSettingsService(app.db, app.appEnv).upsertWechatSettings(payload, request.user.sub);
   });
 
   app.put('/v1/admin/payment-settings/alipay', { preHandler: app.requireAdmin }, async (request) => {
     const payload = alipayPaymentSettingsSchema.parse(request.body);
-
     return new PaymentSettingsService(app.db, app.appEnv).upsertAlipaySettings(payload, request.user.sub);
   });
 
   app.delete('/v1/admin/payment-settings/:provider', { preHandler: app.requireAdmin }, async (request) => {
     const params = paymentProviderParamsSchema.parse(request.params);
-
     await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
-
-    return {
-      ok: true
-    };
+    return { ok: true };
   });
 };

@@ -9,6 +9,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Install admin-ui dependencies
+COPY admin-ui/package*.json ./admin-ui/
+RUN cd admin-ui && npm ci
+
 FROM deps AS build
 
 COPY tsconfig.json ./
@@ -17,6 +21,11 @@ COPY scripts ./scripts
 COPY src ./src
 COPY drizzle ./drizzle
 
+# Build admin-ui SPA
+COPY admin-ui ./admin-ui
+RUN cd admin-ui && npm run build
+
+# Build backend
 RUN npm run build
 
 FROM ${NODE_BASE_IMAGE} AS runtime
@@ -40,6 +49,7 @@ COPY --from=build /app/drizzle.config.ts ./
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/admin-ui/dist ./admin-ui/dist
 
 RUN chown -R 1001:0 /app
 
