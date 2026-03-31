@@ -10,6 +10,7 @@ import { AppRepository } from './repository';
 
 type AppRecord = NonNullable<Awaited<ReturnType<AppRepository['findAppByCode']>>>;
 type ProductRecord = Awaited<ReturnType<LicenseRepository['listProductsByIds']>>[number];
+type PlanRecord = Awaited<ReturnType<LicenseRepository['listPlansByProductIds']>>[number];
 type AppSecretRecord = Awaited<ReturnType<AppRepository['listAppSecretsByAppIds']>>[number];
 
 export class AppService {
@@ -31,9 +32,14 @@ export class AppService {
     const appIds = appRecords.map((app) => app.id);
     const productMappings = await repository.listProductMappingsByAppIds(appIds);
     const productIds = [...new Set(productMappings.map((item) => item.productId))];
-    const products = await new LicenseRepository(this.db).listProductsByIds(productIds);
+    const licenseRepository = new LicenseRepository(this.db);
+    const [products, plans] = await Promise.all([
+      licenseRepository.listProductsByIds(productIds),
+      licenseRepository.listPlansByProductIds(productIds)
+    ]);
     const productMap = new Map(products.map((product) => [product.id, product]));
     const productsByAppId = new Map<string, ProductRecord[]>();
+    const plansByProductId = new Map<string, PlanRecord[]>();
 
     for (const mapping of productMappings) {
       const product = productMap.get(mapping.productId);
@@ -46,6 +52,14 @@ export class AppService {
       }
 
       productsByAppId.get(mapping.appId)?.push(product);
+    }
+
+    for (const plan of plans) {
+      if (!plansByProductId.has(plan.productId)) {
+        plansByProductId.set(plan.productId, []);
+      }
+
+      plansByProductId.get(plan.productId)?.push(plan);
     }
 
     const secretsByAppId = new Map<string, AppSecretRecord[]>();
@@ -76,6 +90,20 @@ export class AppService {
         type: product.type,
         status: product.status
       })),
+      plans: (productsByAppId.get(app.id) ?? []).flatMap((product) =>
+        (plansByProductId.get(product.id) ?? []).map((plan) => ({
+          id: plan.id,
+          productId: plan.productId,
+          productCode: product.code,
+          productName: product.name,
+          code: plan.code,
+          name: plan.name,
+          interval: plan.interval,
+          priceAmount: plan.priceAmount,
+          currency: plan.currency,
+          status: plan.status
+        }))
+      ),
       secrets: includeSecrets
         ? (secretsByAppId.get(app.id) ?? []).map((secret) => ({
             id: secret.id,
@@ -223,17 +251,66 @@ export class AppService {
       type: 'chrome_extension' | 'web_app' | 'service';
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
       productCodes: string[];
+      planConfigs?: Array<{
+        code: string;
+        priceAmount: number;
+        currency: string;
+        status: 'active' | 'inactive' | 'cancelled' | 'expired';
+      }>;
       meta?: Record<string, unknown>;
     },
     actorUserId: string
   ) {
     const productCodes = [...new Set(input.productCodes.map((code) => code.trim()).filter(Boolean))];
-    const products = await new LicenseRepository(this.db).listProductsByCodes(productCodes);
+    const licenseRepository = new LicenseRepository(this.db);
+    const products = await licenseRepository.listProductsByCodes(productCodes);
 
     if (products.length !== productCodes.length) {
       const found = new Set(products.map((product) => product.code));
       const missing = productCodes.filter((code) => !found.has(code));
       throw httpError(404, `Products not found: ${missing.join(', ')}`);
+    }
+
+    const planConfigs = [
+      ...new Map(
+        (input.planConfigs ?? []).map((item) => [
+          item.code.trim(),
+          {
+            code: item.code.trim(),
+            priceAmount: item.priceAmount,
+            currency: item.currency.trim().toUpperCase() || 'CNY',
+            status: item.status
+          }
+        ])
+      ).values()
+    ].filter((item) => item.code);
+    const checkoutPlanCode =
+      typeof input.meta?.checkoutPlanCode === 'string' ? input.meta.checkoutPlanCode.trim() : '';
+    const planCodesToValidate = [
+      ...new Set(
+        [...planConfigs.map((item) => item.code), checkoutPlanCode].filter((code): code is string => Boolean(code))
+      )
+    ];
+    const allowedProductIds = new Set(products.map((product) => product.id));
+    const plans =
+      planCodesToValidate.length > 0 ? await licenseRepository.listPlansByCodes(planCodesToValidate) : [];
+
+    if (plans.length !== planCodesToValidate.length) {
+      const found = new Set(plans.map((plan) => plan.code));
+      const missing = planCodesToValidate.filter((code) => !found.has(code));
+      throw httpError(404, `Plans not found: ${missing.join(', ')}`);
+    }
+
+    const disallowedPlans = plans.filter((plan) => !allowedProductIds.has(plan.productId));
+    if (disallowedPlans.length > 0) {
+      throw httpError(422, `Plans are not available to this app: ${disallowedPlans.map((plan) => plan.code).join(', ')}`);
+    }
+
+    const normalizedMeta = { ...(input.meta ?? {}) };
+    if (checkoutPlanCode) {
+      normalizedMeta.checkoutPlanCode = checkoutPlanCode;
+    } else {
+      delete normalizedMeta.checkoutPlanCode;
     }
 
     await this.db.transaction(async (tx) => {
@@ -244,7 +321,7 @@ export class AppService {
         description: input.description,
         type: input.type,
         status: input.status,
-        meta: input.meta
+        meta: normalizedMeta
       });
 
       await repository.replaceAppProducts(
@@ -252,12 +329,29 @@ export class AppService {
         products.map((product) => product.id)
       );
 
+      const txLicenseRepository = new LicenseRepository(tx as DbClient);
+      const planMap = new Map(plans.map((plan) => [plan.code, plan]));
+      for (const planConfig of planConfigs) {
+        const plan = planMap.get(planConfig.code);
+        if (!plan) {
+          continue;
+        }
+
+        await txLicenseRepository.updatePlanById(plan.id, {
+          priceAmount: planConfig.priceAmount,
+          currency: planConfig.currency,
+          status: planConfig.status
+        });
+      }
+
       await new EventService(tx as DbClient).capture({
         userId: actorUserId,
         eventName: 'app.upserted',
         properties: {
           appCode,
           productCodes,
+          checkoutPlanCode: checkoutPlanCode || null,
+          updatedPlanCodes: planConfigs.map((plan) => plan.code),
           status: input.status,
           type: input.type
         }

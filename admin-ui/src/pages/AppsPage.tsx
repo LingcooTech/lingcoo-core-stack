@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { createAppSecret, listAppsAdmin, revokeAppSecret, upsertApp } from '@/api/apps';
+import { createAppSecret, listAppsAdmin, revokeAppSecret, upsertApp, type UpsertAppInput } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -34,6 +34,59 @@ const appSchema = z.object({
 });
 type AppFormValues = z.infer<typeof appSchema>;
 
+type EditablePlan = {
+  code: string;
+  name: string;
+  interval: string;
+  priceYuan: string;
+  currency: string;
+  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  productCode: string;
+  productName: string;
+};
+
+function formatPriceYuan(priceAmount?: number) {
+  return ((priceAmount ?? 0) / 100).toFixed(2);
+}
+
+function formatPlanInterval(interval: string | null | undefined) {
+  if (interval === 'month') {
+    return '月付';
+  }
+
+  if (interval === 'year') {
+    return '年付';
+  }
+
+  if (interval === 'one_time') {
+    return '一次性';
+  }
+
+  return interval || '未设置';
+}
+
+function getCheckoutPlanCode(app: AppWithDetails | null) {
+  if (!app?.meta || typeof app.meta !== 'object' || Array.isArray(app.meta)) {
+    return '';
+  }
+
+  const value = app.meta.checkoutPlanCode;
+  return typeof value === 'string' ? value : '';
+}
+
+function toEditablePlans(app: AppWithDetails | null): EditablePlan[] {
+  return (app?.plans ?? []).map((plan) => ({
+    code: plan.code,
+    name: plan.name,
+    interval: plan.interval ?? '',
+    priceYuan: formatPriceYuan(plan.priceAmount),
+    currency: plan.currency ?? 'CNY',
+    status: (plan.status as EditablePlan['status']) ?? 'active',
+    productCode: plan.productCode ?? '',
+    productName: plan.productName ?? ''
+  }));
+}
+
 // We need product list for checkbox - get from apps
 function useProducts(apps: AppWithDetails[]) {
   const productMap = new Map<string, { code: string; name: string }>();
@@ -47,6 +100,8 @@ export function AppsPage() {
   const qc = useQueryClient();
   const [selectedApp, setSelectedApp] = useState<AppWithDetails | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [editablePlans, setEditablePlans] = useState<EditablePlan[]>([]);
+  const [checkoutPlanCode, setCheckoutPlanCode] = useState('');
   const [secretResult, setSecretResult] = useState<{ secret: string; secretId: string; appCode: string } | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const [secretAppCode, setSecretAppCode] = useState('');
@@ -62,12 +117,29 @@ export function AppsPage() {
   });
 
   const upsertMutation = useMutation({
-    mutationFn: ({ code, values }: { code: string; values: AppFormValues }) => upsertApp(code, values),
+    mutationFn: ({
+      code,
+      values,
+      planConfigs,
+      meta
+    }: {
+      code: string;
+      values: AppFormValues;
+      planConfigs: UpsertAppInput['planConfigs'];
+      meta: Record<string, unknown>;
+    }) =>
+      upsertApp(code, {
+        ...values,
+        planConfigs,
+        meta
+      }),
     onSuccess: () => {
       toast.success('应用配置已保存');
       void qc.invalidateQueries({ queryKey: ['apps'] });
       setSelectedApp(null);
       setIsNew(false);
+      setEditablePlans([]);
+      setCheckoutPlanCode('');
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -98,6 +170,8 @@ export function AppsPage() {
   const openEdit = (app: AppWithDetails) => {
     setIsNew(false);
     setSelectedApp(app);
+    setEditablePlans(toEditablePlans(app));
+    setCheckoutPlanCode(getCheckoutPlanCode(app));
     appForm.reset({
       name: app.name,
       description: app.description ?? '',
@@ -110,6 +184,8 @@ export function AppsPage() {
   const openNew = () => {
     setIsNew(true);
     setSelectedApp(null);
+    setEditablePlans([]);
+    setCheckoutPlanCode('');
     appForm.reset({ name: '', description: '', type: 'web_app', status: 'active', productCodes: [] });
   };
 
@@ -137,14 +213,23 @@ export function AppsPage() {
     },
     {
       key: 'products',
-      header: '绑定产品',
+      header: '产品 / 价格',
       cell: (row) => (
-        <div className="flex flex-wrap gap-1">
-          {row.products?.map((p) => (
-            <span key={p.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
-              {p.code}
-            </span>
-          )) ?? <span className="text-xs text-muted-foreground">—</span>}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1">
+            {row.products?.map((p) => (
+              <span key={p.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
+                {p.code}
+              </span>
+            )) ?? <span className="text-xs text-muted-foreground">—</span>}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {row.plans?.map((plan) => (
+              <span key={plan.code} className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 rounded px-1.5 py-0.5 font-mono">
+                {plan.code} ¥{formatPriceYuan(plan.priceAmount)}/{formatPlanInterval(plan.interval)}
+              </span>
+            )) ?? <span className="text-xs text-muted-foreground">—</span>}
+          </div>
         </div>
       )
     },
@@ -170,6 +255,8 @@ export function AppsPage() {
   const editingCode = isNew
     ? ''
     : selectedApp?.code ?? '';
+  const selectedProductCodes = appForm.watch('productCodes');
+  const visiblePlans = editablePlans.filter((plan) => selectedProductCodes.includes(plan.productCode));
 
   return (
     <div>
@@ -279,7 +366,26 @@ export function AppsPage() {
           <Form {...appForm}>
             <form onSubmit={appForm.handleSubmit((v) => {
               const code = isNew ? v.name.toLowerCase().replace(/\s+/g, '_') : editingCode;
-              upsertMutation.mutate({ code, values: v });
+              const meta = { ...(selectedApp?.meta ?? {}) };
+              const nextCheckoutPlanCode = visiblePlans.some((plan) => plan.code === checkoutPlanCode) ? checkoutPlanCode : '';
+
+              if (nextCheckoutPlanCode) {
+                meta.checkoutPlanCode = nextCheckoutPlanCode;
+              } else {
+                delete meta.checkoutPlanCode;
+              }
+
+              upsertMutation.mutate({
+                code,
+                values: v,
+                meta,
+                planConfigs: visiblePlans.map((plan) => ({
+                  code: plan.code,
+                  priceAmount: Math.round(Number(plan.priceYuan || '0') * 100),
+                  currency: plan.currency,
+                  status: plan.status
+                }))
+              });
             })} className="space-y-4">
               {isNew && (
                 <div>
@@ -358,6 +464,91 @@ export function AppsPage() {
                   </FormItem>
                 )} />
               )}
+              <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-4">
+                <div>
+                  <p className="text-sm font-black">订阅与价格</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    这里直接管理该应用可售计划的价格，并指定扩展默认发起的 checkout 计划。
+                  </p>
+                </div>
+                {visiblePlans.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">当前选中的产品下还没有可管理的计划。</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-bold block mb-1.5">默认 Checkout 计划</label>
+                      <Select value={checkoutPlanCode} onValueChange={setCheckoutPlanCode}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="按月付优先自动选择" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {visiblePlans.map((plan) => (
+                            <SelectItem key={plan.code} value={plan.code}>
+                              {plan.name} ({plan.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {visiblePlans.map((plan) => (
+                      <div key={plan.code} className="rounded-xl border border-border bg-white p-3 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black">{plan.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {plan.code} · {plan.productCode} · {formatPlanInterval(plan.interval)}
+                            </p>
+                          </div>
+                          <StatusPill tone={statusToTone(plan.status)} label={plan.status} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-bold block mb-1.5">价格（元）</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={plan.priceYuan}
+                              onChange={(event) => {
+                                setEditablePlans((current) =>
+                                  current.map((item) =>
+                                    item.code === plan.code ? { ...item, priceYuan: event.target.value } : item
+                                  )
+                                );
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold block mb-1.5">状态</label>
+                            <Select
+                              value={plan.status}
+                              onValueChange={(value) => {
+                                setEditablePlans((current) =>
+                                  current.map((item) =>
+                                    item.code === plan.code
+                                      ? { ...item, status: value as EditablePlan['status'] }
+                                      : item
+                                  )
+                                );
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="expired">Expired</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Button type="submit" className="w-full" disabled={upsertMutation.isPending}>
                 {upsertMutation.isPending ? '保存中...' : '保存应用'}
               </Button>

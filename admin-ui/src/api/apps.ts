@@ -11,6 +11,13 @@ export interface UpsertAppInput {
   type: string;
   status: string;
   productCodes: string[];
+  planConfigs?: Array<{
+    code: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+  }>;
+  meta?: Record<string, unknown>;
 }
 
 export async function upsertApp(appCode: string, payload: UpsertAppInput): Promise<AppWithDetails> {

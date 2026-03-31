@@ -110,6 +110,8 @@ docker compose -f docker-compose.prod.yml up -d api worker caddy
 
 完整自动化发布说明见 [DEPLOYMENT.md](/Users/admin/Desktop/fd-core-stack/DEPLOYMENT.md)。
 
+本机提交、push 与发布操作说明见 [docs/local-push-deploy-guide.md](/Users/admin/Desktop/fd-core-stack/docs/local-push-deploy-guide.md)。
+
 中台目标架构说明见 [docs/platform-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/platform-architecture.md)。
 
 Admin UI 基线说明见 [docs/admin-ui-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/admin-ui-architecture.md)。

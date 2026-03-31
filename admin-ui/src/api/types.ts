@@ -17,6 +17,12 @@ export interface PlanSummary {
   code: string;
   name: string;
   interval: string | null;
+  priceAmount?: number;
+  currency?: string;
+  status?: string;
+  productId?: string;
+  productCode?: string;
+  productName?: string;
 }
 
 export interface AppSummary {
@@ -83,12 +89,14 @@ export interface App {
   description: string | null;
   type: string;
   status: string;
+  meta?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AppWithDetails extends App {
   products: ProductSummary[];
+  plans: PlanSummary[];
   secrets: AppSecret[];
 }
 

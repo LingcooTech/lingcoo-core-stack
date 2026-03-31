@@ -14,6 +14,14 @@ export class LicenseRepository {
     return this.db.select().from(plans).orderBy(desc(plans.createdAt));
   }
 
+  async listPlansByProductIds(productIds: string[]) {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(plans).where(inArray(plans.productId, productIds));
+  }
+
   async listFeatures() {
     return this.db.select().from(features).orderBy(desc(features.createdAt));
   }
@@ -76,6 +84,35 @@ export class LicenseRepository {
     }
 
     return this.db.select().from(products).where(inArray(products.code, productCodes));
+  }
+
+  async listPlansByCodes(planCodes: string[]) {
+    if (planCodes.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(plans).where(inArray(plans.code, planCodes));
+  }
+
+  async updatePlanById(
+    planId: string,
+    input: {
+      priceAmount: number;
+      currency: string;
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    }
+  ) {
+    const [plan] = await this.db
+      .update(plans)
+      .set({
+        priceAmount: input.priceAmount,
+        currency: input.currency,
+        status: input.status
+      })
+      .where(eq(plans.id, planId))
+      .returning();
+
+    return plan ?? null;
   }
 
   async deleteEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
