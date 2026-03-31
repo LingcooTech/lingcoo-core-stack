@@ -112,6 +112,8 @@ docker compose -f docker-compose.prod.yml up -d api worker caddy
 
 中台目标架构说明见 [docs/platform-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/platform-architecture.md)。
 
+Admin UI 基线说明见 [docs/admin-ui-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/admin-ui-architecture.md)。
+
 ## MVP 初始化
 
 开发环境第一次启动后，执行数据库迁移：
