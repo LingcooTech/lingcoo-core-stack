@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
+import { AliyunAcrService } from '../../lib/aliyun-acr';
 import { DeliverySettingsService } from '../../lib/delivery-settings';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
@@ -185,9 +186,21 @@ export class DeploymentService {
     app: DeploymentAppRecord;
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     token?: string;
+    includeDownloadSecrets?: boolean;
   }) {
     const appDefaults = this.readDeploymentDefaults(input.app);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(input.app.code);
+    const acrService = new AliyunAcrService(this.env);
+    let temporaryAcrCredential = null;
+
+    if (input.includeDownloadSecrets) {
+      try {
+        temporaryAcrCredential = await acrService.issueTemporaryCredential();
+      } catch {
+        temporaryAcrCredential = null;
+      }
+    }
+
     const defaults = {
       repoUrl: appDefaults.repoUrl || deliverySettings?.repoUrl,
       repoBranch: appDefaults.repoBranch || deliverySettings?.repoBranch,
@@ -213,8 +226,8 @@ export class DeploymentService {
       wpgraphqlJwtAuthReleaseTag:
         appDefaults.wpgraphqlJwtAuthReleaseTag || deliverySettings?.wpgraphqlJwtAuthReleaseTag,
       wpgraphqlTaxQueryRef: appDefaults.wpgraphqlTaxQueryRef || deliverySettings?.wpgraphqlTaxQueryRef,
-      acrUsername: deliverySettings?.acrUsername,
-      acrPassword: deliverySettings?.acrPassword,
+      acrUsername: temporaryAcrCredential?.username || deliverySettings?.acrUsername,
+      acrPassword: temporaryAcrCredential?.password || deliverySettings?.acrPassword,
       githubToken: deliverySettings?.githubToken
     };
     const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
@@ -266,7 +279,10 @@ export class DeploymentService {
         : null,
       notes: [
         'Installer bootstrap now preloads deployment domains and any app-level deployment defaults into the existing install flow.',
-        'If an env key is not present here, the installer will fall back to its current interactive prompt.'
+        'If an env key is not present here, the installer will fall back to its current interactive prompt.',
+        temporaryAcrCredential
+          ? `ACR temporary pull credential issued${temporaryAcrCredential.expiresAt ? `, expires at ${temporaryAcrCredential.expiresAt.toISOString()}` : ''}.`
+          : 'ACR bootstrap is using stored delivery credentials or existing docker login state.'
       ]
     };
   }
@@ -378,7 +394,8 @@ export class DeploymentService {
     const bootstrap = await this.buildBootstrapPayload({
       app,
       deployment,
-      token: plainToken
+      token: plainToken,
+      includeDownloadSecrets: false
     });
 
     return {
@@ -429,7 +446,8 @@ export class DeploymentService {
       bootstrap: await this.buildBootstrapPayload({
         app,
         deployment,
-        token
+        token,
+        includeDownloadSecrets: true
       })
     };
   }

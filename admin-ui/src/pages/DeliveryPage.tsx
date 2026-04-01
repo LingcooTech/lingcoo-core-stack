@@ -21,7 +21,7 @@ const deliverySchema = z.object({
   frontendImage: z.string().min(1),
   websocketImage: z.string().min(1),
   letsencryptEmail: z.string().email(),
-  acrUsername: z.string().min(1),
+  acrUsername: z.string(),
   acrPassword: z.string().optional(),
   githubToken: z.string().optional(),
   wordpressFetchReleaseAssets: z.boolean(),
@@ -144,7 +144,7 @@ export function DeliveryPage() {
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
               <StatusPill tone={settings.configured ? 'ok' : 'neutral'} label={settings.configured ? '交付配置完整' : '配置不完整'} />
-              <StatusPill tone={settings.secrets.acrPassword.configured ? 'ok' : 'neutral'} label={`ACR 密码: ${settings.secrets.acrPassword.configured ? '已保存' : '未保存'}`} />
+              <StatusPill tone={settings.secrets.acrPassword.configured ? 'ok' : 'neutral'} label={`ACR 拉取凭据: ${settings.secrets.acrPassword.configured ? '已配置' : '未配置'}`} />
               <StatusPill tone={settings.secrets.githubToken.configured ? 'ok' : 'neutral'} label={`GitHub Token: ${settings.secrets.githubToken.configured ? '已保存' : '未保存'}`} />
             </div>
 
@@ -190,13 +190,14 @@ export function DeliveryPage() {
                 <section className="space-y-4 rounded-2xl border border-border bg-white p-5">
                   <div>
                     <h3 className="text-sm font-black">受控交付凭据</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">这些凭据不会直接展示给购买用户，只会通过一次性 deploy token 的 bootstrap 结果注入远程安装器。</p>
+                    <p className="mt-1 text-xs text-muted-foreground">这些凭据不会直接展示给购买用户。若 Stack 已配置阿里云 ACR 临时凭据签发，这里的 ACR 用户名和密码可留空，静态凭据只作为回退方案。</p>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField control={form.control} name="acrUsername" render={({ field }) => (
                       <FormItem>
                         <FormLabel>ACR 用户名</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
+                        <FormDescription>启用全局 ACR 临时凭据后可留空。</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -210,7 +211,7 @@ export function DeliveryPage() {
                     <FormField control={form.control} name="acrPassword" render={({ field }) => (
                       <FormItem>
                         <FormLabel>ACR 密码</FormLabel>
-                        <FormControl><Input type="password" placeholder={settings.secrets.acrPassword.configured ? '已保存，留空保持不变' : '当前未保存'} {...field} /></FormControl>
+                        <FormControl><Input type="password" placeholder={settings.secrets.acrPassword.configured ? '已保存或已启用临时凭据，留空保持不变' : '当前未保存'} {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />

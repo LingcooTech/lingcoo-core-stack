@@ -19,14 +19,17 @@
     "seed:mvp": "node scripts/run-seed-mvp.cjs"
   },
   "dependencies": {
+    "@alicloud/cr20181201": "^2.1.1",
+    "@alicloud/openapi-client": "^0.4.15",
+    "@alicloud/tea-util": "^1.4.11",
     "@fastify/cookie": "^10.0.1",
-    "@fastify/static": "^9.0.0",
     "@fastify/cors": "^10.0.2",
     "@fastify/formbody": "^8.0.2",
     "@fastify/helmet": "^13.0.1",
     "@fastify/jwt": "^9.1.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/sensible": "6.0.4",
+    "@fastify/static": "^9.0.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@types/qrcode": "^1.5.6",
