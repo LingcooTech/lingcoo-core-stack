@@ -275,6 +275,163 @@ export class AdminService {
     };
   }
 
+  async upsertCatalogBundle(
+    productCode: string,
+    input: {
+      name: string;
+      type: 'chrome_extension' | 'web_app' | 'service';
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
+      features: Array<{
+        code: string;
+        name: string;
+        kind: string;
+        status: 'active' | 'inactive' | 'cancelled' | 'expired';
+      }>;
+      plans: Array<{
+        code: string;
+        name: string;
+        billingProvider: string;
+        billingPriceId?: string;
+        priceAmount: number;
+        currency: string;
+        interval: 'month' | 'year' | 'one_time';
+        status: 'active' | 'inactive' | 'cancelled' | 'expired';
+        featureCodes: string[];
+        meta?: Record<string, unknown>;
+      }>;
+    },
+    actorUserId: string
+  ) {
+    const normalizedFeatures = [
+      ...new Map(
+        input.features.map((feature) => [
+          feature.code.trim(),
+          {
+            code: feature.code.trim(),
+            name: feature.name.trim(),
+            kind: feature.kind.trim() || 'boolean',
+            status: feature.status
+          }
+        ])
+      ).values()
+    ].filter((feature) => feature.code && feature.name);
+
+    const normalizedPlans = [
+      ...new Map(
+        input.plans.map((plan) => [
+          plan.code.trim(),
+          {
+            code: plan.code.trim(),
+            name: plan.name.trim(),
+            billingProvider: plan.billingProvider.trim() || 'self_hosted',
+            billingPriceId: plan.billingPriceId?.trim() || null,
+            priceAmount: plan.priceAmount,
+            currency: plan.currency.trim().toUpperCase() || 'CNY',
+            interval: plan.interval,
+            status: plan.status,
+            featureCodes: [...new Set(plan.featureCodes.map((code) => code.trim()).filter(Boolean))],
+            meta: plan.meta ?? {}
+          }
+        ])
+      ).values()
+    ].filter((plan) => plan.code && plan.name);
+
+    if (normalizedFeatures.length === 0) {
+      throw httpError(422, 'At least one feature is required');
+    }
+
+    if (normalizedPlans.length === 0) {
+      throw httpError(422, 'At least one plan is required');
+    }
+
+    const declaredFeatureCodes = new Set(normalizedFeatures.map((feature) => feature.code));
+    const missingFeatureRefs = normalizedPlans.flatMap((plan) =>
+      plan.featureCodes.filter((featureCode) => !declaredFeatureCodes.has(featureCode)).map((featureCode) => `${plan.code}:${featureCode}`)
+    );
+
+    if (missingFeatureRefs.length > 0) {
+      throw httpError(422, `Unknown feature references: ${missingFeatureRefs.join(', ')}`);
+    }
+
+    const result = await this.db.transaction(async (tx) => {
+      const licenseRepository = new LicenseRepository(tx as DbClient);
+      const product = await licenseRepository.upsertProduct({
+        code: productCode,
+        name: input.name,
+        type: input.type,
+        status: input.status
+      });
+
+      const features = [];
+      for (const featureInput of normalizedFeatures) {
+        features.push(
+          await licenseRepository.upsertFeature({
+            productId: product.id,
+            code: featureInput.code,
+            name: featureInput.name,
+            kind: featureInput.kind,
+            status: featureInput.status
+          })
+        );
+      }
+
+      const featureMap = new Map(features.map((feature) => [feature.code, feature]));
+      const plans = [];
+      const planFeatureMappings = [];
+
+      for (const planInput of normalizedPlans) {
+        const plan = await licenseRepository.upsertPlan({
+          productId: product.id,
+          code: planInput.code,
+          name: planInput.name,
+          billingProvider: planInput.billingProvider,
+          billingPriceId: planInput.billingPriceId,
+          priceAmount: planInput.priceAmount,
+          currency: planInput.currency,
+          interval: planInput.interval,
+          meta: planInput.meta,
+          status: planInput.status
+        });
+        plans.push(plan);
+
+        const featureIds = planInput.featureCodes
+          .map((featureCode) => featureMap.get(featureCode)?.id ?? null)
+          .filter((featureId): featureId is string => Boolean(featureId));
+
+        const mappings = await licenseRepository.replacePlanFeatureMappings(plan.id, featureIds);
+        planFeatureMappings.push(...mappings);
+      }
+
+      await licenseRepository.deactivateFeaturesByProductExceptCodes(
+        product.id,
+        normalizedFeatures.map((feature) => feature.code)
+      );
+      await licenseRepository.deactivatePlansByProductExceptCodes(
+        product.id,
+        normalizedPlans.map((plan) => plan.code)
+      );
+
+      await new EventService(tx as DbClient).capture({
+        userId: actorUserId,
+        eventName: 'catalog.bundle_upserted',
+        properties: {
+          productCode,
+          featureCodes: normalizedFeatures.map((feature) => feature.code),
+          planCodes: normalizedPlans.map((plan) => plan.code)
+        }
+      });
+
+      return {
+        product,
+        features,
+        plans,
+        planFeatures: planFeatureMappings
+      };
+    });
+
+    return result;
+  }
+
   async listEvents(limit = 50) {
     const events = await new EventRepository(this.db).listRecentEvents(limit);
     const userIds = [...new Set(events.map((item) => item.userId).filter((item): item is string => Boolean(item)))];

@@ -8,12 +8,13 @@ import { z } from 'zod';
 import {
   createAppSecret,
   listAppsAdmin,
-  listCatalogPlans,
-  listCatalogProducts,
+  listCatalogSnapshot,
   revokeAppSecret,
+  upsertCatalogBundle,
   upsertApp
 } from '@/api/apps';
-import type { AppWithDetails, PlanSummary } from '@/api/types';
+import type { AppWithDetails, FeatureSummary, PlanSummary } from '@/api/types';
+import { CatalogBundleDialog, type CatalogBundleSummary } from '@/components/apps/CatalogBundleDialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -110,24 +111,31 @@ function offersFromApp(app: AppWithDetails | null): EditableOffer[] {
 
 export function AppsPage() {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'catalog' | 'apps' | 'secrets'>('catalog');
   const [selectedApp, setSelectedApp] = useState<AppWithDetails | null>(null);
   const [isNew, setIsNew] = useState(false);
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
+  const [selectedBundle, setSelectedBundle] = useState<CatalogBundleSummary | null>(null);
   const [secretResult, setSecretResult] = useState<{ secret: string; secretId: string; appCode: string } | null>(null);
   const [secretVisible, setSecretVisible] = useState(false);
   const [secretAppCode, setSecretAppCode] = useState('');
   const [secretExpiresAt, setSecretExpiresAt] = useState('');
 
   const { data: appsData, isLoading: isAppsLoading } = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
-  const { data: productsData } = useQuery({ queryKey: ['catalog-products'], queryFn: listCatalogProducts });
-  const { data: plansData } = useQuery({ queryKey: ['catalog-plans'], queryFn: listCatalogPlans });
+  const { data: catalogData, isLoading: isCatalogLoading } = useQuery({
+    queryKey: ['catalog'],
+    queryFn: listCatalogSnapshot
+  });
 
   const apps = appsData?.items ?? [];
-  const products = productsData?.items ?? [];
+  const products = catalogData?.products ?? [];
+  const features = catalogData?.features ?? [];
+  const planFeatures = catalogData?.planFeatures ?? [];
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const allPlans = useMemo(
     () =>
-      (plansData?.items ?? []).map((plan) => {
+      (catalogData?.plans ?? []).map((plan) => {
         const product = plan.productId ? productMap.get(plan.productId) : null;
         return {
           ...plan,
@@ -135,8 +143,52 @@ export function AppsPage() {
           productName: plan.productName || product?.name
         };
       }),
-    [plansData?.items, productMap]
+    [catalogData?.plans, productMap]
   );
+  const featureMap = useMemo(() => new Map(features.map((feature) => [feature.id, feature])), [features]);
+  const planFeatureCodesByPlanId = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    for (const mapping of planFeatures) {
+      const feature = featureMap.get(mapping.featureId);
+      if (!feature) continue;
+      if (!grouped.has(mapping.planId)) {
+        grouped.set(mapping.planId, []);
+      }
+      grouped.get(mapping.planId)?.push(feature.code);
+    }
+    return grouped;
+  }, [featureMap, planFeatures]);
+  const catalogBundles = useMemo<CatalogBundleSummary[]>(() => {
+    const featuresByProduct = new Map<string, FeatureSummary[]>();
+    for (const feature of features) {
+      if (!feature.productId) continue;
+      if (!featuresByProduct.has(feature.productId)) {
+        featuresByProduct.set(feature.productId, []);
+      }
+      featuresByProduct.get(feature.productId)?.push(feature);
+    }
+
+    const plansByProduct = new Map<string, PlanSummary[]>();
+    for (const plan of allPlans) {
+      if (!plan.productId) continue;
+      if (!plansByProduct.has(plan.productId)) {
+        plansByProduct.set(plan.productId, []);
+      }
+      plansByProduct.get(plan.productId)?.push(plan);
+    }
+
+    return products.map((product) => {
+      const productPlans = plansByProduct.get(product.id) ?? [];
+      return {
+        product,
+        features: featuresByProduct.get(product.id) ?? [],
+        plans: productPlans,
+        planFeatureCodesByPlanCode: Object.fromEntries(
+          productPlans.map((plan) => [plan.code, planFeatureCodesByPlanId.get(plan.id) ?? []])
+        )
+      };
+    });
+  }, [allPlans, features, planFeatureCodesByPlanId, products]);
 
   const appForm = useForm<AppFormValues>({
     resolver: zodResolver(appSchema),
@@ -196,6 +248,24 @@ export function AppsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
 
+  const catalogMutation = useMutation({
+    mutationFn: ({
+      productCode,
+      values
+    }: {
+      productCode: string;
+      values: Parameters<typeof upsertCatalogBundle>[1];
+    }) => upsertCatalogBundle(productCode, values),
+    onSuccess: () => {
+      toast.success('产品目录已保存');
+      void qc.invalidateQueries({ queryKey: ['catalog'] });
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+      setCatalogDialogOpen(false);
+      setSelectedBundle(null);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存目录失败')
+  });
+
   const secretMutation = useMutation({
     mutationFn: ({ appCode, expiresAt }: { appCode: string; expiresAt?: string }) =>
       createAppSecret(appCode, expiresAt || undefined),
@@ -236,6 +306,16 @@ export function AppsPage() {
     setSelectedApp(null);
     setEditableOffers([]);
     appForm.reset({ name: '', description: '', type: 'web_app', status: 'active', productCodes: [] });
+  };
+
+  const openCatalogCreate = () => {
+    setSelectedBundle(null);
+    setCatalogDialogOpen(true);
+  };
+
+  const openCatalogEdit = (bundle: CatalogBundleSummary) => {
+    setSelectedBundle(bundle);
+    setCatalogDialogOpen(true);
   };
 
   const updateOffer = (offerId: string, updater: (current: EditableOffer) => EditableOffer) => {
@@ -345,23 +425,114 @@ export function AppsPage() {
     }
   ];
 
+  const catalogColumns: Column<CatalogBundleSummary>[] = [
+    {
+      key: 'product',
+      header: '产品目录',
+      cell: (row) => (
+        <div>
+          <p className="text-sm font-bold">{row.product.name}</p>
+          <p className="text-xs text-muted-foreground font-mono">{row.product.code}</p>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      header: '类型/状态',
+      cell: (row) => (
+        <div className="flex flex-col gap-1.5">
+          <StatusPill tone="neutral" label={row.product.type || 'service'} />
+          <StatusPill tone={statusToTone(row.product.status || 'inactive')} label={row.product.status || 'inactive'} />
+        </div>
+      )
+    },
+    {
+      key: 'features',
+      header: '功能项',
+      cell: (row) => (
+        <div className="flex flex-wrap gap-1">
+          {row.features.map((feature) => (
+            <span key={feature.code} className="rounded border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-xs font-mono text-blue-700">
+              {feature.code}
+            </span>
+          ))}
+          {row.features.length === 0 && <span className="text-xs text-muted-foreground">未配置</span>}
+        </div>
+      )
+    },
+    {
+      key: 'plans',
+      header: 'Plans',
+      cell: (row) => (
+        <div className="space-y-1">
+          {row.plans.map((plan) => (
+            <div key={plan.code} className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{plan.name}</span>
+              <span className="ml-2 font-mono">{plan.code}</span>
+              <span className="ml-2">
+                ¥{formatPriceYuan(plan.priceAmount)}/{formatPlanInterval(plan.interval)}
+              </span>
+            </div>
+          ))}
+          {row.plans.length === 0 && <span className="text-xs text-muted-foreground">未配置</span>}
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      header: '操作',
+      cell: (row) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={(event) => {
+            event.stopPropagation();
+            openCatalogEdit(row);
+          }}
+        >
+          编辑目录
+        </Button>
+      )
+    }
+  ];
+
   const editingCode = isNew ? '' : selectedApp?.code ?? '';
 
   return (
     <div>
       <SectionHeader sectionKey="apps" />
       <div className="p-6">
-        <Tabs defaultValue="apps">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'catalog' | 'apps' | 'secrets')}>
           <div className="mb-4 flex items-center justify-between">
             <TabsList>
+              <TabsTrigger value="catalog">产品目录</TabsTrigger>
               <TabsTrigger value="apps">应用列表</TabsTrigger>
               <TabsTrigger value="secrets">Secret 管理</TabsTrigger>
             </TabsList>
-            <Button size="sm" onClick={openNew}>
-              <Plus className="mr-1 h-4 w-4" />
-              新建应用
-            </Button>
+            {activeTab === 'catalog' ? (
+              <Button size="sm" onClick={openCatalogCreate}>
+                <Plus className="mr-1 h-4 w-4" />
+                新建产品目录
+              </Button>
+            ) : activeTab === 'apps' ? (
+              <Button size="sm" onClick={openNew}>
+                <Plus className="mr-1 h-4 w-4" />
+                新建应用
+              </Button>
+            ) : null}
           </div>
+
+          <TabsContent value="catalog">
+            <div className="overflow-hidden rounded-2xl border border-border bg-white">
+              <DataTable
+                columns={catalogColumns}
+                data={catalogBundles}
+                isLoading={isCatalogLoading}
+                emptyMessage="暂无产品目录"
+                getRowKey={(row) => row.product.id}
+              />
+            </div>
+          </TabsContent>
 
           <TabsContent value="apps">
             <div className="overflow-hidden rounded-2xl border border-border bg-white">
@@ -445,6 +616,30 @@ export function AppsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <CatalogBundleDialog
+        open={catalogDialogOpen}
+        onOpenChange={(open) => {
+          setCatalogDialogOpen(open);
+          if (!open) {
+            setSelectedBundle(null);
+          }
+        }}
+        bundle={selectedBundle}
+        pending={catalogMutation.isPending}
+        onSubmit={(payload) =>
+          catalogMutation.mutate({
+            productCode: payload.productCode,
+            values: {
+              name: payload.name,
+              type: payload.type,
+              status: payload.status,
+              features: payload.features,
+              plans: payload.plans
+            }
+          })
+        }
+      />
 
       <Dialog
         open={isNew || !!selectedApp}

@@ -36,3 +36,39 @@ export const adminGrantEntitlementSchema = z.object({
   planCode: z.string().trim().min(1).max(64),
   reason: z.string().trim().min(1).max(255).optional()
 });
+
+const recordStatusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);
+const productTypeSchema = z.enum(['chrome_extension', 'web_app', 'service']);
+const intervalSchema = z.enum(['month', 'year', 'one_time']);
+
+export const adminCatalogProductParamsSchema = z.object({
+  productCode: z.string().trim().min(1).max(64)
+});
+
+export const adminUpsertCatalogBundleSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: productTypeSchema.default('web_app'),
+  status: recordStatusSchema.default('active'),
+  features: z.array(
+    z.object({
+      code: z.string().trim().min(1).max(64),
+      name: z.string().trim().min(1).max(120),
+      kind: z.string().trim().min(1).max(32).default('boolean'),
+      status: recordStatusSchema.default('active')
+    })
+  ).min(1).max(100),
+  plans: z.array(
+    z.object({
+      code: z.string().trim().min(1).max(64),
+      name: z.string().trim().min(1).max(120),
+      billingProvider: z.string().trim().min(1).max(32).default('self_hosted'),
+      billingPriceId: z.string().trim().max(128).optional(),
+      priceAmount: z.number().int().min(0).max(999999999),
+      currency: z.string().trim().min(1).max(16).default('CNY'),
+      interval: intervalSchema,
+      status: recordStatusSchema.default('active'),
+      featureCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(100),
+      meta: z.record(z.string(), z.unknown()).optional()
+    })
+  ).min(1).max(100)
+});

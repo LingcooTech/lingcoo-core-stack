@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { AppCatalog, AppSecretCreated, AppWithDetails, PlanSummary, ProductSummary } from './types';
+import type { AppCatalog, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary, ProductSummary } from './types';
 
 export async function listApps(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
@@ -19,6 +19,14 @@ export async function listCatalogProducts(): Promise<{ items: ProductSummary[] }
 
 export async function listCatalogPlans(): Promise<{ items: PlanSummary[] }> {
   return apiClient<{ items: PlanSummary[] }>('/v1/plans');
+}
+
+export async function listCatalogFeatures(): Promise<{ items: FeatureSummary[] }> {
+  return apiClient<{ items: FeatureSummary[] }>('/v1/features');
+}
+
+export async function listCatalogSnapshot(): Promise<CatalogSnapshot> {
+  return apiClient<CatalogSnapshot>('/v1/catalog');
 }
 
 export interface UpsertAppInput {
@@ -66,5 +74,36 @@ export async function createAppSecret(appCode: string, expiresAt?: string): Prom
 export async function revokeAppSecret(appCode: string, secretId: string): Promise<unknown> {
   return apiClient(`/v1/admin/apps/${encodeURIComponent(appCode)}/secrets/${encodeURIComponent(secretId)}/revoke`, {
     method: 'POST'
+  });
+}
+
+export interface UpsertCatalogBundleInput {
+  name: string;
+  type: 'chrome_extension' | 'web_app' | 'service';
+  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  features: Array<{
+    code: string;
+    name: string;
+    kind: string;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  }>;
+  plans: Array<{
+    code: string;
+    name: string;
+    billingProvider: string;
+    billingPriceId?: string;
+    priceAmount: number;
+    currency: string;
+    interval: 'month' | 'year' | 'one_time';
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    featureCodes: string[];
+    meta?: Record<string, unknown>;
+  }>;
+}
+
+export async function upsertCatalogBundle(productCode: string, payload: UpsertCatalogBundleInput) {
+  return apiClient(`/v1/admin/catalog/products/${encodeURIComponent(productCode)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
   });
 }

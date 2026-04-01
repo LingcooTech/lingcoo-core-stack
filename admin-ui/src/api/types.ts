@@ -12,6 +12,7 @@ export interface ProductSummary {
   name: string;
   type?: string;
   status?: string;
+  createdAt?: string;
 }
 
 export interface PlanSummary {
@@ -39,6 +40,22 @@ export interface FeatureSummary {
   code: string;
   name: string;
   kind: string;
+  productId?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface PlanFeatureSummary {
+  planId: string;
+  featureId: string;
+  value: string | null;
+}
+
+export interface CatalogSnapshot {
+  products: ProductSummary[];
+  plans: PlanSummary[];
+  features: FeatureSummary[];
+  planFeatures: PlanFeatureSummary[];
 }
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
@@ -141,11 +158,7 @@ export interface AppCatalog {
     sortOrder: number;
   }>;
   features: FeatureSummary[];
-  planFeatures: Array<{
-    planId: string;
-    featureId: string;
-    value: string | null;
-  }>;
+  planFeatures: PlanFeatureSummary[];
 }
 
 export interface AppSecretCreated {

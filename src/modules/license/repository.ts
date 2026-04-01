@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, ne, notInArray, or } from 'drizzle-orm';
 
 import { entitlements, features, planFeatures, plans, products } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -22,8 +22,16 @@ export class LicenseRepository {
     return this.db.select().from(plans).where(inArray(plans.productId, productIds));
   }
 
+  async listPlansByProductId(productId: string) {
+    return this.db.select().from(plans).where(eq(plans.productId, productId));
+  }
+
   async listFeatures() {
     return this.db.select().from(features).orderBy(desc(features.createdAt));
+  }
+
+  async listFeaturesByProductId(productId: string) {
+    return this.db.select().from(features).where(eq(features.productId, productId));
   }
 
   async listPlanFeatureMappings() {
@@ -86,12 +94,164 @@ export class LicenseRepository {
     return this.db.select().from(products).where(inArray(products.code, productCodes));
   }
 
+  async upsertProduct(input: {
+    code: string;
+    name: string;
+    type: 'chrome_extension' | 'web_app' | 'service';
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  }) {
+    const [product] = await this.db
+      .insert(products)
+      .values({
+        code: input.code,
+        name: input.name,
+        type: input.type,
+        status: input.status,
+        createdAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: products.code,
+        set: {
+          name: input.name,
+          type: input.type,
+          status: input.status
+        }
+      })
+      .returning();
+
+    return product;
+  }
+
   async listPlansByCodes(planCodes: string[]) {
     if (planCodes.length === 0) {
       return [];
     }
 
     return this.db.select().from(plans).where(inArray(plans.code, planCodes));
+  }
+
+  async upsertPlan(input: {
+    productId: string;
+    code: string;
+    name: string;
+    billingProvider: string;
+    billingPriceId?: string | null;
+    priceAmount: number;
+    currency: string;
+    interval: 'month' | 'year' | 'one_time';
+    meta?: Record<string, unknown>;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  }) {
+    const [plan] = await this.db
+      .insert(plans)
+      .values({
+        productId: input.productId,
+        code: input.code,
+        name: input.name,
+        billingProvider: input.billingProvider,
+        billingPriceId: input.billingPriceId ?? null,
+        priceAmount: input.priceAmount,
+        currency: input.currency,
+        interval: input.interval,
+        meta: input.meta ?? {},
+        status: input.status,
+        createdAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: plans.code,
+        set: {
+          productId: input.productId,
+          name: input.name,
+          billingProvider: input.billingProvider,
+          billingPriceId: input.billingPriceId ?? null,
+          priceAmount: input.priceAmount,
+          currency: input.currency,
+          interval: input.interval,
+          meta: input.meta ?? {},
+          status: input.status
+        }
+      })
+      .returning();
+
+    return plan;
+  }
+
+  async upsertFeature(input: {
+    productId: string;
+    code: string;
+    name: string;
+    kind: string;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  }) {
+    const [feature] = await this.db
+      .insert(features)
+      .values({
+        productId: input.productId,
+        code: input.code,
+        name: input.name,
+        kind: input.kind,
+        status: input.status,
+        createdAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: features.code,
+        set: {
+          productId: input.productId,
+          name: input.name,
+          kind: input.kind,
+          status: input.status
+        }
+      })
+      .returning();
+
+    return feature;
+  }
+
+  async replacePlanFeatureMappings(
+    planId: string,
+    featureIds: string[],
+    featureValue: Record<string, unknown> = { enabled: true }
+  ) {
+    await this.db.delete(planFeatures).where(eq(planFeatures.planId, planId));
+
+    if (featureIds.length === 0) {
+      return [];
+    }
+
+    return this.db
+      .insert(planFeatures)
+      .values(
+        featureIds.map((featureId) => ({
+          planId,
+          featureId,
+          value: featureValue
+        }))
+      )
+      .returning();
+  }
+
+  async deactivatePlansByProductExceptCodes(productId: string, retainedCodes: string[]) {
+    return this.db
+      .update(plans)
+      .set({ status: 'inactive' })
+      .where(
+        retainedCodes.length > 0
+          ? and(eq(plans.productId, productId), notInArray(plans.code, retainedCodes))
+          : eq(plans.productId, productId)
+      )
+      .returning();
+  }
+
+  async deactivateFeaturesByProductExceptCodes(productId: string, retainedCodes: string[]) {
+    return this.db
+      .update(features)
+      .set({ status: 'inactive' })
+      .where(
+        retainedCodes.length > 0
+          ? and(eq(features.productId, productId), notInArray(features.code, retainedCodes))
+          : eq(features.productId, productId)
+      )
+      .returning();
   }
 
   async updatePlanById(
