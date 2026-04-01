@@ -1,15 +1,18 @@
-const TOKEN_KEY = 'fd_core_admin_token';
+const TOKEN_KEY = 'fd_core_token';
+const LEGACY_TOKEN_KEY = 'fd_core_admin_token';
 
 export function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? '';
+  return localStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY) ?? '';
 }
 
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
 class ApiError extends Error {
@@ -40,7 +43,7 @@ export async function apiClient<T = unknown>(
 
   if (response.status === 401) {
     clearToken();
-    window.location.href = '/admin/login';
+    window.location.href = window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login';
     throw new ApiError('未授权，请重新登录', 401);
   }
 

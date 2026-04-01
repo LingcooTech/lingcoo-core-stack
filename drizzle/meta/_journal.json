@@ -43,6 +43,13 @@
       "when": 1774695125254,
       "tag": "0005_lowly_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775013000000,
+      "tag": "0006_deployment_tokens",
+      "breakpoints": true
     }
   ]
 }

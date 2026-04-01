@@ -17,8 +17,20 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function register(email: string, password: string): Promise<AuthResponse> {
   const response = await apiClient<AuthResponse>('/v1/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, role: 'admin' })
+    body: JSON.stringify({ email, password })
   });
   setToken(response.token);
   return response;
+}
+
+export async function getCurrentUser() {
+  return apiClient<{
+    authenticated: boolean;
+    user: {
+      id: string;
+      email: string;
+      displayName: string | null;
+      role: string;
+    };
+  }>('/v1/me');
 }

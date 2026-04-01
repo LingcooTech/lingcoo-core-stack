@@ -119,6 +119,35 @@ export interface AppWithDetails extends App {
   secrets: AppSecret[];
 }
 
+export interface AppCatalog {
+  app: AppWithDetails;
+  products: ProductSummary[];
+  plans: PlanSummary[];
+  offers: Array<{
+    code: string;
+    planCode: string;
+    planId: string;
+    productId: string;
+    productCode: string;
+    productName: string;
+    title: string;
+    description: string | null;
+    badge: string | null;
+    interval: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    isDefault: boolean;
+    sortOrder: number;
+  }>;
+  features: FeatureSummary[];
+  planFeatures: Array<{
+    planId: string;
+    featureId: string;
+    value: string | null;
+  }>;
+}
+
 export interface AppSecretCreated {
   appCode: string;
   appName: string;
@@ -205,6 +234,37 @@ export interface OrdersResponse {
   items: HydratedOrder[];
 }
 
+export interface CheckoutSessionCreated {
+  sessionId: string;
+  sessionCode: string;
+  status: string;
+  app: AppSummary;
+  product: {
+    code: string;
+    name: string;
+  };
+  plan: {
+    code: string;
+    name: string;
+    interval: string | null;
+    priceAmount: number;
+    currency: string;
+  };
+  order: {
+    id: string;
+    orderNo: string;
+    amount: number;
+    currency: string;
+    status: string;
+  };
+  presentation: {
+    type: 'hosted_page';
+    url: string;
+  };
+  expiresAt: string | null;
+  createdAt: string;
+}
+
 export interface ReconcileResponse {
   reconciliation: {
     status: string;
@@ -259,6 +319,10 @@ export interface HydratedEntitlement extends Entitlement {
 
 export interface EntitlementsResponse {
   items: HydratedEntitlement[];
+  summary?: Array<{
+    productCode: string;
+    featureCodes: string[];
+  }>;
 }
 
 export interface GrantEntitlementInput {
@@ -341,4 +405,50 @@ export interface Plan {
 
 export interface PlansResponse {
   items: Plan[];
+}
+
+// ─── Deployments ──────────────────────────────────────────────────────────────
+
+export interface DeploymentTokenSummary {
+  id: string;
+  tokenHint: string;
+  status: string;
+  expiresAt: string | null;
+  usedAt: string | null;
+  createdAt: string;
+}
+
+export interface DeploymentSummary {
+  id: string;
+  label: string;
+  environment: string;
+  serverHost: string | null;
+  primaryDomain: string | null;
+  adminDomain: string | null;
+  wsDomain: string | null;
+  installPath: string;
+  status: string;
+  lastTokenIssuedAt: string | null;
+  lastDeployedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: UserSummary | null;
+  app: AppSummary | null;
+  product: ProductSummary | null;
+  latestToken: DeploymentTokenSummary | null;
+}
+
+export interface DeploymentsResponse {
+  items: DeploymentSummary[];
+}
+
+export interface IssueDeploymentTokenResult {
+  deploymentId: string;
+  tokenId: string;
+  tokenHint: string;
+  token: string;
+  exchangeUrl: string;
+  exchangeCurl: string;
+  remoteInstallCommand: string | null;
+  expiresAt: string;
 }

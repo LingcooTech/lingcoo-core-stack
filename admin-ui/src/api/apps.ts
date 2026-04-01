@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { AppSecretCreated, AppWithDetails, PlanSummary, ProductSummary } from './types';
+import type { AppCatalog, AppSecretCreated, AppWithDetails, PlanSummary, ProductSummary } from './types';
+
+export async function listApps(): Promise<{ items: AppWithDetails[] }> {
+  return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
+}
+
+export async function getAppCatalog(appCode: string): Promise<AppCatalog> {
+  return apiClient<AppCatalog>(`/v1/apps/${encodeURIComponent(appCode)}/catalog`);
+}
 
 export async function listAppsAdmin(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/admin/apps');

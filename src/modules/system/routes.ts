@@ -2,10 +2,6 @@ import type { FastifyPluginAsync } from 'fastify';
 import { moduleNames } from '../names';
 
 export const systemRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/', async (_request, reply) => {
-    return reply.redirect('/admin', 302);
-  });
-
   app.get('/health', async () => {
     return {
       status: 'ok',
