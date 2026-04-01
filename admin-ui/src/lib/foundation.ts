@@ -1,12 +1,13 @@
 // Migrated from src/modules/admin/ui-foundation.ts
 // Pure metadata, no HTML rendering functions
 
-export type AdminSectionKey = 'dashboard' | 'payments' | 'apps' | 'licenses' | 'operations' | 'observability';
+export type AdminSectionKey = 'dashboard' | 'payments' | 'apps' | 'delivery' | 'licenses' | 'operations' | 'observability';
 
 export type AdminSectionDataScope =
   | 'paymentSettings'
   | 'apps'
   | 'products'
+  | 'delivery'
   | 'plans'
   | 'entitlements'
   | 'operations'
@@ -116,6 +117,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['apps', 'products'],
     commandAliases: ['apps', 'app secrets', 'registry', '应用接入', 'secret']
   },
+  delivery: {
+    groupLabel: 'Resources',
+    navTitle: '交付',
+    navNote: '部署源与受控凭据',
+    icon: 'DL',
+    title: '交付设置',
+    lead: '交付页负责配置系统产品的安装源、镜像 tag、release 版本和受控凭据，把购买后的部署入口收敛成一套可复用的 bootstrap 配置。',
+    href: '/admin/delivery',
+    contextCards: [
+      { label: 'Focus', value: 'Delivery Bootstrap', note: '把 deploy token 真正升级成用户可执行的受控交付入口。' },
+      { label: 'Route', value: '/admin/delivery', note: '镜像源、release tag 和受控凭据不再散落在脚本或人工文档里。' }
+    ],
+    heroActions: [
+      { label: '交付设置', href: '/admin/delivery', tone: 'primary' },
+      { label: '返回总览', href: '/admin', tone: 'secondary' }
+    ],
+    pageDataScopes: ['delivery'],
+    commandAliases: ['delivery', 'deploy bootstrap', 'installer', '交付配置', '镜像凭据']
+  },
   licenses: {
     groupLabel: 'Resources',
     navTitle: '授权',
@@ -177,7 +197,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: 'Dashboards', items: ['dashboard'] },
-  { label: 'Resources', items: ['payments', 'apps', 'licenses'] },
+  { label: 'Resources', items: ['payments', 'apps', 'delivery', 'licenses'] },
   { label: 'Operations', items: ['operations', 'observability'] }
 ];
 

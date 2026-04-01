@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
+import { DeliverySettingsService } from '../../lib/delivery-settings';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -180,12 +181,42 @@ export class DeploymentService {
     return commandParts.join(' ');
   }
 
-  private buildBootstrapPayload(input: {
+  private async buildBootstrapPayload(input: {
     app: DeploymentAppRecord;
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     token?: string;
   }) {
-    const defaults = this.readDeploymentDefaults(input.app);
+    const appDefaults = this.readDeploymentDefaults(input.app);
+    const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(input.app.code);
+    const defaults = {
+      repoUrl: appDefaults.repoUrl || deliverySettings?.repoUrl,
+      repoBranch: appDefaults.repoBranch || deliverySettings?.repoBranch,
+      frontendImage: appDefaults.frontendImage || deliverySettings?.frontendImage,
+      websocketImage: appDefaults.websocketImage || deliverySettings?.websocketImage,
+      letsencryptEmail: appDefaults.letsencryptEmail || deliverySettings?.letsencryptEmail,
+      wordpressFetchReleaseAssets:
+        typeof appDefaults.wordpressFetchReleaseAssets === 'boolean'
+          ? appDefaults.wordpressFetchReleaseAssets
+          : deliverySettings?.wordpressFetchReleaseAssets,
+      wordpressRunInit:
+        typeof appDefaults.wordpressRunInit === 'boolean'
+          ? appDefaults.wordpressRunInit
+          : deliverySettings?.wordpressRunInit,
+      wordpressReleaseOwner: appDefaults.wordpressReleaseOwner || deliverySettings?.wordpressReleaseOwner,
+      fdThemeReleaseTag: appDefaults.fdThemeReleaseTag || deliverySettings?.fdThemeReleaseTag,
+      fdAdminUiReleaseTag: appDefaults.fdAdminUiReleaseTag || deliverySettings?.fdAdminUiReleaseTag,
+      fdMemberReleaseTag: appDefaults.fdMemberReleaseTag || deliverySettings?.fdMemberReleaseTag,
+      fdPaymentReleaseTag: appDefaults.fdPaymentReleaseTag || deliverySettings?.fdPaymentReleaseTag,
+      fdCommerceReleaseTag: appDefaults.fdCommerceReleaseTag || deliverySettings?.fdCommerceReleaseTag,
+      fdContentTypesReleaseTag: appDefaults.fdContentTypesReleaseTag || deliverySettings?.fdContentTypesReleaseTag,
+      fdWebsocketPushReleaseTag: appDefaults.fdWebsocketPushReleaseTag || deliverySettings?.fdWebsocketPushReleaseTag,
+      wpgraphqlJwtAuthReleaseTag:
+        appDefaults.wpgraphqlJwtAuthReleaseTag || deliverySettings?.wpgraphqlJwtAuthReleaseTag,
+      wpgraphqlTaxQueryRef: appDefaults.wpgraphqlTaxQueryRef || deliverySettings?.wpgraphqlTaxQueryRef,
+      acrUsername: deliverySettings?.acrUsername,
+      acrPassword: deliverySettings?.acrPassword,
+      githubToken: deliverySettings?.githubToken
+    };
     const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
     const envDefaults = Object.fromEntries(
       Object.entries({
@@ -208,7 +239,11 @@ export class DeploymentService {
         FD_CONTENT_TYPES_RELEASE_TAG: defaults.fdContentTypesReleaseTag,
         FD_WEBSOCKET_PUSH_RELEASE_TAG: defaults.fdWebsocketPushReleaseTag,
         WPGRAPHQL_JWT_AUTH_RELEASE_TAG: defaults.wpgraphqlJwtAuthReleaseTag,
-        WPGRAPHQL_TAX_QUERY_REF: defaults.wpgraphqlTaxQueryRef
+        WPGRAPHQL_TAX_QUERY_REF: defaults.wpgraphqlTaxQueryRef,
+        ACR_USERNAME: defaults.acrUsername,
+        ACR_PASSWORD: defaults.acrPassword,
+        GH_TOKEN: defaults.githubToken,
+        GITHUB_TOKEN: defaults.githubToken
       }).filter(([, value]) => typeof value === 'string' && value.length > 0)
     );
 
@@ -340,7 +375,7 @@ export class DeploymentService {
     });
 
     const app = await new AppService(this.db).getPublicApp((await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? '');
-    const bootstrap = this.buildBootstrapPayload({
+    const bootstrap = await this.buildBootstrapPayload({
       app,
       deployment,
       token: plainToken
@@ -391,7 +426,7 @@ export class DeploymentService {
 
     return {
       deployment: hydrated,
-      bootstrap: this.buildBootstrapPayload({
+      bootstrap: await this.buildBootstrapPayload({
         app,
         deployment,
         token

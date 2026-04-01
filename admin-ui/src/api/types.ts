@@ -92,6 +92,35 @@ export interface PaymentSettingsOverview {
   items: PaymentProviderConfig[];
 }
 
+export interface DeliverySettingsOverview {
+  appCode: string;
+  configured: boolean;
+  values: {
+    repoUrl: string;
+    repoBranch: string;
+    frontendImage: string;
+    websocketImage: string;
+    letsencryptEmail: string;
+    acrUsername: string;
+    wordpressFetchReleaseAssets: boolean;
+    wordpressRunInit: boolean;
+    wordpressReleaseOwner: string;
+    fdThemeReleaseTag: string;
+    fdAdminUiReleaseTag: string;
+    fdMemberReleaseTag: string;
+    fdPaymentReleaseTag: string;
+    fdCommerceReleaseTag: string;
+    fdContentTypesReleaseTag: string;
+    fdWebsocketPushReleaseTag: string;
+    wpgraphqlJwtAuthReleaseTag: string;
+    wpgraphqlTaxQueryRef: string;
+  };
+  secrets: {
+    acrPassword: PaymentProviderSecretStatus;
+    githubToken: PaymentProviderSecretStatus;
+  };
+}
+
 // ─── Apps ───────────────────────────────────────────────────────────────────
 
 export interface AppSecret {

@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppsPage } from '@/pages/AppsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { DeliveryPage } from '@/pages/DeliveryPage';
 import { HomePage } from '@/pages/HomePage';
 import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -69,6 +70,7 @@ function AppRoutes() {
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/apps" element={<AppsPage />} />
+          <Route path="/admin/delivery" element={<DeliveryPage />} />
           <Route path="/admin/licenses" element={<LicensesPage />} />
           <Route path="/admin/operations" element={<OperationsPage />} />
           <Route path="/admin/observability" element={<ObservabilityPage />} />

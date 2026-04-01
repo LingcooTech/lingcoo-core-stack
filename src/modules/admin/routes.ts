@@ -4,14 +4,17 @@ import path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
+import { DeliverySettingsService } from '../../lib/delivery-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
 import {
+  adminAppCodeParamsSchema,
   adminCatalogProductParamsSchema,
   adminEntitlementParamsSchema,
   adminGrantEntitlementSchema,
   adminListQuerySchema,
+  adminUpsertDeliverySettingsSchema,
   adminUpsertCatalogBundleSchema,
   adminOrderParamsSchema,
   alipayPaymentSettingsSchema,
@@ -69,6 +72,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/login', sendSPA);
   app.get('/admin/payments', sendSPA);
   app.get('/admin/apps', sendSPA);
+  app.get('/admin/delivery', sendSPA);
   app.get('/admin/licenses', sendSPA);
   app.get('/admin/operations', sendSPA);
   app.get('/admin/observability', sendSPA);
@@ -83,6 +87,23 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/payment-settings', { preHandler: app.requireAdmin }, async () => {
     return new PaymentSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminAppCodeParamsSchema.parse(request.params);
+    return new DeliverySettingsService(app.db, app.appEnv).getOverview(params.appCode);
+  });
+
+  app.put('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminAppCodeParamsSchema.parse(request.params);
+    const payload = adminUpsertDeliverySettingsSchema.parse(request.body);
+    return new DeliverySettingsService(app.db, app.appEnv).upsertSettings(params.appCode, payload, request.user.sub);
+  });
+
+  app.delete('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminAppCodeParamsSchema.parse(request.params);
+    await new DeliverySettingsService(app.db, app.appEnv).deleteSettings(params.appCode);
+    return { ok: true };
   });
 
   app.get('/v1/admin/orders', { preHandler: app.requireAdmin }, async (request) => {
