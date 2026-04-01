@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
-import { AliyunAcrService } from './aliyun-acr';
 import type { AppEnv } from './env';
 import { decryptJson, encryptJson } from './settings-crypto';
 
@@ -227,19 +226,18 @@ export class DeliverySettingsService {
       wpgraphqlTaxQueryRef: stored.wpgraphqlTaxQueryRef
     };
 
-    const acrTemporaryCredentialMode = new AliyunAcrService(this.env).isTemporaryCredentialModeEnabled();
-
     return {
       appCode,
       configured: Boolean(
         values.frontendImage &&
           values.websocketImage &&
-          (acrTemporaryCredentialMode || (values.acrUsername && stored.acrPassword)) &&
+          values.acrUsername &&
+          stored.acrPassword &&
           stored.githubToken
       ),
       values,
       secrets: {
-        acrPassword: { configured: Boolean(stored.acrPassword || acrTemporaryCredentialMode) },
+        acrPassword: { configured: Boolean(stored.acrPassword) },
         githubToken: { configured: Boolean(stored.githubToken) }
       }
     };
