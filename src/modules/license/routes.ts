@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { buildUserRateLimitKey } from '../../lib/rate-limit';
 import { LicenseService } from './service';
 
 export const licenseRoutes: FastifyPluginAsync = async (app) => {
@@ -22,7 +23,18 @@ export const licenseRoutes: FastifyPluginAsync = async (app) => {
     return { items: features };
   });
 
-  app.get('/v1/entitlements/me', { preHandler: app.authenticate }, async (request) => {
+  app.get('/v1/entitlements/me', {
+    preHandler: app.authenticate,
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 120,
+        timeWindow: '1 minute',
+        keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
+          buildUserRateLimitKey(request, 'entitlements-me')
+      }
+    }
+  }, async (request) => {
     return new LicenseService(app.db).listUserEntitlements(request.user.sub);
   });
 };

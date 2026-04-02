@@ -34,7 +34,8 @@ export async function buildApp(env: AppEnv) {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL
-    }
+    },
+    trustProxy: env.TRUST_PROXY ?? true
   });
 
   app.decorate('appEnv', env);
@@ -133,9 +134,12 @@ export async function buildApp(env: AppEnv) {
       return reply.forbidden('Admin access is required');
     }
   });
+  await app.register(dbPlugin, { env });
+  await app.register(redisPlugin, { env });
   await app.register(rateLimit, {
-    max: 200,
-    timeWindow: '1 minute'
+    redis: app.redis,
+    max: env.RATE_LIMIT_GLOBAL_MAX,
+    timeWindow: env.RATE_LIMIT_GLOBAL_WINDOW
   });
   await app.register(swagger, {
     openapi: {
@@ -148,9 +152,6 @@ export async function buildApp(env: AppEnv) {
   await app.register(swaggerUi, {
     routePrefix: '/docs'
   });
-
-  await app.register(dbPlugin, { env });
-  await app.register(redisPlugin, { env });
 
   for (const module of appModules) {
     await app.register(module.register);

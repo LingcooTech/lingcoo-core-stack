@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
+import { buildEmailRateLimitKey } from '../../lib/rate-limit';
 import { loginSchema, registerSchema } from './schemas';
 import { AuthService } from './service';
 
@@ -44,14 +45,34 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.post('/v1/auth/register', async (request, reply) => {
+  app.post('/v1/auth/register', {
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 8,
+        timeWindow: '1 minute',
+        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+          buildEmailRateLimitKey(request, 'auth-register')
+      }
+    }
+  }, async (request, reply) => {
     const payload = registerSchema.parse(request.body);
     const user = await new AuthService(app.db).register(payload);
 
     return reply.status(201).send(toAuthResponse(app, user));
   });
 
-  app.post('/v1/auth/login', async (request) => {
+  app.post('/v1/auth/login', {
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 12,
+        timeWindow: '1 minute',
+        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+          buildEmailRateLimitKey(request, 'auth-login')
+      }
+    }
+  }, async (request) => {
     const payload = loginSchema.parse(request.body);
     const user = await new AuthService(app.db).login(payload);
 

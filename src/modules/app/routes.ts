@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
 import {
   appCodeParamsSchema,
   appSecretParamsSchema,
@@ -54,7 +55,18 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get('/v1/apps/:appCode/entitlements/me', { preHandler: [app.authenticateApp, app.authenticate] }, async (request) => {
+  app.get('/v1/apps/:appCode/entitlements/me', {
+    preHandler: [app.authenticateApp, app.authenticate],
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 120,
+        timeWindow: '1 minute',
+        keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
+          buildAppCodeUserRateLimitKey(request, 'app-entitlements-me')
+      }
+    }
+  }, async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
     return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
   });
