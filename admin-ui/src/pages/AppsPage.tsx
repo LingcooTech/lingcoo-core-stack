@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, FileEdit, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Link } from 'react-router-dom';
 import {
   createAppSecret,
   listAppsAdmin,
@@ -418,9 +419,17 @@ export function AppsPage() {
       key: 'actions',
       header: '操作',
       cell: (row) => (
-        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); openEdit(row); }}>
-          编辑
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); openEdit(row); }}>
+            编辑
+          </Button>
+          <Button size="sm" variant="ghost" asChild>
+            <Link to={`/admin/apps/${row.code}/edit`}>
+              <FileEdit className="mr-1 h-3.5 w-3.5" />
+              编辑详情
+            </Link>
+          </Button>
+        </div>
       )
     }
   ];

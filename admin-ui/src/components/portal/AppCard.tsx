@@ -5,36 +5,56 @@ import type { AppWithDetails } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatAmount, getInitials } from '@/lib/utils';
 
 export function AppCard({ app }: { app: AppWithDetails }) {
+  const activeOffers = (app.checkoutOffers ?? []).filter((o) => o.status === 'active');
+  const minPrice = activeOffers.length > 0
+    ? activeOffers.reduce((min, o) => (o.priceAmount < min.priceAmount ? o : min), activeOffers[0])
+    : null;
+
   return (
-    <Card className="overflow-hidden border-slate-200/80 bg-white/95">
-      <CardHeader className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <Badge variant="outline" className="rounded-full">
-            {app.type}
-          </Badge>
-          <span className="text-xs text-muted-foreground">{app.checkoutOffers?.length ?? 0} 个价格方案</span>
-        </div>
-        <div>
-          <CardTitle className="text-lg">{app.name}</CardTitle>
-          <CardDescription className="mt-2 min-h-10">
-            {app.description || '该应用已经接入 FD Stack 的认证、支付与授权能力。'}
-          </CardDescription>
+    <Card className="flex flex-col overflow-hidden border-slate-200/80 bg-white/95 transition hover:shadow-md">
+      <CardHeader className="space-y-4">
+        <div className="flex items-start gap-4">
+          {app.iconUrl ? (
+            <img
+              src={app.iconUrl}
+              alt={app.name}
+              className="h-14 w-14 shrink-0 rounded-2xl object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
+              {getInitials(app.name)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className="text-lg leading-tight">{app.name}</CardTitle>
+            <CardDescription className="line-clamp-2">
+              {app.tagline || app.description || '优质应用，等你体验。'}
+            </CardDescription>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {(app.checkoutOffers ?? []).slice(0, 3).map((offer) => (
-            <Badge key={offer.code} variant={offer.isDefault ? 'default' : 'secondary'}>
-              {offer.title}
+      <CardContent className="mt-auto space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          {app.category ? (
+            <Badge variant="secondary" className="rounded-full">
+              {app.category}
             </Badge>
-          ))}
+          ) : (
+            <span />
+          )}
+          {minPrice && (
+            <span className="text-sm font-semibold text-slate-700">
+              起步价 {formatAmount(minPrice.priceAmount, minPrice.currency)}
+            </span>
+          )}
         </div>
-        <Button asChild className="w-full">
+        <Button asChild variant="outline" className="w-full">
           <Link to={`/apps/${app.code}`}>
-            查看套餐与授权入口
-            <ArrowRight className="h-4 w-4" />
+            了解更多
+            <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Button>
       </CardContent>

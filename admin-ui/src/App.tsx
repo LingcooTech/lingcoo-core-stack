@@ -19,6 +19,7 @@ import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { OperationsPage } from '@/pages/OperationsPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
+import { AppEditPage } from '@/pages/AppEditPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +71,7 @@ function AppRoutes() {
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/apps" element={<AppsPage />} />
+          <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
           <Route path="/admin/delivery" element={<DeliveryPage />} />
           <Route path="/admin/licenses" element={<LicensesPage />} />
           <Route path="/admin/operations" element={<OperationsPage />} />

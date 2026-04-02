@@ -1,59 +1,89 @@
 import { useQuery } from '@tanstack/react-query';
-import { Boxes, LoaderCircle } from 'lucide-react';
+import { Boxes } from 'lucide-react';
+import { useState } from 'react';
 
 import { listApps } from '@/api/apps';
 import { AppCard } from '@/components/portal/AppCard';
 import { EmptyState } from '@/components/portal/EmptyState';
-import { MetricStrip } from '@/components/portal/MetricStrip';
-import { PageHeader } from '@/components/portal/PageHeader';
-import { Badge } from '@/components/ui/badge';
 
 export function HomePage() {
   const { data, isLoading } = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
   const apps = data?.items ?? [];
 
+  const categories = Array.from(new Set(apps.map((app) => app.category).filter(Boolean))) as string[];
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const filteredApps = activeCategory
+    ? apps.filter((app) => app.category === activeCategory)
+    : apps;
+
   return (
-    <div className="space-y-8">
-      <PageHeader sectionKey="discover" />
-
-      <MetricStrip
-        items={[
-          { label: 'Visible Apps', value: apps.length, note: '当前已开放购买的产品数量。' },
-          { label: 'Billing Model', value: 'Hosted Checkout', note: '统一复用现有 checkout 会话，而不是各应用自行结账。' },
-          { label: 'Access Model', value: 'Entitlements', note: '购买结果沉淀为授权，供后续安装、解锁和部署复用。' },
-          { label: 'Delivery Focus', value: 'Headless WP', note: '最复杂的系统交付会优先接进部署中心。' }
-        ]}
-      />
-
-      <section className="space-y-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight">可购买产品</h2>
-            <p className="text-sm text-muted-foreground">先用最小闭环承载套餐浏览与购买入口，复杂部署控制后续继续补齐。</p>
-          </div>
-          <Badge variant="secondary">{apps.length} 个应用</Badge>
-        </div>
-
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, idx) => (
-              <div key={idx} className="flex min-h-52 items-center justify-center rounded-3xl border border-slate-200 bg-white/80">
-                <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ))}
-          </div>
-        ) : apps.length === 0 ? (
-          <EmptyState
-            icon={Boxes}
-            title="当前还没有开放购买的应用"
-            description="先在后台完成应用接入、价格配置和激活状态，用户侧才会展示产品中心内容。"
-          />
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {apps.map((app) => <AppCard key={app.id} app={app} />)}
-          </div>
-        )}
+    <div className="space-y-10">
+      <section className="space-y-2 pt-4">
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">应用中心</h1>
+        <p className="text-lg text-muted-foreground">发现并获取优质应用</p>
       </section>
+
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveCategory(null)}
+            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+              activeCategory === null
+                ? 'border-primary bg-primary text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            全部
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setActiveCategory(category)}
+              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                activeCategory === category
+                  ? 'border-primary bg-primary text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="flex min-h-64 animate-pulse flex-col rounded-2xl border border-slate-200 bg-white/80 p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-slate-100" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-32 rounded bg-slate-100" />
+                  <div className="h-4 w-48 rounded bg-slate-100" />
+                </div>
+              </div>
+              <div className="mt-auto pt-6">
+                <div className="h-10 w-full rounded-lg bg-slate-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredApps.length === 0 ? (
+        <EmptyState
+          icon={Boxes}
+          title="暂无应用"
+          description="当前还没有可浏览的应用，请稍后再来看看。"
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {filteredApps.map((app) => (
+            <AppCard key={app.id} app={app} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

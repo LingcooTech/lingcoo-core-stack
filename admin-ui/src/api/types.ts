@@ -123,6 +123,28 @@ export interface DeliverySettingsOverview {
 
 // ─── Apps ───────────────────────────────────────────────────────────────────
 
+export interface AppScreenshot {
+  url: string;
+  caption?: string;
+}
+
+export interface AppHighlight {
+  icon?: string;
+  title: string;
+  description: string;
+}
+
+export interface AppFaq {
+  question: string;
+  answer: string;
+}
+
+export interface AppLink {
+  label: string;
+  url: string;
+  type: 'docs' | 'support' | 'website' | 'download' | 'other';
+}
+
 export interface AppSecret {
   id: string;
   hint: string;
@@ -134,7 +156,17 @@ export interface App {
   id: string;
   code: string;
   name: string;
+  tagline: string | null;
   description: string | null;
+  content: string | null;
+  iconUrl: string | null;
+  coverUrl: string | null;
+  screenshots: AppScreenshot[];
+  highlights: AppHighlight[];
+  faq: AppFaq[];
+  links: AppLink[];
+  category: string | null;
+  sortOrder: number;
   type: string;
   status: string;
   meta?: Record<string, unknown>;

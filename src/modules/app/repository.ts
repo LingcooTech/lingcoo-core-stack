@@ -31,7 +31,17 @@ export class AppRepository {
   async upsertApp(input: {
     code: string;
     name: string;
+    tagline?: string;
     description?: string;
+    content?: string;
+    iconUrl?: string;
+    coverUrl?: string;
+    screenshots?: unknown[];
+    highlights?: unknown[];
+    faq?: unknown[];
+    links?: unknown[];
+    category?: string;
+    sortOrder?: number;
     type: 'chrome_extension' | 'web_app' | 'service';
     status: 'active' | 'inactive' | 'cancelled' | 'expired';
     meta?: Record<string, unknown>;
@@ -42,7 +52,17 @@ export class AppRepository {
       .values({
         code: input.code,
         name: input.name,
+        tagline: input.tagline ?? null,
         description: input.description ?? null,
+        content: input.content ?? null,
+        iconUrl: input.iconUrl ?? null,
+        coverUrl: input.coverUrl ?? null,
+        screenshots: input.screenshots ?? [],
+        highlights: input.highlights ?? [],
+        faq: input.faq ?? [],
+        links: input.links ?? [],
+        category: input.category ?? null,
+        sortOrder: input.sortOrder ?? 0,
         type: input.type,
         status: input.status,
         meta: input.meta ?? {},
@@ -53,7 +73,17 @@ export class AppRepository {
         target: apps.code,
         set: {
           name: input.name,
+          tagline: input.tagline ?? null,
           description: input.description ?? null,
+          content: input.content ?? null,
+          iconUrl: input.iconUrl ?? null,
+          coverUrl: input.coverUrl ?? null,
+          screenshots: input.screenshots ?? [],
+          highlights: input.highlights ?? [],
+          faq: input.faq ?? [],
+          links: input.links ?? [],
+          category: input.category ?? null,
+          sortOrder: input.sortOrder ?? 0,
           type: input.type,
           status: input.status,
           meta: input.meta ?? {},

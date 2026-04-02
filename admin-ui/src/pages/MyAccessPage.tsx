@@ -5,8 +5,6 @@ import { listApps } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
-import { MetricStrip } from '@/components/portal/MetricStrip';
-import { PageHeader } from '@/components/portal/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function MyAccessPage() {
@@ -28,21 +26,11 @@ export function MyAccessPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader sectionKey="access" />
-
-      <MetricStrip
-        items={[
-          { label: 'Products', value: summary.length, note: '按产品聚合后的有效授权数量。' },
-          { label: 'Entitlements', value: items.length, note: '当前账号下 entitlement 明细数量。' },
-          {
-            label: 'Mapped Apps',
-            value: summary.filter((entry) => (appsByProduct.get(entry.productCode) ?? []).length > 0).length,
-            note: '这些授权已经能映射到具体应用，后续可继续承接部署与更新。'
-          },
-          { label: 'View Mode', value: 'Product-first', note: '先按产品聚合，再展开 feature 和后续交付权限。' }
-        ]}
-      />
+    <div className="space-y-8">
+      <section className="space-y-2 pt-4">
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">我的应用</h1>
+        <p className="text-lg text-muted-foreground">已购应用和授权状态</p>
+      </section>
 
       {entitlementsQuery.isLoading ? (
         <Card>
@@ -53,8 +41,8 @@ export function MyAccessPage() {
       ) : summary.length === 0 ? (
         <EmptyState
           icon={KeyRound}
-          title="当前没有可用授权"
-          description="购买成功后，这里会显示产品能力、权限边界，以及后续的部署资格与更新权。"
+          title="还没有已购应用"
+          description="还没有已购应用，去应用中心选购吧"
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">

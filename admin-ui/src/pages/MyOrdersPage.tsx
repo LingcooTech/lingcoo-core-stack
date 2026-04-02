@@ -4,9 +4,7 @@ import { toast } from 'sonner';
 
 import { listMyOrders, syncMyOrder } from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
-import { MetricStrip } from '@/components/portal/MetricStrip';
 import { OrderCard } from '@/components/portal/OrderCard';
-import { PageHeader } from '@/components/portal/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function MyOrdersPage() {
@@ -27,17 +25,11 @@ export function MyOrdersPage() {
   const orders = ordersQuery.data?.items ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader sectionKey="orders" />
-
-      <MetricStrip
-        items={[
-          { label: 'Total Orders', value: orders.length, note: '当前账号下可追踪的订单数量。' },
-          { label: 'Paid Orders', value: orders.filter((item) => item.status === 'paid').length, note: '已经完成支付并应生成授权的订单。' },
-          { label: 'Pending Orders', value: orders.filter((item) => item.status === 'pending').length, note: '仍可能处于支付中的订单，可继续主动同步。' },
-          { label: 'Next Stage', value: 'Delivery Link', note: '后续会把部署记录和交付入口挂回订单链路。' }
-        ]}
-      />
+    <div className="space-y-8">
+      <section className="space-y-2 pt-4">
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">订单记录</h1>
+        <p className="text-lg text-muted-foreground">查看和管理你的所有订单</p>
+      </section>
 
       <div className="grid gap-4">
         {ordersQuery.isLoading ? (
@@ -49,8 +41,8 @@ export function MyOrdersPage() {
         ) : orders.length === 0 ? (
           <EmptyState
             icon={FileSearch}
-            title="当前还没有订单"
-            description="先从产品中心选择一个应用开始购买。支付完成后，这里会成为授权与交付链路的上游入口。"
+            title="还没有订单记录"
+            description="还没有订单记录，去应用中心看看吧"
           />
         ) : (
           orders.map((order) => (

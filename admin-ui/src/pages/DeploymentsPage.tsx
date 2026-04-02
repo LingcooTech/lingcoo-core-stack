@@ -8,8 +8,6 @@ import { createDeployment, issueDeploymentToken, listMyDeployments, listMyEntitl
 import { DeploymentCreateCard, type DeployableAppOption } from '@/components/portal/DeploymentCreateCard';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { EmptyState } from '@/components/portal/EmptyState';
-import { MetricStrip } from '@/components/portal/MetricStrip';
-import { PageHeader } from '@/components/portal/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function DeploymentsPage() {
@@ -60,37 +58,22 @@ export function DeploymentsPage() {
     mutationFn: issueDeploymentToken,
     onSuccess: (result) => {
       setIssuedToken(result);
-      toast.success('一次性 deploy token 已签发');
+      toast.success('部署令牌已签发');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '签发 deploy token 失败');
+      toast.error(err instanceof Error ? err.message : '签发部署令牌失败');
     }
   });
 
   const deployments = deploymentsQuery.data?.items ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader sectionKey="deploy" />
-
-      <MetricStrip
-        items={[
-          { label: 'Deployable Apps', value: deployableApps.length, note: '当前已具备部署资格的系统类应用数量。' },
-          { label: 'Deployments', value: deployments.length, note: '已经建立的部署记录数量。' },
-          { label: 'Service Apps', value: apps.filter((app) => app.type === 'service').length, note: '适合承接 Headless WP 这类系统产品。' },
-          {
-            label: 'Delivery Source',
-            value: 'Entitlements',
-            note: '部署入口会建立在购买后的授权结果之上，而不是单独一套临时码。'
-          },
-          {
-            label: 'Current Stage',
-            value: 'Installer Bootstrap',
-            note: '现在已经可以签发 deploy token，并生成供远程安装器直接使用的一键命令。'
-          }
-        ]}
-      />
+    <div className="space-y-8">
+      <section className="space-y-2 pt-4">
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">部署管理</h1>
+        <p className="text-lg text-muted-foreground">管理应用部署和服务器配置</p>
+      </section>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
         <Card>
@@ -101,8 +84,8 @@ export function DeploymentsPage() {
       ) : deployableApps.length === 0 ? (
         <EmptyState
           icon={Boxes}
-          title="当前还没有可部署的系统产品"
-          description="当 Headless WP 这类系统产品在后台被定义为 service / web_app，并且当前账号持有对应授权后，这里就会出现部署入口。"
+          title="暂无可部署的应用"
+          description="购买系统类应用后，即可在此创建部署记录并进行安装配置。"
         />
       ) : (
         <>
@@ -115,8 +98,8 @@ export function DeploymentsPage() {
           {deployments.length === 0 ? (
             <EmptyState
               icon={Rocket}
-              title="还没有创建部署记录"
-              description="先为你的 Headless WP 系统创建部署记录，再签发一次性 deploy token。系统会返回可直接调用远程安装器的一键命令。"
+              title="还没有部署记录"
+              description="选择一个已购应用，创建部署记录后即可签发安装令牌并完成一键部署。"
             />
           ) : (
             <div className="grid gap-4">

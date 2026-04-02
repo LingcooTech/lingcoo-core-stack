@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { AppCatalog, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary, ProductSummary } from './types';
+import type { AppCatalog, AppFaq, AppHighlight, AppLink, AppScreenshot, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary, ProductSummary } from './types';
 
 export async function listApps(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
@@ -31,7 +31,17 @@ export async function listCatalogSnapshot(): Promise<CatalogSnapshot> {
 
 export interface UpsertAppInput {
   name: string;
+  tagline?: string;
   description?: string;
+  content?: string;
+  iconUrl?: string;
+  coverUrl?: string;
+  screenshots?: AppScreenshot[];
+  highlights?: AppHighlight[];
+  faq?: AppFaq[];
+  links?: AppLink[];
+  category?: string;
+  sortOrder?: number;
   type: string;
   status: string;
   productCodes: string[];

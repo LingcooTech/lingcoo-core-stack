@@ -6,6 +6,19 @@ import { formatAmount } from '@/lib/utils';
 
 type Offer = AppCatalog['offers'][number];
 
+function formatInterval(interval: string): string {
+  switch (interval) {
+    case 'month':
+      return '/ 月';
+    case 'year':
+      return '/ 年';
+    case 'one_time':
+      return '一次性';
+    default:
+      return interval;
+  }
+}
+
 export function OfferCard({
   offer,
   selected,
@@ -36,7 +49,7 @@ export function OfferCard({
         </div>
         <div className="text-right">
           <p className="text-2xl font-black">{formatAmount(offer.priceAmount, offer.currency)}</p>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{offer.interval}</p>
+          <p className="text-xs tracking-wide text-muted-foreground">{formatInterval(offer.interval)}</p>
         </div>
       </div>
       {features.length ? (

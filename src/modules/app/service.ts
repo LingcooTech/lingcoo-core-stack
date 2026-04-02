@@ -269,7 +269,17 @@ export class AppService {
         id: app.id,
         code: app.code,
         name: app.name,
+        tagline: app.tagline,
         description: app.description,
+        content: app.content,
+        iconUrl: app.iconUrl,
+        coverUrl: app.coverUrl,
+        screenshots: app.screenshots,
+        highlights: app.highlights,
+        faq: app.faq,
+        links: app.links,
+        category: app.category,
+        sortOrder: app.sortOrder,
         type: app.type,
         status: app.status,
         meta: app.meta,
@@ -520,7 +530,17 @@ export class AppService {
     appCode: string,
     input: {
       name: string;
+      tagline?: string;
       description?: string;
+      content?: string;
+      iconUrl?: string;
+      coverUrl?: string;
+      screenshots?: Array<{ url: string; caption?: string }>;
+      highlights?: Array<{ icon?: string; title: string; description: string }>;
+      faq?: Array<{ question: string; answer: string }>;
+      links?: Array<{ label: string; url: string; type: string }>;
+      category?: string;
+      sortOrder?: number;
       type: 'chrome_extension' | 'web_app' | 'service';
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
       productCodes: string[];
@@ -640,7 +660,17 @@ export class AppService {
       const app = await repository.upsertApp({
         code: appCode,
         name: input.name,
+        tagline: input.tagline,
         description: input.description,
+        content: input.content,
+        iconUrl: input.iconUrl,
+        coverUrl: input.coverUrl,
+        screenshots: input.screenshots,
+        highlights: input.highlights,
+        faq: input.faq,
+        links: input.links,
+        category: input.category,
+        sortOrder: input.sortOrder,
         type: input.type,
         status: input.status,
         meta: normalizedMeta
