@@ -52,6 +52,7 @@ export function ProductsPage() {
     {
       key: 'product',
       header: '产品',
+      className: 'align-top py-5',
       cell: (row) => (
         <div className="flex items-center gap-3">
           {row.primaryApp?.iconUrl ? (
@@ -80,6 +81,7 @@ export function ProductsPage() {
     {
       key: 'status',
       header: '类型 / 状态',
+      className: 'align-top py-5 w-[160px]',
       cell: (row) => (
         <div className="flex flex-col gap-1.5">
           <StatusPill tone="neutral" label={row.product.type || 'service'} />
@@ -90,6 +92,7 @@ export function ProductsPage() {
     {
       key: 'capability',
       header: '能力与方案',
+      className: 'align-top py-5 w-[180px]',
       cell: (row) => (
         <div className="space-y-1 text-xs text-muted-foreground">
           <p>{row.features.length} 个能力项</p>
@@ -100,6 +103,7 @@ export function ProductsPage() {
     {
       key: 'profile',
       header: '销售与交付档案',
+      className: 'align-top py-5',
       cell: (row) => {
         const primaryApp = row.primaryApp;
         const activeSecrets =
@@ -136,35 +140,62 @@ export function ProductsPage() {
   return (
     <div>
       <SectionHeader sectionKey="catalog" />
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-muted-foreground">
-            点击产品名称即可进入详情页，沿着“产品信息 → 功能/授权/价格 → 交付”的流程完成编辑。
+      <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-6">
+        <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Product Center</p>
+              <div>
+                <h2 className="text-[28px] font-black tracking-tight text-slate-900">产品列表</h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                  点击产品名称即可进入详情页，沿着“产品信息 → 功能/授权/价格 → 交付”的顺序完成配置。
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-right">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">总产品数</p>
+                <p className="mt-1 text-2xl font-black text-slate-900">{managedProducts.length}</p>
+              </div>
+              <Button
+                className="h-11 rounded-2xl px-5 text-sm font-black"
+                onClick={() => {
+                  setSelectedBundle(null);
+                  setCatalogDialogOpen(true);
+                }}
+              >
+                <PackagePlus className="mr-1 h-4 w-4" />
+                新建产品
+              </Button>
+            </div>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSelectedBundle(null);
-              setCatalogDialogOpen(true);
-            }}
-          >
-            <PackagePlus className="mr-1 h-4 w-4" />
-            新建产品
-          </Button>
-        </div>
+        </section>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-white">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+          <div className="border-b border-slate-200/80 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">产品目录</p>
+                <p className="mt-1 text-xs text-slate-500">统一查看产品档案、授权方案和交付准备状态。</p>
+              </div>
+              <StatusPill
+                tone={managedProducts.length > 0 ? 'ok' : 'warn'}
+                label={managedProducts.length > 0 ? '已建立产品目录' : '待创建首个产品'}
+              />
+            </div>
+          </div>
           <DataTable
             columns={columns}
             data={managedProducts}
             isLoading={isCatalogLoading || appsQuery.isLoading}
             emptyMessage="暂无产品，请先创建一个可售卖产品。"
             getRowKey={(row) => row.product.id}
+            rowClassName={() => 'hover:bg-slate-50/70 transition-colors'}
           />
-        </div>
+        </section>
 
         {!isCatalogLoading && managedProducts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center text-sm text-muted-foreground">
             <Boxes className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
             先定义产品，再补齐销售与交付档案。
           </div>

@@ -2,25 +2,32 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  FileCog,
+  Copy,
+  Eye,
+  EyeOff,
   KeyRound,
-  PackageCheck,
-  PackageSearch,
   Plus,
   Rocket,
   Save,
-  Sparkles,
   Trash2
 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import type { AppHighlight } from '@/api/types';
-import { listAppsAdmin, syncAppDeliveryManifest, upsertApp, upsertCatalogBundle } from '@/api/apps';
-import { CatalogBundleDialog } from '@/components/apps/CatalogBundleDialog';
+import type { AppHighlight, DeliveryFieldDefinition, DeliveryFieldGroup, PlanSummary } from '@/api/types';
+import { createAppSecret, listAppsAdmin, revokeAppSecret, syncAppDeliveryManifest, upsertApp, upsertCatalogBundle } from '@/api/apps';
+import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,7 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import {
-  createEmptyOffer,
   formatPlanInterval,
   formatPriceYuan,
   offersFromApp,
@@ -37,7 +43,7 @@ import {
   type EditableOffer
 } from '@/lib/catalog-utils';
 import { getLinkedAppsForProduct, getPrimaryAppForProduct, productNeedsDedicatedProfile } from '@/lib/product-model';
-import { getInitials } from '@/lib/utils';
+import { formatTime, getInitials } from '@/lib/utils';
 
 type DeliveryManifestSourceState = {
   repoUrl: string;
@@ -45,6 +51,9 @@ type DeliveryManifestSourceState = {
   manifestPath: string;
   manifestUrl: string;
 };
+
+type DraftValues = Record<string, string | boolean | null>;
+type DraftSecrets = Record<string, string>;
 
 type WorkspaceForm = {
   name: string;
@@ -67,32 +76,51 @@ type EditableProductFeature = {
   description: string;
 };
 
-function createFeatureDraftId() {
-  return `feature_draft_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+type EditableCapabilityFeature = {
+  id: string;
+  code: string;
+  name: string;
+  kind: string;
+  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+};
+
+type EditableBasePlan = {
+  id: string;
+  code: string;
+  name: string;
+  billingProvider: 'self_hosted' | 'wechat_pay' | 'alipay';
+  priceYuan: string;
+  currency: string;
+  interval: 'month' | 'year' | 'one_time';
+  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  featureIds: string[];
+};
+
+const capabilityKindOptions = [
+  { value: 'boolean', label: '开关能力' },
+  { value: 'quota', label: '额度能力' },
+  { value: 'access', label: '访问能力' }
+] as const;
+
+const authorizationIntervalOptions = [
+  { value: 'one_time', label: '一次性授权' },
+  { value: 'month', label: '月度授权' },
+  { value: 'year', label: '年度授权' }
+] as const;
+
+const billingProviderOptions = [
+  { value: 'self_hosted', label: '线下 / 人工处理' },
+  { value: 'wechat_pay', label: '微信支付' },
+  { value: 'alipay', label: '支付宝' }
+] as const;
+
+function createDraftId(prefix: string) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function readMetaText(meta: Record<string, unknown> | undefined, key: string) {
   const value = meta?.[key];
   return typeof value === 'string' ? value : '';
-}
-
-function normalizeProductFeatures(features: EditableProductFeature[]): AppHighlight[] {
-  return features
-    .map((feature) => ({
-      icon: feature.icon.trim() || undefined,
-      title: feature.title.trim(),
-      description: feature.description.trim()
-    }))
-    .filter((feature) => feature.title && feature.description);
-}
-
-function buildFeatureDrafts(appFeatures: AppHighlight[] | undefined) {
-  return (appFeatures ?? []).map((feature) => ({
-    id: createFeatureDraftId(),
-    icon: feature.icon ?? '',
-    title: feature.title,
-    description: feature.description
-  }));
 }
 
 function createDefaultForm(product: { name: string; type?: string; status?: string }) {
@@ -111,14 +139,74 @@ function createDefaultForm(product: { name: string; type?: string; status?: stri
   } satisfies WorkspaceForm;
 }
 
+function buildMarketingFeatureDrafts(features: AppHighlight[] | undefined) {
+  return (features ?? []).map((feature) => ({
+    id: createDraftId('marketing_feature'),
+    icon: feature.icon ?? '',
+    title: feature.title,
+    description: feature.description
+  }));
+}
+
+function buildCapabilityFeatureDrafts(
+  features: Array<{ code: string; name: string; kind: string; status?: string }>
+) {
+  return features.map((feature) => ({
+    id: createDraftId('capability_feature'),
+    code: feature.code,
+    name: feature.name,
+    kind: feature.kind,
+    status: (feature.status as EditableCapabilityFeature['status']) || 'active'
+  }));
+}
+
+function buildBasePlanDrafts(
+  plans: Array<PlanSummary & { billingProvider?: string }>,
+  planFeatureCodesByPlanCode: Record<string, string[]>,
+  capabilityFeatures: EditableCapabilityFeature[]
+): EditableBasePlan[] {
+  const featureIdByCode = new Map(capabilityFeatures.map((feature) => [feature.code, feature.id]));
+
+  return plans.map((plan) => ({
+    id: createDraftId('base_plan'),
+    code: plan.code,
+    name: plan.name,
+    billingProvider:
+      plan.billingProvider === 'wechat_pay' || plan.billingProvider === 'alipay'
+        ? plan.billingProvider
+        : 'self_hosted',
+    priceYuan: formatPriceYuan(plan.priceAmount),
+    currency: plan.currency || 'CNY',
+    interval: (plan.interval as EditableBasePlan['interval']) || 'one_time',
+    status: (plan.status as EditableBasePlan['status']) || 'active',
+    featureIds: (planFeatureCodesByPlanCode[plan.code] ?? [])
+      .map((code) => featureIdByCode.get(code))
+      .filter((value): value is string => Boolean(value))
+  }));
+}
+
+function normalizeMarketingFeatures(features: EditableProductFeature[]): AppHighlight[] {
+  return features
+    .map((feature) => ({
+      icon: feature.icon.trim() || undefined,
+      title: feature.title.trim(),
+      description: feature.description.trim()
+    }))
+    .filter((feature) => feature.title && feature.description);
+}
+
+function sortFieldsByLabel(fields: DeliveryFieldDefinition[]) {
+  return [...fields].sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'));
+}
+
 export function ProductWorkspacePage() {
   const { productCode } = useParams<{ productCode: string }>();
   const qc = useQueryClient();
-
-  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [initializedProfileCode, setInitializedProfileCode] = useState<string | null>(null);
   const [form, setForm] = useState<WorkspaceForm | null>(null);
-  const [productFeatures, setProductFeatures] = useState<EditableProductFeature[]>([]);
+  const [marketingFeatures, setMarketingFeatures] = useState<EditableProductFeature[]>([]);
+  const [capabilityFeatures, setCapabilityFeatures] = useState<EditableCapabilityFeature[]>([]);
+  const [basePlans, setBasePlans] = useState<EditableBasePlan[]>([]);
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
   const [deliverySource, setDeliverySource] = useState<DeliveryManifestSourceState>({
     repoUrl: '',
@@ -126,8 +214,13 @@ export function ProductWorkspacePage() {
     manifestPath: 'fd-delivery.manifest.json',
     manifestUrl: ''
   });
+  const [draftValues, setDraftValues] = useState<DraftValues>({});
+  const [draftSecrets, setDraftSecrets] = useState<DraftSecrets>({});
+  const [secretExpiresAt, setSecretExpiresAt] = useState('');
+  const [secretResult, setSecretResult] = useState<{ secret: string; secretId: string; appCode: string } | null>(null);
+  const [secretVisible, setSecretVisible] = useState(false);
 
-  const { catalogBundles, allPlans, products, isLoading: isCatalogLoading } = useCatalogData();
+  const { catalogBundles, products, isLoading: isCatalogLoading } = useCatalogData();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsQuery.data?.items ?? [];
 
@@ -140,13 +233,50 @@ export function ProductWorkspacePage() {
   const primaryApp = useMemo(() => (product ? getPrimaryAppForProduct(product.code, apps) : null), [apps, product]);
   const needsDedicatedProfile = productNeedsDedicatedProfile(productCode ?? '', primaryApp);
   const targetProfileCode = needsDedicatedProfile ? (product?.code ?? '') : (primaryApp?.code ?? product?.code ?? '');
-  const availablePlans = useMemo(
-    () => allPlans.filter((plan) => plan.productCode === productCode),
-    [allPlans, productCode]
-  );
   const hasDeliveryManifest = Boolean(primaryApp?.meta?.deliveryManifest);
-  const activeSecrets =
-    primaryApp?.secrets?.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date()).length ?? 0;
+  const deliverySettingsQuery = useQuery({
+    queryKey: ['delivery-settings', targetProfileCode],
+    queryFn: () => getDeliverySettings(targetProfileCode),
+    enabled: Boolean(primaryApp && !needsDedicatedProfile)
+  });
+  const deliverySettings = deliverySettingsQuery.data;
+  const deliveryGroups = deliverySettings?.manifest.groups ?? [];
+  const visibleEnvFields = useMemo(() => {
+    if (!deliverySettings) {
+      return [];
+    }
+
+    return sortFieldsByLabel(deliverySettings.manifest.envFields.filter((field) => field.scope !== 'system'));
+  }, [deliverySettings]);
+  const visibleSecretFields = useMemo(() => {
+    if (!deliverySettings) {
+      return [];
+    }
+
+    return sortFieldsByLabel(deliverySettings.manifest.secretFields.filter((field) => field.scope !== 'system'));
+  }, [deliverySettings]);
+  const deliveryGroupMap = useMemo(() => {
+    const map = new Map<string, { group: DeliveryFieldGroup; env: DeliveryFieldDefinition[]; secret: DeliveryFieldDefinition[] }>();
+
+    const ensureGroup = (key: string) => {
+      if (!map.has(key)) {
+        const fallback = deliveryGroups.find((group) => group.key === key) ?? { key, label: key };
+        map.set(key, { group: fallback, env: [], secret: [] });
+      }
+
+      return map.get(key)!;
+    };
+
+    for (const field of visibleEnvFields) {
+      ensureGroup(field.group ?? 'general').env.push(field);
+    }
+
+    for (const field of visibleSecretFields) {
+      ensureGroup(field.group ?? 'general').secret.push(field);
+    }
+
+    return Array.from(map.values());
+  }, [deliveryGroups, visibleEnvFields, visibleSecretFields]);
 
   useEffect(() => {
     if (!product || !targetProfileCode || initializedProfileCode === targetProfileCode) {
@@ -163,6 +293,8 @@ export function ProductWorkspacePage() {
         : {};
 
     if (primaryApp) {
+      const capabilityDrafts = buildCapabilityFeatureDrafts(bundle?.features ?? []);
+
       setForm({
         name: primaryApp.name,
         iconUrl: primaryApp.iconUrl ?? '',
@@ -176,7 +308,9 @@ export function ProductWorkspacePage() {
         coverUrl: primaryApp.coverUrl ?? '',
         content: primaryApp.content ?? ''
       });
-      setProductFeatures(buildFeatureDrafts(primaryApp.highlights));
+      setMarketingFeatures(buildMarketingFeatureDrafts(primaryApp.highlights));
+      setCapabilityFeatures(capabilityDrafts);
+      setBasePlans(buildBasePlanDrafts((bundle?.plans ?? []) as Array<PlanSummary & { billingProvider?: string }>, bundle?.planFeatureCodesByPlanCode ?? {}, capabilityDrafts));
       setEditableOffers(offersFromApp(primaryApp));
       setDeliverySource({
         repoUrl: typeof deliveryManifestSource.repoUrl === 'string' ? deliveryManifestSource.repoUrl : '',
@@ -189,7 +323,9 @@ export function ProductWorkspacePage() {
       });
     } else {
       setForm(createDefaultForm(product));
-      setProductFeatures([]);
+      setMarketingFeatures([]);
+      setCapabilityFeatures(buildCapabilityFeatureDrafts(bundle?.features ?? []));
+      setBasePlans(buildBasePlanDrafts((bundle?.plans ?? []) as Array<PlanSummary & { billingProvider?: string }>, bundle?.planFeatureCodesByPlanCode ?? {}, buildCapabilityFeatureDrafts(bundle?.features ?? [])));
       setEditableOffers([]);
       setDeliverySource({
         repoUrl: '',
@@ -200,29 +336,94 @@ export function ProductWorkspacePage() {
     }
 
     setInitializedProfileCode(targetProfileCode);
-  }, [initializedProfileCode, primaryApp, product, targetProfileCode]);
+  }, [bundle, initializedProfileCode, primaryApp, product, targetProfileCode]);
 
-  const catalogMutation = useMutation({
-    mutationFn: ({
-      nextProductCode,
-      values
-    }: {
-      nextProductCode: string;
-      values: Parameters<typeof upsertCatalogBundle>[1];
-    }) => upsertCatalogBundle(nextProductCode, values),
-    onSuccess: () => {
-      toast.success('产品功能、授权能力和基础 Plan 已保存');
-      void qc.invalidateQueries({ queryKey: ['catalog'] });
-      setCatalogDialogOpen(false);
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
-  });
+  useEffect(() => {
+    if (!deliverySettings) {
+      return;
+    }
 
-  const profileMutation = useMutation({
+    setDraftValues(deliverySettings.values);
+    setDraftSecrets(Object.fromEntries(deliverySettings.manifest.secretFields.map((field) => [field.key, ''])));
+  }, [deliverySettings]);
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
       if (!product || !form || !targetProfileCode) {
         throw new Error('产品上下文缺失');
       }
+
+      const normalizedCapabilityFeatures: Array<{
+        code: string;
+        name: string;
+        kind: string;
+        status: EditableCapabilityFeature['status'];
+      }> = [];
+      const capabilityCodeById = new Map<string, string>();
+
+      for (const feature of capabilityFeatures) {
+        const code = slugify(feature.code || feature.name);
+        const name = feature.name.trim();
+        if (!code || !name) {
+          continue;
+        }
+
+        normalizedCapabilityFeatures.push({
+          code,
+          name,
+          kind: feature.kind,
+          status: feature.status
+        });
+        capabilityCodeById.set(feature.id, code);
+      }
+
+      if (normalizedCapabilityFeatures.length === 0) {
+        throw new Error('至少需要一个授权能力项');
+      }
+
+      const normalizedBasePlans: Array<{
+        code: string;
+        name: string;
+        billingProvider: EditableBasePlan['billingProvider'];
+        priceAmount: number;
+        currency: string;
+        interval: EditableBasePlan['interval'];
+        status: EditableBasePlan['status'];
+        featureCodes: string[];
+      }> = [];
+
+      for (const plan of basePlans) {
+        const code = slugify(plan.code || plan.name);
+        const name = plan.name.trim();
+        const featureCodes = [...new Set(plan.featureIds.map((id) => capabilityCodeById.get(id)).filter((value): value is string => Boolean(value)))];
+
+        if (!code || !name || featureCodes.length === 0) {
+          continue;
+        }
+
+        normalizedBasePlans.push({
+          code,
+          name,
+          billingProvider: plan.billingProvider,
+          priceAmount: Math.round(Number(plan.priceYuan || '0') * 100),
+          currency: plan.currency.trim().toUpperCase() || 'CNY',
+          interval: plan.interval,
+          status: plan.status,
+          featureCodes
+        });
+      }
+
+      if (normalizedBasePlans.length === 0) {
+        throw new Error('至少需要一个有效的基础 Plan，并且每个 Plan 至少绑定一个授权能力');
+      }
+
+      await upsertCatalogBundle(product.code, {
+        name: form.name,
+        type: form.type,
+        status: form.status,
+        features: normalizedCapabilityFeatures,
+        plans: normalizedBasePlans
+      });
 
       const checkoutOffers = editableOffers
         .map((offer, index) => ({
@@ -281,7 +482,7 @@ export function ProductWorkspacePage() {
         content: form.content || undefined,
         iconUrl: form.iconUrl || undefined,
         coverUrl: form.coverUrl || undefined,
-        highlights: normalizeProductFeatures(productFeatures),
+        highlights: normalizeMarketingFeatures(marketingFeatures),
         screenshots: primaryApp?.screenshots ?? [],
         faq: primaryApp?.faq ?? [],
         links: primaryApp?.links ?? [],
@@ -295,7 +496,8 @@ export function ProductWorkspacePage() {
       });
     },
     onSuccess: () => {
-      toast.success('产品信息、销售方案与交付档案已保存');
+      toast.success('产品详情、授权方案和交付配置已保存');
+      void qc.invalidateQueries({ queryKey: ['catalog'] });
       void qc.invalidateQueries({ queryKey: ['apps'] });
       setInitializedProfileCode(null);
     },
@@ -323,6 +525,71 @@ export function ProductWorkspacePage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败')
   });
 
+  const saveDeliveryMutation = useMutation({
+    mutationFn: async () => {
+      if (!primaryApp || needsDedicatedProfile) {
+        throw new Error('请先保存产品详情，生成专属产品档案后再维护交付配置');
+      }
+
+      return upsertDeliverySettings(primaryApp.code, {
+        values: draftValues,
+        secrets: Object.fromEntries(Object.entries(draftSecrets).filter(([, value]) => value.trim().length > 0))
+      });
+    },
+    onSuccess: () => {
+      toast.success('交付配置已保存');
+      void qc.invalidateQueries({ queryKey: ['delivery-settings', targetProfileCode] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+  });
+
+  const clearDeliveryMutation = useMutation({
+    mutationFn: async () => {
+      if (!primaryApp || needsDedicatedProfile) {
+        throw new Error('请先保存产品详情，生成专属产品档案后再维护交付配置');
+      }
+
+      return clearDeliverySettings(primaryApp.code);
+    },
+    onSuccess: () => {
+      toast.success('交付覆盖值已清空');
+      void qc.invalidateQueries({ queryKey: ['delivery-settings', targetProfileCode] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+  });
+
+  const createSecretMutation = useMutation({
+    mutationFn: async () => {
+      if (!primaryApp || needsDedicatedProfile) {
+        throw new Error('请先保存产品详情，生成专属产品档案后再创建接入密钥');
+      }
+
+      return createAppSecret(primaryApp.code, secretExpiresAt ? new Date(secretExpiresAt).toISOString() : undefined);
+    },
+    onSuccess: (result) => {
+      toast.success('产品接入密钥已生成，请立即保存');
+      setSecretResult({ secret: result.secret, secretId: result.secretId, appCode: result.appCode });
+      setSecretExpiresAt('');
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '生成失败')
+  });
+
+  const revokeSecretMutation = useMutation({
+    mutationFn: async (secretId: string) => {
+      if (!primaryApp || needsDedicatedProfile) {
+        throw new Error('请先保存产品详情，生成专属产品档案后再管理接入密钥');
+      }
+
+      return revokeAppSecret(primaryApp.code, secretId);
+    },
+    onSuccess: () => {
+      toast.success('产品接入密钥已撤销');
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '撤销失败')
+  });
+
   if (isCatalogLoading || appsQuery.isLoading || !form) {
     return <div className="p-6 text-sm text-muted-foreground">加载产品详情中...</div>;
   }
@@ -337,11 +604,11 @@ export function ProductWorkspacePage() {
     );
   }
 
-  const addProductFeature = () => {
-    setProductFeatures((current) => [
+  const addMarketingFeature = () => {
+    setMarketingFeatures((current) => [
       ...current,
       {
-        id: createFeatureDraftId(),
+        id: createDraftId('marketing_feature'),
         icon: '',
         title: '',
         description: ''
@@ -349,18 +616,117 @@ export function ProductWorkspacePage() {
     ]);
   };
 
-  const updateProductFeature = (featureId: string, updater: (current: EditableProductFeature) => EditableProductFeature) => {
-    setProductFeatures((current) => current.map((feature) => (feature.id === featureId ? updater(feature) : feature)));
+  const updateMarketingFeature = (
+    featureId: string,
+    updater: (current: EditableProductFeature) => EditableProductFeature
+  ) => {
+    setMarketingFeatures((current) => current.map((feature) => (feature.id === featureId ? updater(feature) : feature)));
   };
 
-  const removeProductFeature = (featureId: string) => {
-    setProductFeatures((current) => current.filter((feature) => feature.id !== featureId));
+  const removeMarketingFeature = (featureId: string) => {
+    setMarketingFeatures((current) => current.filter((feature) => feature.id !== featureId));
+  };
+
+  const addCapabilityFeature = () => {
+    setCapabilityFeatures((current) => [
+      ...current,
+      {
+        id: createDraftId('capability_feature'),
+        code: '',
+        name: '',
+        kind: 'boolean',
+        status: 'active'
+      }
+    ]);
+  };
+
+  const updateCapabilityFeature = (
+    featureId: string,
+    updater: (current: EditableCapabilityFeature) => EditableCapabilityFeature
+  ) => {
+    setCapabilityFeatures((current) => current.map((feature) => (feature.id === featureId ? updater(feature) : feature)));
+  };
+
+  const removeCapabilityFeature = (featureId: string) => {
+    setCapabilityFeatures((current) => current.filter((feature) => feature.id !== featureId));
+    setBasePlans((current) =>
+      current.map((plan) => ({
+        ...plan,
+        featureIds: plan.featureIds.filter((item) => item !== featureId)
+      }))
+    );
+  };
+
+  const addBasePlan = () => {
+    setBasePlans((current) => [
+      ...current,
+      {
+        id: createDraftId('base_plan'),
+        code: '',
+        name: '',
+        billingProvider: 'self_hosted',
+        priceYuan: '0.00',
+        currency: 'CNY',
+        interval: 'one_time',
+        status: 'inactive',
+        featureIds: capabilityFeatures[0] ? [capabilityFeatures[0].id] : []
+      }
+    ]);
+  };
+
+  const updateBasePlan = (planId: string, updater: (current: EditableBasePlan) => EditableBasePlan) => {
+    setBasePlans((current) => {
+      const target = current.find((plan) => plan.id === planId);
+      const next = current.map((plan) => (plan.id === planId ? updater(plan) : plan));
+      const nextTarget = next.find((plan) => plan.id === planId);
+
+      if (!target || !nextTarget) {
+        return next;
+      }
+
+      const previousCode = slugify(target.code || target.name);
+      const nextCode = slugify(nextTarget.code || nextTarget.name);
+
+      if (previousCode && previousCode !== nextCode) {
+        setEditableOffers((offers) =>
+          offers.map((offer) => ({
+            ...offer,
+            planCode: offer.planCode === previousCode ? nextCode : offer.planCode
+          }))
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const removeBasePlan = (planId: string) => {
+    const plan = basePlans.find((item) => item.id === planId);
+    const planCode = plan ? slugify(plan.code || plan.name) : '';
+    setBasePlans((current) => current.filter((item) => item.id !== planId));
+    if (planCode) {
+      setEditableOffers((offers) => offers.filter((offer) => offer.planCode !== planCode));
+    }
   };
 
   const addOffer = () => {
-    const seedPlan = availablePlans[0];
+    const seedPlan = basePlans[0];
     setEditableOffers((current) => {
-      const next = [...current, createEmptyOffer(seedPlan)];
+      const next = [
+        ...current,
+        {
+          id: createDraftId('offer'),
+          code: slugify(seedPlan?.code || `offer_${Date.now().toString(36)}`),
+          planCode: slugify(seedPlan?.code || seedPlan?.name || ''),
+          title: seedPlan?.name || '',
+          description: '',
+          badge: '',
+          priceYuan: seedPlan?.priceYuan || '0.00',
+          currency: seedPlan?.currency || 'CNY',
+          status: seedPlan?.status || 'active',
+          isDefault: false
+        }
+      ];
       if (next.length === 1) {
         next[0] = { ...next[0], isDefault: true };
       }
@@ -387,35 +753,48 @@ export function ProductWorkspacePage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" asChild>
-            <Link to="/admin/products">
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              返回产品中心
-            </Link>
-          </Button>
-          <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-3">
-            {form.iconUrl ? (
-              <img src={form.iconUrl} alt={form.name} className="h-14 w-14 rounded-3xl border border-border object-cover" />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-blue-500 text-lg font-black text-white">
-                {getInitials(form.name)}
+    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-6">
+      <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex min-w-0 items-start gap-4">
+            <Button variant="ghost" asChild className="mt-1 rounded-2xl px-3">
+              <Link to="/admin/products">
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                返回产品中心
+              </Link>
+            </Button>
+            <Separator orientation="vertical" className="mt-2 h-10" />
+            <div className="flex min-w-0 items-center gap-4">
+              {form.iconUrl ? (
+                <img src={form.iconUrl} alt={form.name} className="h-16 w-16 rounded-[24px] border border-slate-200 object-cover shadow-sm" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-gradient-to-br from-primary to-blue-500 text-xl font-black text-white shadow-sm">
+                  {getInitials(form.name)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Product Detail</p>
+                <h2 className="truncate text-[30px] font-black tracking-tight text-slate-900">{form.name}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-600">{product.code}</span>
+                  <StatusPill tone={form.status === 'active' ? 'ok' : 'warn'} label={form.status === 'active' ? '可售卖' : form.status} />
+                  <StatusPill tone="neutral" label={form.type === 'chrome_extension' ? 'Chrome Extension' : form.type === 'web_app' ? 'Web App' : 'Service'} />
+                </div>
               </div>
-            )}
-            <div>
-              <p className="text-2xl font-black text-foreground">{form.name}</p>
-              <p className="text-xs font-mono text-muted-foreground">{product.code}</p>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">当前档案</p>
+              <p className="mt-1 text-sm font-mono text-slate-700">{targetProfileCode || '待创建'}</p>
+            </div>
+            <Button className="h-11 rounded-2xl px-5 text-sm font-black" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              <Save className="mr-1 h-4 w-4" />
+              {saveMutation.isPending ? '保存中...' : '保存产品详情'}
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => profileMutation.mutate()} disabled={profileMutation.isPending}>
-          <Save className="mr-1 h-4 w-4" />
-          {profileMutation.isPending ? '保存中...' : '保存产品详情'}
-        </Button>
-      </div>
+      </section>
 
       {linkedApps.length > 1 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -430,17 +809,19 @@ export function ProductWorkspacePage() {
       ) : null}
 
       <Tabs defaultValue="info" className="space-y-4">
-        <TabsList className="h-auto flex-wrap justify-start rounded-2xl bg-muted/50 p-1">
+        <div className="rounded-[24px] border border-slate-200 bg-white p-3 shadow-[0_12px_36px_rgba(15,23,42,0.03)]">
+          <TabsList className="h-auto flex-wrap justify-start rounded-2xl bg-slate-100 p-1">
           <TabsTrigger value="info">1. 产品信息</TabsTrigger>
-          <TabsTrigger value="capability">2. 功能 / 授权 / 价格</TabsTrigger>
+          <TabsTrigger value="capability">2. 产品功能 / 授权 / 价格</TabsTrigger>
           <TabsTrigger value="delivery">3. 交付与接入</TabsTrigger>
-        </TabsList>
+          </TabsList>
+        </div>
 
         <TabsContent value="info" className="space-y-4">
-          <Card>
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
-              <CardDescription>参照 ACF 字段组的“基本信息”顺序，先定义产品名称、图标、简介、开发者和版本等基础资料。</CardDescription>
+              <CardDescription>先定义产品名称、图标、简介、开发者、版本和介绍内容，确保产品的对外表达完整清晰。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-[140px,1fr]">
@@ -468,7 +849,7 @@ export function ProductWorkspacePage() {
                     <Textarea
                       value={form.shortDescription}
                       onChange={(event) => setForm((current) => current ? { ...current, shortDescription: event.target.value } : current)}
-                      placeholder="一句话介绍产品的核心价值，建议 50 字以内。"
+                      placeholder="一句话介绍产品核心价值，建议 50 字以内。"
                       className="min-h-[84px]"
                     />
                   </div>
@@ -545,44 +926,243 @@ export function ProductWorkspacePage() {
         </TabsContent>
 
         <TabsContent value="capability" className="space-y-4">
-          <Card>
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle>产品功能特性</CardTitle>
-                <CardDescription>参照 ACF 的“主要功能特性”字段，维护用户在详情页最先感知到的产品功能卖点。</CardDescription>
+                <CardDescription>面向用户展示产品卖点，决定前台详情页看到的功能亮点。</CardDescription>
               </div>
-              <Button variant="outline" onClick={addProductFeature}>
+              <Button variant="outline" onClick={addMarketingFeature}>
                 <Plus className="mr-1 h-4 w-4" />
-                添加功能
+                添加产品功能
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {productFeatures.length === 0 ? (
+              {marketingFeatures.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
-                  还没有配置面向用户展示的产品功能特性。
+                  还没有面向用户展示的产品功能特性。
                 </div>
               ) : (
-                productFeatures.map((feature, index) => (
+                marketingFeatures.map((feature, index) => (
                   <div key={feature.id} className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-black text-foreground">功能 {index + 1}</p>
-                      <Button variant="ghost" size="icon" onClick={() => removeProductFeature(feature.id)}>
+                      <p className="text-sm font-black text-foreground">产品功能 {index + 1}</p>
+                      <Button variant="ghost" size="icon" onClick={() => removeMarketingFeature(feature.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="grid gap-4 md:grid-cols-[120px,1fr]">
                       <div className="space-y-2">
                         <Label>图标</Label>
-                        <Input value={feature.icon} onChange={(event) => updateProductFeature(feature.id, (current) => ({ ...current, icon: event.target.value }))} placeholder="✨" />
+                        <Input value={feature.icon} onChange={(event) => updateMarketingFeature(feature.id, (current) => ({ ...current, icon: event.target.value }))} placeholder="✨" />
                       </div>
                       <div className="space-y-2">
                         <Label>标题</Label>
-                        <Input value={feature.title} onChange={(event) => updateProductFeature(feature.id, (current) => ({ ...current, title: event.target.value }))} placeholder="例如：实时同步" />
+                        <Input value={feature.title} onChange={(event) => updateMarketingFeature(feature.id, (current) => ({ ...current, title: event.target.value }))} placeholder="例如：实时同步" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>描述</Label>
-                      <Textarea value={feature.description} onChange={(event) => updateProductFeature(feature.id, (current) => ({ ...current, description: event.target.value }))} className="min-h-[88px]" />
+                      <Textarea value={feature.description} onChange={(event) => updateMarketingFeature(feature.id, (current) => ({ ...current, description: event.target.value }))} className="min-h-[88px]" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>授权能力项</CardTitle>
+                <CardDescription>定义用户买到产品后，会获得哪些授权能力。这是授权引擎的底层能力单元。</CardDescription>
+              </div>
+              <Button variant="outline" onClick={addCapabilityFeature}>
+                <Plus className="mr-1 h-4 w-4" />
+                添加授权能力
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {capabilityFeatures.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  至少需要一个授权能力项，产品才能形成可售卖的授权方案。
+                </div>
+              ) : (
+                capabilityFeatures.map((feature, index) => (
+                  <div key={feature.id} className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-black text-foreground">授权能力 {index + 1}</p>
+                      <Button variant="ghost" size="icon" onClick={() => removeCapabilityFeature(feature.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>能力名称</Label>
+                        <Input value={feature.name} onChange={(event) => updateCapabilityFeature(feature.id, (current) => ({ ...current, name: event.target.value }))} placeholder="例如：System Deploy" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>能力 Code</Label>
+                        <Input value={feature.code} onChange={(event) => updateCapabilityFeature(feature.id, (current) => ({ ...current, code: slugify(event.target.value) }))} placeholder="system_deploy" />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>能力类型</Label>
+                        <Select value={feature.kind} onValueChange={(value) => updateCapabilityFeature(feature.id, (current) => ({ ...current, kind: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {capabilityKindOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>状态</Label>
+                        <Select value={feature.status} onValueChange={(value) => updateCapabilityFeature(feature.id, (current) => ({ ...current, status: value as EditableCapabilityFeature['status'] }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle>基础授权 Plan</CardTitle>
+                <CardDescription>Plan 由授权能力、授权种类和付费方式共同构成。这里直接内联编辑，不再使用弹框。</CardDescription>
+              </div>
+              <Button variant="outline" onClick={addBasePlan}>
+                <Plus className="mr-1 h-4 w-4" />
+                添加基础 Plan
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {basePlans.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  至少需要一个基础 Plan，产品才能形成完整的授权和价格体系。
+                </div>
+              ) : (
+                basePlans.map((plan, index) => (
+                  <div key={plan.id} className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-black text-foreground">基础 Plan {index + 1}</p>
+                      <Button variant="ghost" size="icon" onClick={() => removeBasePlan(plan.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Plan 名称</Label>
+                        <Input value={plan.name} onChange={(event) => updateBasePlan(plan.id, (current) => ({ ...current, name: event.target.value }))} placeholder="例如：专业版年付" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Plan Code</Label>
+                        <Input value={plan.code} onChange={(event) => updateBasePlan(plan.id, (current) => ({ ...current, code: slugify(event.target.value) }))} placeholder="retail_pro_yearly" />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="space-y-2">
+                        <Label>授权种类</Label>
+                        <Select value={plan.interval} onValueChange={(value) => updateBasePlan(plan.id, (current) => ({ ...current, interval: value as EditableBasePlan['interval'] }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {authorizationIntervalOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>付费方式</Label>
+                        <Select value={plan.billingProvider} onValueChange={(value) => updateBasePlan(plan.id, (current) => ({ ...current, billingProvider: value as EditableBasePlan['billingProvider'] }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {billingProviderOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>价格（元）</Label>
+                        <Input value={plan.priceYuan} onChange={(event) => updateBasePlan(plan.id, (current) => ({ ...current, priceYuan: event.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>状态</Label>
+                        <Select value={plan.status} onValueChange={(value) => updateBasePlan(plan.id, (current) => ({ ...current, status: value as EditableBasePlan['status'] }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>币种</Label>
+                        <Input value={plan.currency} onChange={(event) => updateBasePlan(plan.id, (current) => ({ ...current, currency: event.target.value.toUpperCase() }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>已关联能力数</Label>
+                        <div className="flex h-10 items-center rounded-xl border border-input bg-background px-3 text-sm text-muted-foreground">
+                          {plan.featureIds.length} 个授权能力
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>授权能力组合</Label>
+                      <div className="grid gap-3 rounded-2xl border border-border bg-white p-4 md:grid-cols-2">
+                        {capabilityFeatures.map((feature) => (
+                          <label key={feature.id} className="flex items-start gap-3 rounded-xl border border-border px-3 py-2">
+                            <Checkbox
+                              checked={plan.featureIds.includes(feature.id)}
+                              onCheckedChange={(checked) =>
+                                updateBasePlan(plan.id, (current) => ({
+                                  ...current,
+                                  featureIds: checked
+                                    ? [...new Set([...current.featureIds, feature.id])]
+                                    : current.featureIds.filter((item) => item !== feature.id)
+                                }))
+                              }
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-bold text-foreground">{feature.name || '未命名能力'}</span>
+                              <span className="block text-xs font-mono text-muted-foreground">{feature.code || '待生成 code'}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -593,75 +1173,18 @@ export function ProductWorkspacePage() {
           <Card>
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
-                <CardTitle>授权能力与基础 Plan</CardTitle>
-                <CardDescription>这里是授权引擎的核心层。产品能力、授权等级和基础价格在这里定义，再映射到对外展示的销售方案。</CardDescription>
-              </div>
-              <Button variant="outline" onClick={() => setCatalogDialogOpen(true)}>
-                <PackageCheck className="mr-1 h-4 w-4" />
-                编辑功能 / 授权 / Plan
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-muted/10 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-black text-foreground">授权能力项</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {bundle.features.length > 0 ? (
-                    bundle.features.map((feature) => (
-                      <StatusPill key={feature.code} tone="neutral" label={feature.name} />
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">尚未定义能力项。</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-muted/10 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <PackageSearch className="h-4 w-4 text-primary" />
-                  <p className="text-sm font-black text-foreground">基础授权方案</p>
-                </div>
-                <div className="space-y-3">
-                  {bundle.plans.length > 0 ? (
-                    bundle.plans.map((plan) => (
-                      <div key={plan.code} className="rounded-xl border border-border bg-white px-3 py-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-bold text-foreground">{plan.name}</p>
-                            <p className="text-xs font-mono text-muted-foreground">{plan.code}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-foreground">¥{formatPriceYuan(plan.priceAmount)}</p>
-                            <p className="text-xs text-muted-foreground">{formatPlanInterval(plan.interval)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">尚未定义基础 Plan。</p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-              <div>
                 <CardTitle>对外销售方案</CardTitle>
-                <CardDescription>Plan 是底层授权方案；这里负责定义用户看到的标题、标签、价格展示和默认购买入口。</CardDescription>
+                <CardDescription>基础 Plan 决定授权与价格底座；这里定义用户最终看到的标题、标签和默认购买入口。</CardDescription>
               </div>
-              <Button variant="outline" onClick={addOffer} disabled={availablePlans.length === 0}>
+              <Button variant="outline" onClick={addOffer} disabled={basePlans.length === 0}>
                 <Plus className="mr-1 h-4 w-4" />
-                添加展示方案
+                添加销售方案
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {availablePlans.length === 0 ? (
+              {basePlans.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
-                  先为这个产品创建至少一个基础 Plan，才能配置对外销售方案。
+                  先定义基础 Plan，再配置对外销售方案。
                 </div>
               ) : editableOffers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
@@ -669,13 +1192,13 @@ export function ProductWorkspacePage() {
                 </div>
               ) : (
                 editableOffers.map((offer) => {
-                  const boundPlan = availablePlans.find((plan) => plan.code === offer.planCode) ?? null;
+                  const boundPlan = basePlans.find((plan) => slugify(plan.code || plan.name) === offer.planCode) ?? null;
 
                   return (
                     <div key={offer.id} className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-black text-foreground">{offer.title || '未命名展示方案'}</p>
+                          <p className="text-sm font-black text-foreground">{offer.title || '未命名销售方案'}</p>
                           <p className="text-xs text-muted-foreground">
                             绑定基础 Plan：{boundPlan ? `${boundPlan.name} · ${formatPlanInterval(boundPlan.interval)}` : offer.planCode || '未选择'}
                           </p>
@@ -684,10 +1207,9 @@ export function ProductWorkspacePage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label>标题</Label>
+                          <Label>方案标题</Label>
                           <Input value={offer.title} onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, title: event.target.value }))} />
                         </div>
                         <div className="space-y-2">
@@ -695,20 +1217,21 @@ export function ProductWorkspacePage() {
                           <Input value={offer.code} onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, code: slugify(event.target.value) }))} />
                         </div>
                       </div>
-
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div className="space-y-2">
-                          <Label>绑定 Plan</Label>
+                      <div className="grid gap-4 md:grid-cols-4">
+                        <div className="space-y-2 md:col-span-2">
+                          <Label>绑定基础 Plan</Label>
                           <Select value={offer.planCode} onValueChange={(value) => updateOffer(offer.id, (current) => ({ ...current, planCode: value }))}>
                             <SelectTrigger>
-                              <SelectValue placeholder="选择授权方案" />
+                              <SelectValue placeholder="选择基础 Plan" />
                             </SelectTrigger>
                             <SelectContent>
-                              {availablePlans.map((plan) => (
-                                <SelectItem key={plan.code} value={plan.code}>
-                                  {plan.name} ({formatPlanInterval(plan.interval)})
-                                </SelectItem>
-                              ))}
+                              {basePlans
+                                .filter((plan) => slugify(plan.code || plan.name))
+                                .map((plan) => (
+                                  <SelectItem key={plan.id} value={slugify(plan.code || plan.name)}>
+                                    {plan.name || plan.code || '未命名'} ({formatPlanInterval(plan.interval)})
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -731,21 +1254,19 @@ export function ProductWorkspacePage() {
                           </Select>
                         </div>
                       </div>
-
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label>标签</Label>
                           <Input value={offer.badge} onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, badge: event.target.value }))} placeholder="例如 推荐 / 企业版" />
                         </div>
                         <div className="space-y-2">
-                          <Label>默认入口</Label>
+                          <Label>默认购买入口</Label>
                           <div className="flex h-10 items-center gap-3 rounded-xl border border-input bg-background px-3">
                             <input type="radio" checked={offer.isDefault} onChange={() => markDefaultOffer(offer.id)} />
-                            <span className="text-sm text-muted-foreground">将此方案作为默认购买入口</span>
+                            <span className="text-sm text-muted-foreground">设为默认购买入口</span>
                           </div>
                         </div>
                       </div>
-
                       <div className="space-y-2">
                         <Label>说明</Label>
                         <Textarea value={offer.description} onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, description: event.target.value }))} className="min-h-[88px]" />
@@ -759,14 +1280,7 @@ export function ProductWorkspacePage() {
         </TabsContent>
 
         <TabsContent value="delivery" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <WorkspaceMetric label="交付声明" value={hasDeliveryManifest ? '已接入' : '待同步'} note={targetProfileCode || '待创建档案'} tone={hasDeliveryManifest ? 'ok' : 'warn'} />
-            <WorkspaceMetric label="接入密钥" value={String(activeSecrets)} note="当前有效密钥" tone={activeSecrets > 0 ? 'ok' : 'neutral'} />
-            <WorkspaceMetric label="能力项" value={String(bundle.features.length)} note="可授权能力" tone="neutral" />
-            <WorkspaceMetric label="Plan" value={String(bundle.plans.length)} note="基础授权方案" tone="neutral" />
-          </div>
-
-          <Card>
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle>交付声明来源</CardTitle>
@@ -813,97 +1327,264 @@ export function ProductWorkspacePage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Rocket className="h-4 w-4" />
-                  交付配置
-                </CardTitle>
-                <CardDescription>实例级域名、环境变量覆盖值和交付预设入口。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  如果产品支持在线访问、自行安装或一键部署，这里继续维护实例级交付覆盖值。
-                </p>
-                <Button asChild variant="outline" disabled={!primaryApp || needsDedicatedProfile}>
-                  <Link to={`/admin/delivery?productCode=${product.code}`}>
-                    <FileCog className="mr-1 h-4 w-4" />
-                    打开产品交付配置
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Rocket className="h-4 w-4" />
+                交付配置
+              </CardTitle>
+              <CardDescription>实例级域名、环境变量覆盖值和交付预设现在直接在产品详情页内维护。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!primaryApp || needsDedicatedProfile ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  {needsDedicatedProfile
+                    ? `当前产品仍在复用共享内部档案 ${primaryApp?.code}。请先保存产品详情，生成专属档案后再配置交付参数。`
+                    : '请先保存产品详情，生成专属产品档案后再配置交付参数。'}
+                </div>
+              ) : deliverySettingsQuery.isLoading ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  加载交付配置中...
+                </div>
+              ) : deliverySettings ? (
+                <>
+                  {deliverySettings.manifest.domainSlots.length > 0 ? (
+                    <div className="rounded-2xl border border-border bg-muted/10 p-4">
+                      <h3 className="text-sm font-black">域名槽位</h3>
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        {deliverySettings.manifest.domainSlots.map((slot) => (
+                          <div key={slot.key} className="rounded-xl border border-border bg-white px-3 py-3">
+                            <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">{slot.label}</p>
+                            <p className="mt-1 text-sm font-bold text-foreground">{slot.envKey}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{slot.placeholder ?? '由部署实例填写'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4" />
-                  接入密钥
-                </CardTitle>
-                <CardDescription>适用于 Chrome 扩展或其他需要主动接入中台 API 的产品。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  当前有效密钥：{activeSecrets}。交付档案和接入密钥都挂在专属产品档案下统一管理。
-                </p>
-                <Button asChild variant="outline" disabled={!primaryApp || needsDedicatedProfile}>
-                  <Link to={`/admin/secrets?productCode=${product.code}`}>
-                    <PackageSearch className="mr-1 h-4 w-4" />
-                    打开产品接入密钥
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+                  {deliveryGroupMap.map(({ group, env, secret }) => (
+                    <div key={group.key} className="rounded-2xl border border-border bg-muted/10 p-4">
+                      <div className="mb-4">
+                        <h3 className="text-sm font-black">{group.label}</h3>
+                        {group.description ? <p className="mt-1 text-xs text-muted-foreground">{group.description}</p> : null}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {env.map((field) => (
+                          <div key={field.key} className="space-y-2">
+                            <Label>
+                              {field.label}
+                              {field.required ? <span className="ml-1 text-red-500">*</span> : null}
+                            </Label>
+                            {field.type === 'boolean' ? (
+                              <div className="flex items-center gap-3 rounded-xl border border-border bg-white px-3 py-2">
+                                <Checkbox
+                                  checked={draftValues[field.key] === true}
+                                  onCheckedChange={(checked) =>
+                                    setDraftValues((current) => ({ ...current, [field.key]: Boolean(checked) }))
+                                  }
+                                />
+                                <span className="text-sm text-muted-foreground">{field.description ?? '开关型预设'}</span>
+                              </div>
+                            ) : (
+                              <Input
+                                type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+                                value={typeof draftValues[field.key] === 'string' ? String(draftValues[field.key]) : ''}
+                                placeholder={field.placeholder ?? undefined}
+                                onChange={(event) =>
+                                  setDraftValues((current) => ({ ...current, [field.key]: event.target.value }))
+                                }
+                              />
+                            )}
+                            <div className="flex items-center gap-2">
+                              <StatusPill
+                                tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
+                                label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                              />
+                              {field.defaultValue !== null && field.defaultValue !== undefined ? (
+                                <span className="text-xs text-muted-foreground">默认值：{String(field.defaultValue)}</span>
+                              ) : null}
+                            </div>
+                            {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+                          </div>
+                        ))}
+
+                        {secret.map((field) => (
+                          <div key={field.key} className="space-y-2">
+                            <Label>
+                              {field.label}
+                              {field.required ? <span className="ml-1 text-red-500">*</span> : null}
+                            </Label>
+                            <Input
+                              type="password"
+                              value={draftSecrets[field.key] ?? ''}
+                              placeholder={
+                                deliverySettings.secrets[field.key]?.configured
+                                  ? '已保存，留空保持不变'
+                                  : field.placeholder ?? '当前未配置'
+                              }
+                              onChange={(event) =>
+                                setDraftSecrets((current) => ({ ...current, [field.key]: event.target.value }))
+                              }
+                            />
+                            <div className="flex items-center gap-2">
+                              <StatusPill
+                                tone={deliverySettings.secrets[field.key]?.configured ? 'ok' : 'warn'}
+                                label={deliverySettings.secrets[field.key]?.configured ? '已保存' : '待填写'}
+                              />
+                              <StatusPill
+                                tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
+                                label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                              />
+                            </div>
+                            {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {deliverySettings.manifest.notes?.length ? (
+                    <div className="rounded-2xl border border-border bg-muted/10 p-4">
+                      <h3 className="text-sm font-black">交付说明</h3>
+                      <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                        {deliverySettings.manifest.notes.map((note) => (
+                          <li key={note}>• {note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button onClick={() => saveDeliveryMutation.mutate()} disabled={saveDeliveryMutation.isPending}>
+                      {saveDeliveryMutation.isPending ? '保存中...' : '保存交付配置'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => clearDeliveryMutation.mutate()}
+                      disabled={clearDeliveryMutation.isPending || saveDeliveryMutation.isPending}
+                    >
+                      清空覆盖值
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  暂无交付配置，请先同步交付声明。
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4" />
+                接入密钥
+              </CardTitle>
+              <CardDescription>适用于 Chrome 扩展或其他需要主动接入中台 API 的产品，支持直接在产品详情页生成和撤销。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!primaryApp || needsDedicatedProfile ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  {needsDedicatedProfile
+                    ? `当前产品仍在复用共享内部档案 ${primaryApp?.code}。请先保存产品详情，生成专属档案后再创建密钥。`
+                    : '请先保存产品详情，生成专属产品档案后再创建接入密钥。'}
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-border bg-muted/10 p-4">
+                    <div className="grid gap-4 md:grid-cols-[1fr,220px,auto]">
+                      <div className="space-y-2">
+                        <Label>当前产品档案</Label>
+                        <div className="flex h-10 items-center rounded-xl border border-border bg-white px-3 text-sm font-mono text-foreground">
+                          {primaryApp.code}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>过期时间（留空永不过期）</Label>
+                        <Input type="datetime-local" value={secretExpiresAt} onChange={(event) => setSecretExpiresAt(event.target.value)} />
+                      </div>
+                      <div className="flex items-end">
+                        <Button onClick={() => createSecretMutation.mutate()} disabled={createSecretMutation.isPending}>
+                          {createSecretMutation.isPending ? '生成中...' : '生成接入密钥'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {primaryApp.secrets?.length ? (
+                    <div className="space-y-3">
+                      {primaryApp.secrets.map((secret) => (
+                        <div key={secret.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-mono text-foreground">{secret.hint}</p>
+                            <p className="text-xs text-muted-foreground">{secret.expiresAt ? `过期：${formatTime(secret.expiresAt)}` : '永不过期'}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => {
+                              if (confirm(`确认撤销密钥 ${secret.hint}？`)) {
+                                revokeSecretMutation.mutate(secret.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
+                      这个产品当前还没有接入密钥。
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
-      <CatalogBundleDialog
-        open={catalogDialogOpen}
-        onOpenChange={setCatalogDialogOpen}
-        bundle={bundle}
-        pending={catalogMutation.isPending}
-        onSubmit={(payload) =>
-          catalogMutation.mutate({
-            nextProductCode: payload.productCode,
-            values: {
-              name: payload.name,
-              type: payload.type,
-              status: payload.status,
-              features: payload.features,
-              plans: payload.plans
-            }
-          })
-        }
-      />
+      <Dialog open={!!secretResult} onOpenChange={(open) => { if (!open) setSecretResult(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>产品密钥已生成</DialogTitle>
+            <DialogDescription>此密钥只显示一次，请立即复制保存。关闭后将无法再次查看。</DialogDescription>
+          </DialogHeader>
+          {secretResult ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
+                <p className="mb-1 font-black text-amber-800">profileCode: {secretResult.appCode}</p>
+                <p className="mb-1 font-black text-amber-800">secretId: {secretResult.secretId}</p>
+              </div>
+              <div className="relative">
+                <div className="break-all rounded-xl bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
+                  {secretVisible ? secretResult.secret : '\u2022'.repeat(Math.min(secretResult.secret.length, 40))}
+                </div>
+                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => setSecretVisible((value) => !value)}>
+                    {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(secretResult.secret);
+                      toast.success('已复制到剪贴板');
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-function WorkspaceMetric({
-  label,
-  value,
-  note,
-  tone
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone: 'ok' | 'warn' | 'neutral';
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-black uppercase tracking-wider text-muted-foreground">{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-black tracking-tight text-foreground">{value}</p>
-        <div className="mt-1 flex items-center gap-2">
-          <StatusPill tone={tone} label={tone === 'ok' ? '已就绪' : tone === 'warn' ? '待补齐' : '概览'} />
-          <span className="text-xs text-muted-foreground">{note}</span>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
