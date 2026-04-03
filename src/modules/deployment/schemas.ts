@@ -9,6 +9,7 @@ export const createDeploymentSchema = z.object({
   primaryDomain: z.string().trim().min(1).max(255).optional(),
   adminDomain: z.string().trim().min(1).max(255).optional(),
   wsDomain: z.string().trim().min(1).max(255).optional(),
+  endpoints: z.record(z.string().trim().min(1).max(64), z.string().trim().min(1).max(255)).optional(),
   installPath: z.string().trim().min(1).max(255).optional()
 });
 

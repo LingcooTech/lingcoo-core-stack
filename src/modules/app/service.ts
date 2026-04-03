@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
+import { parseDeliveryManifest } from '../../lib/delivery-settings';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { EventService } from '../event/service';
@@ -48,6 +49,46 @@ export class AppService {
 
   private normalizeMeta(meta: unknown) {
     return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+  }
+
+  private normalizeDeliveryManifestSource(value: unknown) {
+    const raw = this.normalizeMeta(value);
+    return {
+      repoUrl: typeof raw.repoUrl === 'string' ? raw.repoUrl.trim() : '',
+      repoBranch: typeof raw.repoBranch === 'string' ? raw.repoBranch.trim() : '',
+      manifestPath: typeof raw.manifestPath === 'string' ? raw.manifestPath.trim() : '',
+      manifestUrl: typeof raw.manifestUrl === 'string' ? raw.manifestUrl.trim() : ''
+    };
+  }
+
+  private resolveDeliveryManifestUrl(input: {
+    repoUrl?: string;
+    repoBranch?: string;
+    manifestPath?: string;
+    manifestUrl?: string;
+  }) {
+    if (input.manifestUrl?.trim()) {
+      return input.manifestUrl.trim();
+    }
+
+    const repoUrl = input.repoUrl?.trim() ?? '';
+    const repoBranch = input.repoBranch?.trim() || 'main';
+    const manifestPath = input.manifestPath?.trim() || 'fd-delivery.manifest.json';
+
+    if (!repoUrl) {
+      throw httpError(422, 'Delivery manifest source repoUrl is not configured');
+    }
+
+    const httpsMatch = repoUrl.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/i);
+    const sshMatch = repoUrl.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i);
+    const match = httpsMatch ?? sshMatch;
+
+    if (!match) {
+      throw httpError(422, 'Only GitHub repository URLs are supported for manifest sync');
+    }
+
+    const [, owner, repo] = match;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${repoBranch}/${manifestPath}`;
   }
 
   private readCheckoutDefaultOfferCode(meta: unknown) {
@@ -797,5 +838,68 @@ export class AppService {
       expiresAt: updated.expiresAt,
       lastUsedAt: updated.lastUsedAt
     };
+  }
+
+  async syncDeliveryManifest(
+    appCode: string,
+    input: {
+      repoUrl?: string;
+      repoBranch?: string;
+      manifestPath?: string;
+      manifestUrl?: string;
+    },
+    actorUserId: string
+  ) {
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    if (!app) {
+      throw httpError(404, 'App not found');
+    }
+
+    const meta = this.normalizeMeta(app.meta);
+    const currentSource = this.normalizeDeliveryManifestSource(meta.deliveryManifestSource);
+    const currentManifest = this.normalizeMeta(meta.deliveryManifest);
+    const currentInstaller = this.normalizeMeta(currentManifest.installer);
+
+    const nextSource = {
+      repoUrl: input.repoUrl?.trim() || currentSource.repoUrl || (typeof currentInstaller.repoUrl === 'string' ? currentInstaller.repoUrl.trim() : ''),
+      repoBranch:
+        input.repoBranch?.trim() ||
+        currentSource.repoBranch ||
+        (typeof currentInstaller.repoBranch === 'string' ? currentInstaller.repoBranch.trim() : 'main'),
+      manifestPath: input.manifestPath?.trim() || currentSource.manifestPath || 'fd-delivery.manifest.json',
+      manifestUrl: input.manifestUrl?.trim() || currentSource.manifestUrl || ''
+    };
+
+    const manifestUrl = this.resolveDeliveryManifestUrl(nextSource);
+    const response = await fetch(manifestUrl, {
+      signal: AbortSignal.timeout(10_000)
+    });
+
+    if (!response.ok) {
+      throw httpError(502, `Failed to fetch delivery manifest: ${response.status}`);
+    }
+
+    const remoteManifest = parseDeliveryManifest((await response.json()) as unknown);
+    const nextMeta = {
+      ...meta,
+      deliveryManifest: remoteManifest,
+      deliveryManifestSource: nextSource
+    };
+
+    await new AppRepository(this.db).updateAppMetaByCode(appCode, nextMeta);
+
+    await new EventService(this.db).capture({
+      userId: actorUserId,
+      eventName: 'app.delivery_manifest_synced',
+      properties: {
+        appCode,
+        manifestUrl,
+        repoUrl: nextSource.repoUrl,
+        repoBranch: nextSource.repoBranch,
+        manifestPath: nextSource.manifestPath || null
+      }
+    });
+
+    return this.getManagedApp(appCode);
   }
 }

@@ -6,6 +6,7 @@ import {
   appSecretParamsSchema,
   createAppSecretSchema,
   createAppSessionSchema,
+  syncDeliveryManifestSchema,
   upsertAppSchema
 } from './schemas';
 import { AppService } from './service';
@@ -95,5 +96,11 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/admin/apps/:appCode/secrets/:secretId/revoke', { preHandler: app.requireAdmin }, async (request) => {
     const params = appSecretParamsSchema.parse(request.params);
     return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
+  });
+
+  app.post('/v1/admin/apps/:appCode/delivery-manifest/sync', { preHandler: app.requireAdmin }, async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    const payload = syncDeliveryManifestSchema.parse(request.body);
+    return new AppService(app.db).syncDeliveryManifest(params.appCode, payload, request.user.sub);
   });
 };

@@ -1,4 +1,4 @@
-import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
+import type { DeliveryManifest, DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,25 @@ export function DeploymentRecordCard({
   issuing?: boolean;
   onIssueToken: (deploymentId: string) => void;
 }) {
+  const manifest = (deployment.app?.meta?.deliveryManifest as DeliveryManifest | undefined) ?? null;
+  const domainSlots = manifest?.domainSlots ?? [];
+  const domainEntries =
+    domainSlots.length > 0
+      ? domainSlots.map((slot) => ({
+          label: slot.label,
+          value:
+            slot.sourceField === 'primaryDomain'
+              ? deployment.primaryDomain || '未设置'
+              : slot.sourceField === 'adminDomain'
+                ? deployment.adminDomain || '未设置'
+                : deployment.wsDomain || '未设置'
+        }))
+      : [
+          { label: '主域名', value: deployment.primaryDomain || '未设置' },
+          { label: '后台域名', value: deployment.adminDomain || '未设置' },
+          { label: 'WS 域名', value: deployment.wsDomain || '未设置' }
+        ];
+
   return (
     <Card className="border-slate-200/80 bg-white/95">
       <CardHeader className="space-y-3">
@@ -30,14 +49,22 @@ export function DeploymentRecordCard({
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">{deployment.environment}</Badge>
           {deployment.serverHost ? <Badge variant="secondary">{deployment.serverHost}</Badge> : null}
-          {deployment.primaryDomain ? <Badge variant="outline">{deployment.primaryDomain}</Badge> : null}
+          {domainEntries
+            .filter((entry) => entry.value !== '未设置')
+            .slice(0, 2)
+            .map((entry) => (
+              <Badge key={`${deployment.id}-${entry.label}`} variant="outline">
+                {entry.value}
+              </Badge>
+            ))}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <InfoLine label="后台域名" value={deployment.adminDomain || '未设置'} />
-          <InfoLine label="WS 域名" value={deployment.wsDomain || '未设置'} />
+          {domainEntries.map((entry) => (
+            <InfoLine key={`${deployment.id}-${entry.label}`} label={entry.label} value={entry.value} />
+          ))}
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>

@@ -33,6 +33,7 @@ export interface AppSummary {
   code: string;
   name: string;
   type: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface FeatureSummary {
@@ -138,30 +139,54 @@ export interface PaymentSettingsOverview {
 export interface DeliverySettingsOverview {
   appCode: string;
   configured: boolean;
-  values: {
+  manifest: DeliveryManifest;
+  values: Record<string, string | boolean | null>;
+  secrets: Record<string, PaymentProviderSecretStatus>;
+}
+
+export interface DeliveryFieldGroup {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+export interface DeliveryFieldDefinition {
+  key: string;
+  label: string;
+  description?: string;
+  group?: string;
+  type: 'text' | 'url' | 'email' | 'boolean' | 'secret';
+  scope: 'system' | 'preset' | 'user_input';
+  required: boolean;
+  editable?: boolean;
+  advanced?: boolean;
+  placeholder?: string;
+  defaultValue?: string | boolean | null;
+}
+
+export interface DeliveryDomainSlot {
+  key: string;
+  label: string;
+  envKey: string;
+  sourceField?: 'primaryDomain' | 'adminDomain' | 'wsDomain';
+  required: boolean;
+  description?: string;
+  placeholder?: string;
+}
+
+export interface DeliveryManifest {
+  version: '1';
+  installer: {
     repoUrl: string;
     repoBranch: string;
-    frontendImage: string;
-    websocketImage: string;
-    letsencryptEmail: string;
-    acrUsername: string;
-    wordpressFetchReleaseAssets: boolean;
-    wordpressRunInit: boolean;
-    wordpressReleaseOwner: string;
-    fdThemeReleaseTag: string;
-    fdAdminUiReleaseTag: string;
-    fdMemberReleaseTag: string;
-    fdPaymentReleaseTag: string;
-    fdCommerceReleaseTag: string;
-    fdContentTypesReleaseTag: string;
-    fdWebsocketPushReleaseTag: string;
-    wpgraphqlJwtAuthReleaseTag: string;
-    wpgraphqlTaxQueryRef: string;
+    remoteInstallScriptUrl: string;
+    installPath: string;
   };
-  secrets: {
-    acrPassword: PaymentProviderSecretStatus;
-    githubToken: PaymentProviderSecretStatus;
-  };
+  groups: DeliveryFieldGroup[];
+  domainSlots: DeliveryDomainSlot[];
+  envFields: DeliveryFieldDefinition[];
+  secretFields: DeliveryFieldDefinition[];
+  notes?: string[];
 }
 
 // ─── Apps ───────────────────────────────────────────────────────────────────
@@ -549,6 +574,8 @@ export interface DeploymentSummary {
   lastDeployedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  endpoints?: Record<string, string>;
+  meta?: Record<string, unknown>;
   user: UserSummary | null;
   app: AppSummary | null;
   product: ProductSummary | null;

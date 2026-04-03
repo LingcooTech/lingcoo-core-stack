@@ -42,6 +42,7 @@ export async function createDeployment(payload: {
   primaryDomain?: string;
   adminDomain?: string;
   wsDomain?: string;
+  endpoints?: Record<string, string>;
   installPath?: string;
 }): Promise<DeploymentSummary> {
   return apiClient<DeploymentSummary>('/v1/deployments', {

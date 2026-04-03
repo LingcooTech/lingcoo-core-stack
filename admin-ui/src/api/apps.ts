@@ -87,6 +87,21 @@ export async function revokeAppSecret(appCode: string, secretId: string): Promis
   });
 }
 
+export async function syncAppDeliveryManifest(
+  appCode: string,
+  payload: {
+    repoUrl?: string;
+    repoBranch?: string;
+    manifestPath?: string;
+    manifestUrl?: string;
+  }
+): Promise<AppWithDetails> {
+  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/delivery-manifest/sync`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export interface UpsertCatalogBundleInput {
   name: string;
   type: 'chrome_extension' | 'web_app' | 'service';

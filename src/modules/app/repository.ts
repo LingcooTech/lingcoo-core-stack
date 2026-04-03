@@ -95,6 +95,19 @@ export class AppRepository {
     return app;
   }
 
+  async updateAppMetaByCode(code: string, meta: Record<string, unknown>) {
+    const [app] = await this.db
+      .update(apps)
+      .set({
+        meta,
+        updatedAt: new Date()
+      })
+      .where(eq(apps.code, code))
+      .returning();
+
+    return app ?? null;
+  }
+
   async listProductMappingsByAppIds(appIds: string[]) {
     if (appIds.length === 0) {
       return [];

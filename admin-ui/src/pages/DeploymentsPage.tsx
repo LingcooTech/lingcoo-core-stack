@@ -4,7 +4,7 @@ import { Boxes, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
-import type { IssueDeploymentTokenResult } from '@/api/types';
+import type { DeliveryManifest, IssueDeploymentTokenResult } from '@/api/types';
 import { createDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements } from '@/api/user';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
@@ -33,6 +33,7 @@ export function DeploymentsPage() {
         appCode: app.code,
         appName: app.name,
         appType: app.type,
+        deliveryManifest: (app.meta?.deliveryManifest as DeliveryManifest | undefined) ?? null,
         products: (app.products ?? [])
           .filter((product) => summaryMap.has(product.code))
           .map((product) => ({

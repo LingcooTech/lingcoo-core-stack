@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import MDEditor from '@uiw/react-md-editor';
 
-import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
+import { listAppsAdmin, listCatalogSnapshot, syncAppDeliveryManifest, upsertApp } from '@/api/apps';
 import type { AppFaq, AppHighlight, AppLink, AppScreenshot } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,6 +73,13 @@ interface FormState {
   productCodes: string[];
 }
 
+interface DeliveryManifestSourceState {
+  repoUrl: string;
+  repoBranch: string;
+  manifestPath: string;
+  manifestUrl: string;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function AppEditPage() {
@@ -126,12 +133,23 @@ export function AppEditPage() {
     links: [],
     productCodes: [],
   });
+  const [deliverySource, setDeliverySource] = useState<DeliveryManifestSourceState>({
+    repoUrl: '',
+    repoBranch: 'main',
+    manifestPath: 'fd-delivery.manifest.json',
+    manifestUrl: '',
+  });
 
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (app && !initialized) {
+      const deliveryManifestSource =
+        app.meta && typeof app.meta.deliveryManifestSource === 'object' && app.meta.deliveryManifestSource
+          ? (app.meta.deliveryManifestSource as Record<string, unknown>)
+          : {};
+
       setForm({
         name: app.name,
         tagline: app.tagline ?? '',
@@ -161,6 +179,15 @@ export function AppEditPage() {
           isDefault: offer.isDefault,
         })),
       );
+      setDeliverySource({
+        repoUrl: typeof deliveryManifestSource.repoUrl === 'string' ? deliveryManifestSource.repoUrl : '',
+        repoBranch: typeof deliveryManifestSource.repoBranch === 'string' ? deliveryManifestSource.repoBranch : 'main',
+        manifestPath:
+          typeof deliveryManifestSource.manifestPath === 'string'
+            ? deliveryManifestSource.manifestPath
+            : 'fd-delivery.manifest.json',
+        manifestUrl: typeof deliveryManifestSource.manifestUrl === 'string' ? deliveryManifestSource.manifestUrl : '',
+      });
       setInitialized(true);
     }
   }, [app, initialized]);
@@ -259,6 +286,12 @@ export function AppEditPage() {
       delete meta.checkoutPlanCode;
       delete meta.checkoutOffers;
       delete meta.checkoutDefaultOfferCode;
+      meta.deliveryManifestSource = {
+        repoUrl: deliverySource.repoUrl || undefined,
+        repoBranch: deliverySource.repoBranch || undefined,
+        manifestPath: deliverySource.manifestPath || undefined,
+        manifestUrl: deliverySource.manifestUrl || undefined,
+      };
 
       return upsertApp(appCode, {
         name: form.name,
@@ -284,6 +317,24 @@ export function AppEditPage() {
       void qc.invalidateQueries({ queryKey: ['apps'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
+  });
+
+  const syncManifestMutation = useMutation({
+    mutationFn: () => {
+      if (!appCode) throw new Error('缺少 appCode');
+      return syncAppDeliveryManifest(appCode, {
+        repoUrl: deliverySource.repoUrl || undefined,
+        repoBranch: deliverySource.repoBranch || undefined,
+        manifestPath: deliverySource.manifestPath || undefined,
+        manifestUrl: deliverySource.manifestUrl || undefined,
+      });
+    },
+    onSuccess: () => {
+      toast.success('交付声明已同步');
+      setInitialized(false);
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败'),
   });
 
   // ── Generic field updater ─────────────────────────────────────────────────
@@ -451,6 +502,68 @@ export function AppEditPage() {
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardTitle>交付声明来源</CardTitle>
+                <CardDescription>
+                  配置产品仓库后，可直接从仓库同步 `fd-delivery.manifest.json` 到 app.meta。
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={syncManifestMutation.isPending || !deliverySource.repoUrl.trim()}
+                onClick={() => syncManifestMutation.mutate()}
+              >
+                {syncManifestMutation.isPending ? '同步中...' : '同步交付声明'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>仓库 URL</Label>
+                <Input
+                  value={deliverySource.repoUrl}
+                  onChange={(e) => setDeliverySource((prev) => ({ ...prev, repoUrl: e.target.value }))}
+                  placeholder="https://github.com/FutureDecade/fd-retail-system.git"
+                />
+              </div>
+              <div>
+                <Label>仓库分支</Label>
+                <Input
+                  value={deliverySource.repoBranch}
+                  onChange={(e) => setDeliverySource((prev) => ({ ...prev, repoBranch: e.target.value }))}
+                  placeholder="main"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label>Manifest Path</Label>
+                <Input
+                  value={deliverySource.manifestPath}
+                  onChange={(e) => setDeliverySource((prev) => ({ ...prev, manifestPath: e.target.value }))}
+                  placeholder="fd-delivery.manifest.json"
+                />
+              </div>
+              <div>
+                <Label>Manifest URL（可选）</Label>
+                <Input
+                  value={deliverySource.manifestUrl}
+                  onChange={(e) => setDeliverySource((prev) => ({ ...prev, manifestUrl: e.target.value }))}
+                  placeholder="https://raw.githubusercontent.com/..."
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border bg-muted/40 p-3 text-xs text-muted-foreground">
+              {app.meta?.deliveryManifest ? '当前已存在同步后的 deliveryManifest。' : '当前尚未同步 deliveryManifest。'}
             </div>
           </CardContent>
         </Card>

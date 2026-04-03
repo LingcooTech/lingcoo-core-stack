@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { IssueDeploymentTokenResult } from '@/api/types';
+import type { DeliveryManifest, IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ export interface DeployableAppOption {
   appCode: string;
   appName: string;
   appType: string;
+  deliveryManifest?: DeliveryManifest | null;
   products: Array<{
     code: string;
     name: string;
@@ -30,6 +31,7 @@ export interface CreateDeploymentPayload {
   primaryDomain?: string;
   adminDomain?: string;
   wsDomain?: string;
+  endpoints?: Record<string, string>;
   installPath?: string;
 }
 
@@ -49,11 +51,9 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
   const [productCode, setProductCode] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
-  const [primaryDomain, setPrimaryDomain] = useState('');
   const [serverHost, setServerHost] = useState('');
-  const [adminDomain, setAdminDomain] = useState('');
-  const [wsDomain, setWsDomain] = useState('');
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [endpointValues, setEndpointValues] = useState<Record<string, string>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenResult, setTokenResult] = useState<IssueDeploymentTokenResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,6 +65,17 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
       setLabel(`${selectedApp.appName} Production`);
     }
   }, [selectedApp, label]);
+
+  useEffect(() => {
+    if (!selectedApp?.deliveryManifest) {
+      return;
+    }
+
+    setInstallPath(selectedApp.deliveryManifest.installer.installPath);
+    setEndpointValues((current) =>
+      Object.fromEntries(selectedApp.deliveryManifest?.domainSlots.map((slot) => [slot.key, current[slot.key] ?? '']) ?? [])
+    );
+  }, [selectedApp]);
 
   useEffect(() => {
     if (!selectedApp) return;
@@ -80,6 +91,13 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     setLabel('');
   }, []);
 
+  const domainSlots = selectedApp?.deliveryManifest?.domainSlots ?? [];
+  const findLegacyFieldValue = useCallback(
+    (sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') =>
+      endpointValues[domainSlots.find((slot) => slot.sourceField === sourceField)?.key ?? ''] || undefined,
+    [domainSlots, endpointValues]
+  );
+
   const handleCreate = useCallback(async () => {
     const payload: CreateDeploymentPayload = {
       appCode: selectedAppCode,
@@ -87,9 +105,12 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
       label,
       environment,
       serverHost: serverHost || undefined,
-      primaryDomain: primaryDomain || undefined,
-      adminDomain: adminDomain || undefined,
-      wsDomain: wsDomain || undefined,
+      primaryDomain: findLegacyFieldValue('primaryDomain'),
+      adminDomain: findLegacyFieldValue('adminDomain'),
+      wsDomain: findLegacyFieldValue('wsDomain'),
+      endpoints: Object.fromEntries(
+        Object.entries(endpointValues).filter(([, value]) => value.trim().length > 0)
+      ),
       installPath: installPath || undefined
     };
 
@@ -105,7 +126,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     } catch {
       /* error handled by parent via toast */
     }
-  }, [selectedAppCode, productCode, label, environment, serverHost, primaryDomain, adminDomain, wsDomain, installPath, onCreateDeployment, onIssueToken]);
+  }, [selectedAppCode, productCode, label, environment, serverHost, endpointValues, installPath, onCreateDeployment, onIssueToken, findLegacyFieldValue]);
 
   const handleReset = useCallback(() => {
     setStep(1);
@@ -113,10 +134,8 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     setProductCode('');
     setLabel('');
     setEnvironment('production');
-    setPrimaryDomain('');
     setServerHost('');
-    setAdminDomain('');
-    setWsDomain('');
+    setEndpointValues({});
     setInstallPath('/opt/fd-headless-wp-system');
     setAdvancedOpen(false);
     setTokenResult(null);
@@ -237,15 +256,44 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="wizard-primary-domain">前台域名</Label>
-              <Input
-                id="wizard-primary-domain"
-                value={primaryDomain}
-                onChange={(e) => setPrimaryDomain(e.target.value)}
-                placeholder="www.futuredecade.com"
-              />
-            </div>
+            {domainSlots.length > 0 ? (
+              <div className="space-y-3 md:col-span-2">
+                <Label>域名槽位</Label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {domainSlots.map((slot) => (
+                    <div key={slot.key} className="space-y-2">
+                      <Label htmlFor={`wizard-domain-${slot.key}`}>
+                        {slot.label}
+                        {slot.required ? ' *' : ''}
+                      </Label>
+                      <Input
+                        id={`wizard-domain-${slot.key}`}
+                        value={endpointValues[slot.key] ?? ''}
+                        onChange={(e) =>
+                          setEndpointValues((current) => ({ ...current, [slot.key]: e.target.value }))
+                        }
+                        placeholder={slot.placeholder || `${slot.key}.example.com`}
+                      />
+                      {slot.description ? (
+                        <p className="text-xs text-muted-foreground">{slot.description}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="wizard-primary-domain">主域名</Label>
+                <Input
+                  id="wizard-primary-domain"
+                  value={endpointValues.frontend ?? ''}
+                  onChange={(e) =>
+                    setEndpointValues((current) => ({ ...current, frontend: e.target.value }))
+                  }
+                  placeholder="www.futuredecade.com"
+                />
+              </div>
+            )}
 
             {selectedApp && selectedApp.products.length > 1 && (
               <div className="space-y-2">
@@ -286,24 +334,32 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                         placeholder="144.48.8.218"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-admin-domain">后台域名</Label>
-                      <Input
-                        id="wizard-admin-domain"
-                        value={adminDomain}
-                        onChange={(e) => setAdminDomain(e.target.value)}
-                        placeholder="admin.futuredecade.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-ws-domain">WS 域名</Label>
-                      <Input
-                        id="wizard-ws-domain"
-                        value={wsDomain}
-                        onChange={(e) => setWsDomain(e.target.value)}
-                        placeholder="ws.futuredecade.com"
-                      />
-                    </div>
+                    {domainSlots.length === 0 ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="wizard-admin-domain">后台域名</Label>
+                          <Input
+                            id="wizard-admin-domain"
+                            value={endpointValues.admin ?? ''}
+                            onChange={(e) =>
+                              setEndpointValues((current) => ({ ...current, admin: e.target.value }))
+                            }
+                            placeholder="admin.futuredecade.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="wizard-ws-domain">WS 域名</Label>
+                          <Input
+                            id="wizard-ws-domain"
+                            value={endpointValues.ws ?? ''}
+                            onChange={(e) =>
+                              setEndpointValues((current) => ({ ...current, ws: e.target.value }))
+                            }
+                            placeholder="ws.futuredecade.com"
+                          />
+                        </div>
+                      </>
+                    ) : null}
                     <div className="space-y-2">
                       <Label htmlFor="wizard-install-path">安装路径</Label>
                       <Input

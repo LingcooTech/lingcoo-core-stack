@@ -83,6 +83,13 @@ export const createAppSecretSchema = z.object({
   expiresAt: z.string().datetime().optional()
 });
 
+export const syncDeliveryManifestSchema = z.object({
+  repoUrl: z.string().trim().url().optional(),
+  repoBranch: z.string().trim().min(1).max(120).optional(),
+  manifestPath: z.string().trim().min(1).max(255).optional(),
+  manifestUrl: z.string().trim().url().optional()
+});
+
 export const createAppSessionSchema = z.object({
   appSecret: z.string().trim().min(16).max(255)
 });
