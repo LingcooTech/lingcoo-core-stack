@@ -23,6 +23,8 @@ import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
 import { SecretsPage } from '@/pages/SecretsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
+import { UsersPage } from '@/pages/UsersPage';
+import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +64,7 @@ function AppRoutes() {
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route element={<ProtectedUserRoute />}>
           <Route path="/orders" element={<MyOrdersPage />} />
           <Route path="/access" element={<MyAccessPage />} />
@@ -79,6 +82,7 @@ function AppRoutes() {
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/licenses" element={<LicensesPage />} />
+          <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/installs" element={<InstallsPage />} />
           <Route path="/admin/delivery" element={<DeliveryPage />} />
           <Route path="/admin/observability" element={<ObservabilityPage />} />

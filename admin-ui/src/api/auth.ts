@@ -1,5 +1,5 @@
 import { apiClient, setToken } from './client';
-import type { AuthResponse, BootstrapStatus } from './types';
+import type { AuthResponse, BootstrapStatus, ResendVerificationResponse, VerifyEmailResponse } from './types';
 
 export async function bootstrapStatus(): Promise<BootstrapStatus> {
   return apiClient<BootstrapStatus>('/v1/admin/bootstrap-status');
@@ -31,6 +31,18 @@ export async function getCurrentUser() {
       email: string;
       displayName: string | null;
       role: string;
+      emailVerified: boolean;
     };
   }>('/v1/me');
+}
+
+export async function verifyEmail(code: string): Promise<VerifyEmailResponse> {
+  return apiClient<VerifyEmailResponse>('/v1/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ code })
+  });
+}
+
+export async function resendVerification(): Promise<ResendVerificationResponse> {
+  return apiClient<ResendVerificationResponse>('/v1/auth/resend-verification', { method: 'POST' });
 }

@@ -16,6 +16,7 @@ declare module 'fastify' {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
     authenticateApp: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requireEmailVerified: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
 
   interface FastifyRequest {

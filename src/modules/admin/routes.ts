@@ -14,6 +14,9 @@ import {
   adminEntitlementParamsSchema,
   adminGrantEntitlementSchema,
   adminListQuerySchema,
+  adminListUsersQuerySchema,
+  adminUpdateUserSchema,
+  adminUserIdParamsSchema,
   adminUpsertDeliverySettingsSchema,
   adminUpsertCatalogBundleSchema,
   adminOrderParamsSchema,
@@ -76,6 +79,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/licenses', sendSPA);
   app.get('/admin/operations', sendSPA);
   app.get('/admin/observability', sendSPA);
+  app.get('/admin/users', sendSPA);
 
   // ─── API Routes (unchanged) ───────────────────────────────────────────────
 
@@ -171,5 +175,38 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     const params = paymentProviderParamsSchema.parse(request.params);
     await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
     return { ok: true };
+  });
+
+  // ─── User Management ────────────────────────────────────────────────────
+
+  app.get('/v1/admin/users', { preHandler: app.requireAdmin }, async (request) => {
+    const query = adminListUsersQuerySchema.parse(request.query);
+    return new AdminService(app.db, app.appEnv).listUsers(query);
+  });
+
+  app.get('/v1/admin/users/:userId', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminUserIdParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).getUser(params.userId);
+  });
+
+  app.put('/v1/admin/users/:userId', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminUserIdParamsSchema.parse(request.params);
+    const payload = adminUpdateUserSchema.parse(request.body);
+    return new AdminService(app.db, app.appEnv).updateUser(params.userId, payload, request.user.sub);
+  });
+
+  app.post('/v1/admin/users/:userId/suspend', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminUserIdParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).suspendUser(params.userId, request.user.sub);
+  });
+
+  app.post('/v1/admin/users/:userId/activate', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminUserIdParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).activateUser(params.userId, request.user.sub);
+  });
+
+  app.post('/v1/admin/users/:userId/reset-password', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminUserIdParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).resetUserPassword(params.userId, request.user.sub);
   });
 };

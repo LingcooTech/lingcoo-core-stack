@@ -1,8 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
+import { hashPassword } from '../../lib/security';
 import { AppRepository } from '../app/repository';
 import { AuthRepository } from '../auth/repository';
 import { BillingRepository } from '../billing/repository';
@@ -617,6 +618,105 @@ export class AdminService {
       revokedCount: revoked.length,
       userId: entitlement.userId,
       productId: entitlement.productId
+    };
+  }
+
+  // ─── User Management ────────────────────────────────────────────────────
+
+  async listUsers(query: { limit: number; offset: number; search?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }) {
+    const result = await new AuthRepository(this.db).listUsers(query);
+    return {
+      items: result.items,
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset
+    };
+  }
+
+  async getUser(userId: string) {
+    const user = await new AuthRepository(this.db).findUserById(userId);
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      status: user.status,
+      emailVerified: user.emailVerified,
+      emailVerifiedAt: user.emailVerifiedAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  }
+
+  async updateUser(
+    userId: string,
+    input: { displayName?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' },
+    actorUserId: string
+  ) {
+    // Prevent self-demotion
+    if (userId === actorUserId && input.role && input.role !== 'admin') {
+      throw httpError(400, 'Cannot demote your own admin role');
+    }
+
+    // Prevent self-suspension
+    if (userId === actorUserId && input.status === 'suspended') {
+      throw httpError(400, 'Cannot suspend your own account');
+    }
+
+    const repository = new AuthRepository(this.db);
+    const existing = await repository.findUserById(userId);
+    if (!existing) {
+      throw httpError(404, 'User not found');
+    }
+
+    const updated = await repository.updateUser(userId, input);
+
+    await new EventService(this.db).capture({
+      userId: actorUserId,
+      eventName: 'admin.user_updated',
+      properties: {
+        targetUserId: userId,
+        changes: input
+      }
+    });
+
+    return updated;
+  }
+
+  async suspendUser(userId: string, actorUserId: string) {
+    return this.updateUser(userId, { status: 'suspended' }, actorUserId);
+  }
+
+  async activateUser(userId: string, actorUserId: string) {
+    return this.updateUser(userId, { status: 'active' }, actorUserId);
+  }
+
+  async resetUserPassword(userId: string, actorUserId: string) {
+    const repository = new AuthRepository(this.db);
+    const user = await repository.findUserById(userId);
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+
+    const temporaryPassword = randomBytes(9).toString('base64url').slice(0, 12);
+    const passwordHash = hashPassword(temporaryPassword);
+    await repository.updatePasswordCredential(userId, passwordHash);
+
+    await new EventService(this.db).capture({
+      userId: actorUserId,
+      eventName: 'admin.user_password_reset',
+      properties: {
+        targetUserId: userId
+      }
+    });
+
+    return {
+      userId: user.id,
+      email: user.email,
+      temporaryPassword
     };
   }
 }

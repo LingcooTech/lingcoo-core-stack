@@ -10,3 +10,7 @@ export const loginSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase()),
   password: z.string().min(8).max(128)
 });
+
+export const verifyEmailSchema = z.object({
+  code: z.string().length(6).regex(/^\d{6}$/, 'Verification code must be 6 digits')
+});

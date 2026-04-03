@@ -41,6 +41,11 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
     try {
       const result = mode === 'register' ? await register(values.email, values.password) : await login(values.email, values.password);
       authLogin(result.token);
+      if (mode === 'register' && result.user.emailVerified === false) {
+        toast.success('注册成功，请验证邮箱');
+        navigate(`/verify-email?next=${encodeURIComponent(next)}`, { replace: true });
+        return;
+      }
       toast.success(mode === 'register' ? '注册成功，已进入用户中心' : '登录成功');
       navigate(next, { replace: true });
     } catch (err) {

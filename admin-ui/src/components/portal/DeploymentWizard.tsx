@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { getInitials, formatTime } from '@/lib/utils';
+import { cn, getInitials, formatTime } from '@/lib/utils';
 
 export interface DeployableAppOption {
   appCode: string;

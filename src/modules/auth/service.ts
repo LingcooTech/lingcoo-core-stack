@@ -1,5 +1,9 @@
+import { randomInt } from 'node:crypto';
+
 import type { DbClient } from '../../db/types';
+import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
+import { Mailer } from '../../lib/mailer';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { EventService } from '../event/service';
 import { AuthRepository } from './repository';
@@ -16,7 +20,66 @@ type LoginInput = {
 };
 
 export class AuthService {
-  constructor(private readonly db: DbClient) {}
+  constructor(
+    private readonly db: DbClient,
+    private readonly env?: AppEnv
+  ) {}
+
+  private generateVerificationCode(): string {
+    return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  }
+
+  async sendVerificationCode(userId: string, email: string) {
+    const repository = new AuthRepository(this.db);
+
+    // Rate limit: 60 seconds between codes
+    const latest = await repository.findLatestVerificationCode(userId);
+    if (latest) {
+      const elapsed = Date.now() - latest.createdAt.getTime();
+      if (elapsed < 60_000) {
+        throw httpError(429, 'Please wait before requesting a new verification code');
+      }
+    }
+
+    const code = this.generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await repository.createVerificationCode(userId, code, expiresAt);
+
+    if (this.env) {
+      const mailer = new Mailer(this.env);
+      if (mailer.isConfigured) {
+        await mailer.send({
+          to: email,
+          subject: 'Email Verification Code',
+          text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+          html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
+        });
+        return { sent: true };
+      }
+    }
+
+    return { sent: false };
+  }
+
+  async verifyEmail(userId: string, code: string) {
+    const repository = new AuthRepository(this.db);
+    const record = await repository.findActiveVerificationCode(userId, code);
+
+    if (!record) {
+      throw httpError(400, 'Invalid or expired verification code');
+    }
+
+    await repository.markEmailVerified(userId);
+    await repository.deleteVerificationCodes(userId);
+
+    await new EventService(this.db).capture({
+      userId,
+      eventName: 'auth.email_verified',
+      properties: {}
+    });
+
+    return { verified: true };
+  }
 
   private async ensureBootstrapAdmin(userId: string) {
     const repository = new AuthRepository(this.db);
@@ -82,6 +145,26 @@ export class AuthService {
       return createdUser;
     });
 
+    // If mailer is configured, send verification code; otherwise auto-verify
+    let mailerConfigured = false;
+    if (this.env) {
+      const mailer = new Mailer(this.env);
+      mailerConfigured = mailer.isConfigured;
+    }
+
+    if (mailerConfigured) {
+      try {
+        await this.sendVerificationCode(user.id, user.email);
+      } catch {
+        // Non-fatal: user can resend later
+      }
+    } else {
+      // Auto-verify if mailer is not configured
+      await new AuthRepository(this.db).markEmailVerified(user.id);
+      const updated = await new AuthRepository(this.db).findUserById(user.id);
+      if (updated) return updated;
+    }
+
     return user;
   }
 
@@ -91,6 +174,10 @@ export class AuthService {
 
     if (!user) {
       throw httpError(401, 'Invalid email or password');
+    }
+
+    if (user.status === 'suspended') {
+      throw httpError(403, 'Your account has been suspended');
     }
 
     const credential = await repository.findPasswordCredentialByUserId(user.id);

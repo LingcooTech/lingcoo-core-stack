@@ -37,6 +37,24 @@ export const adminGrantEntitlementSchema = z.object({
   reason: z.string().trim().min(1).max(255).optional()
 });
 
+export const adminListUsersQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  search: z.string().trim().max(255).optional(),
+  role: z.enum(['user', 'admin']).optional(),
+  status: z.enum(['active', 'suspended']).optional()
+});
+
+export const adminUpdateUserSchema = z.object({
+  displayName: z.string().trim().min(1).max(120).optional(),
+  role: z.enum(['user', 'admin']).optional(),
+  status: z.enum(['active', 'suspended']).optional()
+});
+
+export const adminUserIdParamsSchema = z.object({
+  userId: z.string().uuid()
+});
+
 const recordStatusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);
 const productTypeSchema = z.enum(['chrome_extension', 'web_app', 'service']);
 const intervalSchema = z.enum(['month', 'year', 'one_time']);

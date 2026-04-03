@@ -5,6 +5,7 @@ export type AdminSectionKey =
   | 'secrets'
   | 'orders'
   | 'payments'
+  | 'users'
   | 'licenses'
   | 'installs'
   | 'delivery'
@@ -181,6 +182,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['paymentSettings'],
     commandAliases: ['payments', 'billing', 'wechat', 'alipay', '支付配置', '微信支付']
   },
+  users: {
+    groupLabel: '客户管理',
+    navTitle: '用户管理',
+    navNote: '用户账号、角色与状态管理',
+    icon: 'US',
+    title: '用户管理',
+    lead: '查看和管理所有注册用户，修改角色和状态。',
+    href: '/admin/users',
+    contextCards: [
+      { label: '用途', value: '用户管理', note: '管理用户账号、角色和状态。' },
+      { label: '操作', value: '角色与状态', note: '可调整用户角色、停用或激活账号。' }
+    ],
+    heroActions: [
+      { label: '用户管理', href: '/admin/users', tone: 'primary' },
+      { label: '授权管理', href: '/admin/licenses', tone: 'secondary' }
+    ],
+    pageDataScopes: ['operations'],
+    commandAliases: ['users', '用户', '用户管理', '账号']
+  },
   licenses: {
     groupLabel: '客户管理',
     navTitle: '授权管理',
@@ -263,7 +283,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
   { label: '商品管理', items: ['catalog', 'apps'] },
   { label: '交易管理', items: ['orders', 'payments'] },
-  { label: '客户管理', items: ['licenses', 'installs'] },
+  { label: '客户管理', items: ['users', 'licenses', 'installs'] },
   { label: '运维', items: ['delivery', 'observability'] }
 ];
 

@@ -1,12 +1,12 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
-import { buildEmailRateLimitKey } from '../../lib/rate-limit';
-import { loginSchema, registerSchema } from './schemas';
+import { buildEmailRateLimitKey, buildUserRateLimitKey } from '../../lib/rate-limit';
+import { loginSchema, registerSchema, verifyEmailSchema } from './schemas';
 import { AuthService } from './service';
 
 function toAuthResponse(
   app: FastifyInstance,
-  user: { id: string; email: string; displayName: string | null; role: 'user' | 'admin' }
+  user: { id: string; email: string; displayName: string | null; role: 'user' | 'admin'; emailVerified: boolean }
 ) {
   const token = app.jwt.sign(
     {
@@ -24,7 +24,8 @@ function toAuthResponse(
       id: user.id,
       email: user.email,
       displayName: user.displayName,
-      role: user.role
+      role: user.role,
+      emailVerified: user.emailVerified
     }
   };
 }
@@ -57,7 +58,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
   }, async (request, reply) => {
     const payload = registerSchema.parse(request.body);
-    const user = await new AuthService(app.db).register(payload);
+    const user = await new AuthService(app.db, app.appEnv).register(payload);
 
     return reply.status(201).send(toAuthResponse(app, user));
   });
@@ -74,13 +75,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
   }, async (request) => {
     const payload = loginSchema.parse(request.body);
-    const user = await new AuthService(app.db).login(payload);
+    const user = await new AuthService(app.db, app.appEnv).login(payload);
 
     return toAuthResponse(app, user);
   });
 
   app.get('/v1/me', { preHandler: app.authenticate }, async (request) => {
-    const user = await new AuthService(app.db).getUserById(request.user.sub);
+    const user = await new AuthService(app.db, app.appEnv).getUserById(request.user.sub);
 
     return {
       authenticated: true,
@@ -88,8 +89,36 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
-        role: user.role
+        role: user.role,
+        emailVerified: user.emailVerified
       }
     };
+  });
+
+  app.post('/v1/auth/verify-email', { preHandler: app.authenticate }, async (request) => {
+    const payload = verifyEmailSchema.parse(request.body);
+    return new AuthService(app.db, app.appEnv).verifyEmail(request.user.sub, payload.code);
+  });
+
+  app.post('/v1/auth/resend-verification', {
+    preHandler: app.authenticate,
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 3,
+        timeWindow: '5 minutes',
+        keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
+          buildUserRateLimitKey(request, 'auth-resend-verification')
+      }
+    }
+  }, async (request) => {
+    const service = new AuthService(app.db, app.appEnv);
+    const user = await service.getUserById(request.user.sub);
+
+    if (user.emailVerified) {
+      return { alreadyVerified: true };
+    }
+
+    return service.sendVerificationCode(user.id, user.email);
   });
 };

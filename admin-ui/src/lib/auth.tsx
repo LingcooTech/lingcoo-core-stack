@@ -14,6 +14,7 @@ interface AuthUser {
   id: string;
   email: string;
   role: string;
+  emailVerified: boolean;
 }
 
 interface AuthContextValue {
@@ -21,8 +22,10 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isEmailVerified: boolean;
   login: (token: string) => void;
   logout: () => void;
+  setEmailVerified: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -49,7 +52,8 @@ function tokenToUser(token: string): AuthUser | null {
   return {
     id: payload.sub,
     email: payload.email ?? payload.sub,
-    role: payload.role ?? 'user'
+    role: payload.role ?? 'user',
+    emailVerified: (payload as unknown as Record<string, unknown>).emailVerified === true
   };
 }
 
@@ -69,6 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const setEmailVerified = useCallback(() => {
+    setUser((prev) => (prev ? { ...prev, emailVerified: true } : prev));
+  }, []);
+
   useEffect(() => {
     const stored = getToken();
     if (stored !== token) {
@@ -84,8 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
+        isEmailVerified: user?.emailVerified ?? false,
         login,
-        logout
+        logout,
+        setEmailVerified
       }}
     >
       {children}

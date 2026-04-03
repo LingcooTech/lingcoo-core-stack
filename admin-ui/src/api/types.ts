@@ -71,7 +71,50 @@ export interface AuthResponse {
     email: string;
     displayName: string | null;
     role: string;
+    emailVerified: boolean;
   };
+}
+
+export interface VerifyEmailResponse {
+  user: { id: string; email: string; displayName: string | null; role: string; emailVerified: boolean };
+}
+
+export interface ResendVerificationResponse {
+  sent: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  status: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserDetail extends AdminUser {
+  emailVerifiedAt: string | null;
+}
+
+export interface AdminUsersResponse {
+  items: AdminUser[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminUpdateUserInput {
+  displayName?: string;
+  role?: 'user' | 'admin';
+  status?: 'active' | 'suspended';
+}
+
+export interface AdminResetPasswordResult {
+  userId: string;
+  email: string;
+  temporaryPassword: string;
 }
 
 // ─── Payment Settings ────────────────────────────────────────────────────────

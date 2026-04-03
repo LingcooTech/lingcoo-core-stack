@@ -1,5 +1,9 @@
 import { apiClient } from './client';
 import type {
+  AdminResetPasswordResult,
+  AdminUpdateUserInput,
+  AdminUserDetail,
+  AdminUsersResponse,
   EntitlementsResponse,
   EventsResponse,
   GrantEntitlementInput,
@@ -53,4 +57,43 @@ export async function listEvents(limit = 50): Promise<EventsResponse> {
 
 export async function listBillingWebhooks(limit = 50): Promise<WebhooksResponse> {
   return apiClient<WebhooksResponse>(`/v1/admin/billing-webhooks?limit=${limit}`);
+}
+
+export async function listUsers(params: { limit?: number; offset?: number; search?: string; role?: string; status?: string }): Promise<AdminUsersResponse> {
+  const qs = new URLSearchParams();
+  if (params.limit) qs.set('limit', String(params.limit));
+  if (params.offset) qs.set('offset', String(params.offset));
+  if (params.search) qs.set('search', params.search);
+  if (params.role) qs.set('role', params.role);
+  if (params.status) qs.set('status', params.status);
+  return apiClient<AdminUsersResponse>(`/v1/admin/users?${qs.toString()}`);
+}
+
+export async function getUser(userId: string): Promise<AdminUserDetail> {
+  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}`);
+}
+
+export async function updateUser(userId: string, payload: AdminUpdateUserInput): Promise<AdminUserDetail> {
+  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function suspendUser(userId: string): Promise<AdminUserDetail> {
+  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}/suspend`, {
+    method: 'POST'
+  });
+}
+
+export async function activateUser(userId: string): Promise<AdminUserDetail> {
+  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}/activate`, {
+    method: 'POST'
+  });
+}
+
+export async function resetUserPassword(userId: string): Promise<AdminResetPasswordResult> {
+  return apiClient<AdminResetPasswordResult>(`/v1/admin/users/${encodeURIComponent(userId)}/reset-password`, {
+    method: 'POST'
+  });
 }

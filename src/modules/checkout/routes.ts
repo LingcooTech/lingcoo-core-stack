@@ -25,7 +25,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
   // 公开客户端（Chrome 扩展等）只需用户 JWT + appCode。
   // appCode 是公开标识符（非秘密），服务层负责验证 App 是否激活并允许该产品。
   app.post('/v1/checkout/sessions', {
-    preHandler: app.authenticate,
+    preHandler: app.requireEmailVerified,
     config: {
       rateLimit: {
         hook: 'preHandler',

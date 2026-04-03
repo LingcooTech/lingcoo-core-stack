@@ -144,8 +144,7 @@ export function DeliveryPage() {
     'wpgraphqlTaxQueryRef'
   ]);
   const versionFilledCount = versionValues.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
-  const totalVersionFields = 10 + 2;
-  const versionSummary = versionFilledCount === 10 ? '已配置' : `${versionFilledCount}/${totalVersionFields} 已设置`;
+  const versionSummary = versionFilledCount === 10 ? '已配置' : `${versionFilledCount}/10 已设置`;
 
   return (
     <div>

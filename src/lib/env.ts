@@ -67,7 +67,12 @@ const envSchema = z.object({
   ALIPAY_KEY_TYPE: z.enum(['PKCS1', 'PKCS8']).optional(),
   ALIPAY_GATEWAY: z.string().url().optional(),
   ALIPAY_NOTIFY_URL: z.string().optional(),
-  ALIPAY_RETURN_URL: z.string().optional()
+  ALIPAY_RETURN_URL: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().optional()
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

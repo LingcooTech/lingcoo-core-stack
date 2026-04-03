@@ -134,6 +134,26 @@ export async function buildApp(env: AppEnv) {
       return reply.forbidden('Admin access is required');
     }
   });
+  app.decorate('requireEmailVerified', async (request, reply) => {
+    const authResult = await app.authenticate(request, reply);
+
+    if (authResult !== undefined) {
+      return authResult;
+    }
+
+    const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+
+    if (!user) {
+      return reply.unauthorized('User not found');
+    }
+
+    if (!user.emailVerified) {
+      return reply.status(403).send({
+        error: 'EmailNotVerified',
+        message: 'Please verify your email address'
+      });
+    }
+  });
   await app.register(dbPlugin, { env });
   await app.register(redisPlugin, { env });
   await app.register(rateLimit, {

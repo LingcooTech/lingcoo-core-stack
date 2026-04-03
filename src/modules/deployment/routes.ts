@@ -8,7 +8,7 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
     return new DeploymentService(app.db, app.appEnv).listUserDeployments(request.user.sub);
   });
 
-  app.post('/v1/deployments', { preHandler: app.authenticate }, async (request, reply) => {
+  app.post('/v1/deployments', { preHandler: app.requireEmailVerified }, async (request, reply) => {
     const payload = createDeploymentSchema.parse(request.body);
     const deployment = await new DeploymentService(app.db, app.appEnv).createDeployment({
       userId: request.user.sub,
