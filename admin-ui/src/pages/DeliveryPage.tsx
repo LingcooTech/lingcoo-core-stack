@@ -9,6 +9,7 @@ import { listAppsAdmin } from '@/api/apps';
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -120,6 +121,32 @@ export function DeliveryPage() {
 
   const settings = settingsQuery.data;
 
+  const repoImageValues = form.watch(['repoUrl', 'repoBranch', 'frontendImage', 'websocketImage']);
+  const repoImageFilledCount = repoImageValues.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
+  const repoImageSummary = repoImageFilledCount === 4 ? '已配置' : `${repoImageFilledCount}/4 已设置`;
+
+  const credentialValues = form.watch(['acrUsername', 'letsencryptEmail']);
+  let credentialFilledCount = credentialValues.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
+  if (settings?.secrets.acrPassword.configured) credentialFilledCount++;
+  if (settings?.secrets.githubToken.configured) credentialFilledCount++;
+  const credentialSummary = credentialFilledCount === 4 ? '已配置' : `${credentialFilledCount}/4 已设置`;
+
+  const versionValues = form.watch([
+    'wordpressReleaseOwner',
+    'fdThemeReleaseTag',
+    'fdAdminUiReleaseTag',
+    'fdMemberReleaseTag',
+    'fdPaymentReleaseTag',
+    'fdCommerceReleaseTag',
+    'fdContentTypesReleaseTag',
+    'fdWebsocketPushReleaseTag',
+    'wpgraphqlJwtAuthReleaseTag',
+    'wpgraphqlTaxQueryRef'
+  ]);
+  const versionFilledCount = versionValues.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
+  const totalVersionFields = 10 + 2;
+  const versionSummary = versionFilledCount === 10 ? '已配置' : `${versionFilledCount}/${totalVersionFields} 已设置`;
+
   return (
     <div>
       <SectionHeader sectionKey="delivery" />
@@ -149,158 +176,184 @@ export function DeliveryPage() {
             </div>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))} className="space-y-6">
-                <section className="space-y-4 rounded-2xl border border-border bg-white p-5">
-                  <div>
-                    <h3 className="text-sm font-black">仓库与镜像</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">这些值会通过 deploy token bootstrap 自动注入安装器，购买用户不需要知道镜像 tag。</p>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField control={form.control} name="repoUrl" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>交付仓库 URL</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="repoBranch" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>交付仓库分支</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="frontendImage" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Frontend Image</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="websocketImage" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>WebSocket Image</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                </section>
+              <form onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))} className="space-y-2">
+                <Accordion type="multiple" defaultValue={['repo-image', 'credentials', 'versions', 'actions']} className="space-y-3">
+                  <AccordionItem value="repo-image" className="rounded-2xl border border-border bg-white px-5">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black">仓库与镜像</span>
+                        <span className="text-xs text-muted-foreground">&mdash; {repoImageSummary}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <p className="mb-4 text-xs text-muted-foreground">这些值会通过 deploy token bootstrap 自动注入安装器，购买用户不需要知道镜像 tag。</p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField control={form.control} name="repoUrl" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>交付仓库 URL</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="repoBranch" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>交付仓库分支</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="frontendImage" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Frontend Image</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="websocketImage" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>WebSocket Image</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                <section className="space-y-4 rounded-2xl border border-border bg-white p-5">
-                  <div>
-                    <h3 className="text-sm font-black">受控交付凭据</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">这些凭据不会直接展示给购买用户，只会通过一次性 deploy token 的 bootstrap 结果注入远程安装器。</p>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField control={form.control} name="acrUsername" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ACR 用户名</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="letsencryptEmail" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>证书通知邮箱</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="acrPassword" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ACR 密码</FormLabel>
-                        <FormControl><Input type="password" placeholder={settings.secrets.acrPassword.configured ? '已保存，留空保持不变' : '当前未保存'} {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="githubToken" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>GitHub Token</FormLabel>
-                        <FormControl><Input type="password" placeholder={settings.secrets.githubToken.configured ? '已保存，留空保持不变' : '当前未保存'} {...field} /></FormControl>
-                        <FormDescription>用于拉取私有或限流敏感的 release 资产。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                </section>
+                  <AccordionItem value="credentials" className="rounded-2xl border border-border bg-white px-5">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black">凭证配置</span>
+                        <span className="text-xs text-muted-foreground">&mdash; {credentialSummary}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <p className="mb-4 text-xs text-muted-foreground">这些凭据不会直接展示给购买用户，只会通过一次性 deploy token 的 bootstrap 结果注入远程安装器。</p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField control={form.control} name="acrUsername" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ACR 用户名</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="letsencryptEmail" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>证书通知邮箱</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="acrPassword" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ACR 密码</FormLabel>
+                            <FormControl><Input type="password" placeholder={settings.secrets.acrPassword.configured ? '已保存，留空保持不变' : '当前未保存'} {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="githubToken" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>GitHub Token</FormLabel>
+                            <FormControl><Input type="password" placeholder={settings.secrets.githubToken.configured ? '已保存，留空保持不变' : '当前未保存'} {...field} /></FormControl>
+                            <FormDescription>用于拉取私有或限流敏感的 release 资产。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                <section className="space-y-4 rounded-2xl border border-border bg-white p-5">
-                  <div>
-                    <h3 className="text-sm font-black">安装默认项</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">这里定义 remote install 的默认交付版本和首次安装行为。</p>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField control={form.control} name="wordpressReleaseOwner" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Release Owner</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField control={form.control} name="wordpressFetchReleaseAssets" render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-xl border border-border p-3">
-                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          <FormLabel className="cursor-pointer">自动拉取 WordPress 资产</FormLabel>
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="wordpressRunInit" render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-xl border border-border p-3">
-                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          <FormLabel className="cursor-pointer">自动完成首次安装</FormLabel>
-                        </FormItem>
-                      )} />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField control={form.control} name="fdThemeReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-theme</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdAdminUiReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-admin-ui</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdMemberReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-member</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdPaymentReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-payment</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdCommerceReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-commerce</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdContentTypesReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-content-types</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="fdWebsocketPushReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>fd-websocket-push</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="wpgraphqlJwtAuthReleaseTag" render={({ field }) => (
-                      <FormItem><FormLabel>wp-graphql-jwt-auth</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="wpgraphqlTaxQueryRef" render={({ field }) => (
-                      <FormItem><FormLabel>wp-graphql-tax-query</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                  </div>
-                </section>
+                  <AccordionItem value="versions" className="rounded-2xl border border-border bg-white px-5">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black">版本配置</span>
+                        <span className="text-xs text-muted-foreground">&mdash; {versionSummary}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <p className="mb-4 text-xs text-muted-foreground">这里定义 remote install 的默认交付版本和首次安装行为。</p>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField control={form.control} name="wordpressReleaseOwner" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Release Owner</FormLabel>
+                            <FormControl><Input {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField control={form.control} name="wordpressFetchReleaseAssets" render={({ field }) => (
+                            <FormItem className="flex items-center gap-3 rounded-xl border border-border p-3">
+                              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                              <FormLabel className="cursor-pointer">自动拉取 WordPress 资产</FormLabel>
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="wordpressRunInit" render={({ field }) => (
+                            <FormItem className="flex items-center gap-3 rounded-xl border border-border p-3">
+                              <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                              <FormLabel className="cursor-pointer">自动完成首次安装</FormLabel>
+                            </FormItem>
+                          )} />
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <FormField control={form.control} name="fdThemeReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-theme</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdAdminUiReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-admin-ui</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdMemberReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-member</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdPaymentReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-payment</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdCommerceReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-commerce</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdContentTypesReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-content-types</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="fdWebsocketPushReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>fd-websocket-push</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="wpgraphqlJwtAuthReleaseTag" render={({ field }) => (
+                          <FormItem><FormLabel>wp-graphql-jwt-auth</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="wpgraphqlTaxQueryRef" render={({ field }) => (
+                          <FormItem><FormLabel>wp-graphql-tax-query</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saveMutation.isPending}>
-                    {saveMutation.isPending ? '保存中...' : '保存交付设置'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={clearMutation.isPending}
-                    onClick={() => {
-                      if (confirm(`确认清空 ${selectedAppCode} 的交付设置？`)) {
-                        clearMutation.mutate();
-                      }
-                    }}
-                  >
-                    清空设置
-                  </Button>
-                </div>
+                  <AccordionItem value="actions" className="rounded-2xl border border-border bg-white px-5">
+                    <AccordionTrigger className="hover:no-underline">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black">操作</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="flex gap-2">
+                        <Button type="submit" disabled={saveMutation.isPending}>
+                          {saveMutation.isPending ? '保存中...' : '保存交付设置'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={clearMutation.isPending}
+                          onClick={() => {
+                            if (confirm(`确认清空 ${selectedAppCode} 的交付设置？`)) {
+                              clearMutation.mutate();
+                            }
+                          }}
+                        >
+                          清空设置
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </form>
             </Form>
           </div>

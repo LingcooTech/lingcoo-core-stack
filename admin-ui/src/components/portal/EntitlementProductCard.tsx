@@ -5,16 +5,22 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime } from '@/lib/utils';
 
+function formatFeatureName(name: string): string {
+  if (name.includes('_')) {
+    const spaced = name.replace(/_/g, ' ');
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+  return name;
+}
+
 export function EntitlementProductCard({
-  productCode,
   productName,
-  featureCodes,
+  featureNames,
   relatedApps,
   items
 }: {
-  productCode: string;
   productName: string;
-  featureCodes: string[];
+  featureNames: string[];
   relatedApps: string[];
   items: HydratedEntitlement[];
 }) {
@@ -27,7 +33,6 @@ export function EntitlementProductCard({
           </div>
           <div>
             <CardTitle>{productName}</CardTitle>
-            <p className="text-sm text-muted-foreground">{productCode}</p>
           </div>
         </div>
         {relatedApps.length ? (
@@ -42,11 +47,11 @@ export function EntitlementProductCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          {featureCodes.map((featureCode) => (
-            <span key={featureCode} className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-              <KeyRound className="h-3.5 w-3.5 text-emerald-600" />
-              {featureCode}
-            </span>
+          {featureNames.map((featureName) => (
+            <Badge key={featureName} variant="secondary" className="inline-flex items-center gap-1.5">
+              <KeyRound className="h-3 w-3 text-emerald-600" />
+              {formatFeatureName(featureName)}
+            </Badge>
           ))}
         </div>
 

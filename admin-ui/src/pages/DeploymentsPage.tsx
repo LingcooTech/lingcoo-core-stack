@@ -4,15 +4,16 @@ import { Boxes, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
+import type { IssueDeploymentTokenResult } from '@/api/types';
 import { createDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements } from '@/api/user';
-import { DeploymentCreateCard, type DeployableAppOption } from '@/components/portal/DeploymentCreateCard';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
+import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
-  const [issuedToken, setIssuedToken] = useState<Awaited<ReturnType<typeof issueDeploymentToken>> | null>(null);
+  const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
   const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
@@ -66,6 +67,14 @@ export function DeploymentsPage() {
     }
   });
 
+  const handleWizardCreate = async (payload: Parameters<typeof createDeployment>[0]): Promise<{ id: string }> => {
+    return await createDeploymentMutation.mutateAsync(payload);
+  };
+
+  const handleWizardIssueToken = async (params: { deploymentId: string; expiresInHours: number }): Promise<IssueDeploymentTokenResult> => {
+    return await issueTokenMutation.mutateAsync(params);
+  };
+
   const deployments = deploymentsQuery.data?.items ?? [];
 
   return (
@@ -89,10 +98,12 @@ export function DeploymentsPage() {
         />
       ) : (
         <>
-          <DeploymentCreateCard
+          <DeploymentWizard
             options={deployableApps}
-            pending={createDeploymentMutation.isPending}
-            onSubmit={(payload) => createDeploymentMutation.mutate(payload)}
+            onCreateDeployment={handleWizardCreate}
+            onIssueToken={handleWizardIssueToken}
+            creating={createDeploymentMutation.isPending}
+            issuing={issueTokenMutation.isPending}
           />
 
           {deployments.length === 0 ? (

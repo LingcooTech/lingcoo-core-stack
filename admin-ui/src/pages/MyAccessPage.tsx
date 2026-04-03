@@ -25,6 +25,13 @@ export function MyAccessPage() {
     }
   }
 
+  const featureNameMap = new Map<string, string>();
+  for (const item of items) {
+    if (item.feature?.code && item.feature?.name) {
+      featureNameMap.set(item.feature.code, item.feature.name);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-2 pt-4">
@@ -49,13 +56,15 @@ export function MyAccessPage() {
           {summary.map((entry) => {
             const relatedItems = items.filter((item) => item.product?.code === entry.productCode);
             const relatedApps = appsByProduct.get(entry.productCode) ?? [];
+            const featureNames = entry.featureCodes.map(
+              (code) => featureNameMap.get(code) ?? code
+            );
 
             return (
               <EntitlementProductCard
                 key={entry.productCode}
-                productCode={entry.productCode}
                 productName={relatedItems[0]?.product?.name ?? entry.productCode}
-                featureCodes={entry.featureCodes}
+                featureNames={featureNames}
                 relatedApps={relatedApps}
                 items={relatedItems}
               />

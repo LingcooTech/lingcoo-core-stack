@@ -32,9 +32,9 @@ export function DashboardPage() {
 
   const quickLinks = [
     { label: '支付配置', desc: '微信 / 支付宝通道', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '应用接入', desc: '注册应用 + Secret', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
+    { label: '应用管理', desc: '注册与管理应用', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
     { label: '授权管理', desc: '发放 / 撤销授权', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
-    { label: '运营台', desc: '订单 + 安装实例', href: '/admin/operations', icon: Zap, color: 'text-amber-600 bg-amber-50' }
+    { label: '订单管理', desc: '订单与支付记录', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
   ];
 
   return (
@@ -99,7 +99,7 @@ export function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-muted-foreground uppercase tracking-wider">最近订单</h2>
-              <Link to="/admin/operations" className="text-xs font-bold text-primary hover:underline">
+              <Link to="/admin/orders" className="text-xs font-bold text-primary hover:underline">
                 查看全部 →
               </Link>
             </div>
