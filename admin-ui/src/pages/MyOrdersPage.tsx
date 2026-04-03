@@ -42,7 +42,7 @@ export function MyOrdersPage() {
           <EmptyState
             icon={FileSearch}
             title="还没有订单记录"
-            description="还没有订单记录，去应用中心看看吧"
+            description="还没有订单记录，去产品中心看看吧"
           />
         ) : (
           orders.map((order) => (

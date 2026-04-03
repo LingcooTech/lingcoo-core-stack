@@ -11,15 +11,13 @@ import { Label } from '@/components/ui/label';
 import { cn, getInitials, formatTime } from '@/lib/utils';
 
 export interface DeployableAppOption {
+  productCode: string;
+  productName: string;
+  featureCount: number;
   appCode: string;
-  appName: string;
-  appType: string;
+  profileName: string;
+  productType: string;
   deliveryManifest?: DeliveryManifest | null;
-  products: Array<{
-    code: string;
-    name: string;
-    featureCount: number;
-  }>;
 }
 
 export interface CreateDeploymentPayload {
@@ -47,8 +45,7 @@ type WizardStep = 1 | 2 | 3;
 
 export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, creating, issuing }: DeploymentWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
-  const [selectedAppCode, setSelectedAppCode] = useState('');
-  const [productCode, setProductCode] = useState('');
+  const [selectedProductCode, setSelectedProductCode] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
   const [serverHost, setServerHost] = useState('');
@@ -58,40 +55,34 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
   const [tokenResult, setTokenResult] = useState<IssueDeploymentTokenResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const selectedApp = useMemo(() => options.find((o) => o.appCode === selectedAppCode) ?? null, [options, selectedAppCode]);
+  const selectedProduct = useMemo(
+    () => options.find((option) => option.productCode === selectedProductCode) ?? null,
+    [options, selectedProductCode]
+  );
 
   useEffect(() => {
-    if (selectedApp && !label) {
-      setLabel(`${selectedApp.appName} Production`);
+    if (selectedProduct && !label) {
+      setLabel(`${selectedProduct.productName} Production`);
     }
-  }, [selectedApp, label]);
+  }, [selectedProduct, label]);
 
   useEffect(() => {
-    if (!selectedApp?.deliveryManifest) {
+    if (!selectedProduct?.deliveryManifest) {
       return;
     }
 
-    setInstallPath(selectedApp.deliveryManifest.installer.installPath);
+    setInstallPath(selectedProduct.deliveryManifest.installer.installPath);
     setEndpointValues((current) =>
-      Object.fromEntries(selectedApp.deliveryManifest?.domainSlots.map((slot) => [slot.key, current[slot.key] ?? '']) ?? [])
+      Object.fromEntries(selectedProduct.deliveryManifest?.domainSlots.map((slot) => [slot.key, current[slot.key] ?? '']) ?? [])
     );
-  }, [selectedApp]);
+  }, [selectedProduct]);
 
-  useEffect(() => {
-    if (!selectedApp) return;
-    if (selectedApp.products.length === 1) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    } else if (!selectedApp.products.some((p) => p.code === productCode)) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    }
-  }, [selectedApp, productCode]);
-
-  const handleSelectApp = useCallback((appCode: string) => {
-    setSelectedAppCode(appCode);
+  const handleSelectProduct = useCallback((productCode: string) => {
+    setSelectedProductCode(productCode);
     setLabel('');
   }, []);
 
-  const domainSlots = selectedApp?.deliveryManifest?.domainSlots ?? [];
+  const domainSlots = selectedProduct?.deliveryManifest?.domainSlots ?? [];
   const findLegacyFieldValue = useCallback(
     (sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') =>
       endpointValues[domainSlots.find((slot) => slot.sourceField === sourceField)?.key ?? ''] || undefined,
@@ -100,8 +91,8 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
 
   const handleCreate = useCallback(async () => {
     const payload: CreateDeploymentPayload = {
-      appCode: selectedAppCode,
-      productCode: productCode || undefined,
+      appCode: selectedProduct?.appCode ?? '',
+      productCode: selectedProduct?.productCode,
       label,
       environment,
       serverHost: serverHost || undefined,
@@ -126,12 +117,11 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     } catch {
       /* error handled by parent via toast */
     }
-  }, [selectedAppCode, productCode, label, environment, serverHost, endpointValues, installPath, onCreateDeployment, onIssueToken, findLegacyFieldValue]);
+  }, [selectedProduct, label, environment, serverHost, endpointValues, installPath, onCreateDeployment, onIssueToken, findLegacyFieldValue]);
 
   const handleReset = useCallback(() => {
     setStep(1);
-    setSelectedAppCode('');
-    setProductCode('');
+    setSelectedProductCode('');
     setLabel('');
     setEnvironment('production');
     setServerHost('');
@@ -150,13 +140,13 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     });
   }, []);
 
-  const stepLabels = ['选择应用', '填写部署信息', '安装命令'];
+  const stepLabels = ['选择产品', '填写部署信息', '安装命令'];
 
   return (
     <Card className="border-slate-200/80 bg-white/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
-        <CardDescription>通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。</CardDescription>
+        <CardDescription>通过三步向导完成部署配置：选择产品、填写信息、获取安装命令。</CardDescription>
         <div className="flex items-center gap-2 pt-2">
           {stepLabels.map((sLabel, idx) => {
             const stepNum = (idx + 1) as WizardStep;
@@ -187,15 +177,15 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
       <CardContent className="space-y-4">
         {step === 1 && (
           <>
-            <p className="text-sm text-muted-foreground">选择一个已购的系统应用来创建部署记录。</p>
+            <p className="text-sm text-muted-foreground">选择一个已购且可部署的产品来创建部署记录。</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {options.map((app) => {
-                const isSelected = selectedAppCode === app.appCode;
+              {options.map((product) => {
+                const isSelected = selectedProductCode === product.productCode;
                 return (
                   <button
-                    key={app.appCode}
+                    key={`${product.productCode}:${product.appCode}`}
                     type="button"
-                    onClick={() => handleSelectApp(app.appCode)}
+                    onClick={() => handleSelectProduct(product.productCode)}
                     className={cn(
                       'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:shadow-sm',
                       isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-white hover:border-slate-300'
@@ -207,14 +197,15 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                         isSelected ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-600'
                       )}
                     >
-                      {getInitials(app.appName)}
+                      {getInitials(product.productName)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900">{app.appName}</p>
+                      <p className="truncate text-sm font-bold text-slate-900">{product.productName}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px]">{app.appType}</Badge>
-                        <span className="text-xs text-muted-foreground">{app.products.length} 个产品</span>
+                        <Badge variant="secondary" className="text-[10px]">{product.productType}</Badge>
+                        <span className="text-xs text-muted-foreground">{product.featureCount} 个有效能力</span>
                       </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">交付档案：{product.profileName}</p>
                     </div>
                     {isSelected && (
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -226,7 +217,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
               })}
             </div>
             <div className="flex justify-end pt-2">
-              <Button disabled={!selectedAppCode} onClick={() => setStep(2)}>
+              <Button disabled={!selectedProductCode} onClick={() => setStep(2)}>
                 下一步
               </Button>
             </div>
@@ -292,24 +283,6 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                   }
                   placeholder="www.futuredecade.com"
                 />
-              </div>
-            )}
-
-            {selectedApp && selectedApp.products.length > 1 && (
-              <div className="space-y-2">
-                <Label htmlFor="wizard-product">授权产品</Label>
-                <select
-                  id="wizard-product"
-                  value={productCode}
-                  onChange={(e) => setProductCode(e.target.value)}
-                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {selectedApp.products.map((product) => (
-                    <option key={product.code} value={product.code}>
-                      {product.name} ({product.featureCount} abilities)
-                    </option>
-                  ))}
-                </select>
               </div>
             )}
 
@@ -379,7 +352,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                 上一步
               </Button>
               <Button
-                disabled={!selectedAppCode || !label.trim() || creating || issuing}
+                disabled={!selectedProductCode || !label.trim() || creating || issuing}
                 onClick={handleCreate}
               >
                 {creating || issuing ? '创建中...' : '创建部署'}

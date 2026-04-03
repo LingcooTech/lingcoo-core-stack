@@ -32,7 +32,7 @@ export function DashboardPage() {
 
   const quickLinks = [
     { label: '支付配置', desc: '微信 / 支付宝通道', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '应用管理', desc: '注册与管理应用', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
+    { label: '产品中心', desc: '统一管理产品与交付', href: '/admin/products', icon: Package, color: 'text-violet-600 bg-violet-50' },
     { label: '授权管理', desc: '发放 / 撤销授权', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
     { label: '订单管理', desc: '订单与支付记录', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
   ];
@@ -43,8 +43,8 @@ export function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} sublabel="应用总数" loading={appsResult.isLoading} />
-          <MetricCard label="活跃 Secret" value={activeSecrets.length} sublabel="有效密钥" loading={appsResult.isLoading} />
+          <MetricCard label="产品档案" value={apps.length} sublabel="内部销售档案数" loading={appsResult.isLoading} />
+          <MetricCard label="有效密钥" value={activeSecrets.length} sublabel="产品接入密钥" loading={appsResult.isLoading} />
           <MetricCard label="已支付订单" value={paidOrders.length} sublabel={`最近 ${orders.length} 条`} loading={ordersResult.isLoading} />
           <MetricCard label="待处理订单" value={pendingOrders.length} sublabel="pending / processing" loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>

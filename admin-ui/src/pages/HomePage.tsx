@@ -20,8 +20,8 @@ export function HomePage() {
   return (
     <div className="space-y-10">
       <section className="space-y-2 pt-4">
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">应用中心</h1>
-        <p className="text-lg text-muted-foreground">发现并获取优质应用</p>
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">产品中心</h1>
+        <p className="text-lg text-muted-foreground">发现并获取可购买、可授权、可交付的软件产品</p>
       </section>
 
       {categories.length > 0 && (
@@ -74,8 +74,8 @@ export function HomePage() {
       ) : filteredApps.length === 0 ? (
         <EmptyState
           icon={Boxes}
-          title="暂无应用"
-          description="当前还没有可浏览的应用，请稍后再来看看。"
+          title="暂无产品"
+          description="当前还没有可浏览的产品，请稍后再来看看。"
         />
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

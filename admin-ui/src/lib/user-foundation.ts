@@ -23,11 +23,11 @@ interface UserSectionMeta {
 
 export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
   discover: {
-    navTitle: '应用中心',
-    navNote: '浏览应用与购买入口',
+    navTitle: '产品中心',
+    navNote: '浏览产品与购买入口',
     icon: 'BX',
-    title: '应用中心',
-    lead: '发现并获取优质应用',
+    title: '产品中心',
+    lead: '发现并获取可购买、可授权、可交付的软件产品',
     href: '/',
     contextCards: [],
     heroActions: []
@@ -42,15 +42,15 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     contextCards: [],
     heroActions: [
       { label: '刷新订单', href: '/orders', tone: 'primary' },
-      { label: '应用中心', href: '/', tone: 'secondary' }
+      { label: '产品中心', href: '/', tone: 'secondary' }
     ]
   },
   access: {
-    navTitle: '我的应用',
-    navNote: '已购产品与 entitlement',
+    navTitle: '我的产品',
+    navNote: '已购产品与授权状态',
     icon: 'SH',
-    title: '我的应用',
-    lead: '查看已购应用和授权状态',
+    title: '我的产品',
+    lead: '查看已购产品和授权状态',
     href: '/access',
     contextCards: [],
     heroActions: [
@@ -63,12 +63,12 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     navNote: '系统交付与后续部署入口',
     icon: 'DP',
     title: '部署管理',
-    lead: '管理应用部署与交付',
+    lead: '管理已购产品的交付与部署',
     href: '/deploy',
     contextCards: [],
     heroActions: [
       { label: '部署管理', href: '/deploy', tone: 'primary' },
-      { label: '我的应用', href: '/access', tone: 'secondary' }
+      { label: '我的产品', href: '/access', tone: 'secondary' }
     ]
   }
 };

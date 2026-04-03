@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listAppsAdmin } from '@/api/apps';
@@ -10,6 +11,8 @@ import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { useCatalogData } from '@/hooks/useCatalogData';
+import { getPrimaryAppForProduct, productNeedsDedicatedProfile } from '@/lib/product-model';
 
 type DraftValues = Record<string, string | boolean | null>;
 type DraftSecrets = Record<string, string>;
@@ -28,21 +31,43 @@ function sortFieldsByLabel(fields: DeliveryFieldDefinition[]) {
 
 export function DeliveryPage() {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
-  const deployableApps = useMemo(
-    () => (appsQuery.data?.items ?? []).filter((app) => app.type === 'service' || app.type === 'web_app'),
-    [appsQuery.data?.items]
+  const { products } = useCatalogData();
+  const apps = appsQuery.data?.items ?? [];
+  const deployableProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const primaryApp = getPrimaryAppForProduct(product.code, apps);
+        return product.type === 'service' || product.type === 'web_app' || primaryApp?.type === 'service' || primaryApp?.type === 'web_app';
+      }),
+    [apps, products]
   );
-  const [selectedAppCode, setSelectedAppCode] = useState('');
+  const [selectedProductCode, setSelectedProductCode] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [draftValues, setDraftValues] = useState<DraftValues>({});
   const [draftSecrets, setDraftSecrets] = useState<DraftSecrets>({});
+  const selectedProductProfile = useMemo(
+    () => (selectedProductCode ? getPrimaryAppForProduct(selectedProductCode, apps) : null),
+    [apps, selectedProductCode]
+  );
+  const needsDedicatedProfile = productNeedsDedicatedProfile(selectedProductCode, selectedProductProfile);
+  const selectedAppCode = useMemo(
+    () => (needsDedicatedProfile ? '' : selectedProductProfile?.code ?? ''),
+    [needsDedicatedProfile, selectedProductProfile]
+  );
 
   useEffect(() => {
-    if (!selectedAppCode && deployableApps[0]?.code) {
-      setSelectedAppCode(deployableApps[0].code);
+    const presetProductCode = searchParams.get('productCode')?.trim();
+    if (presetProductCode && deployableProducts.some((product) => product.code === presetProductCode)) {
+      setSelectedProductCode((current) => current || presetProductCode);
+      return;
     }
-  }, [deployableApps, selectedAppCode]);
+
+    if (!selectedProductCode && deployableProducts[0]?.code) {
+      setSelectedProductCode(deployableProducts[0].code);
+    }
+  }, [deployableProducts, searchParams, selectedProductCode]);
 
   const settingsQuery = useQuery({
     queryKey: ['delivery-settings', selectedAppCode],
@@ -158,26 +183,36 @@ export function DeliveryPage() {
       <SectionHeader sectionKey="delivery" />
       <div className="space-y-6 p-6">
         <div className="max-w-xl space-y-3">
-          <label className="block text-sm font-bold">选择交付应用</label>
+          <label className="block text-sm font-bold">选择产品</label>
           <select
             className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-            value={selectedAppCode}
-            onChange={(event) => setSelectedAppCode(event.target.value)}
+            value={selectedProductCode}
+            onChange={(event) => setSelectedProductCode(event.target.value)}
           >
-            {deployableApps.map((app) => (
-              <option key={app.code} value={app.code}>
-                {app.name} ({app.code})
+            {deployableProducts.map((product) => (
+              <option key={product.code} value={product.code}>
+                {product.name} ({product.code})
               </option>
             ))}
           </select>
+          <p className="text-xs text-muted-foreground">
+            页面底层仍通过产品对应的内部档案保存交付覆盖值，但管理员只按产品维度操作。
+          </p>
         </div>
 
-        {settings ? (
+        {!selectedAppCode ? (
+          <div className="rounded-2xl border border-border bg-white p-5 text-sm text-muted-foreground">
+            {needsDedicatedProfile
+              ? `当前产品仍在复用共享内部档案 ${selectedProductProfile?.code}。请先回到产品工作台保存一次，生成专属档案后再维护交付配置。`
+              : '当前产品还没有可用的内部销售/交付档案。请先到产品工作台保存基础档案，再回来维护交付配置。'}
+          </div>
+        ) : settings ? (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
               <StatusPill tone={settings.configured ? 'ok' : 'warn'} label={settings.configured ? '交付配置完整' : '需要补充实例参数'} />
               <StatusPill tone="info" label={`Installer: ${settings.manifest.installer.installPath}`} />
               <StatusPill tone="neutral" label={`Repo: ${settings.manifest.installer.repoBranch}`} />
+              <StatusPill tone="neutral" label={`Profile: ${selectedAppCode}`} />
             </div>
 
             {settings.manifest.domainSlots.length > 0 ? (

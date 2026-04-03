@@ -35,8 +35,8 @@ export function MyAccessPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-2 pt-4">
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">我的应用</h1>
-        <p className="text-lg text-muted-foreground">已购应用和授权状态</p>
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">我的产品</h1>
+        <p className="text-lg text-muted-foreground">已购产品和授权状态</p>
       </section>
 
       {entitlementsQuery.isLoading ? (
@@ -48,8 +48,8 @@ export function MyAccessPage() {
       ) : summary.length === 0 ? (
         <EmptyState
           icon={KeyRound}
-          title="还没有已购应用"
-          description="还没有已购应用，去应用中心选购吧"
+          title="还没有已购产品"
+          description="还没有已购产品，去产品中心选购吧"
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">

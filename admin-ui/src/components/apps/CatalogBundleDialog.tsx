@@ -221,7 +221,7 @@ export function CatalogBundleDialog({
       <DialogContent className="max-h-[88vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{bundle ? `编辑目录 ${bundle.product.name}` : '新建产品目录'}</DialogTitle>
-          <DialogDescription>这里创建的是产品目录层：产品、功能项、Plans。应用层的定价展示与 Secret 仍在“应用列表”里管理。</DialogDescription>
+          <DialogDescription>这里定义产品、能力项和授权方案。销售展示、交付声明和接入密钥统一在产品工作台内管理。</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

@@ -7,8 +7,6 @@ import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
-import { AppsPage } from '@/pages/AppsPage';
-import { CatalogPage } from '@/pages/CatalogPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeliveryPage } from '@/pages/DeliveryPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
@@ -21,6 +19,8 @@ import { MyOrdersPage } from '@/pages/MyOrdersPage';
 import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
+import { ProductsPage } from '@/pages/ProductsPage';
+import { ProductWorkspacePage } from '@/pages/ProductWorkspacePage';
 import { SecretsPage } from '@/pages/SecretsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
 import { UsersPage } from '@/pages/UsersPage';
@@ -75,8 +75,10 @@ function AppRoutes() {
       <Route element={<ProtectedAdminRoute />}>
         <Route element={<Shell />}>
           <Route path="/admin" element={<DashboardPage />} />
-          <Route path="/admin/catalog" element={<CatalogPage />} />
-          <Route path="/admin/apps" element={<AppsPage />} />
+          <Route path="/admin/products" element={<ProductsPage />} />
+          <Route path="/admin/products/:productCode" element={<ProductWorkspacePage />} />
+          <Route path="/admin/catalog" element={<Navigate to="/admin/products" replace />} />
+          <Route path="/admin/apps" element={<Navigate to="/admin/products" replace />} />
           <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
           <Route path="/admin/secrets" element={<SecretsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />

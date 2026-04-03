@@ -89,60 +89,60 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   },
   catalog: {
     groupLabel: '商品管理',
-    navTitle: '产品目录',
-    navNote: '产品、功能项与套餐定义',
+    navTitle: '产品中心',
+    navNote: '产品、方案、销售与交付工作台',
     icon: 'CT',
-    title: '产品目录',
-    lead: '定义可售卖的产品，配置功能项和套餐价格。',
-    href: '/admin/catalog',
+    title: '产品中心',
+    lead: '一个产品就是一个对外售卖、授权和交付的主体。在这里统一管理能力、授权方案、销售展示和交付入口。',
+    href: '/admin/products',
     contextCards: [
-      { label: '用途', value: '商品定义', note: '产品是授权和交易的基础单元。' },
-      { label: '关联', value: '应用绑定', note: '产品通过应用管理页绑定到具体应用。' }
+      { label: '主体', value: 'Product', note: '后台主心智已经收敛到产品，而不是应用。' },
+      { label: '覆盖', value: '销售与交付', note: '能力项、授权方案、展示入口和交付声明都围绕产品管理。' }
     ],
     heroActions: [
-      { label: '产品目录', href: '/admin/catalog', tone: 'primary' },
-      { label: '应用管理', href: '/admin/apps', tone: 'secondary' }
+      { label: '产品中心', href: '/admin/products', tone: 'primary' },
+      { label: '支付配置', href: '/admin/payments', tone: 'secondary' }
     ],
     pageDataScopes: ['products', 'plans'],
-    commandAliases: ['catalog', 'products', '产品目录', '产品', '套餐']
+    commandAliases: ['catalog', 'products', '产品中心', '产品', '方案', '工作台']
   },
   apps: {
     groupLabel: '商品管理',
-    navTitle: '应用管理',
-    navNote: '应用注册与售卖方案配置',
+    navTitle: '内部档案',
+    navNote: '兼容旧模型的内部实现记录',
     icon: 'AP',
-    title: '应用管理',
-    lead: '管理应用注册信息、绑定产品和配置售卖方案。',
-    href: '/admin/apps',
+    title: '内部档案',
+    lead: '兼容旧模型的内部实现记录，正常情况下不再作为管理员主操作入口。',
+    href: '/admin/products',
     contextCards: [
-      { label: '用途', value: '渠道配置', note: '应用是面向用户的入口，绑定产品后可售卖。' },
-      { label: '密钥', value: '应用密钥', note: '通过密钥管理页为应用签发 API 密钥。' }
+      { label: '用途', value: '兼容层', note: '旧 app 记录已退居内部实现，不再作为主操作对象。' },
+      { label: '密钥', value: '产品接入密钥', note: '接入密钥已通过产品工作台和产品密钥页统一管理。' }
     ],
     heroActions: [
-      { label: '应用管理', href: '/admin/apps', tone: 'primary' },
-      { label: '应用密钥', href: '/admin/secrets', tone: 'secondary' }
+      { label: '产品中心', href: '/admin/products', tone: 'primary' },
+      { label: '产品密钥', href: '/admin/secrets', tone: 'secondary' }
     ],
     pageDataScopes: ['apps', 'products'],
-    commandAliases: ['apps', 'applications', '应用管理', '应用']
+    commandAliases: ['apps', 'applications', '内部档案', '兼容层']
   },
   secrets: {
     groupLabel: '商品管理',
-    navTitle: '应用密钥',
-    navNote: '生成与管理 API 密钥',
+    navTitle: '产品密钥',
+    navNote: '生成与管理产品接入密钥',
     icon: 'SK',
-    title: '应用密钥',
-    lead: '为应用生成 API 密钥，管理密钥生命周期。',
+    title: '产品接入密钥',
+    lead: '为需要主动接入中台 API 的产品生成密钥，集中管理接入凭证生命周期。',
     href: '/admin/secrets',
     contextCards: [
-      { label: '用途', value: '身份认证', note: '应用通过密钥访问中台 API。' },
+      { label: '用途', value: '身份认证', note: '产品通过密钥访问中台 API。' },
       { label: '安全', value: '一次性显示', note: '密钥仅在创建时显示一次，请妥善保存。' }
     ],
     heroActions: [
-      { label: '密钥管理', href: '/admin/secrets', tone: 'primary' },
-      { label: '应用管理', href: '/admin/apps', tone: 'secondary' }
+      { label: '产品密钥', href: '/admin/secrets', tone: 'primary' },
+      { label: '产品中心', href: '/admin/products', tone: 'secondary' }
     ],
     pageDataScopes: ['apps'],
-    commandAliases: ['secrets', 'keys', 'api keys', '密钥', '应用密钥']
+    commandAliases: ['secrets', 'keys', 'api keys', '密钥', '产品密钥', '接入密钥']
   },
   orders: {
     groupLabel: '交易管理',
@@ -241,22 +241,22 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   },
   delivery: {
     groupLabel: '运维',
-    navTitle: '部署配置',
-    navNote: '部署源、凭证与版本配置',
+    navTitle: '产品交付配置',
+    navNote: '交付变量、实例参数与部署预设',
     icon: 'DL',
-    title: '部署配置',
-    lead: '配置系统产品的安装源、镜像、凭证和组件版本。',
+    title: '产品交付配置',
+    lead: '按产品管理交付变量、部署预设和实例所需的覆盖值。',
     href: '/admin/delivery',
     contextCards: [
-      { label: '用途', value: '交付配置', note: '配置后用户可通过部署中心一键安装。' },
-      { label: '范围', value: '系统产品', note: '仅适用于 Web 应用和系统服务类产品。' }
+      { label: '用途', value: '交付配置', note: '配置后用户可通过部署中心一键安装产品。' },
+      { label: '范围', value: '可交付产品', note: '仅适用于需要在线访问、自行安装或一键部署的产品。' }
     ],
     heroActions: [
-      { label: '部署配置', href: '/admin/delivery', tone: 'primary' },
-      { label: '返回总览', href: '/admin', tone: 'secondary' }
+      { label: '产品交付配置', href: '/admin/delivery', tone: 'primary' },
+      { label: '产品中心', href: '/admin/products', tone: 'secondary' }
     ],
     pageDataScopes: ['delivery'],
-    commandAliases: ['delivery', 'deploy', 'installer', '部署配置', '交付']
+    commandAliases: ['delivery', 'deploy', 'installer', '部署配置', '交付', '产品交付']
   },
   observability: {
     groupLabel: '运维',
@@ -281,10 +281,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
-  { label: '商品管理', items: ['catalog', 'apps'] },
+  { label: '商品管理', items: ['catalog'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
-  { label: '运维', items: ['delivery', 'observability'] }
+  { label: '运维', items: ['observability'] }
 ];
 
 export const adminCommandItems: AdminCommandItem[] = [

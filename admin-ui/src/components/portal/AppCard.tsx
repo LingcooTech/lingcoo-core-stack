@@ -31,7 +31,7 @@ export function AppCard({ app }: { app: AppWithDetails }) {
           <div className="min-w-0 flex-1 space-y-1">
             <CardTitle className="text-lg leading-tight">{app.name}</CardTitle>
             <CardDescription className="line-clamp-2">
-              {app.tagline || app.description || '优质应用，等你体验。'}
+              {app.tagline || app.description || '优质产品，等你体验。'}
             </CardDescription>
           </div>
         </div>
@@ -53,7 +53,7 @@ export function AppCard({ app }: { app: AppWithDetails }) {
         </div>
         <Button asChild variant="outline" className="w-full">
           <Link to={`/apps/${app.code}`}>
-            了解更多
+            查看产品
             <ArrowRight className="ml-1 h-4 w-4" />
           </Link>
         </Button>
