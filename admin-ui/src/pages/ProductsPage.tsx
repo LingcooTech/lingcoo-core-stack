@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Boxes, PackagePlus, Settings2 } from 'lucide-react';
+import { Boxes, PackagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listAppsAdmin, upsertCatalogBundle } from '@/api/apps';
@@ -12,13 +12,14 @@ import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { buildManagedProducts } from '@/lib/product-model';
+import { getInitials } from '@/lib/utils';
 
 export function ProductsPage() {
   const qc = useQueryClient();
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [selectedBundle, setSelectedBundle] = useState<CatalogBundleSummary | null>(null);
 
-  const { catalogBundles, products, features, allPlans, isLoading: isCatalogLoading } = useCatalogData();
+  const { products, features, allPlans, isLoading: isCatalogLoading } = useCatalogData();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsQuery.data?.items ?? [];
 
@@ -52,9 +53,27 @@ export function ProductsPage() {
       key: 'product',
       header: '产品',
       cell: (row) => (
-        <div>
-          <p className="text-sm font-bold">{row.product.name}</p>
-          <p className="text-xs font-mono text-muted-foreground">{row.product.code}</p>
+        <div className="flex items-center gap-3">
+          {row.primaryApp?.iconUrl ? (
+            <img
+              src={row.primaryApp.iconUrl}
+              alt={row.product.name}
+              className="h-11 w-11 rounded-2xl border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-500 text-sm font-black text-white">
+              {getInitials(row.product.name)}
+            </div>
+          )}
+          <div className="min-w-0">
+            <Link
+              to={`/admin/products/${row.product.code}`}
+              className="text-sm font-bold text-foreground underline decoration-slate-300 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+            >
+              {row.product.name}
+            </Link>
+            <p className="text-xs font-mono text-muted-foreground">{row.product.code}</p>
+          </div>
         </div>
       )
     },
@@ -111,35 +130,6 @@ export function ProductsPage() {
           </div>
         );
       }
-    },
-    {
-      key: 'actions',
-      header: '操作',
-      cell: (row) => {
-        const bundle = catalogBundles.find((item) => item.product.code === row.product.code) ?? null;
-
-        return (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <Link to={`/admin/products/${row.product.code}`}>
-                <Settings2 className="mr-1 h-3.5 w-3.5" />
-                产品工作台
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={(event) => {
-                event.stopPropagation();
-                setSelectedBundle(bundle);
-                setCatalogDialogOpen(true);
-              }}
-            >
-              编辑能力方案
-            </Button>
-          </div>
-        );
-      }
     }
   ];
 
@@ -149,7 +139,7 @@ export function ProductsPage() {
       <div className="space-y-6 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="rounded-2xl border border-border bg-white px-4 py-3 text-sm text-muted-foreground">
-            一个产品就是一个对外售卖、授权和交付的主体。内部的 app 记录已退居实现层，不再作为主操作对象。
+            点击产品名称即可进入详情页，沿着“产品信息 → 功能/授权/价格 → 交付”的流程完成编辑。
           </div>
           <Button
             size="sm"
