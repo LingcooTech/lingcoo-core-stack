@@ -86,9 +86,9 @@ const LEGACY_MANIFEST: DeliveryManifest = {
     installPath: '/opt/fd-headless-wp-system'
   },
   groups: [
-    { key: 'images', label: '镜像与仓库' },
-    { key: 'credentials', label: '凭据与证书' },
-    { key: 'release', label: '版本与发布', description: '这些字段通常有默认值，除非升级策略变化，否则不需要改动。' }
+    { key: 'platform', label: '平台管理员预设', description: '这些值由 fd-core-stack 平台管理员维护，终端用户不需要理解。' },
+    { key: 'customer', label: '终端用户部署时填写', description: '这些值由购买产品并在自己服务器上部署的终端用户填写。' },
+    { key: 'release', label: '平台版本预设', description: '这些字段通常有默认值，除非升级策略变化，否则平台管理员不需要改动。' }
   ],
   domainSlots: [
     {
@@ -97,7 +97,8 @@ const LEGACY_MANIFEST: DeliveryManifest = {
       envKey: 'FRONTEND_DOMAIN',
       sourceField: 'primaryDomain',
       required: true,
-      placeholder: 'www.futuredecade.com'
+      placeholder: 'www.domain.com',
+      description: '终端用户在自己部署时填写的前台访问域名。'
     },
     {
       key: 'admin',
@@ -105,7 +106,8 @@ const LEGACY_MANIFEST: DeliveryManifest = {
       envKey: 'ADMIN_DOMAIN',
       sourceField: 'adminDomain',
       required: true,
-      placeholder: 'admin.futuredecade.com'
+      placeholder: 'admin.domain.com',
+      description: '终端用户在自己部署时填写的后台访问域名。'
     },
     {
       key: 'ws',
@@ -113,7 +115,8 @@ const LEGACY_MANIFEST: DeliveryManifest = {
       envKey: 'WS_DOMAIN',
       sourceField: 'wsDomain',
       required: true,
-      placeholder: 'ws.futuredecade.com'
+      placeholder: 'ws.domain.com',
+      description: '终端用户在自己部署时填写的 WebSocket 域名。'
     }
   ],
   envFields: [
@@ -121,33 +124,43 @@ const LEGACY_MANIFEST: DeliveryManifest = {
       key: 'FRONTEND_IMAGE',
       label: 'Frontend Image',
       type: 'text',
-      scope: 'user_input',
+      scope: 'preset',
       required: true,
-      group: 'images'
+      editable: true,
+      advanced: true,
+      group: 'platform',
+      description: '平台管理员预设的前端运行镜像。'
     },
     {
       key: 'WEBSOCKET_IMAGE',
       label: 'WebSocket Image',
       type: 'text',
-      scope: 'user_input',
+      scope: 'preset',
       required: true,
-      group: 'images'
+      editable: true,
+      advanced: true,
+      group: 'platform',
+      description: '平台管理员预设的 WebSocket 运行镜像。'
     },
     {
       key: 'LETSENCRYPT_EMAIL',
-      label: '证书通知邮箱',
+      label: '终端用户证书通知邮箱',
       type: 'email',
       scope: 'user_input',
       required: true,
-      group: 'credentials'
+      group: 'customer',
+      description: '终端用户在自己的服务器部署 HTTPS 证书时接收通知的邮箱。'
     },
     {
       key: 'ACR_USERNAME',
       label: 'ACR 用户名',
       type: 'text',
-      scope: 'user_input',
+      scope: 'preset',
       required: true,
-      group: 'credentials'
+      editable: true,
+      advanced: true,
+      group: 'platform',
+      description: '平台管理员预设的镜像仓库用户名。'
     },
     {
       key: 'WORDPRESS_FETCH_RELEASE_ASSETS',
@@ -287,17 +300,23 @@ const LEGACY_MANIFEST: DeliveryManifest = {
       key: 'ACR_PASSWORD',
       label: 'ACR 密码',
       type: 'secret',
-      scope: 'user_input',
+      scope: 'preset',
       required: true,
-      group: 'credentials'
+      editable: true,
+      advanced: true,
+      group: 'platform',
+      description: '平台管理员预设的镜像仓库密码。'
     },
     {
       key: 'GH_TOKEN',
       label: 'GitHub Token',
       type: 'secret',
-      scope: 'user_input',
+      scope: 'preset',
       required: true,
-      group: 'credentials'
+      editable: true,
+      advanced: true,
+      group: 'platform',
+      description: '平台管理员预设的 GitHub 访问令牌。'
     }
   ],
   notes: [

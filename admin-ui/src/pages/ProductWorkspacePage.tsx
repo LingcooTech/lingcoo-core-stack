@@ -79,7 +79,6 @@ type EditableBasePlan = {
   id: string;
   code: string;
   name: string;
-  billingProvider: 'self_hosted' | 'wechat_pay' | 'alipay';
   priceYuan: string;
   currency: string;
   interval: 'month' | 'year' | 'one_time';
@@ -148,7 +147,7 @@ function buildCapabilityFeatureDrafts(
 }
 
 function buildBasePlanDrafts(
-  plans: Array<PlanSummary & { billingProvider?: string }>,
+  plans: PlanSummary[],
   planFeatureCodesByPlanCode: Record<string, string[]>,
   capabilityFeatures: EditableCapabilityFeature[]
 ): EditableBasePlan[] {
@@ -158,10 +157,6 @@ function buildBasePlanDrafts(
     id: createDraftId('base_plan'),
     code: plan.code,
     name: plan.name,
-    billingProvider:
-      plan.billingProvider === 'wechat_pay' || plan.billingProvider === 'alipay'
-        ? plan.billingProvider
-        : 'self_hosted',
     priceYuan: formatPriceYuan(plan.priceAmount),
     currency: plan.currency || 'CNY',
     interval: (plan.interval as EditableBasePlan['interval']) || 'one_time',
@@ -184,6 +179,14 @@ function normalizeMarketingFeatures(features: EditableProductFeature[]): AppHigh
 
 function sortFieldsByLabel(fields: DeliveryFieldDefinition[]) {
   return [...fields].sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'));
+}
+
+function getDeliveryScopeLabel(scope: DeliveryFieldDefinition['scope'], advanced?: boolean) {
+  if (scope === 'user_input') {
+    return '终端用户部署时填写';
+  }
+
+  return advanced ? '平台管理员高级预设' : '平台管理员预设';
 }
 
 export function ProductWorkspacePage() {
@@ -393,7 +396,6 @@ export function ProductWorkspacePage() {
       const normalizedBasePlans: Array<{
         code: string;
         name: string;
-        billingProvider: EditableBasePlan['billingProvider'];
         priceAmount: number;
         currency: string;
         interval: EditableBasePlan['interval'];
@@ -413,7 +415,6 @@ export function ProductWorkspacePage() {
         normalizedBasePlans.push({
           code,
           name,
-          billingProvider: plan.billingProvider,
           priceAmount: Math.round(Number(plan.priceYuan || '0') * 100),
           currency: plan.currency.trim().toUpperCase() || 'CNY',
           interval: plan.interval,
@@ -431,7 +432,10 @@ export function ProductWorkspacePage() {
         type: form.type,
         status: form.status,
         features: normalizedCapabilityFeatures,
-        plans: normalizedBasePlans
+        plans: normalizedBasePlans.map((plan) => ({
+          ...plan,
+          billingProvider: 'self_hosted' as const
+        }))
       });
 
       const checkoutOffers = editableOffers
@@ -646,7 +650,6 @@ export function ProductWorkspacePage() {
         id: createDraftId('base_plan'),
         code: '',
         name: '',
-        billingProvider: 'self_hosted',
         priceYuan: '0.00',
         currency: 'CNY',
         interval: 'one_time',
@@ -1345,7 +1348,7 @@ export function ProductWorkspacePage() {
                 <>
                   {deliverySettings.manifest.domainSlots.length > 0 ? (
                     <div className="rounded-2xl border border-border bg-muted/10 p-4">
-                      <h3 className="text-sm font-black">域名槽位</h3>
+                      <h3 className="text-sm font-black">终端用户部署域名</h3>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         {deliverySettings.manifest.domainSlots.map((slot) => (
                           <div key={slot.key} className="rounded-xl border border-border bg-white px-3 py-3">
@@ -1394,7 +1397,7 @@ export function ProductWorkspacePage() {
                             <div className="flex items-center gap-2">
                               <StatusPill
                                 tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
-                                label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                                label={getDeliveryScopeLabel(field.scope, field.advanced)}
                               />
                               {field.defaultValue !== null && field.defaultValue !== undefined ? (
                                 <span className="text-xs text-muted-foreground">默认值：{String(field.defaultValue)}</span>
@@ -1429,7 +1432,7 @@ export function ProductWorkspacePage() {
                               />
                               <StatusPill
                                 tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
-                                label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                                label={getDeliveryScopeLabel(field.scope, field.advanced)}
                               />
                             </div>
                             {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}

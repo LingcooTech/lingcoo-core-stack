@@ -115,7 +115,6 @@ export interface UpsertCatalogBundleInput {
   plans: Array<{
     code: string;
     name: string;
-    billingProvider: string;
     billingPriceId?: string;
     priceAmount: number;
     currency: string;

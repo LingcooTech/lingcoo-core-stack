@@ -138,7 +138,6 @@ export function CatalogBundleDialog({
     plans: Array<{
       code: string;
       name: string;
-      billingProvider: string;
       priceAmount: number;
       currency: string;
       interval: PlanInterval;

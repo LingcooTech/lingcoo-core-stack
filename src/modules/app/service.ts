@@ -61,16 +61,11 @@ export class AppService {
     };
   }
 
-  private resolveDeliveryManifestUrl(input: {
+  private resolveRepoDeliveryManifestUrl(input: {
     repoUrl?: string;
     repoBranch?: string;
     manifestPath?: string;
-    manifestUrl?: string;
   }) {
-    if (input.manifestUrl?.trim()) {
-      return input.manifestUrl.trim();
-    }
-
     const repoUrl = input.repoUrl?.trim() ?? '';
     const repoBranch = input.repoBranch?.trim() || 'main';
     const manifestPath = input.manifestPath?.trim() || 'fd-delivery.manifest.json';
@@ -89,6 +84,67 @@ export class AppService {
 
     const [, owner, repo] = match;
     return `https://raw.githubusercontent.com/${owner}/${repo}/${repoBranch}/${manifestPath}`;
+  }
+
+  private async fetchDeliveryManifestWithFallback(input: {
+    repoUrl?: string;
+    repoBranch?: string;
+    manifestPath?: string;
+    manifestUrl?: string;
+  }) {
+    const attempts: string[] = [];
+    const candidates: Array<{ label: 'repoUrl' | 'manifestUrl'; url: string }> = [];
+
+    if (input.repoUrl?.trim()) {
+      try {
+        candidates.push({
+          label: 'repoUrl',
+          url: this.resolveRepoDeliveryManifestUrl(input)
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'failed to resolve repository manifest URL';
+        attempts.push(`repoUrl: ${message}`);
+      }
+    }
+
+    if (input.manifestUrl?.trim()) {
+      candidates.push({
+        label: 'manifestUrl',
+        url: input.manifestUrl.trim()
+      });
+    }
+
+    const uniqueCandidates = candidates.filter(
+      (candidate, index, list) => list.findIndex((item) => item.url === candidate.url) === index
+    );
+
+    if (uniqueCandidates.length === 0) {
+      throw httpError(422, 'Neither repository manifest source nor backup manifest URL is configured');
+    }
+
+    for (const candidate of uniqueCandidates) {
+      try {
+        const response = await fetch(candidate.url, {
+          signal: AbortSignal.timeout(30_000)
+        });
+
+        if (!response.ok) {
+          attempts.push(`${candidate.label}: HTTP ${response.status}`);
+          continue;
+        }
+
+        return {
+          manifestUrl: candidate.url,
+          manifest: parseDeliveryManifest((await response.json()) as unknown),
+          source: candidate.label
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'fetch failed';
+        attempts.push(`${candidate.label}: ${message}`);
+      }
+    }
+
+    throw httpError(502, `Failed to fetch delivery manifest. ${attempts.join(' | ')}`);
   }
 
   private readCheckoutDefaultOfferCode(meta: unknown) {
@@ -870,19 +926,10 @@ export class AppService {
       manifestUrl: input.manifestUrl?.trim() || currentSource.manifestUrl || ''
     };
 
-    const manifestUrl = this.resolveDeliveryManifestUrl(nextSource);
-    const response = await fetch(manifestUrl, {
-      signal: AbortSignal.timeout(30_000)
-    });
-
-    if (!response.ok) {
-      throw httpError(502, `Failed to fetch delivery manifest: ${response.status}`);
-    }
-
-    const remoteManifest = parseDeliveryManifest((await response.json()) as unknown);
+    const fetched = await this.fetchDeliveryManifestWithFallback(nextSource);
     const nextMeta = {
       ...meta,
-      deliveryManifest: remoteManifest,
+      deliveryManifest: fetched.manifest,
       deliveryManifestSource: nextSource
     };
 
@@ -893,7 +940,8 @@ export class AppService {
       eventName: 'app.delivery_manifest_synced',
       properties: {
         appCode,
-        manifestUrl,
+        manifestUrl: fetched.manifestUrl,
+        manifestSource: fetched.source,
         repoUrl: nextSource.repoUrl,
         repoBranch: nextSource.repoBranch,
         manifestPath: nextSource.manifestPath || null

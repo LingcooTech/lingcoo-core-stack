@@ -291,7 +291,6 @@ export class AdminService {
       plans: Array<{
         code: string;
         name: string;
-        billingProvider: string;
         billingPriceId?: string;
         priceAmount: number;
         currency: string;
@@ -324,7 +323,6 @@ export class AdminService {
           {
             code: plan.code.trim(),
             name: plan.name.trim(),
-            billingProvider: plan.billingProvider.trim() || 'self_hosted',
             billingPriceId: plan.billingPriceId?.trim() || null,
             priceAmount: plan.priceAmount,
             currency: plan.currency.trim().toUpperCase() || 'CNY',
@@ -385,7 +383,7 @@ export class AdminService {
           productId: product.id,
           code: planInput.code,
           name: planInput.name,
-          billingProvider: planInput.billingProvider,
+          billingProvider: 'self_hosted',
           billingPriceId: planInput.billingPriceId,
           priceAmount: planInput.priceAmount,
           currency: planInput.currency,

@@ -29,6 +29,14 @@ function sortFieldsByLabel(fields: DeliveryFieldDefinition[]) {
   return [...fields].sort((left, right) => left.label.localeCompare(right.label, 'zh-CN'));
 }
 
+function getDeliveryScopeLabel(scope: DeliveryFieldDefinition['scope'], advanced?: boolean) {
+  if (scope === 'user_input') {
+    return '终端用户部署时填写';
+  }
+
+  return advanced ? '平台管理员高级预设' : '平台管理员预设';
+}
+
 export function DeliveryPage() {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -217,7 +225,7 @@ export function DeliveryPage() {
 
             {settings.manifest.domainSlots.length > 0 ? (
               <div className="rounded-2xl border border-border bg-white p-5">
-                <h2 className="text-sm font-black">域名槽位</h2>
+                <h2 className="text-sm font-black">终端用户部署域名</h2>
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {settings.manifest.domainSlots.map((slot) => (
                     <div key={slot.key} className="rounded-xl border border-border bg-muted/40 p-4">
@@ -285,7 +293,7 @@ export function DeliveryPage() {
                       <div className="flex items-center gap-2">
                         <StatusPill
                           tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
-                          label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                          label={getDeliveryScopeLabel(field.scope, field.advanced)}
                         />
                         {field.defaultValue !== null && field.defaultValue !== undefined ? (
                           <span className="text-xs text-muted-foreground">默认值：{String(field.defaultValue)}</span>
@@ -317,7 +325,7 @@ export function DeliveryPage() {
                         />
                         <StatusPill
                           tone={field.scope === 'user_input' ? 'warn' : 'neutral'}
-                          label={field.scope === 'user_input' ? '用户填写' : field.advanced ? '高级预设' : '预设'}
+                          label={getDeliveryScopeLabel(field.scope, field.advanced)}
                         />
                       </div>
                       {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}

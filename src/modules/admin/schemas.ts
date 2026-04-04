@@ -88,7 +88,6 @@ export const adminUpsertCatalogBundleSchema = z.object({
     z.object({
       code: z.string().trim().min(1).max(64),
       name: z.string().trim().min(1).max(120),
-      billingProvider: z.string().trim().min(1).max(32).default('self_hosted'),
       billingPriceId: z.string().trim().max(128).optional(),
       priceAmount: z.number().int().min(0).max(999999999),
       currency: z.string().trim().min(1).max(16).default('CNY'),
