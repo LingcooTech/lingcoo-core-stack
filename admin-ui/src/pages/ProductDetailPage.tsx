@@ -11,7 +11,7 @@ import { DataTable, type Column } from '@/components/shared/DataTable';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -240,9 +240,6 @@ export function ProductDetailPage() {
               <h2 className="text-[28px] font-black tracking-tight text-slate-900">
                 {isCreateMode ? '新建产品' : form.name || product?.name || form.code}
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                产品详情只聚焦商品档案，价格、授权、售卖应用和销售展示在这里分区查看。
-              </p>
             </div>
           </div>
           <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
@@ -305,7 +302,6 @@ export function ProductDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>产品基本信息</CardTitle>
-                <CardDescription>这里只维护商品本身，不包含应用密钥、回调和交付配置。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -363,7 +359,6 @@ export function ProductDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>销售展示</CardTitle>
-                <CardDescription>销售展示属于商品档案的一部分，直接在产品层维护。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -400,7 +395,6 @@ export function ProductDetailPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle>价格方案</CardTitle>
-                    <CardDescription>价格定义单独收敛到价格方案页，产品详情里只做嵌入查看。</CardDescription>
                   </div>
                   <Button variant="outline" asChild>
                     <Link to="/admin/pricing">去价格方案页</Link>
@@ -429,7 +423,6 @@ export function ProductDetailPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <CardTitle>授权档位</CardTitle>
-                    <CardDescription>这里查看产品当前承接的授权档位与价格映射。后续可演进为独立授权模板对象。</CardDescription>
                   </div>
                   <Button variant="outline" asChild>
                     <Link to="/admin/authorization-templates">去授权档位页</Link>
@@ -456,7 +449,6 @@ export function ProductDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>售卖应用</CardTitle>
-                <CardDescription>哪些应用允许售卖这个产品，应到应用详情里绑定；这里负责查看绑定结果。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {linkedApps.map((appItem) => (

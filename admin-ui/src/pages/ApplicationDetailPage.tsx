@@ -10,7 +10,7 @@ import type { AppWithDetails, ProductSummary } from '@/api/types';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -304,9 +304,6 @@ export function ApplicationDetailPage() {
               <h2 className="text-[28px] font-black tracking-tight text-slate-900">
                 {isCreateMode ? '新建应用' : form.name || app?.name || form.code}
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                应用详情负责接入身份、回调、密钥、交付配置和可售产品绑定。
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -334,13 +331,11 @@ export function ApplicationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>基本信息</CardTitle>
-                <CardDescription>维护应用的接入身份与基础说明。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>应用标识</Label>
                   <Input value={form.code} onChange={(event) => setField('code', event.target.value)} placeholder="my_app" disabled={!isCreateMode} />
-                  <p className="text-xs text-muted-foreground">应用标识保存后即作为中台里的技术身份。</p>
                 </div>
                 <div className="space-y-2">
                   <Label>应用名称</Label>
@@ -385,7 +380,6 @@ export function ApplicationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>应用密钥</CardTitle>
-                <CardDescription>应用调用中台时使用的接入密钥。建议密钥按环境分开管理。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-muted/30 p-4">
@@ -447,7 +441,6 @@ export function ApplicationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>API 接入信息</CardTitle>
-                <CardDescription>给研发和接入方看的固定技术身份信息。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 {apiRows.map((item) => (
@@ -459,24 +452,12 @@ export function ApplicationDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>接入说明</CardTitle>
-                <CardDescription>应用通过中台身份、密钥和回调配置与平台建立连接。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>1. 应用使用应用标识和密钥调用中台接口。</p>
-                <p>2. 应用通过回调配置接收支付或业务通知。</p>
-                <p>3. 应用通过交付配置确定是否走直达访问还是一键部署。</p>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="callbacks" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>回调配置</CardTitle>
-                <CardDescription>维护应用的业务回调地址、回调密钥和允许来源。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
                 <div className="space-y-2">
@@ -495,7 +476,6 @@ export function ApplicationDetailPage() {
                     className="min-h-[120px] font-mono text-xs"
                     placeholder={'https://app.example.com\nhttps://admin.example.com'}
                   />
-                  <p className="text-xs text-muted-foreground">每行一个来源地址，保存后写入应用元信息。</p>
                 </div>
               </CardContent>
             </Card>
@@ -505,7 +485,6 @@ export function ApplicationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>交付/部署配置</CardTitle>
-                <CardDescription>定义应用的交付模式以及交付声明同步来源。</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -563,7 +542,6 @@ export function ApplicationDetailPage() {
             <Card>
               <CardHeader>
                 <CardTitle>可售产品绑定</CardTitle>
-                <CardDescription>选择这个应用允许售卖的产品。价格与授权定义仍在商品建模里维护。</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">

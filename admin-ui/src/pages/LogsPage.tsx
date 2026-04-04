@@ -56,10 +56,7 @@ export function LogsPage() {
   return (
     <div>
       <SectionHeader sectionKey="logs" />
-      <div className="px-6 py-6 space-y-4">
-        <div className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-          当前日志管理页先承接支付回调和处理日志，后续可以继续扩展系统任务日志、API 调用日志和错误日志。
-        </div>
+      <div className="px-6 py-6">
         <div className="rounded-2xl border border-border bg-white overflow-hidden">
           <DataTable
             columns={columns}

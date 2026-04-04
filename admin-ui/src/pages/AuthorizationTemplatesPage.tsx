@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -219,12 +218,7 @@ export function AuthorizationTemplatesPage() {
         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
           <div className="border-b border-slate-200/80 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-slate-900">授权档位目录</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  授权档位独立管理，只定义购买后的商业访问级别，不承担应用底层功能定义。
-                </p>
-              </div>
+              <p className="text-sm font-black text-slate-900">授权档位目录</p>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusPill tone={authorizationTemplates.length > 0 ? 'ok' : 'warn'} label={authorizationTemplates.length > 0 ? '已拆出授权视图' : '暂无授权档位'} />
                 <Button onClick={openCreateDialog}>
@@ -257,7 +251,6 @@ export function AuthorizationTemplatesPage() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingAuthorizationTemplate ? `编辑授权档位 ${editingAuthorizationTemplate.name}` : '新建授权档位'}</DialogTitle>
-              <DialogDescription>这里定义商业授权档位，不在这里录入应用底层功能代码。</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 md:grid-cols-2">

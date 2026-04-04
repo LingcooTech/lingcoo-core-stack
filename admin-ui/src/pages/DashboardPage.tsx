@@ -32,10 +32,10 @@ export function DashboardPage() {
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
 
   const quickLinks = [
-    { label: '应用列表', desc: '接入身份、密钥与交付', href: '/admin/applications', icon: Package, color: 'text-violet-600 bg-violet-50' },
-    { label: '价格方案', desc: '查看收费结构与周期', href: '/admin/pricing', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '授权管理', desc: '查看真实授权结果', href: '/admin/authorizations', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
-    { label: '交易管理', desc: '订单与支付状态', href: '/admin/transactions', icon: Zap, color: 'text-amber-600 bg-amber-50' }
+    { label: '应用列表', href: '/admin/applications', icon: Package, color: 'text-violet-600 bg-violet-50' },
+    { label: '价格方案', href: '/admin/pricing', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
+    { label: '授权管理', href: '/admin/authorizations', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
+    { label: '交易管理', href: '/admin/transactions', icon: Zap, color: 'text-amber-600 bg-amber-50' }
   ];
 
   return (
@@ -44,10 +44,10 @@ export function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} sublabel="已建立技术接入身份" loading={appsResult.isLoading} />
-          <MetricCard label="商品数量" value={products.length} sublabel="已进入商品建模的产品" loading={catalogResult.isLoading} />
-          <MetricCard label="可部署产品" value={deployableProducts} sublabel="已接入一键部署" loading={appsResult.isLoading} />
-          <MetricCard label="待处理订单" value={pendingOrders.length} sublabel={`最近 ${orders.length} 条订单中`} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
+          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} />
+          <MetricCard label="商品数量" value={products.length} loading={catalogResult.isLoading} />
+          <MetricCard label="可部署产品" value={deployableProducts} loading={appsResult.isLoading} />
+          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>
 
         {/* Payment Status */}
@@ -86,7 +86,6 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black text-foreground">{link.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </Link>
@@ -133,13 +132,11 @@ export function DashboardPage() {
 function MetricCard({
   label,
   value,
-  sublabel,
   loading,
   tone = 'neutral'
 }: {
   label: string;
   value: number;
-  sublabel: string;
   loading?: boolean;
   tone?: 'ok' | 'warn' | 'neutral';
 }) {
@@ -160,7 +157,6 @@ function MetricCard({
             >
               {value}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>
           </>
         )}
       </CardContent>

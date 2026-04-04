@@ -15,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -279,10 +278,7 @@ export function PricingPage() {
         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
           <div className="border-b border-slate-200/80 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-slate-900">价格方案目录</p>
-                <p className="mt-1 text-xs text-slate-500">集中查看各产品的价格结构、计费周期和当前授权映射。</p>
-              </div>
+              <p className="text-sm font-black text-slate-900">价格方案目录</p>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusPill tone={allPrices.length > 0 ? 'ok' : 'warn'} label={allPrices.length > 0 ? '已建立价格结构' : '暂无价格方案'} />
                 <Button onClick={openCreateDialog}>
@@ -315,7 +311,6 @@ export function PricingPage() {
           <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingPrice ? `编辑价格方案 ${editingPrice.name}` : '新建价格方案'}</DialogTitle>
-              <DialogDescription>价格方案只负责收费规则和授权档位映射，不在这里定义应用功能。</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -421,10 +416,7 @@ export function PricingPage() {
             </div>
 
             <div className="space-y-3">
-              <div>
-                <Label>授权档位映射</Label>
-                <p className="mt-1 text-xs text-muted-foreground">一个价格方案对应一个授权档位。应用实际功能仍由应用侧识别授权档位。</p>
-              </div>
+              <Label>授权档位映射</Label>
               <div className="grid gap-2 rounded-2xl border border-border p-4">
                 {availableAuthorizationTemplates.length > 0 ? (
                   availableAuthorizationTemplates.map((authorizationTemplate) => (

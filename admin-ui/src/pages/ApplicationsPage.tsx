@@ -105,50 +105,25 @@ export function ApplicationsPage() {
     <div>
       <SectionHeader sectionKey="applications" />
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-6">
-        <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Integration Center</p>
-              <div>
-                <h2 className="text-[28px] font-black tracking-tight text-slate-900">应用列表</h2>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  这里管理的是接入身份，不是商品。应用详情页负责密钥、回调、交付配置和可售产品绑定。
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-right">
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">接入应用数</p>
-                <p className="mt-1 text-2xl font-black text-slate-900">{apps.length}</p>
-              </div>
-              <Button asChild className="h-11 rounded-2xl px-5 text-sm font-black">
-                <Link to="/admin/applications/new">
-                  <Plus className="mr-1 h-4 w-4" />
-                  新建应用
-                </Link>
-              </Button>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[28px] font-black tracking-tight text-slate-900">应用列表</h2>
+            <StatusPill tone="neutral" label={`${apps.length} 个应用`} />
           </div>
-        </section>
+          <Button asChild className="h-11 rounded-2xl px-5 text-sm font-black">
+            <Link to="/admin/applications/new">
+              <Plus className="mr-1 h-4 w-4" />
+              新建应用
+            </Link>
+          </Button>
+        </div>
 
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
-          <div className="border-b border-slate-200/80 px-6 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-slate-900">接入目录</p>
-                <p className="mt-1 text-xs text-slate-500">统一查看应用接入身份、可售商品、密钥与交付接入状态。</p>
-              </div>
-              <StatusPill
-                tone={apps.length > 0 ? 'ok' : 'warn'}
-                label={apps.length > 0 ? '已建立接入目录' : '待创建首个应用'}
-              />
-            </div>
-          </div>
           <DataTable
             columns={columns}
             data={apps}
             isLoading={appsQuery.isLoading}
-            emptyMessage="暂无应用，请先创建一个接入应用。"
+            emptyMessage="暂无应用"
             getRowKey={(row) => row.id}
             rowClassName={() => 'hover:bg-slate-50/70 transition-colors'}
           />
@@ -157,7 +132,7 @@ export function ApplicationsPage() {
         {!appsQuery.isLoading && apps.length === 0 ? (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center text-sm text-muted-foreground">
             <AppWindow className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
-            先创建应用接入身份，再去绑定产品与价格。
+            暂无应用
           </div>
         ) : null}
       </div>

@@ -149,9 +149,9 @@ export function TransactionsPage() {
       <SectionHeader sectionKey="transactions" />
       <div className="px-6 py-6 space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="交易总数" value={orders.length} note="最近加载的交易记录数量" />
-          <MetricCard label="已支付" value={orders.filter((order) => order.status === 'paid').length} note="状态为 paid 的订单" />
-          <MetricCard label="待处理" value={orders.filter((order) => ['pending', 'processing'].includes(order.status)).length} note="需要继续关注的订单" tone="warn" />
+          <MetricCard label="交易总数" value={orders.length} />
+          <MetricCard label="已支付" value={orders.filter((order) => order.status === 'paid').length} />
+          <MetricCard label="待处理" value={orders.filter((order) => ['pending', 'processing'].includes(order.status)).length} tone="warn" />
         </div>
 
         <FilterBar
@@ -189,10 +189,7 @@ export function TransactionsPage() {
         {selectedOrderNo ? (
           <div className="rounded-2xl border border-border bg-white p-5 space-y-5">
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-black text-foreground">交易详情: {selectedOrderNo}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">串联订单、支付尝试、授权结果和事件记录。</p>
-              </div>
+              <h3 className="text-sm font-black text-foreground">交易详情: {selectedOrderNo}</h3>
               <Button size="sm" variant="outline" onClick={() => reconcileMutation.mutate(selectedOrderNo)} disabled={reconcileMutation.isPending}>
                 {reconcileMutation.isPending ? '同步中...' : '同步交易'}
               </Button>
@@ -217,12 +214,10 @@ export function TransactionsPage() {
 function MetricCard({
   label,
   value,
-  note,
   tone = 'neutral'
 }: {
   label: string;
   value: number;
-  note: string;
   tone?: 'neutral' | 'warn';
 }) {
   return (
@@ -231,7 +226,6 @@ function MetricCard({
       <p className={`mt-3 text-3xl font-black ${tone === 'warn' && value > 0 ? 'text-amber-600' : 'text-foreground'}`}>
         {value}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">{note}</p>
     </div>
   );
 }
