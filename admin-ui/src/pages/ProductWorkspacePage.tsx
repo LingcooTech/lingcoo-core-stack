@@ -495,10 +495,10 @@ export function ProductWorkspacePage() {
         meta
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('产品详情、授权方案和交付配置已保存');
-      void qc.invalidateQueries({ queryKey: ['catalog'] });
-      void qc.invalidateQueries({ queryKey: ['apps'] });
+      await qc.invalidateQueries({ queryKey: ['catalog'] });
+      await qc.invalidateQueries({ queryKey: ['apps'] });
       setInitializedProfileCode(null);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
@@ -517,9 +517,9 @@ export function ProductWorkspacePage() {
         manifestUrl: deliverySource.manifestUrl || undefined
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('交付声明已同步');
-      void qc.invalidateQueries({ queryKey: ['apps'] });
+      await qc.invalidateQueries({ queryKey: ['apps'] });
       setInitializedProfileCode(null);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败')
