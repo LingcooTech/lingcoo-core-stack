@@ -872,7 +872,7 @@ export class AppService {
 
     const manifestUrl = this.resolveDeliveryManifestUrl(nextSource);
     const response = await fetch(manifestUrl, {
-      signal: AbortSignal.timeout(10_000)
+      signal: AbortSignal.timeout(30_000)
     });
 
     if (!response.ok) {

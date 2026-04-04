@@ -2,32 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Copy,
-  Eye,
-  EyeOff,
-  KeyRound,
   Plus,
   Rocket,
   Save,
   Trash2
 } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { AppHighlight, DeliveryFieldDefinition, DeliveryFieldGroup, PlanSummary } from '@/api/types';
-import { createAppSecret, listAppsAdmin, revokeAppSecret, syncAppDeliveryManifest, upsertApp, upsertCatalogBundle } from '@/api/apps';
+import { listAppsAdmin, syncAppDeliveryManifest, upsertApp, upsertCatalogBundle } from '@/api/apps';
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,7 +32,7 @@ import {
   type EditableOffer
 } from '@/lib/catalog-utils';
 import { getLinkedAppsForProduct, getPrimaryAppForProduct, productNeedsDedicatedProfile } from '@/lib/product-model';
-import { formatTime, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
 
 type DeliveryManifestSourceState = {
   repoUrl: string;
@@ -56,6 +45,7 @@ type DraftValues = Record<string, string | boolean | null>;
 type DraftSecrets = Record<string, string>;
 
 type WorkspaceForm = {
+  code: string;
   name: string;
   iconUrl: string;
   shortDescription: string;
@@ -65,6 +55,7 @@ type WorkspaceForm = {
   category: string;
   type: 'chrome_extension' | 'web_app' | 'service';
   status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  deliveryMode: 'direct_access' | 'one_click_deploy';
   coverUrl: string;
   content: string;
 };
@@ -108,12 +99,6 @@ const authorizationIntervalOptions = [
   { value: 'year', label: '年度授权' }
 ] as const;
 
-const billingProviderOptions = [
-  { value: 'self_hosted', label: '线下 / 人工处理' },
-  { value: 'wechat_pay', label: '微信支付' },
-  { value: 'alipay', label: '支付宝' }
-] as const;
-
 function createDraftId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -125,6 +110,7 @@ function readMetaText(meta: Record<string, unknown> | undefined, key: string) {
 
 function createDefaultForm(product: { name: string; type?: string; status?: string }) {
   return {
+    code: '',
     name: product.name,
     iconUrl: '',
     shortDescription: '',
@@ -134,6 +120,7 @@ function createDefaultForm(product: { name: string; type?: string; status?: stri
     category: '',
     type: ((product.type as WorkspaceForm['type']) || 'service'),
     status: ((product.status as WorkspaceForm['status']) || 'active'),
+    deliveryMode: product.type === 'chrome_extension' ? 'direct_access' : 'one_click_deploy',
     coverUrl: '',
     content: ''
   } satisfies WorkspaceForm;
@@ -200,7 +187,8 @@ function sortFieldsByLabel(fields: DeliveryFieldDefinition[]) {
 }
 
 export function ProductWorkspacePage() {
-  const { productCode } = useParams<{ productCode: string }>();
+  const { productCode: routeProductCode } = useParams<{ productCode?: string }>();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [initializedProfileCode, setInitializedProfileCode] = useState<string | null>(null);
   const [form, setForm] = useState<WorkspaceForm | null>(null);
@@ -216,23 +204,26 @@ export function ProductWorkspacePage() {
   });
   const [draftValues, setDraftValues] = useState<DraftValues>({});
   const [draftSecrets, setDraftSecrets] = useState<DraftSecrets>({});
-  const [secretExpiresAt, setSecretExpiresAt] = useState('');
-  const [secretResult, setSecretResult] = useState<{ secret: string; secretId: string; appCode: string } | null>(null);
-  const [secretVisible, setSecretVisible] = useState(false);
 
   const { catalogBundles, products, isLoading: isCatalogLoading } = useCatalogData();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsQuery.data?.items ?? [];
+  const isCreateMode = !routeProductCode;
+  const effectiveProductCode = (routeProductCode || form?.code || '').trim();
 
   const bundle = useMemo(
-    () => catalogBundles.find((item) => item.product.code === productCode) ?? null,
-    [catalogBundles, productCode]
+    () => catalogBundles.find((item) => item.product.code === effectiveProductCode) ?? null,
+    [catalogBundles, effectiveProductCode]
   );
-  const product = bundle?.product ?? products.find((item) => item.code === productCode) ?? null;
+  const product = bundle?.product ?? products.find((item) => item.code === effectiveProductCode) ?? null;
   const linkedApps = useMemo(() => (product ? getLinkedAppsForProduct(product.code, apps) : []), [apps, product]);
   const primaryApp = useMemo(() => (product ? getPrimaryAppForProduct(product.code, apps) : null), [apps, product]);
-  const needsDedicatedProfile = productNeedsDedicatedProfile(productCode ?? '', primaryApp);
-  const targetProfileCode = needsDedicatedProfile ? (product?.code ?? '') : (primaryApp?.code ?? product?.code ?? '');
+  const needsDedicatedProfile = productNeedsDedicatedProfile(effectiveProductCode, primaryApp);
+  const targetProfileCode = isCreateMode
+    ? effectiveProductCode
+    : needsDedicatedProfile
+      ? (product?.code ?? '')
+      : (primaryApp?.code ?? product?.code ?? '');
   const hasDeliveryManifest = Boolean(primaryApp?.meta?.deliveryManifest);
   const deliverySettingsQuery = useQuery({
     queryKey: ['delivery-settings', targetProfileCode],
@@ -279,7 +270,7 @@ export function ProductWorkspacePage() {
   }, [deliveryGroups, visibleEnvFields, visibleSecretFields]);
 
   useEffect(() => {
-    if (!product || !targetProfileCode || initializedProfileCode === targetProfileCode) {
+    if (!targetProfileCode || initializedProfileCode === targetProfileCode) {
       return;
     }
 
@@ -296,6 +287,7 @@ export function ProductWorkspacePage() {
       const capabilityDrafts = buildCapabilityFeatureDrafts(bundle?.features ?? []);
 
       setForm({
+        code: primaryApp.code,
         name: primaryApp.name,
         iconUrl: primaryApp.iconUrl ?? '',
         shortDescription: primaryApp.tagline ?? primaryApp.description ?? '',
@@ -305,6 +297,12 @@ export function ProductWorkspacePage() {
         category: primaryApp.category ?? '',
         type: primaryApp.type as WorkspaceForm['type'],
         status: primaryApp.status as WorkspaceForm['status'],
+        deliveryMode:
+          meta.productDeliveryMode === 'direct_access' || meta.productDeliveryMode === 'one_click_deploy'
+            ? meta.productDeliveryMode
+            : primaryApp.type === 'chrome_extension'
+              ? 'direct_access'
+              : 'one_click_deploy',
         coverUrl: primaryApp.coverUrl ?? '',
         content: primaryApp.content ?? ''
       });
@@ -322,7 +320,10 @@ export function ProductWorkspacePage() {
         manifestUrl: typeof deliveryManifestSource.manifestUrl === 'string' ? deliveryManifestSource.manifestUrl : ''
       });
     } else {
-      setForm(createDefaultForm(product));
+      setForm({
+        ...createDefaultForm(product ?? { name: '', type: 'service', status: 'active' }),
+        code: effectiveProductCode
+      });
       setMarketingFeatures([]);
       setCapabilityFeatures(buildCapabilityFeatureDrafts(bundle?.features ?? []));
       setBasePlans(buildBasePlanDrafts((bundle?.plans ?? []) as Array<PlanSummary & { billingProvider?: string }>, bundle?.planFeatureCodesByPlanCode ?? {}, buildCapabilityFeatureDrafts(bundle?.features ?? [])));
@@ -336,7 +337,7 @@ export function ProductWorkspacePage() {
     }
 
     setInitializedProfileCode(targetProfileCode);
-  }, [bundle, initializedProfileCode, primaryApp, product, targetProfileCode]);
+  }, [bundle, effectiveProductCode, initializedProfileCode, primaryApp, product, targetProfileCode]);
 
   useEffect(() => {
     if (!deliverySettings) {
@@ -349,8 +350,16 @@ export function ProductWorkspacePage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!product || !form || !targetProfileCode) {
+      if (!form || !targetProfileCode) {
         throw new Error('产品上下文缺失');
+      }
+
+      const normalizedProductCode = slugify(form.code);
+      if (!normalizedProductCode) {
+        throw new Error('产品 Code 不能为空');
+      }
+      if (!form.name.trim()) {
+        throw new Error('产品名称不能为空');
       }
 
       const normalizedCapabilityFeatures: Array<{
@@ -417,7 +426,7 @@ export function ProductWorkspacePage() {
         throw new Error('至少需要一个有效的基础 Plan，并且每个 Plan 至少绑定一个授权能力');
       }
 
-      await upsertCatalogBundle(product.code, {
+      await upsertCatalogBundle(normalizedProductCode, {
         name: form.name,
         type: form.type,
         status: form.status,
@@ -467,6 +476,8 @@ export function ProductWorkspacePage() {
       } else {
         delete meta.productUpdateDate;
       }
+      meta.productDeliveryMode = form.deliveryMode;
+      delete meta.productRequiresAccessKey;
 
       meta.deliveryManifestSource = {
         repoUrl: deliverySource.repoUrl || undefined,
@@ -489,7 +500,7 @@ export function ProductWorkspacePage() {
         category: form.category || undefined,
         type: form.type,
         status: form.status,
-        productCodes: [product.code],
+        productCodes: [normalizedProductCode],
         checkoutOffers,
         checkoutDefaultOfferCode,
         meta
@@ -500,6 +511,9 @@ export function ProductWorkspacePage() {
       await qc.invalidateQueries({ queryKey: ['catalog'] });
       await qc.invalidateQueries({ queryKey: ['apps'] });
       setInitializedProfileCode(null);
+      if (isCreateMode) {
+        navigate(`/admin/products/${slugify(form?.code ?? '')}`, { replace: true });
+      }
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -558,47 +572,15 @@ export function ProductWorkspacePage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
   });
 
-  const createSecretMutation = useMutation({
-    mutationFn: async () => {
-      if (!primaryApp || needsDedicatedProfile) {
-        throw new Error('请先保存产品详情，生成专属产品档案后再创建接入密钥');
-      }
-
-      return createAppSecret(primaryApp.code, secretExpiresAt ? new Date(secretExpiresAt).toISOString() : undefined);
-    },
-    onSuccess: (result) => {
-      toast.success('产品接入密钥已生成，请立即保存');
-      setSecretResult({ secret: result.secret, secretId: result.secretId, appCode: result.appCode });
-      setSecretExpiresAt('');
-      void qc.invalidateQueries({ queryKey: ['apps'] });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '生成失败')
-  });
-
-  const revokeSecretMutation = useMutation({
-    mutationFn: async (secretId: string) => {
-      if (!primaryApp || needsDedicatedProfile) {
-        throw new Error('请先保存产品详情，生成专属产品档案后再管理接入密钥');
-      }
-
-      return revokeAppSecret(primaryApp.code, secretId);
-    },
-    onSuccess: () => {
-      toast.success('产品接入密钥已撤销');
-      void qc.invalidateQueries({ queryKey: ['apps'] });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '撤销失败')
-  });
-
   if (isCatalogLoading || appsQuery.isLoading || !form) {
     return <div className="p-6 text-sm text-muted-foreground">加载产品详情中...</div>;
   }
 
-  if (!product || !bundle) {
+  if (!isCreateMode && (!product || !bundle)) {
     return (
       <div className="p-6">
         <div className="rounded-2xl border border-border bg-white p-6 text-sm text-muted-foreground">
-          未找到产品 {productCode}
+          未找到产品 {routeProductCode}
         </div>
       </div>
     );
@@ -773,12 +755,13 @@ export function ProductWorkspacePage() {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Product Detail</p>
-                <h2 className="truncate text-[30px] font-black tracking-tight text-slate-900">{form.name}</h2>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-600">{product.code}</span>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">{isCreateMode ? 'Create Product' : 'Product Detail'}</p>
+              <h2 className="truncate text-[30px] font-black tracking-tight text-slate-900">{form.name}</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-mono text-slate-600">{effectiveProductCode || '未设置 Code'}</span>
                   <StatusPill tone={form.status === 'active' ? 'ok' : 'warn'} label={form.status === 'active' ? '可售卖' : form.status} />
                   <StatusPill tone="neutral" label={form.type === 'chrome_extension' ? 'Chrome Extension' : form.type === 'web_app' ? 'Web App' : 'Service'} />
+                  <StatusPill tone="neutral" label={form.deliveryMode === 'one_click_deploy' ? '一键部署' : '免部署'} />
                 </div>
               </div>
             </div>
@@ -804,7 +787,7 @@ export function ProductWorkspacePage() {
 
       {needsDedicatedProfile ? (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          当前产品仍在复用共享内部档案 <span className="font-mono">{primaryApp?.code}</span>。先保存一次产品详情，系统会为当前产品生成专属档案 <span className="font-mono">{product.code}</span>，然后再继续同步交付声明或生成密钥。
+          当前产品仍在复用共享内部档案 <span className="font-mono">{primaryApp?.code}</span>。先保存一次产品详情，系统会为当前产品生成专属档案 <span className="font-mono">{effectiveProductCode}</span>，然后再继续同步交付声明或生成密钥。
         </div>
       ) : null}
 
@@ -813,7 +796,9 @@ export function ProductWorkspacePage() {
           <TabsList className="h-auto flex-wrap justify-start rounded-2xl bg-slate-100 p-1">
           <TabsTrigger value="info">1. 产品信息</TabsTrigger>
           <TabsTrigger value="capability">2. 产品功能 / 授权 / 价格</TabsTrigger>
-          <TabsTrigger value="delivery">3. 交付与接入</TabsTrigger>
+          {form.deliveryMode === 'one_click_deploy' ? (
+            <TabsTrigger value="delivery">3. 交付与接入</TabsTrigger>
+          ) : null}
           </TabsList>
         </div>
 
@@ -836,6 +821,15 @@ export function ProductWorkspacePage() {
                   )}
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>产品 Code</Label>
+                    <Input
+                      value={form.code}
+                      onChange={(event) => setForm((current) => current ? { ...current, code: slugify(event.target.value) } : current)}
+                      placeholder="fd_retail"
+                      disabled={!isCreateMode}
+                    />
+                  </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label>产品名称</Label>
                     <Input value={form.name} onChange={(event) => setForm((current) => current ? { ...current, name: event.target.value } : current)} />
@@ -879,6 +873,18 @@ export function ProductWorkspacePage() {
                         <SelectItem value="chrome_extension">Chrome Extension</SelectItem>
                         <SelectItem value="web_app">Web App</SelectItem>
                         <SelectItem value="service">Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>交付类型</Label>
+                    <Select value={form.deliveryMode} onValueChange={(value) => setForm((current) => current ? { ...current, deliveryMode: value as WorkspaceForm['deliveryMode'] } : current)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="direct_access">免部署</SelectItem>
+                        <SelectItem value="one_click_deploy">一键部署</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1047,7 +1053,7 @@ export function ProductWorkspacePage() {
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle>基础授权 Plan</CardTitle>
-                <CardDescription>Plan 由授权能力、授权种类和付费方式共同构成。这里直接内联编辑，不再使用弹框。</CardDescription>
+                <CardDescription>Plan 由授权能力、授权种类和价格共同构成。支付方式由结算页让用户自行选择，这里不再单独配置。</CardDescription>
               </div>
               <Button variant="outline" onClick={addBasePlan}>
                 <Plus className="mr-1 h-4 w-4" />
@@ -1078,7 +1084,7 @@ export function ProductWorkspacePage() {
                         <Input value={plan.code} onChange={(event) => updateBasePlan(plan.id, (current) => ({ ...current, code: slugify(event.target.value) }))} placeholder="retail_pro_yearly" />
                       </div>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label>授权种类</Label>
                         <Select value={plan.interval} onValueChange={(value) => updateBasePlan(plan.id, (current) => ({ ...current, interval: value as EditableBasePlan['interval'] }))}>
@@ -1087,21 +1093,6 @@ export function ProductWorkspacePage() {
                           </SelectTrigger>
                           <SelectContent>
                             {authorizationIntervalOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>付费方式</Label>
-                        <Select value={plan.billingProvider} onValueChange={(value) => updateBasePlan(plan.id, (current) => ({ ...current, billingProvider: value as EditableBasePlan['billingProvider'] }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {billingProviderOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                               </SelectItem>
@@ -1279,7 +1270,9 @@ export function ProductWorkspacePage() {
           </Card>
         </TabsContent>
 
+        {form.deliveryMode === 'one_click_deploy' ? (
         <TabsContent value="delivery" className="space-y-4">
+          {form.deliveryMode === 'one_click_deploy' ? (
           <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
@@ -1326,7 +1319,9 @@ export function ProductWorkspacePage() {
               </div>
             </CardContent>
           </Card>
+          ) : null}
 
+          {form.deliveryMode === 'one_click_deploy' ? (
           <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1475,116 +1470,11 @@ export function ProductWorkspacePage() {
               )}
             </CardContent>
           </Card>
-
-          <Card className="rounded-[28px] border-slate-200 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <KeyRound className="h-4 w-4" />
-                接入密钥
-              </CardTitle>
-              <CardDescription>适用于 Chrome 扩展或其他需要主动接入中台 API 的产品，支持直接在产品详情页生成和撤销。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!primaryApp || needsDedicatedProfile ? (
-                <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
-                  {needsDedicatedProfile
-                    ? `当前产品仍在复用共享内部档案 ${primaryApp?.code}。请先保存产品详情，生成专属档案后再创建密钥。`
-                    : '请先保存产品详情，生成专属产品档案后再创建接入密钥。'}
-                </div>
-              ) : (
-                <>
-                  <div className="rounded-2xl border border-border bg-muted/10 p-4">
-                    <div className="grid gap-4 md:grid-cols-[1fr,220px,auto]">
-                      <div className="space-y-2">
-                        <Label>当前产品档案</Label>
-                        <div className="flex h-10 items-center rounded-xl border border-border bg-white px-3 text-sm font-mono text-foreground">
-                          {primaryApp.code}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>过期时间（留空永不过期）</Label>
-                        <Input type="datetime-local" value={secretExpiresAt} onChange={(event) => setSecretExpiresAt(event.target.value)} />
-                      </div>
-                      <div className="flex items-end">
-                        <Button onClick={() => createSecretMutation.mutate()} disabled={createSecretMutation.isPending}>
-                          {createSecretMutation.isPending ? '生成中...' : '生成接入密钥'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {primaryApp.secrets?.length ? (
-                    <div className="space-y-3">
-                      {primaryApp.secrets.map((secret) => (
-                        <div key={secret.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-mono text-foreground">{secret.hint}</p>
-                            <p className="text-xs text-muted-foreground">{secret.expiresAt ? `过期：${formatTime(secret.expiresAt)}` : '永不过期'}</p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => {
-                              if (confirm(`确认撤销密钥 ${secret.hint}？`)) {
-                                revokeSecretMutation.mutate(secret.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">
-                      这个产品当前还没有接入密钥。
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={!!secretResult} onOpenChange={(open) => { if (!open) setSecretResult(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>产品密钥已生成</DialogTitle>
-            <DialogDescription>此密钥只显示一次，请立即复制保存。关闭后将无法再次查看。</DialogDescription>
-          </DialogHeader>
-          {secretResult ? (
-            <div className="space-y-3">
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
-                <p className="mb-1 font-black text-amber-800">profileCode: {secretResult.appCode}</p>
-                <p className="mb-1 font-black text-amber-800">secretId: {secretResult.secretId}</p>
-              </div>
-              <div className="relative">
-                <div className="break-all rounded-xl bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
-                  {secretVisible ? secretResult.secret : '\u2022'.repeat(Math.min(secretResult.secret.length, 40))}
-                </div>
-                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => setSecretVisible((value) => !value)}>
-                    {secretVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(secretResult.secret);
-                      toast.success('已复制到剪贴板');
-                    }}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
           ) : null}
-        </DialogContent>
-      </Dialog>
+
+        </TabsContent>
+        ) : null}
+      </Tabs>
     </div>
   );
 }

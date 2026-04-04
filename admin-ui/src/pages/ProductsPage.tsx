@@ -1,11 +1,8 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Boxes, PackagePlus } from 'lucide-react';
-import { toast } from 'sonner';
 
-import { listAppsAdmin, upsertCatalogBundle } from '@/api/apps';
-import { CatalogBundleDialog, type CatalogBundleSummary } from '@/components/apps/CatalogBundleDialog';
+import { listAppsAdmin } from '@/api/apps';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
@@ -14,11 +11,16 @@ import { useCatalogData } from '@/hooks/useCatalogData';
 import { buildManagedProducts } from '@/lib/product-model';
 import { getInitials } from '@/lib/utils';
 
-export function ProductsPage() {
-  const qc = useQueryClient();
-  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
-  const [selectedBundle, setSelectedBundle] = useState<CatalogBundleSummary | null>(null);
+function resolveDeliveryMode(row: { primaryApp: { meta?: Record<string, unknown> } | null; product: { type?: string } }) {
+  const raw = row.primaryApp?.meta?.productDeliveryMode;
+  if (raw === 'one_click_deploy' || raw === 'direct_access') {
+    return raw;
+  }
 
+  return row.product.type === 'chrome_extension' ? 'direct_access' : 'one_click_deploy';
+}
+
+export function ProductsPage() {
   const { products, features, allPlans, isLoading: isCatalogLoading } = useCatalogData();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsQuery.data?.items ?? [];
@@ -28,24 +30,6 @@ export function ProductsPage() {
     features,
     plans: allPlans,
     apps
-  });
-
-  const catalogMutation = useMutation({
-    mutationFn: ({
-      productCode,
-      values
-    }: {
-      productCode: string;
-      values: Parameters<typeof upsertCatalogBundle>[1];
-    }) => upsertCatalogBundle(productCode, values),
-    onSuccess: () => {
-      toast.success('产品能力与授权方案已保存');
-      void qc.invalidateQueries({ queryKey: ['catalog'] });
-      void qc.invalidateQueries({ queryKey: ['apps'] });
-      setCatalogDialogOpen(false);
-      setSelectedBundle(null);
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
 
   const columns: Column<(typeof managedProducts)[number]>[] = [
@@ -106,9 +90,8 @@ export function ProductsPage() {
       className: 'align-top py-5',
       cell: (row) => {
         const primaryApp = row.primaryApp;
-        const activeSecrets =
-          primaryApp?.secrets?.filter((secret) => !secret.expiresAt || new Date(secret.expiresAt) > new Date()).length ?? 0;
         const hasManifest = Boolean(primaryApp?.meta?.deliveryManifest);
+        const deliveryMode = resolveDeliveryMode(row);
 
         if (!primaryApp) {
           return (
@@ -123,10 +106,14 @@ export function ProductsPage() {
           <div className="space-y-1 text-xs">
             <p className="font-mono text-foreground">{primaryApp.code}</p>
             <div className="flex flex-wrap gap-1">
-              <StatusPill tone={hasManifest ? 'ok' : 'warn'} label={hasManifest ? '已接入交付声明' : '待同步交付声明'} />
+              {deliveryMode === 'one_click_deploy' ? (
+                <StatusPill tone={hasManifest ? 'ok' : 'warn'} label={hasManifest ? '已接入交付声明' : '待同步交付声明'} />
+              ) : (
+                <StatusPill tone="neutral" label="免部署" />
+              )}
             </div>
             <p className="text-muted-foreground">
-              {primaryApp.checkoutOffers?.length ?? 0} 个销售方案 · {activeSecrets} 个有效密钥
+              {primaryApp.checkoutOffers?.length ?? 0} 个销售方案
             </p>
             {row.linkedApps.length > 1 ? (
               <p className="text-amber-600">已发现 {row.linkedApps.length} 个内部档案，当前优先使用最新匹配项。</p>
@@ -157,15 +144,11 @@ export function ProductsPage() {
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">总产品数</p>
                 <p className="mt-1 text-2xl font-black text-slate-900">{managedProducts.length}</p>
               </div>
-              <Button
-                className="h-11 rounded-2xl px-5 text-sm font-black"
-                onClick={() => {
-                  setSelectedBundle(null);
-                  setCatalogDialogOpen(true);
-                }}
-              >
+              <Button asChild className="h-11 rounded-2xl px-5 text-sm font-black">
+                <Link to="/admin/products/new">
                 <PackagePlus className="mr-1 h-4 w-4" />
                 新建产品
+                </Link>
               </Button>
             </div>
           </div>
@@ -201,30 +184,6 @@ export function ProductsPage() {
           </div>
         ) : null}
       </div>
-
-      <CatalogBundleDialog
-        open={catalogDialogOpen}
-        onOpenChange={(open) => {
-          setCatalogDialogOpen(open);
-          if (!open) {
-            setSelectedBundle(null);
-          }
-        }}
-        bundle={selectedBundle}
-        pending={catalogMutation.isPending}
-        onSubmit={(payload) =>
-          catalogMutation.mutate({
-            productCode: payload.productCode,
-            values: {
-              name: payload.name,
-              type: payload.type,
-              status: payload.status,
-              features: payload.features,
-              plans: payload.plans
-            }
-          })
-        }
-      />
     </div>
   );
 }

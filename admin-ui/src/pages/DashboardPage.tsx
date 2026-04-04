@@ -25,7 +25,7 @@ export function DashboardPage() {
 
   const paidOrders = orders.filter((o) => o.status === 'paid');
   const pendingOrders = orders.filter((o) => ['pending', 'processing'].includes(o.status));
-  const activeSecrets = apps.flatMap((a) => a.secrets ?? []).filter((s) => !s.expiresAt || new Date(s.expiresAt) > new Date());
+  const deployableProducts = apps.filter((app) => app.meta?.productDeliveryMode === 'one_click_deploy').length;
 
   const wechat = paymentData?.items.find((i) => i.code === 'wechat_pay');
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
@@ -44,7 +44,7 @@ export function DashboardPage() {
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard label="产品档案" value={apps.length} sublabel="内部销售档案数" loading={appsResult.isLoading} />
-          <MetricCard label="有效密钥" value={activeSecrets.length} sublabel="产品接入密钥" loading={appsResult.isLoading} />
+          <MetricCard label="可部署产品" value={deployableProducts} sublabel="已接入一键部署" loading={appsResult.isLoading} />
           <MetricCard label="已支付订单" value={paidOrders.length} sublabel={`最近 ${orders.length} 条`} loading={ordersResult.isLoading} />
           <MetricCard label="待处理订单" value={pendingOrders.length} sublabel="pending / processing" loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>

@@ -21,7 +21,6 @@ import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
 import { ProductsPage } from '@/pages/ProductsPage';
 import { ProductWorkspacePage } from '@/pages/ProductWorkspacePage';
-import { SecretsPage } from '@/pages/SecretsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
@@ -76,11 +75,12 @@ function AppRoutes() {
         <Route element={<Shell />}>
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/products" element={<ProductsPage />} />
+          <Route path="/admin/products/new" element={<ProductWorkspacePage />} />
           <Route path="/admin/products/:productCode" element={<ProductWorkspacePage />} />
           <Route path="/admin/catalog" element={<Navigate to="/admin/products" replace />} />
           <Route path="/admin/apps" element={<Navigate to="/admin/products" replace />} />
           <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
-          <Route path="/admin/secrets" element={<SecretsPage />} />
+          <Route path="/admin/secrets" element={<Navigate to="/admin/products" replace />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/licenses" element={<LicensesPage />} />

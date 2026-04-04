@@ -116,33 +116,33 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     href: '/admin/products',
     contextCards: [
       { label: '用途', value: '兼容层', note: '旧 app 记录已退居内部实现，不再作为主操作对象。' },
-      { label: '密钥', value: '产品接入密钥', note: '接入密钥已通过产品工作台和产品密钥页统一管理。' }
+      { label: '模式', value: '统一产品流', note: '产品信息、授权方案和交付声明统一在产品中心维护。' }
     ],
     heroActions: [
       { label: '产品中心', href: '/admin/products', tone: 'primary' },
-      { label: '产品密钥', href: '/admin/secrets', tone: 'secondary' }
+      { label: '支付配置', href: '/admin/payments', tone: 'secondary' }
     ],
     pageDataScopes: ['apps', 'products'],
     commandAliases: ['apps', 'applications', '内部档案', '兼容层']
   },
   secrets: {
     groupLabel: '商品管理',
-    navTitle: '产品密钥',
-    navNote: '生成与管理产品接入密钥',
+    navTitle: '已停用',
+    navNote: '接入密钥模式已弃用',
     icon: 'SK',
-    title: '产品接入密钥',
-    lead: '为需要主动接入中台 API 的产品生成密钥，集中管理接入凭证生命周期。',
-    href: '/admin/secrets',
+    title: '已停用',
+    lead: '当前产品统一采用用户 JWT + entitlement 模型控制授权，接入密钥入口已停用。',
+    href: '/admin/products',
     contextCards: [
-      { label: '用途', value: '身份认证', note: '产品通过密钥访问中台 API。' },
-      { label: '安全', value: '一次性显示', note: '密钥仅在创建时显示一次，请妥善保存。' }
+      { label: '状态', value: 'Deprecated', note: '保留此 section 仅用于兼容历史命令与跳转。' },
+      { label: '替代', value: 'JWT + entitlement', note: '授权控制统一通过用户登录态和 entitlement 处理。' }
     ],
     heroActions: [
-      { label: '产品密钥', href: '/admin/secrets', tone: 'primary' },
-      { label: '产品中心', href: '/admin/products', tone: 'secondary' }
+      { label: '产品中心', href: '/admin/products', tone: 'primary' },
+      { label: '返回总览', href: '/admin', tone: 'secondary' }
     ],
     pageDataScopes: ['apps'],
-    commandAliases: ['secrets', 'keys', 'api keys', '密钥', '产品密钥', '接入密钥']
+    commandAliases: ['deprecated', 'legacy', '已停用']
   },
   orders: {
     groupLabel: '交易管理',
