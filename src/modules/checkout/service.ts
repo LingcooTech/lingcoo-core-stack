@@ -5,12 +5,11 @@ import { createCheckoutSessionCode, normalizePreparedPaymentToCheckoutAction } f
 import { type AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { AppService } from '../app/service';
+import { AppRepository } from '../app/repository';
 import { BillingRepository } from '../billing/repository';
 import { BillingService } from '../billing/service';
 import { EventService } from '../event/service';
 import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
-import { AppRepository } from '../app/repository';
 import { CheckoutRepository } from './repository';
 
 type SessionRecord = NonNullable<Awaited<ReturnType<CheckoutRepository['findSessionByCode']>>>;
@@ -67,14 +66,21 @@ export class CheckoutService {
       throw httpError(404, 'Checkout session not found');
     }
 
-    const [order, app, product, plan] = await Promise.all([
-      new BillingRepository(this.db).findOrderById(session.orderId),
-      new AppRepository(this.db).findAppById(session.appId),
-      new LicenseRepository(this.db).getProductById(session.productId),
-      new LicenseRepository(this.db).getPlanById(session.planId)
+    const order = await new BillingRepository(this.db).findOrderById(session.orderId);
+    if (!order) {
+      throw httpError(500, 'Checkout session is missing related order');
+    }
+
+    const [app, product, price, authorizationTemplate] = await Promise.all([
+      new AppRepository(this.db).findAppById(order.appId),
+      new LicenseRepository(this.db).getProductById(order.productId),
+      new LicenseRepository(this.db).getPriceById(order.priceId),
+      new LicenseRepository(this.db).getPriceById(order.priceId).then((resolvedPrice) =>
+        resolvedPrice ? new LicenseRepository(this.db).getAuthorizationTemplateById(resolvedPrice.authorizationTemplateId) : null
+      )
     ]);
 
-    if (!order || !app || !product || !plan) {
+    if (!app || !product || !price || !authorizationTemplate) {
       throw httpError(500, 'Checkout session is missing related resources');
     }
 
@@ -83,7 +89,8 @@ export class CheckoutService {
       order,
       app,
       product,
-      plan
+      price,
+      authorizationTemplate
     };
   }
 
@@ -104,11 +111,22 @@ export class CheckoutService {
       code: string;
       name: string;
     };
-    plan: {
+    price: {
       code: string;
       name: string;
-      interval: 'month' | 'year' | 'one_time';
-      priceAmount: number;
+      billingType: 'one_time' | 'recurring';
+      billingInterval: 'month' | 'year' | null;
+      amount: number;
+      currency: string;
+    };
+    authorizationTemplate: {
+      code: string;
+      name: string;
+    };
+    offer: {
+      code: string;
+      title: string;
+      amount: number;
       currency: string;
     };
     order: {
@@ -132,12 +150,23 @@ export class CheckoutService {
         code: input.product.code,
         name: input.product.name
       },
-      plan: {
-        code: input.plan.code,
-        name: input.plan.name,
-        interval: input.plan.interval,
-        priceAmount: input.plan.priceAmount,
-        currency: input.plan.currency
+      price: {
+        code: input.price.code,
+        name: input.price.name,
+        billingType: input.price.billingType,
+        billingInterval: input.price.billingInterval,
+        amount: input.offer.amount,
+        currency: input.offer.currency
+      },
+      authorizationTemplate: {
+        code: input.authorizationTemplate.code,
+        name: input.authorizationTemplate.name
+      },
+      offer: {
+        code: input.offer.code,
+        title: input.offer.title,
+        amount: input.offer.amount,
+        currency: input.offer.currency
       },
       order: {
         id: input.order.id,
@@ -158,7 +187,7 @@ export class CheckoutService {
   async createSession(input: {
     userId: string;
     appCode: string;
-    planCode: string;
+    priceCode?: string;
     offerCode?: string;
     providerPreference?: 'wechat_pay' | 'alipay';
     successUrl?: string;
@@ -166,28 +195,20 @@ export class CheckoutService {
     clientIp?: string;
   }) {
     const appService = new AppService(this.db);
-    const licenseService = new LicenseService(this.db);
     const selection = await appService.resolveCheckoutOffer(input.appCode, {
-      planCode: input.planCode,
+      priceCode: input.priceCode,
       offerCode: input.offerCode
     });
-    const { app, plan, product, offer } = selection;
-
-    if (plan.interval === 'one_time') {
-      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, product.id);
-      if (ownership) {
-        throw httpError(409, 'You already own this one-time product');
-      }
-    }
+    const { app, price, product, offer, authorizationTemplate } = selection;
 
     const provider = await this.resolveProvider(input.providerPreference);
     const reusableSession =
-      input.offerCode || offer.code !== plan.code || offer.priceAmount !== plan.priceAmount || offer.currency !== plan.currency
+      input.offerCode || offer.amount !== price.amount || offer.currency !== price.currency
         ? null
         : await new CheckoutRepository(this.db).findLatestReusablePendingSession({
             userId: input.userId,
             appId: app.id,
-            planId: plan.id,
+            priceId: price.id,
             provider
           });
 
@@ -196,6 +217,7 @@ export class CheckoutService {
       if (existingOrder?.status === 'pending') {
         await new EventService(this.db).capture({
           userId: input.userId,
+          appId: app.id,
           productId: product.id,
           eventName: 'checkout.session_reused',
           properties: {
@@ -210,7 +232,9 @@ export class CheckoutService {
           session: reusableSession,
           app,
           product,
-          plan,
+          price,
+          authorizationTemplate,
+          offer,
           order: existingOrder
         });
       }
@@ -219,7 +243,7 @@ export class CheckoutService {
     const billingResult = await new BillingService(this.db, this.env).createOrder({
       userId: input.userId,
       appCode: input.appCode,
-      planCode: input.planCode,
+      priceCode: input.priceCode,
       offerCode: input.offerCode,
       provider,
       clientIp: input.clientIp
@@ -233,9 +257,6 @@ export class CheckoutService {
       const created = await repository.createSession({
         sessionCode,
         userId: input.userId,
-        appId: app.id,
-        productId: product.id,
-        planId: plan.id,
         orderId: billingResult.order.id,
         provider,
         actionType: action.type,
@@ -246,7 +267,7 @@ export class CheckoutService {
         meta: {
           offerCode: billingResult.offer.code,
           offerTitle: billingResult.offer.title,
-          offerPriceAmount: billingResult.offer.priceAmount,
+          offerAmount: billingResult.offer.amount,
           offerCurrency: billingResult.offer.currency,
           paymentMode: billingResult.payment.mode,
           integrationStatus: billingResult.payment.integrationStatus
@@ -261,7 +282,7 @@ export class CheckoutService {
         status: 'prepared',
         requestPayload: {
           appCode: app.code,
-          planCode: plan.code,
+          priceCode: price.code,
           successUrl: input.successUrl ?? null,
           cancelUrl: input.cancelUrl ?? null
         },
@@ -274,6 +295,7 @@ export class CheckoutService {
 
       await new EventService(tx as DbClient).capture({
         userId: input.userId,
+        appId: app.id,
         productId: product.id,
         eventName: 'checkout.session_created',
         properties: {
@@ -292,7 +314,9 @@ export class CheckoutService {
       session,
       app,
       product,
-      plan,
+      price,
+      authorizationTemplate,
+      offer: billingResult.offer,
       order: billingResult.order
     });
   }
@@ -304,6 +328,10 @@ export class CheckoutService {
     }
 
     const status = this.resolveEffectiveStatus(detail.session, detail.order.status);
+    const meta =
+      detail.session.meta && typeof detail.session.meta === 'object' && !Array.isArray(detail.session.meta)
+        ? (detail.session.meta as Record<string, unknown>)
+        : {};
 
     return {
       sessionId: detail.session.id,
@@ -318,12 +346,21 @@ export class CheckoutService {
         code: detail.product.code,
         name: detail.product.name
       },
-      plan: {
-        code: detail.plan.code,
-        name: detail.plan.name,
-        interval: detail.plan.interval,
-        priceAmount: detail.plan.priceAmount,
-        currency: detail.plan.currency
+      price: {
+        code: detail.price.code,
+        name: detail.price.name,
+        billingType: detail.price.billingType,
+        billingInterval: detail.price.billingInterval,
+        amount: detail.order.amount,
+        currency: detail.order.currency
+      },
+      authorizationTemplate: {
+        code: detail.authorizationTemplate.code,
+        name: detail.authorizationTemplate.name
+      },
+      offer: {
+        code: String(meta.offerCode ?? ''),
+        title: String(meta.offerTitle ?? detail.price.name)
       },
       order: {
         orderNo: detail.order.orderNo,
@@ -350,6 +387,10 @@ export class CheckoutService {
     const rawAction =
       detail.session.actionPayload && typeof detail.session.actionPayload === 'object'
         ? (detail.session.actionPayload as Record<string, unknown>)
+        : {};
+    const meta =
+      detail.session.meta && typeof detail.session.meta === 'object' && !Array.isArray(detail.session.meta)
+        ? (detail.session.meta as Record<string, unknown>)
         : {};
 
     let paymentAction: Record<string, unknown> | null = null;
@@ -389,10 +430,21 @@ export class CheckoutService {
         code: detail.product.code,
         name: detail.product.name
       },
-      plan: {
-        code: detail.plan.code,
-        name: detail.plan.name,
-        interval: detail.plan.interval
+      price: {
+        code: detail.price.code,
+        name: detail.price.name,
+        billingType: detail.price.billingType,
+        billingInterval: detail.price.billingInterval,
+        amount: detail.order.amount,
+        currency: detail.order.currency
+      },
+      authorizationTemplate: {
+        code: detail.authorizationTemplate.code,
+        name: detail.authorizationTemplate.name
+      },
+      offer: {
+        code: String(meta.offerCode ?? ''),
+        title: String(meta.offerTitle ?? detail.price.name)
       },
       order: {
         orderNo: detail.order.orderNo,

@@ -56,26 +56,35 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get('/v1/apps/:appCode/entitlements/me', {
-    preHandler: [app.authenticateApp, app.authenticate],
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 120,
-        timeWindow: '1 minute',
-        keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
-          buildAppCodeUserRateLimitKey(request, 'app-entitlements-me')
+  app.get(
+    '/v1/apps/:appCode/authorizations/me',
+    {
+      preHandler: [app.authenticateApp, app.authenticate],
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 120,
+          timeWindow: '1 minute',
+          keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
+            buildAppCodeUserRateLimitKey(request, 'app-authorizations-me')
+        }
       }
+    },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      return new AppService(app.db).listUserAuthorizationsForApp(params.appCode, request.user.sub);
     }
-  }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
-  });
+  );
 
   app.get('/v1/admin/apps', { preHandler: app.requireAdmin }, async () => {
     return {
       items: await new AppService(app.db).listManagedApps()
     };
+  });
+
+  app.get('/v1/admin/apps/:appCode', { preHandler: app.requireAdmin }, async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    return new AppService(app.db).getManagedApp(params.appCode);
   });
 
   app.put('/v1/admin/apps/:appCode', { preHandler: app.requireAdmin }, async (request) => {

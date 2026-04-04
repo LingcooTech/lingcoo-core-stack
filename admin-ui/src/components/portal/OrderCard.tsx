@@ -24,7 +24,7 @@ export function OrderCard({
             <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>{order.status}</Badge>
           </div>
           <CardDescription>
-            订单号 {order.orderNo} · {order.plan?.name ?? '未命名套餐'} · {order.provider ?? '未指定渠道'}
+            订单号 {order.orderNo} · {order.price?.name ?? '未命名价格方案'} · {order.provider ?? '未指定渠道'}
           </CardDescription>
         </div>
         <div className="text-left sm:text-right">

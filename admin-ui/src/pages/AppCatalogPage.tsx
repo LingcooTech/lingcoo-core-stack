@@ -42,17 +42,17 @@ export function AppCatalogPage() {
     return offers.find((offer) => offer.isDefault) ?? offers[0];
   }, [offers, selectedOfferCode]);
 
-  const planFeatureMap = useMemo(() => {
-    const featureMap = new Map((data?.features ?? []).map((feature) => [feature.id, feature]));
+  const priceAuthorizationMap = useMemo(() => {
+    const authorizationTemplateMap = new Map((data?.authorizationTemplates ?? []).map((item) => [item.id, item]));
     const grouped = new Map<string, string[]>();
 
-    for (const mapping of data?.planFeatures ?? []) {
-      const feature = featureMap.get(mapping.featureId);
-      if (!feature) continue;
-      if (!grouped.has(mapping.planId)) {
-        grouped.set(mapping.planId, []);
+    for (const mapping of data?.priceAuthorizations ?? []) {
+      const authorizationTemplate = authorizationTemplateMap.get(mapping.authorizationTemplateId);
+      if (!authorizationTemplate) continue;
+      if (!grouped.has(mapping.priceId)) {
+        grouped.set(mapping.priceId, []);
       }
-      grouped.get(mapping.planId)?.push(feature.name);
+      grouped.get(mapping.priceId)?.push(authorizationTemplate.name);
     }
 
     return grouped;
@@ -61,12 +61,12 @@ export function AppCatalogPage() {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOffer) {
-        throw new Error('请先选择一个套餐');
+        throw new Error('请先选择一个价格方案');
       }
 
       return createCheckoutSession({
         appCode: data?.app.code ?? '',
-        planCode: selectedOffer.planCode,
+        priceCode: selectedOffer.priceCode,
         offerCode: selectedOffer.code,
         providerPreference,
         successUrl: `${window.location.origin}/orders`,
@@ -244,11 +244,11 @@ export function AppCatalogPage() {
 
           {/* Pricing Section */}
           <section id="pricing" className="space-y-6">
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">套餐与价格</h2>
+            <h2 className="text-2xl font-black tracking-tight text-slate-950">价格方案</h2>
             {offers.length === 0 ? (
               <EmptyState
                 icon={CreditCard}
-                title="暂无可购买的套餐"
+                title="暂无可购买的价格方案"
                 description="该应用目前没有上架的价格方案，请稍后再来查看。"
               />
             ) : (
@@ -258,7 +258,7 @@ export function AppCatalogPage() {
                     key={offer.code}
                     offer={offer}
                     selected={selectedOffer?.code === offer.code}
-                    features={planFeatureMap.get(offer.planId) ?? []}
+                    authorizationTemplates={priceAuthorizationMap.get(offer.priceId) ?? []}
                     onSelect={() => setSelectedOfferCode(offer.code)}
                   />
                 ))}
@@ -358,7 +358,7 @@ export function AppCatalogPage() {
 
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">当前选择</p>
-                <p className="mt-2 text-lg font-black">{selectedOffer?.title ?? '请选择套餐'}</p>
+                <p className="mt-2 text-lg font-black">{selectedOffer?.title ?? '请选择价格方案'}</p>
                 <p className="text-sm text-muted-foreground">
                   {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '暂无价格'}
                 </p>
@@ -366,7 +366,7 @@ export function AppCatalogPage() {
 
               {offers.length > 0 && (
                 <a href="#pricing" className="block text-center text-xs text-muted-foreground hover:text-primary">
-                  查看全部套餐与价格
+                  查看全部价格方案
                 </a>
               )}
 

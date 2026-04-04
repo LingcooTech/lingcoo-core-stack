@@ -22,12 +22,12 @@ function formatInterval(interval: string): string {
 export function OfferCard({
   offer,
   selected,
-  features,
+  authorizationTemplates,
   onSelect
 }: {
   offer: Offer;
   selected: boolean;
-  features: string[];
+  authorizationTemplates: string[];
   onSelect: () => void;
 }) {
   return (
@@ -52,12 +52,12 @@ export function OfferCard({
           <p className="text-xs tracking-wide text-muted-foreground">{formatInterval(offer.interval)}</p>
         </div>
       </div>
-      {features.length ? (
+      {authorizationTemplates.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          {features.map((feature) => (
-            <span key={feature} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+          {authorizationTemplates.map((authorizationTemplate) => (
+            <span key={authorizationTemplate} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
               <Check className="h-3.5 w-3.5 text-emerald-600" />
-              {feature}
+              {authorizationTemplate}
             </span>
           ))}
         </div>

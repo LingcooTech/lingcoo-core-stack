@@ -15,11 +15,18 @@ import {
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
-export const productTypeEnum = pgEnum('product_type', ['chrome_extension', 'web_app', 'service']);
 export const appTypeEnum = pgEnum('app_type', ['chrome_extension', 'web_app', 'service']);
-export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
-export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
 export const recordStatusEnum = pgEnum('record_status', ['active', 'inactive', 'cancelled', 'expired']);
+export const deliveryModeEnum = pgEnum('delivery_mode', ['direct_access', 'one_click_deploy']);
+export const billingTypeEnum = pgEnum('billing_type', ['one_time', 'recurring']);
+export const billingIntervalEnum = pgEnum('billing_interval', ['month', 'year']);
+export const grantStrategyEnum = pgEnum('grant_strategy', ['lifetime', 'fixed_duration', 'subscription_period']);
+export const authorizationGrantSourceEnum = pgEnum('authorization_grant_source_type', [
+  'subscription',
+  'order',
+  'manual',
+  'trial'
+]);
 export const paymentProviderEnum = pgEnum('payment_provider', ['wechat_pay', 'alipay']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'failed', 'cancelled', 'refunded']);
 export const checkoutSessionStatusEnum = pgEnum('checkout_session_status', [
@@ -58,28 +65,6 @@ export const systemSettings = pgTable('system_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
-export const apps = pgTable('apps', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  code: varchar('code', { length: 64 }).notNull().unique(),
-  name: varchar('name', { length: 120 }).notNull(),
-  tagline: varchar('tagline', { length: 200 }),
-  description: text('description'),
-  content: text('content'),
-  iconUrl: varchar('icon_url', { length: 500 }),
-  coverUrl: varchar('cover_url', { length: 500 }),
-  screenshots: jsonb('screenshots').notNull().default(sql`'[]'::jsonb`),
-  highlights: jsonb('highlights').notNull().default(sql`'[]'::jsonb`),
-  faq: jsonb('faq').notNull().default(sql`'[]'::jsonb`),
-  links: jsonb('links').notNull().default(sql`'[]'::jsonb`),
-  category: varchar('category', { length: 64 }),
-  sortOrder: integer('sort_order').notNull().default(0),
-  type: appTypeEnum('type').notNull().default('chrome_extension'),
-  status: recordStatusEnum('status').notNull().default('active'),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
-});
-
 export const authIdentities = pgTable('auth_identities', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -111,6 +96,18 @@ export const emailVerificationCodes = pgTable('email_verification_codes', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const apps = pgTable('apps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  type: appTypeEnum('type').notNull().default('chrome_extension'),
+  status: recordStatusEnum('status').notNull().default('active'),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const appSecrets = pgTable('app_secrets', {
   id: uuid('id').defaultRandom().primaryKey(),
   appId: uuid('app_id')
@@ -129,55 +126,23 @@ export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
   code: varchar('code', { length: 64 }).notNull().unique(),
   name: varchar('name', { length: 120 }).notNull(),
-  type: productTypeEnum('type').notNull().default('chrome_extension'),
+  tagline: varchar('tagline', { length: 200 }),
+  description: text('description'),
+  content: text('content'),
+  iconUrl: varchar('icon_url', { length: 500 }),
+  coverUrl: varchar('cover_url', { length: 500 }),
+  screenshots: jsonb('screenshots').notNull().default(sql`'[]'::jsonb`),
+  highlights: jsonb('highlights').notNull().default(sql`'[]'::jsonb`),
+  faq: jsonb('faq').notNull().default(sql`'[]'::jsonb`),
+  links: jsonb('links').notNull().default(sql`'[]'::jsonb`),
+  category: varchar('category', { length: 64 }),
+  deliveryMode: deliveryModeEnum('delivery_mode').notNull().default('direct_access'),
+  sortOrder: integer('sort_order').notNull().default(0),
   status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
-});
-
-export const plans = pgTable('plans', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  code: varchar('code', { length: 64 }).notNull().unique(),
-  name: varchar('name', { length: 120 }).notNull(),
-  billingProvider: varchar('billing_provider', { length: 32 }).notNull(),
-  billingPriceId: varchar('billing_price_id', { length: 128 }),
-  priceAmount: integer('price_amount').notNull().default(0),
-  currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
-  interval: intervalEnum('interval').notNull(),
   meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-  status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
-
-export const features = pgTable('features', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  code: varchar('code', { length: 64 }).notNull().unique(),
-  name: varchar('name', { length: 120 }).notNull(),
-  kind: varchar('kind', { length: 32 }).notNull().default('boolean'),
-  status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
-});
-
-export const planFeatures = pgTable(
-  'plan_features',
-  {
-    planId: uuid('plan_id')
-      .notNull()
-      .references(() => plans.id, { onDelete: 'cascade' }),
-    featureId: uuid('feature_id')
-      .notNull()
-      .references(() => features.id, { onDelete: 'cascade' }),
-    value: jsonb('value').notNull().default(sql`'{}'::jsonb`)
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.planId, table.featureId] })
-  })
-);
 
 export const appProducts = pgTable(
   'app_products',
@@ -195,6 +160,63 @@ export const appProducts = pgTable(
   })
 );
 
+export const authorizationTemplates = pgTable('authorization_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  description: text('description'),
+  status: recordStatusEnum('status').notNull().default('active'),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const prices = pgTable('prices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  authorizationTemplateId: uuid('authorization_template_id')
+    .notNull()
+    .references(() => authorizationTemplates.id, { onDelete: 'restrict' }),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  billingProvider: varchar('billing_provider', { length: 32 }).notNull().default('self_hosted'),
+  billingPriceId: varchar('billing_price_id', { length: 128 }),
+  billingType: billingTypeEnum('billing_type').notNull(),
+  billingInterval: billingIntervalEnum('billing_interval'),
+  amount: integer('amount').notNull().default(0),
+  currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
+  grantStrategy: grantStrategyEnum('grant_strategy').notNull().default('subscription_period'),
+  grantDurationDays: integer('grant_duration_days'),
+  status: recordStatusEnum('status').notNull().default('active'),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const checkoutOffers = pgTable('checkout_offers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  priceId: uuid('price_id')
+    .notNull()
+    .references(() => prices.id, { onDelete: 'cascade' }),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  title: varchar('title', { length: 120 }).notNull(),
+  description: varchar('description', { length: 255 }),
+  badge: varchar('badge', { length: 64 }),
+  status: recordStatusEnum('status').notNull().default('active'),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const customers = pgTable('customers', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -210,16 +232,17 @@ export const subscriptions = pgTable('subscriptions', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  planId: uuid('plan_id')
+  priceId: uuid('price_id')
     .notNull()
-    .references(() => plans.id, { onDelete: 'restrict' }),
+    .references(() => prices.id, { onDelete: 'restrict' }),
   provider: varchar('provider', { length: 32 }).notNull(),
   providerSubscriptionId: varchar('provider_subscription_id', { length: 128 }).notNull(),
   status: recordStatusEnum('status').notNull().default('active'),
   currentPeriodStart: timestamp('current_period_start', { withTimezone: true }),
   currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
   cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const orders = pgTable('orders', {
@@ -227,12 +250,16 @@ export const orders = pgTable('orders', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'restrict' }),
   productId: uuid('product_id')
     .notNull()
     .references(() => products.id, { onDelete: 'restrict' }),
-  planId: uuid('plan_id')
+  priceId: uuid('price_id')
     .notNull()
-    .references(() => plans.id, { onDelete: 'restrict' }),
+    .references(() => prices.id, { onDelete: 'restrict' }),
+  offerId: uuid('offer_id').references(() => checkoutOffers.id, { onDelete: 'set null' }),
   orderNo: varchar('order_no', { length: 64 }).notNull().unique(),
   provider: paymentProviderEnum('provider').notNull(),
   providerOrderId: varchar('provider_order_id', { length: 128 }),
@@ -252,15 +279,6 @@ export const checkoutSessions = pgTable('checkout_sessions', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  appId: uuid('app_id')
-    .notNull()
-    .references(() => apps.id, { onDelete: 'restrict' }),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
-  planId: uuid('plan_id')
-    .notNull()
-    .references(() => plans.id, { onDelete: 'restrict' }),
   orderId: uuid('order_id')
     .notNull()
     .references(() => orders.id, { onDelete: 'cascade' })
@@ -306,7 +324,7 @@ export const paymentAttempts = pgTable(
   })
 );
 
-export const entitlements = pgTable('entitlements', {
+export const authorizationGrants = pgTable('authorization_grants', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
     .notNull()
@@ -314,16 +332,18 @@ export const entitlements = pgTable('entitlements', {
   productId: uuid('product_id')
     .notNull()
     .references(() => products.id, { onDelete: 'cascade' }),
-  featureId: uuid('feature_id')
+  authorizationTemplateId: uuid('authorization_template_id')
     .notNull()
-    .references(() => features.id, { onDelete: 'cascade' }),
-  sourceType: sourceTypeEnum('source_type').notNull(),
+    .references(() => authorizationTemplates.id, { onDelete: 'cascade' }),
+  priceId: uuid('price_id').references(() => prices.id, { onDelete: 'set null' }),
+  sourceType: authorizationGrantSourceEnum('source_type').notNull(),
   sourceId: uuid('source_id'),
   status: recordStatusEnum('status').notNull().default('active'),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
 export const installs = pgTable('installs', {
@@ -333,10 +353,11 @@ export const installs = pgTable('installs', {
   productId: uuid('product_id')
     .notNull()
     .references(() => products.id, { onDelete: 'cascade' }),
-  extensionInstallId: varchar('extension_install_id', { length: 128 }).notNull().unique(),
+  instanceCode: varchar('instance_code', { length: 128 }).notNull().unique(),
   deviceFingerprint: varchar('device_fingerprint', { length: 255 }),
-  chromeProfileHint: varchar('chrome_profile_hint', { length: 255 }),
-  appVersion: varchar('app_version', { length: 32 }),
+  profileHint: varchar('profile_hint', { length: 255 }),
+  clientVersion: varchar('client_version', { length: 32 }),
+  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
   status: recordStatusEnum('status').notNull().default('active'),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -394,8 +415,10 @@ export const deploymentTokens = pgTable(
 export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
   productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
   installId: uuid('install_id').references(() => installs.id, { onDelete: 'set null' }),
+  deploymentId: uuid('deployment_id').references(() => deployments.id, { onDelete: 'set null' }),
   eventName: varchar('event_name', { length: 120 }).notNull(),
   eventTime: timestamp('event_time', { withTimezone: true }).notNull().defaultNow(),
   properties: jsonb('properties').notNull().default(sql`'{}'::jsonb`)

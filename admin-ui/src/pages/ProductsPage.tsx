@@ -21,14 +21,14 @@ function resolveDeliveryMode(row: { primaryApp: { meta?: Record<string, unknown>
 }
 
 export function ProductsPage() {
-  const { products, features, allPlans, isLoading: isCatalogLoading } = useCatalogData();
+  const { products, authorizationTemplates, allPrices, isLoading: isCatalogLoading } = useCatalogData();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsQuery.data?.items ?? [];
 
   const managedProducts = buildManagedProducts({
     products,
-    features,
-    plans: allPlans,
+    authorizationTemplates,
+    prices: allPrices,
     apps
   });
 
@@ -39,9 +39,9 @@ export function ProductsPage() {
       className: 'align-top py-5',
       cell: (row) => (
         <div className="flex items-center gap-3">
-          {row.primaryApp?.iconUrl ? (
+          {row.product.iconUrl ? (
             <img
-              src={row.primaryApp.iconUrl}
+              src={row.product.iconUrl}
               alt={row.product.name}
               className="h-11 w-11 rounded-2xl border border-border object-cover"
             />
@@ -74,19 +74,19 @@ export function ProductsPage() {
       )
     },
     {
-      key: 'capability',
-      header: '能力与方案',
+      key: 'pricing',
+      header: '价格 / 授权',
       className: 'align-top py-5 w-[180px]',
       cell: (row) => (
         <div className="space-y-1 text-xs text-muted-foreground">
-          <p>{row.features.length} 个能力项</p>
-          <p>{row.plans.length} 个授权方案</p>
+          <p>{row.prices.length} 个价格方案</p>
+          <p>{row.authorizationTemplates.length} 个授权定义</p>
         </div>
       )
     },
     {
-      key: 'profile',
-      header: '销售与交付档案',
+      key: 'applications',
+      header: '售卖应用 / 交付承接',
       className: 'align-top py-5',
       cell: (row) => {
         const primaryApp = row.primaryApp;
@@ -96,8 +96,8 @@ export function ProductsPage() {
         if (!primaryApp) {
           return (
             <div className="space-y-1 text-xs">
-              <StatusPill tone="warn" label="待创建产品档案" />
-              <p className="text-muted-foreground">首次进入产品工作台后即可创建。</p>
+              <StatusPill tone="warn" label="待绑定应用" />
+              <p className="text-muted-foreground">交付模式和接入身份尚未承接。</p>
             </div>
           );
         }
@@ -113,10 +113,10 @@ export function ProductsPage() {
               )}
             </div>
             <p className="text-muted-foreground">
-              {primaryApp.checkoutOffers?.length ?? 0} 个销售方案
+              {row.linkedApps.length} 个应用可售卖
             </p>
             {row.linkedApps.length > 1 ? (
-              <p className="text-amber-600">已发现 {row.linkedApps.length} 个内部档案，当前优先使用最新匹配项。</p>
+              <p className="text-amber-600">已绑定多个应用，当前展示承接使用最新匹配项。</p>
             ) : null}
           </div>
         );
@@ -126,16 +126,16 @@ export function ProductsPage() {
 
   return (
     <div>
-      <SectionHeader sectionKey="catalog" />
+      <SectionHeader sectionKey="products" />
       <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-6 py-6">
         <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-5 shadow-[0_16px_48px_rgba(15,23,42,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Product Center</p>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Product Modeling</p>
               <div>
                 <h2 className="text-[28px] font-black tracking-tight text-slate-900">产品列表</h2>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  点击产品名称即可进入详情页，沿着“产品信息 → 功能/授权/价格 → 交付”的顺序完成配置。
+                  点击产品名称进入详情页。产品页现在只承接商品档案、价格结构、授权定义与售卖应用视图。
                 </p>
               </div>
             </div>
@@ -159,7 +159,7 @@ export function ProductsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-black text-slate-900">产品目录</p>
-                <p className="mt-1 text-xs text-slate-500">统一查看产品档案、授权方案和交付准备状态。</p>
+                <p className="mt-1 text-xs text-slate-500">统一查看商品档案、价格结构、授权定义和售卖应用绑定结果。</p>
               </div>
               <StatusPill
                 tone={managedProducts.length > 0 ? 'ok' : 'warn'}
@@ -180,7 +180,7 @@ export function ProductsPage() {
         {!isCatalogLoading && managedProducts.length === 0 ? (
           <div className="rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center text-sm text-muted-foreground">
             <Boxes className="mx-auto mb-3 h-6 w-6 text-muted-foreground" />
-            先定义产品，再补齐销售与交付档案。
+            先创建产品，再去配置价格、授权和售卖应用。
           </div>
         ) : null}
       </div>

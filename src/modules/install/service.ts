@@ -5,7 +5,6 @@ import { httpError } from '../../lib/errors';
 import { AppService } from '../app/service';
 import { EventService } from '../event/service';
 import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
 import { InstallRepository } from './repository';
 
 type InstallRecord = NonNullable<Awaited<ReturnType<InstallRepository['findInstallById']>>>;
@@ -87,7 +86,6 @@ export class InstallService {
       id: string;
       code: string;
       name: string;
-      type: string;
     };
   }) {
     return {
@@ -99,20 +97,19 @@ export class InstallService {
       },
       install: {
         id: input.install.id,
-        extensionInstallId: input.install.extensionInstallId,
+        instanceCode: input.install.instanceCode,
         status: input.install.status,
         linkedUser: Boolean(input.install.userId),
         lastSeenAt: input.install.lastSeenAt,
         createdAt: input.install.createdAt,
         updatedAt: input.install.updatedAt,
-        appVersion: input.install.appVersion,
-        chromeProfileHint: input.install.chromeProfileHint
+        clientVersion: input.install.clientVersion,
+        profileHint: input.install.profileHint
       },
       product: {
         id: input.product.id,
         code: input.product.code,
-        name: input.product.name,
-        type: input.product.type
+        name: input.product.name
       }
     };
   }
@@ -120,30 +117,30 @@ export class InstallService {
   async registerInstall(input: {
     appCode: string;
     productCode?: string;
-    extensionInstallId?: string;
+    instanceCode?: string;
     deviceFingerprint?: string;
-    chromeProfileHint?: string;
-    appVersion?: string;
+    profileHint?: string;
+    clientVersion?: string;
   }) {
     const { app, product } = await this.resolveAppProduct(input.appCode, input.productCode);
     const repository = new InstallRepository(this.db);
-    const extensionInstallId = input.extensionInstallId?.trim() || randomUUID();
-    const existing = await repository.findInstallByExtensionInstallId(extensionInstallId);
+    const instanceCode = input.instanceCode?.trim() || randomUUID();
+    const existing = await repository.findInstallByInstanceCode(instanceCode);
 
     if (existing) {
       if (existing.appId && existing.appId !== app.id) {
-        throw httpError(409, 'extensionInstallId is already used by another app');
+        throw httpError(409, 'instanceCode is already used by another app');
       }
 
       if (existing.productId !== product.id) {
-        throw httpError(409, 'extensionInstallId is already bound to another product');
+        throw httpError(409, 'instanceCode is already bound to another product');
       }
 
       const updated = await repository.updateInstall(existing.id, {
         appId: app.id,
         deviceFingerprint: input.deviceFingerprint ?? existing.deviceFingerprint,
-        chromeProfileHint: input.chromeProfileHint ?? existing.chromeProfileHint,
-        appVersion: input.appVersion ?? existing.appVersion,
+        profileHint: input.profileHint ?? existing.profileHint,
+        clientVersion: input.clientVersion ?? existing.clientVersion,
         lastSeenAt: new Date(),
         status: 'active'
       });
@@ -162,20 +159,21 @@ export class InstallService {
     const install = await repository.createInstall({
       appId: app.id,
       productId: product.id,
-      extensionInstallId,
+      instanceCode,
       deviceFingerprint: input.deviceFingerprint,
-      chromeProfileHint: input.chromeProfileHint,
-      appVersion: input.appVersion
+      profileHint: input.profileHint,
+      clientVersion: input.clientVersion
     });
 
     await new EventService(this.db).capture({
+      appId: app.id,
       productId: product.id,
       installId: install.id,
       eventName: 'install.registered',
       properties: {
         appCode: app.code,
         installId: install.id,
-        extensionInstallId: install.extensionInstallId
+        instanceCode: install.instanceCode
       }
     });
 
@@ -213,6 +211,7 @@ export class InstallService {
 
     await new EventService(this.db).capture({
       userId: input.userId,
+      appId: detail.app.id,
       productId: detail.product.id,
       installId: install.id,
       eventName: 'install.bound',
@@ -239,15 +238,15 @@ export class InstallService {
     appCode: string;
     installId: string;
     deviceFingerprint?: string;
-    chromeProfileHint?: string;
-    appVersion?: string;
+    profileHint?: string;
+    clientVersion?: string;
   }) {
     const detail = await this.loadInstallForApp(input.appCode, input.installId);
     const install = await new InstallRepository(this.db).updateInstall(detail.install.id, {
       appId: detail.app.id,
       deviceFingerprint: input.deviceFingerprint ?? detail.install.deviceFingerprint,
-      chromeProfileHint: input.chromeProfileHint ?? detail.install.chromeProfileHint,
-      appVersion: input.appVersion ?? detail.install.appVersion,
+      profileHint: input.profileHint ?? detail.install.profileHint,
+      clientVersion: input.clientVersion ?? detail.install.clientVersion,
       lastSeenAt: new Date(),
       status: 'active'
     });
@@ -278,9 +277,9 @@ export class InstallService {
       throw httpError(403, 'Install belongs to another user');
     }
 
-    const entitlements = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
-    const filteredItems = entitlements.items.filter((item) => item.productId === detail.product.id);
-    const filteredSummary = entitlements.summary.filter((item) => item.productCode === detail.product.code);
+    const authorizations = await new AppService(this.db).listUserAuthorizationsForApp(input.appCode, input.userId);
+    const filteredItems = authorizations.items.filter((item) => item.productId === detail.product.id);
+    const filteredSummary = authorizations.summary.filter((item) => item.productCode === detail.product.code);
     const install = await new InstallRepository(this.db).updateInstall(detail.install.id, {
       lastSeenAt: new Date()
     });
@@ -295,7 +294,7 @@ export class InstallService {
         install,
         product: detail.product
       }),
-      license: {
+      authorization: {
         active: filteredSummary.length > 0,
         items: filteredItems,
         summary: filteredSummary

@@ -8,8 +8,10 @@ export class BillingRepository {
 
   async createOrder(input: {
     userId: string;
+    appId: string;
     productId: string;
-    planId: string;
+    priceId: string;
+    offerId?: string | null;
     orderNo: string;
     provider: 'wechat_pay' | 'alipay';
     subject: string;
@@ -20,7 +22,16 @@ export class BillingRepository {
     const [order] = await this.db
       .insert(orders)
       .values({
-        ...input,
+        userId: input.userId,
+        appId: input.appId,
+        productId: input.productId,
+        priceId: input.priceId,
+        offerId: input.offerId ?? null,
+        orderNo: input.orderNo,
+        provider: input.provider,
+        subject: input.subject,
+        amount: input.amount,
+        currency: input.currency,
         meta: input.meta ?? {}
       })
       .returning();
@@ -88,7 +99,9 @@ export class BillingRepository {
     const [event] = await this.db
       .insert(billingWebhookEvents)
       .values({
-        ...input,
+        provider: input.provider,
+        providerEventId: input.providerEventId,
+        type: input.type,
         payload: input.payload
       })
       .onConflictDoNothing({
@@ -103,12 +116,7 @@ export class BillingRepository {
     const [event] = await this.db
       .select()
       .from(billingWebhookEvents)
-      .where(
-        and(
-          eq(billingWebhookEvents.provider, provider),
-          eq(billingWebhookEvents.providerEventId, providerEventId)
-        )
-      )
+      .where(and(eq(billingWebhookEvents.provider, provider), eq(billingWebhookEvents.providerEventId, providerEventId)))
       .limit(1);
 
     return event ?? null;

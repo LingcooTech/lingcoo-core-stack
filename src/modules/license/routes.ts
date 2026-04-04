@@ -13,28 +13,37 @@ export const licenseRoutes: FastifyPluginAsync = async (app) => {
     return { items: products };
   });
 
-  app.get('/v1/plans', async () => {
-    const { plans } = await new LicenseService(app.db).getCatalogSnapshot();
-    return { items: plans };
+  app.get('/v1/prices', async () => {
+    const { prices } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: prices };
   });
 
-  app.get('/v1/features', async () => {
-    const { features } = await new LicenseService(app.db).getCatalogSnapshot();
-    return { items: features };
+  app.get('/v1/authorization-templates', async () => {
+    const { authorizationTemplates } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: authorizationTemplates };
   });
 
-  app.get('/v1/entitlements/me', {
-    preHandler: app.authenticate,
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 120,
-        timeWindow: '1 minute',
-        keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
-          buildUserRateLimitKey(request, 'entitlements-me')
+  app.get('/v1/checkout-offers', async () => {
+    const { checkoutOffers } = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: checkoutOffers };
+  });
+
+  app.get(
+    '/v1/authorizations/me',
+    {
+      preHandler: app.authenticate,
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 120,
+          timeWindow: '1 minute',
+          keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
+            buildUserRateLimitKey(request, 'authorizations-me')
+        }
       }
+    },
+    async (request) => {
+      return new LicenseService(app.db).listUserAuthorizations(request.user.sub);
     }
-  }, async (request) => {
-    return new LicenseService(app.db).listUserEntitlements(request.user.sub);
-  });
+  );
 };

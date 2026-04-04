@@ -27,7 +27,7 @@ export class BillingService {
   async createOrder(input: {
     userId: string;
     appCode: string;
-    planCode: string;
+    priceCode?: string;
     offerCode?: string;
     provider: 'wechat_pay' | 'alipay';
     clientIp?: string;
@@ -38,49 +38,53 @@ export class BillingService {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
-    const { plan, product, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
-      planCode: input.planCode,
+    const { app, price, product, offer, authorizationTemplate } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
+      priceCode: input.priceCode,
       offerCode: input.offerCode
     });
 
-    if (plan.interval === 'one_time') {
-      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, product.id);
+    if (price.grantStrategy === 'lifetime') {
+      const ownership = await new LicenseService(this.db).findActiveLifetimeOwnership(input.userId, product.id);
       if (ownership) {
-        throw httpError(409, 'You already own this one-time product');
+        throw httpError(409, 'You already own this product');
       }
     }
 
-    if (offer.priceAmount <= 0) {
+    if (offer.amount <= 0) {
       throw httpError(422, 'Checkout offer price is not configured');
     }
 
     const repository = new BillingRepository(this.db);
     const order = await repository.createOrder({
       userId: input.userId,
+      appId: app.id,
       productId: product.id,
-      planId: plan.id,
+      priceId: price.id,
+      offerId: offer.id.startsWith('fallback:') ? null : offer.id,
       orderNo: createOrderNo(),
       provider: input.provider,
       subject: `${product.name} - ${offer.title}`,
-      amount: offer.priceAmount,
+      amount: offer.amount,
       currency: offer.currency,
       meta: {
         appCode: input.appCode,
         offerCode: offer.code,
         offerTitle: offer.title,
-        planCode: plan.code,
+        priceCode: price.code,
+        authorizationTemplateCode: authorizationTemplate.code,
         productCode: product.code
       }
     });
 
     await new EventService(this.db).capture({
       userId: input.userId,
+      appId: app.id,
       productId: product.id,
       eventName: 'billing.order_created',
       properties: {
         orderNo: order.orderNo,
         offerCode: offer.code,
-        planCode: plan.code,
+        priceCode: price.code,
         provider: input.provider,
         amount: order.amount,
         currency: order.currency
@@ -100,8 +104,9 @@ export class BillingService {
 
     return {
       order,
-      plan,
+      price,
       product,
+      authorizationTemplate,
       offer,
       payment
     };
@@ -155,7 +160,7 @@ export class BillingService {
     if (order.status === 'paid') {
       return {
         order,
-        entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId)
+        authorizations: await new LicenseService(this.db).listUserAuthorizations(input.userId)
       };
     }
 
@@ -174,7 +179,7 @@ export class BillingService {
 
     return {
       order: result.order,
-      entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
+      authorizations: await new LicenseService(this.db).listUserAuthorizations(input.userId),
       granted: result.granted
     };
   }
@@ -359,12 +364,16 @@ export class BillingService {
       };
     }
 
-    const granted = await new LicenseService(tx).grantEntitlementsForPlan({
+    const granted = await new LicenseService(tx).grantAuthorizationForPrice({
       userId: input.order.userId,
-      planId: input.order.planId,
+      priceId: input.order.priceId,
       sourceType: 'order',
       sourceId: input.order.id,
-      startsAt: updatedOrder.paidAt ?? new Date()
+      startsAt: updatedOrder.paidAt ?? new Date(),
+      meta: {
+        orderId: input.order.id,
+        orderNo: input.order.orderNo
+      }
     });
 
     const checkoutRepository = new CheckoutRepository(tx);
@@ -373,6 +382,7 @@ export class BillingService {
 
     await new EventService(tx).capture({
       userId: input.order.userId,
+      appId: input.order.appId,
       productId: input.order.productId,
       eventName: 'billing.order_paid',
       properties: {

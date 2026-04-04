@@ -268,7 +268,7 @@ export function renderCheckoutPage(sessionCode: string) {
           <div class="facts">
             <div class="fact"><label>应用</label><strong id="app-name">-</strong></div>
             <div class="fact"><label>产品</label><strong id="product-name">-</strong></div>
-            <div class="fact"><label>套餐</label><strong id="plan-name">-</strong></div>
+            <div class="fact"><label>价格方案</label><strong id="price-name">-</strong></div>
             <div class="fact"><label>过期时间</label><strong id="expires-at">-</strong></div>
             <div class="fact"><label>完成时间</label><strong id="completed-at">-</strong></div>
           </div>
@@ -309,14 +309,14 @@ export function renderCheckoutPage(sessionCode: string) {
       }
 
       function setSummary(data) {
-        byId('title').textContent = data.product.name + ' / ' + data.plan.name;
+        byId('title').textContent = data.product.name + ' / ' + data.price.name;
         byId('subtitle').textContent = '订单创建后由中台统一处理支付、回调和权益发放。';
         byId('session-code').textContent = data.sessionCode;
         byId('order-no').textContent = data.order.orderNo;
         byId('amount').textContent = data.order.amountYuan + ' ' + data.order.currency;
         byId('app-name').textContent = data.app.name + ' (' + data.app.code + ')';
         byId('product-name').textContent = data.product.name;
-        byId('plan-name').textContent = data.plan.name;
+        byId('price-name').textContent = data.price.name;
         byId('expires-at').textContent = formatTime(data.expiresAt);
         byId('completed-at').textContent = formatTime(data.completedAt);
         setStatus(data.status);

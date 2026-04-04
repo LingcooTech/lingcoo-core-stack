@@ -1,9 +1,9 @@
-import type { AppWithDetails, FeatureSummary, PlanSummary, ProductSummary } from '@/api/types';
+import type { AppWithDetails, AuthorizationTemplateSummary, PriceSummary, ProductSummary } from '@/api/types';
 
 export type ManagedProductRecord = {
   product: ProductSummary;
-  features: FeatureSummary[];
-  plans: PlanSummary[];
+  authorizationTemplates: AuthorizationTemplateSummary[];
+  prices: PriceSummary[];
   linkedApps: AppWithDetails[];
   primaryApp: AppWithDetails | null;
 };
@@ -43,34 +43,34 @@ export function productNeedsDedicatedProfile(productCode: string, app: AppWithDe
 
 export function buildManagedProducts(input: {
   products: ProductSummary[];
-  features: FeatureSummary[];
-  plans: PlanSummary[];
+  authorizationTemplates: AuthorizationTemplateSummary[];
+  prices: PriceSummary[];
   apps: AppWithDetails[];
 }) {
-  const featuresByProductId = new Map<string, FeatureSummary[]>();
-  for (const feature of input.features) {
-    if (!feature.productId) {
+  const authorizationTemplatesByProductId = new Map<string, AuthorizationTemplateSummary[]>();
+  for (const authorizationTemplate of input.authorizationTemplates) {
+    if (!authorizationTemplate.productId) {
       continue;
     }
 
-    if (!featuresByProductId.has(feature.productId)) {
-      featuresByProductId.set(feature.productId, []);
+    if (!authorizationTemplatesByProductId.has(authorizationTemplate.productId)) {
+      authorizationTemplatesByProductId.set(authorizationTemplate.productId, []);
     }
 
-    featuresByProductId.get(feature.productId)?.push(feature);
+    authorizationTemplatesByProductId.get(authorizationTemplate.productId)?.push(authorizationTemplate);
   }
 
-  const plansByProductId = new Map<string, PlanSummary[]>();
-  for (const plan of input.plans) {
-    if (!plan.productId) {
+  const pricesByProductId = new Map<string, PriceSummary[]>();
+  for (const price of input.prices) {
+    if (!price.productId) {
       continue;
     }
 
-    if (!plansByProductId.has(plan.productId)) {
-      plansByProductId.set(plan.productId, []);
+    if (!pricesByProductId.has(price.productId)) {
+      pricesByProductId.set(price.productId, []);
     }
 
-    plansByProductId.get(plan.productId)?.push(plan);
+    pricesByProductId.get(price.productId)?.push(price);
   }
 
   return input.products.map<ManagedProductRecord>((product) => {
@@ -78,8 +78,8 @@ export function buildManagedProducts(input: {
 
     return {
       product,
-      features: featuresByProductId.get(product.id) ?? [],
-      plans: plansByProductId.get(product.id) ?? [],
+      authorizationTemplates: authorizationTemplatesByProductId.get(product.id) ?? [],
+      prices: pricesByProductId.get(product.id) ?? [],
       linkedApps,
       primaryApp: getPrimaryAppForProduct(product.code, input.apps)
     };

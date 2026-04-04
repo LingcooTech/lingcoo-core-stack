@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+
 import { listCatalogSnapshot } from '@/api/apps';
-import type { FeatureSummary, PlanSummary } from '@/api/types';
-import type { CatalogBundleSummary } from '@/components/apps/CatalogBundleDialog';
+import type { AuthorizationTemplateSummary, PriceAuthorizationSummary, PriceSummary, ProductSummary } from '@/api/types';
+
+export interface ProductCatalogBundleSummary {
+  product: ProductSummary;
+  authorizationTemplates: AuthorizationTemplateSummary[];
+  prices: PriceSummary[];
+  priceAuthorizationCodesByPriceCode: Record<string, string[]>;
+}
 
 export function useCatalogData() {
   const { data: catalogData, isLoading } = useQuery({
@@ -11,65 +18,86 @@ export function useCatalogData() {
   });
 
   const products = catalogData?.products ?? [];
-  const features = catalogData?.features ?? [];
-  const planFeatures = catalogData?.planFeatures ?? [];
+  const authorizationTemplates = catalogData?.authorizationTemplates ?? [];
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
-  const allPlans = useMemo(
+  const templateMap = useMemo(() => new Map(authorizationTemplates.map((item) => [item.id, item])), [authorizationTemplates]);
+
+  const allPrices = useMemo<PriceSummary[]>(
     () =>
-      (catalogData?.plans ?? []).map((plan) => {
-        const product = plan.productId ? productMap.get(plan.productId) : null;
+      (catalogData?.prices ?? []).map((price) => {
+        const product = productMap.get(price.productId) ?? null;
+        const template = templateMap.get(price.authorizationTemplateId) ?? null;
         return {
-          ...plan,
-          productCode: plan.productCode || product?.code,
-          productName: plan.productName || product?.name
+          ...price,
+          interval: price.interval ?? (price.billingType === 'one_time' ? 'one_time' : price.billingInterval),
+          priceAmount: price.priceAmount ?? price.amount,
+          productCode: price.productCode || product?.code,
+          productName: price.productName || product?.name,
+          authorizationTemplateCode: price.authorizationTemplateCode || template?.code,
+          authorizationTemplateName: price.authorizationTemplateName || template?.name
         };
       }),
-    [catalogData?.plans, productMap]
+    [catalogData?.prices, productMap, templateMap]
   );
-  const featureMap = useMemo(() => new Map(features.map((feature) => [feature.id, feature])), [features]);
-  const planFeatureCodesByPlanId = useMemo(() => {
+
+  const priceAuthorizations = useMemo<PriceAuthorizationSummary[]>(
+    () => catalogData?.priceAuthorizations ?? [],
+    [catalogData?.priceAuthorizations]
+  );
+
+  const priceAuthorizationCodesByPriceId = useMemo(() => {
     const grouped = new Map<string, string[]>();
-    for (const mapping of planFeatures) {
-      const feature = featureMap.get(mapping.featureId);
-      if (!feature) continue;
-      if (!grouped.has(mapping.planId)) {
-        grouped.set(mapping.planId, []);
+    for (const mapping of priceAuthorizations) {
+      const authorizationTemplate = templateMap.get(mapping.authorizationTemplateId);
+      if (!authorizationTemplate) continue;
+      if (!grouped.has(mapping.priceId)) {
+        grouped.set(mapping.priceId, []);
       }
-      grouped.get(mapping.planId)?.push(feature.code);
+      grouped.get(mapping.priceId)?.push(authorizationTemplate.code);
     }
     return grouped;
-  }, [featureMap, planFeatures]);
-  const catalogBundles = useMemo<CatalogBundleSummary[]>(() => {
-    const featuresByProduct = new Map<string, FeatureSummary[]>();
-    for (const feature of features) {
-      if (!feature.productId) continue;
-      if (!featuresByProduct.has(feature.productId)) {
-        featuresByProduct.set(feature.productId, []);
+  }, [priceAuthorizations, templateMap]);
+
+  const catalogBundles = useMemo<ProductCatalogBundleSummary[]>(() => {
+    const authorizationTemplatesByProduct = new Map<string, AuthorizationTemplateSummary[]>();
+    for (const authorizationTemplate of authorizationTemplates) {
+      if (!authorizationTemplate.productId) continue;
+      if (!authorizationTemplatesByProduct.has(authorizationTemplate.productId)) {
+        authorizationTemplatesByProduct.set(authorizationTemplate.productId, []);
       }
-      featuresByProduct.get(feature.productId)?.push(feature);
+      authorizationTemplatesByProduct.get(authorizationTemplate.productId)?.push(authorizationTemplate);
     }
 
-    const plansByProduct = new Map<string, PlanSummary[]>();
-    for (const plan of allPlans) {
-      if (!plan.productId) continue;
-      if (!plansByProduct.has(plan.productId)) {
-        plansByProduct.set(plan.productId, []);
+    const pricesByProduct = new Map<string, PriceSummary[]>();
+    for (const price of allPrices) {
+      if (!price.productId) continue;
+      if (!pricesByProduct.has(price.productId)) {
+        pricesByProduct.set(price.productId, []);
       }
-      plansByProduct.get(plan.productId)?.push(plan);
+      pricesByProduct.get(price.productId)?.push(price);
     }
 
     return products.map((product) => {
-      const productPlans = plansByProduct.get(product.id) ?? [];
+      const productPrices = pricesByProduct.get(product.id) ?? [];
       return {
         product,
-        features: featuresByProduct.get(product.id) ?? [],
-        plans: productPlans,
-        planFeatureCodesByPlanCode: Object.fromEntries(
-          productPlans.map((plan) => [plan.code, planFeatureCodesByPlanId.get(plan.id) ?? []])
+        authorizationTemplates: authorizationTemplatesByProduct.get(product.id) ?? [],
+        prices: productPrices,
+        priceAuthorizationCodesByPriceCode: Object.fromEntries(
+          productPrices.map((price) => [price.code, priceAuthorizationCodesByPriceId.get(price.id) ?? []])
         )
       };
     });
-  }, [allPlans, features, planFeatureCodesByPlanId, products]);
+  }, [allPrices, authorizationTemplates, priceAuthorizationCodesByPriceId, products]);
 
-  return { products, features, allPlans, featureMap, planFeatureCodesByPlanId, catalogBundles, isLoading };
+  return {
+    products,
+    authorizationTemplates,
+    priceAuthorizations,
+    allPrices,
+    templateMap,
+    priceAuthorizationCodesByPriceId,
+    catalogBundles,
+    isLoading
+  };
 }

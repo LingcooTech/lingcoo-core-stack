@@ -11,11 +11,11 @@ export class InstallRepository {
     return install ?? null;
   }
 
-  async findInstallByExtensionInstallId(extensionInstallId: string) {
+  async findInstallByInstanceCode(instanceCode: string) {
     const [install] = await this.db
       .select()
       .from(installs)
-      .where(eq(installs.extensionInstallId, extensionInstallId))
+      .where(eq(installs.instanceCode, instanceCode))
       .limit(1);
 
     return install ?? null;
@@ -25,10 +25,11 @@ export class InstallRepository {
     userId?: string | null;
     appId: string;
     productId: string;
-    extensionInstallId: string;
+    instanceCode: string;
     deviceFingerprint?: string;
-    chromeProfileHint?: string;
-    appVersion?: string;
+    profileHint?: string;
+    clientVersion?: string;
+    meta?: Record<string, unknown>;
   }) {
     const now = new Date();
     const [install] = await this.db
@@ -37,10 +38,11 @@ export class InstallRepository {
         userId: input.userId ?? null,
         appId: input.appId,
         productId: input.productId,
-        extensionInstallId: input.extensionInstallId,
+        instanceCode: input.instanceCode,
         deviceFingerprint: input.deviceFingerprint ?? null,
-        chromeProfileHint: input.chromeProfileHint ?? null,
-        appVersion: input.appVersion ?? null,
+        profileHint: input.profileHint ?? null,
+        clientVersion: input.clientVersion ?? null,
+        meta: input.meta ?? {},
         status: 'active',
         lastSeenAt: now,
         createdAt: now,
@@ -70,8 +72,9 @@ export class InstallRepository {
       appId?: string | null;
       productId?: string;
       deviceFingerprint?: string | null;
-      chromeProfileHint?: string | null;
-      appVersion?: string | null;
+      profileHint?: string | null;
+      clientVersion?: string | null;
+      meta?: Record<string, unknown>;
       lastSeenAt?: Date | null;
       status?: 'active' | 'inactive' | 'cancelled' | 'expired';
     }
@@ -83,8 +86,9 @@ export class InstallRepository {
         appId: input.appId,
         productId: input.productId,
         deviceFingerprint: input.deviceFingerprint,
-        chromeProfileHint: input.chromeProfileHint,
-        appVersion: input.appVersion,
+        profileHint: input.profileHint,
+        clientVersion: input.clientVersion,
+        meta: input.meta,
         lastSeenAt: input.lastSeenAt,
         status: input.status,
         updatedAt: new Date()

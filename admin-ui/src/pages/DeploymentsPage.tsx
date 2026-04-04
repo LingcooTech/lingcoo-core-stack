@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
 import type { DeliveryManifest, IssueDeploymentTokenResult } from '@/api/types';
-import { createDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements } from '@/api/user';
+import { createDeployment, issueDeploymentToken, listMyAuthorizations, listMyDeployments } from '@/api/user';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
@@ -15,12 +15,12 @@ export function DeploymentsPage() {
   const qc = useQueryClient();
   const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
-  const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
+  const authorizationsQuery = useQuery({ queryKey: ['my-authorizations'], queryFn: listMyAuthorizations });
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
 
   const apps = appsQuery.data?.items ?? [];
-  const summaries = entitlementsQuery.data?.summary ?? [];
-  const summaryMap = new Map(summaries.map((entry) => [entry.productCode, entry.featureCodes]));
+  const summaries = authorizationsQuery.data?.summary ?? [];
+  const summaryMap = new Map(summaries.map((entry) => [entry.productCode, entry.authorizationTemplateCodes]));
 
   const deployableApps = useMemo<DeployableAppOption[]>(
     () => {
@@ -98,7 +98,7 @@ export function DeploymentsPage() {
         <p className="text-lg text-muted-foreground">管理已购产品的交付与服务器部署</p>
       </section>
 
-      {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
+      {appsQuery.isLoading || authorizationsQuery.isLoading || deploymentsQuery.isLoading ? (
         <Card>
           <CardContent className="flex items-center justify-center p-8">
             <Rocket className="h-6 w-6 animate-pulse text-primary" />

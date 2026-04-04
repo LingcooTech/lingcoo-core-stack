@@ -1,5 +1,15 @@
 import { apiClient } from './client';
-import type { AppCatalog, AppFaq, AppHighlight, AppLink, AppScreenshot, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary, ProductSummary } from './types';
+import type {
+  AppCatalog,
+  AppFaq,
+  AppHighlight,
+  AppLink,
+  AppScreenshot,
+  AppSecretCreated,
+  AppWithDetails,
+  CatalogSnapshot,
+  ProductSummary
+} from './types';
 
 export async function listApps(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
@@ -15,14 +25,6 @@ export async function listAppsAdmin(): Promise<{ items: AppWithDetails[] }> {
 
 export async function listCatalogProducts(): Promise<{ items: ProductSummary[] }> {
   return apiClient<{ items: ProductSummary[] }>('/v1/products');
-}
-
-export async function listCatalogPlans(): Promise<{ items: PlanSummary[] }> {
-  return apiClient<{ items: PlanSummary[] }>('/v1/plans');
-}
-
-export async function listCatalogFeatures(): Promise<{ items: FeatureSummary[] }> {
-  return apiClient<{ items: FeatureSummary[] }>('/v1/features');
 }
 
 export async function listCatalogSnapshot(): Promise<CatalogSnapshot> {
@@ -47,7 +49,7 @@ export interface UpsertAppInput {
   productCodes: string[];
   checkoutOffers?: Array<{
     code: string;
-    planCode: string;
+    priceCode: string;
     title: string;
     description?: string;
     badge?: string;
@@ -58,19 +60,48 @@ export interface UpsertAppInput {
     sortOrder?: number;
   }>;
   checkoutDefaultOfferCode?: string;
-  planConfigs?: Array<{
-    code: string;
-    priceAmount: number;
-    currency: string;
-    status: string;
-  }>;
   meta?: Record<string, unknown>;
 }
 
 export async function upsertApp(appCode: string, payload: UpsertAppInput): Promise<AppWithDetails> {
+  const meta = payload.meta ?? {};
+  const callbackUrl = typeof meta.callbackUrl === 'string' ? meta.callbackUrl : undefined;
+  const callbackSecret = typeof meta.callbackSecret === 'string' ? meta.callbackSecret : undefined;
+  const allowedOrigins = Array.isArray(meta.allowedOrigins)
+    ? meta.allowedOrigins.filter((item): item is string => typeof item === 'string')
+    : undefined;
+  const deliveryManifestSource =
+    meta.deliveryManifestSource && typeof meta.deliveryManifestSource === 'object' && !Array.isArray(meta.deliveryManifestSource)
+      ? (meta.deliveryManifestSource as Record<string, unknown>)
+      : {};
+
   return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}`, {
     method: 'PUT',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      name: payload.name,
+      description: payload.description,
+      type: payload.type,
+      status: payload.status,
+      productCodes: payload.productCodes,
+      callbackUrl,
+      callbackSecret,
+      allowedOrigins,
+      repoUrl: typeof deliveryManifestSource.repoUrl === 'string' ? deliveryManifestSource.repoUrl : undefined,
+      repoBranch: typeof deliveryManifestSource.repoBranch === 'string' ? deliveryManifestSource.repoBranch : undefined,
+      manifestPath: typeof deliveryManifestSource.manifestPath === 'string' ? deliveryManifestSource.manifestPath : undefined,
+      manifestUrl: typeof deliveryManifestSource.manifestUrl === 'string' ? deliveryManifestSource.manifestUrl : undefined,
+      offers: payload.checkoutOffers?.map((offer) => ({
+        code: offer.code,
+        priceCode: offer.priceCode,
+        title: offer.title,
+        description: offer.description,
+        badge: offer.badge,
+        status: offer.status as 'active' | 'inactive' | 'cancelled' | 'expired',
+        isDefault: offer.isDefault,
+        sortOrder: offer.sortOrder
+      })),
+      meta
+    })
   });
 }
 
@@ -98,36 +129,6 @@ export async function syncAppDeliveryManifest(
 ): Promise<AppWithDetails> {
   return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/delivery-manifest/sync`, {
     method: 'POST',
-    body: JSON.stringify(payload)
-  });
-}
-
-export interface UpsertCatalogBundleInput {
-  name: string;
-  type: 'chrome_extension' | 'web_app' | 'service';
-  status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  features: Array<{
-    code: string;
-    name: string;
-    kind: string;
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  }>;
-  plans: Array<{
-    code: string;
-    name: string;
-    billingPriceId?: string;
-    priceAmount: number;
-    currency: string;
-    interval: 'month' | 'year' | 'one_time';
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    featureCodes: string[];
-    meta?: Record<string, unknown>;
-  }>;
-}
-
-export async function upsertCatalogBundle(productCode: string, payload: UpsertCatalogBundleInput) {
-  return apiClient(`/v1/admin/catalog/products/${encodeURIComponent(productCode)}`, {
-    method: 'PUT',
     body: JSON.stringify(payload)
   });
 }

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/shared/CommandPalette';
-import { adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
+import { adminSectionMeta, resolveAdminSectionKey } from '@/lib/foundation';
 import { cn } from '@/lib/utils';
 
 interface TopbarProps {
@@ -14,9 +14,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  const currentSection = Object.entries(adminSectionMeta).find(
-    ([, meta]) => meta.href === location.pathname || location.pathname.startsWith(meta.href + '/')
-  )?.[0] as AdminSectionKey | undefined;
+  const currentSection = resolveAdminSectionKey(location.pathname);
 
   const section = currentSection ? adminSectionMeta[currentSection] : null;
 

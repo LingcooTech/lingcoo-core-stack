@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/lib/auth';
-import { adminNavigationGroups, adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
+import { adminNavigationGroups, adminSectionMeta, resolveAdminSectionKey } from '@/lib/foundation';
 import { cn, getInitials } from '@/lib/utils';
 
 interface SidebarProps {
@@ -15,9 +15,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const currentSection = Object.entries(adminSectionMeta).find(
-    ([, meta]) => meta.href === location.pathname || location.pathname.startsWith(meta.href + '/')
-  )?.[0] as AdminSectionKey | undefined;
+  const currentSection = resolveAdminSectionKey(location.pathname);
 
   return (
     <aside

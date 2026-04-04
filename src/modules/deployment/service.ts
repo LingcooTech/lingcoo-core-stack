@@ -31,12 +31,12 @@ export class DeploymentService {
       throw httpError(422, 'This app is not configured as a deployable system product');
     }
 
-    const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
-    const entitledProductCodes = new Set(entitlementView.summary.map((item) => item.productCode));
-    const deployableProducts = app.products.filter((product) => entitledProductCodes.has(product.code));
+    const authorizationView = await new AppService(this.db).listUserAuthorizationsForApp(input.appCode, input.userId);
+    const authorizedProductCodes = new Set(authorizationView.summary.map((item) => item.productCode));
+    const deployableProducts = app.products.filter((product) => authorizedProductCodes.has(product.code));
 
     if (deployableProducts.length === 0) {
-      throw httpError(403, 'You do not have an active deployment entitlement for this app');
+      throw httpError(403, 'You do not have an active deployment authorization for this app');
     }
 
     if (input.productCode) {
@@ -48,7 +48,7 @@ export class DeploymentService {
       return {
         app,
         product: matched,
-        entitlementSummary: entitlementView.summary.filter((item) => item.productCode === matched.code)
+        authorizationSummary: authorizationView.summary.filter((item) => item.productCode === matched.code)
       };
     }
 
@@ -59,7 +59,7 @@ export class DeploymentService {
     return {
       app,
       product: deployableProducts[0],
-      entitlementSummary: entitlementView.summary.filter((item) => item.productCode === deployableProducts[0].code)
+      authorizationSummary: authorizationView.summary.filter((item) => item.productCode === deployableProducts[0].code)
     };
   }
 
@@ -99,7 +99,7 @@ export class DeploymentService {
           ? { id: app.id, code: app.code, name: app.name, type: app.type, meta: app.meta }
           : null,
         product: product
-          ? { id: product.id, code: product.code, name: product.name, type: product.type }
+          ? { id: product.id, code: product.code, name: product.name, type: app?.type ?? 'service' }
           : null,
         endpoints: this.buildDeploymentEndpoints({
           deployment: row,

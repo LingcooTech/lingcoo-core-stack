@@ -15,7 +15,7 @@ export function MyOrdersPage() {
     onSuccess: () => {
       toast.success('订单状态已同步');
       void qc.invalidateQueries({ queryKey: ['my-orders'] });
-      void qc.invalidateQueries({ queryKey: ['my-entitlements'] });
+      void qc.invalidateQueries({ queryKey: ['my-authorizations'] });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '同步失败');

@@ -27,13 +27,14 @@ export const adminOrderParamsSchema = z.object({
   orderNo: z.string().trim().min(8).max(64)
 });
 
-export const adminEntitlementParamsSchema = z.object({
-  entitlementId: z.string().uuid()
+export const adminAuthorizationGrantParamsSchema = z.object({
+  grantId: z.string().uuid()
 });
 
-export const adminGrantEntitlementSchema = z.object({
+export const adminGrantAuthorizationSchema = z.object({
   userEmail: z.string().trim().email(),
-  planCode: z.string().trim().min(1).max(64),
+  authorizationTemplateCode: z.string().trim().min(1).max(64),
+  expiresAt: z.string().datetime().optional(),
   reason: z.string().trim().min(1).max(255).optional()
 });
 
@@ -56,11 +57,21 @@ export const adminUserIdParamsSchema = z.object({
 });
 
 const recordStatusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);
-const productTypeSchema = z.enum(['chrome_extension', 'web_app', 'service']);
-const intervalSchema = z.enum(['month', 'year', 'one_time']);
+const deliveryModeSchema = z.enum(['direct_access', 'one_click_deploy']);
+const billingTypeSchema = z.enum(['one_time', 'recurring']);
+const billingIntervalSchema = z.enum(['month', 'year']);
+const grantStrategySchema = z.enum(['lifetime', 'fixed_duration', 'subscription_period']);
 
-export const adminCatalogProductParamsSchema = z.object({
+export const adminProductCodeParamsSchema = z.object({
   productCode: z.string().trim().min(1).max(64)
+});
+
+export const adminPriceCodeParamsSchema = z.object({
+  priceCode: z.string().trim().min(1).max(64)
+});
+
+export const adminAuthorizationTemplateCodeParamsSchema = z.object({
+  authorizationTemplateCode: z.string().trim().min(1).max(64)
 });
 
 export const adminAppCodeParamsSchema = z.object({
@@ -72,29 +83,68 @@ export const adminUpsertDeliverySettingsSchema = z.object({
   secrets: z.record(z.string(), z.string()).optional()
 });
 
-export const adminUpsertCatalogBundleSchema = z.object({
+const screenshotSchema = z.object({
+  url: z.string().trim().min(1).max(2048),
+  caption: z.string().trim().max(200).optional()
+});
+
+const highlightSchema = z.object({
+  icon: z.string().trim().max(64).optional(),
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500)
+});
+
+const faqSchema = z.object({
+  question: z.string().trim().min(1).max(200),
+  answer: z.string().trim().min(1).max(2000)
+});
+
+const linkSchema = z.object({
+  label: z.string().trim().min(1).max(64),
+  url: z.string().trim().min(1).max(2048),
+  type: z.enum(['docs', 'support', 'website', 'download', 'other']).default('other')
+});
+
+export const adminUpsertProductSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  type: productTypeSchema.default('web_app'),
+  type: z.enum(['chrome_extension', 'web_app', 'service']).optional(),
+  tagline: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(5000).optional(),
+  content: z.string().trim().max(50000).optional(),
+  iconUrl: z.string().trim().max(500).optional(),
+  coverUrl: z.string().trim().max(500).optional(),
+  screenshots: z.array(screenshotSchema).max(20).optional(),
+  highlights: z.array(highlightSchema).max(8).optional(),
+  faq: z.array(faqSchema).max(30).optional(),
+  links: z.array(linkSchema).max(20).optional(),
+  category: z.string().trim().max(64).optional(),
+  deliveryMode: deliveryModeSchema.default('direct_access'),
+  sortOrder: z.number().int().min(0).max(99999).default(0),
   status: recordStatusSchema.default('active'),
-  features: z.array(
-    z.object({
-      code: z.string().trim().min(1).max(64),
-      name: z.string().trim().min(1).max(120),
-      kind: z.string().trim().min(1).max(32).default('boolean'),
-      status: recordStatusSchema.default('active')
-    })
-  ).min(1).max(100),
-  plans: z.array(
-    z.object({
-      code: z.string().trim().min(1).max(64),
-      name: z.string().trim().min(1).max(120),
-      billingPriceId: z.string().trim().max(128).optional(),
-      priceAmount: z.number().int().min(0).max(999999999),
-      currency: z.string().trim().min(1).max(16).default('CNY'),
-      interval: intervalSchema,
-      status: recordStatusSchema.default('active'),
-      featureCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(100),
-      meta: z.record(z.string(), z.unknown()).optional()
-    })
-  ).min(1).max(100)
+  meta: z.record(z.string(), z.unknown()).optional()
+});
+
+export const adminUpsertPriceSchema = z.object({
+  productCode: z.string().trim().min(1).max(64),
+  authorizationTemplateCode: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(120),
+  billingProvider: z.string().trim().min(1).max(32).default('self_hosted'),
+  billingPriceId: z.string().trim().max(128).optional(),
+  billingType: billingTypeSchema,
+  billingInterval: billingIntervalSchema.optional(),
+  amount: z.number().int().min(0).max(999999999),
+  currency: z.string().trim().min(1).max(16).default('CNY'),
+  grantStrategy: grantStrategySchema,
+  grantDurationDays: z.number().int().min(1).max(3650).optional(),
+  status: recordStatusSchema.default('active'),
+  meta: z.record(z.string(), z.unknown()).optional()
+});
+
+export const adminUpsertAuthorizationTemplateSchema = z.object({
+  productCode: z.string().trim().min(1).max(64),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(5000).optional(),
+  kind: z.string().trim().max(64).optional(),
+  status: recordStatusSchema.default('active'),
+  meta: z.record(z.string(), z.unknown()).optional()
 });
