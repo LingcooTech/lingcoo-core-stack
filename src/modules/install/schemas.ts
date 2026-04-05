@@ -6,7 +6,6 @@ export const installParamsSchema = z.object({
 });
 
 const installPayloadShape = {
-  productCode: z.string().trim().min(1).max(64).optional(),
   extensionInstallId: z.string().trim().min(8).max(128).optional(),
   deviceFingerprint: z.string().trim().min(1).max(255).optional(),
   chromeProfileHint: z.string().trim().min(1).max(255).optional(),

@@ -35,7 +35,6 @@ export async function listMyDeployments(): Promise<DeploymentsResponse> {
 
 export async function createDeployment(payload: {
   appCode: string;
-  productCode?: string;
   label: string;
   environment?: string;
   serverHost?: string;

@@ -16,8 +16,30 @@ import type {
   WebhooksResponse
 } from './types';
 
-export async function listOrders(limit = 50): Promise<OrdersResponse> {
-  return apiClient<OrdersResponse>(`/v1/admin/orders?limit=${limit}`);
+export interface AdminListParams {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}
+
+export interface AdminOrderListParams extends AdminListParams {
+  status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  provider?: 'wechat_pay' | 'alipay';
+}
+
+function buildQueryString<T extends object>(params: T | undefined) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== '') {
+      qs.set(key, String(value));
+    }
+  }
+  return qs.toString();
+}
+
+export async function listOrders(params: AdminOrderListParams = {}): Promise<OrdersResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<OrdersResponse>(`/v1/admin/orders${qs ? `?${qs}` : ''}`);
 }
 
 export async function getOrderDetail(orderNo: string): Promise<OrderDetail> {
@@ -30,12 +52,14 @@ export async function reconcileOrder(orderNo: string): Promise<ReconcileResponse
   });
 }
 
-export async function listInstalls(limit = 50): Promise<InstallsResponse> {
-  return apiClient<InstallsResponse>(`/v1/admin/installs?limit=${limit}`);
+export async function listInstalls(params: AdminListParams = {}): Promise<InstallsResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<InstallsResponse>(`/v1/admin/installs${qs ? `?${qs}` : ''}`);
 }
 
-export async function listEntitlements(limit = 50): Promise<EntitlementsResponse> {
-  return apiClient<EntitlementsResponse>(`/v1/admin/entitlements?limit=${limit}`);
+export async function listEntitlements(params: AdminListParams = {}): Promise<EntitlementsResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<EntitlementsResponse>(`/v1/admin/entitlements${qs ? `?${qs}` : ''}`);
 }
 
 export async function grantEntitlement(payload: GrantEntitlementInput): Promise<GrantEntitlementResult> {
@@ -51,21 +75,18 @@ export async function revokeEntitlement(entitlementId: string): Promise<RevokeEn
   });
 }
 
-export async function listEvents(limit = 50): Promise<EventsResponse> {
-  return apiClient<EventsResponse>(`/v1/admin/events?limit=${limit}`);
+export async function listEvents(params: AdminListParams = {}): Promise<EventsResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<EventsResponse>(`/v1/admin/events${qs ? `?${qs}` : ''}`);
 }
 
-export async function listBillingWebhooks(limit = 50): Promise<WebhooksResponse> {
-  return apiClient<WebhooksResponse>(`/v1/admin/billing-webhooks?limit=${limit}`);
+export async function listBillingWebhooks(params: AdminListParams = {}): Promise<WebhooksResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<WebhooksResponse>(`/v1/admin/billing-webhooks${qs ? `?${qs}` : ''}`);
 }
 
 export async function listUsers(params: { limit?: number; offset?: number; search?: string; role?: string; status?: string }): Promise<AdminUsersResponse> {
-  const qs = new URLSearchParams();
-  if (params.limit) qs.set('limit', String(params.limit));
-  if (params.offset) qs.set('offset', String(params.offset));
-  if (params.search) qs.set('search', params.search);
-  if (params.role) qs.set('role', params.role);
-  if (params.status) qs.set('status', params.status);
+  const qs = buildQueryString(params);
   return apiClient<AdminUsersResponse>(`/v1/admin/users?${qs.toString()}`);
 }
 

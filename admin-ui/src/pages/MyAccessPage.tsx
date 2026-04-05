@@ -52,16 +52,16 @@ export function MyAccessPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {summary.map((entry) => {
-            const relatedItems = items.filter((item) => item.app?.code === entry.productCode);
-            const relatedApps = appsByProduct.get(entry.productCode) ?? [];
+            const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
+            const relatedApps = appsByProduct.get(entry.appCode) ?? [];
             const featureNames = entry.featureCodes.map(
               (code) => featureNameMap.get(code) ?? code
             );
 
             return (
               <EntitlementProductCard
-                key={entry.productCode}
-                productName={relatedItems[0]?.app?.name ?? entry.productCode}
+                key={entry.appCode}
+                productName={relatedItems[0]?.app?.name ?? entry.appCode}
                 featureNames={featureNames}
                 relatedApps={relatedApps}
                 items={relatedItems}

@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 
-import { billingWebhookEvents, orders } from '../../db/schema';
+import { apps, billingWebhookEvents, orders, plans, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class BillingRepository {
@@ -46,6 +46,68 @@ export class BillingRepository {
     return this.db.select().from(orders).orderBy(desc(orders.createdAt)).limit(limit);
   }
 
+  async listOrders(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+    provider?: 'wechat_pay' | 'alipay';
+  }) {
+    const conditions = [];
+
+    if (query.status) {
+      conditions.push(eq(orders.status, query.status));
+    }
+
+    if (query.provider) {
+      conditions.push(eq(orders.provider, query.provider));
+    }
+
+    if (query.search) {
+      const pattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(orders.orderNo, pattern),
+          ilike(orders.providerOrderId, pattern),
+          ilike(orders.subject, pattern),
+          ilike(users.email, pattern),
+          ilike(users.displayName, pattern),
+          ilike(apps.code, pattern),
+          ilike(apps.name, pattern),
+          ilike(plans.code, pattern),
+          ilike(plans.name, pattern)
+        )!
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [rows, countResult] = await Promise.all([
+      this.db
+        .select({ item: orders })
+        .from(orders)
+        .leftJoin(users, eq(orders.userId, users.id))
+        .leftJoin(apps, eq(orders.appId, apps.id))
+        .leftJoin(plans, eq(orders.planId, plans.id))
+        .where(where)
+        .orderBy(desc(orders.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(orders)
+        .leftJoin(users, eq(orders.userId, users.id))
+        .leftJoin(apps, eq(orders.appId, apps.id))
+        .leftJoin(plans, eq(orders.planId, plans.id))
+        .where(where)
+    ]);
+
+    return {
+      items: rows.map((row) => row.item),
+      total: countResult[0]?.count ?? 0,
+    };
+  }
+
   async listOrdersByIds(orderIds: string[]) {
     if (orderIds.length === 0) {
       return [];
@@ -56,6 +118,47 @@ export class BillingRepository {
 
   async listRecentWebhookEvents(limit = 50) {
     return this.db.select().from(billingWebhookEvents).orderBy(desc(billingWebhookEvents.createdAt)).limit(limit);
+  }
+
+  async listWebhookEvents(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const conditions = [];
+
+    if (query.search) {
+      const pattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(billingWebhookEvents.provider, pattern),
+          ilike(billingWebhookEvents.type, pattern),
+          ilike(billingWebhookEvents.providerEventId, pattern),
+          ilike(billingWebhookEvents.status, pattern)
+        )!
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [items, countResult] = await Promise.all([
+      this.db
+        .select()
+        .from(billingWebhookEvents)
+        .where(where)
+        .orderBy(desc(billingWebhookEvents.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(billingWebhookEvents)
+        .where(where)
+    ]);
+
+    return {
+      items,
+      total: countResult[0]?.count ?? 0,
+    };
   }
 
   async markOrderPaidIfUnpaid(input: {

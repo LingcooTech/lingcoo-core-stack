@@ -20,7 +20,7 @@ export function DeploymentsPage() {
 
   const apps = appsQuery.data?.items ?? [];
   const summaries = entitlementsQuery.data?.summary ?? [];
-  const summaryMap = new Map(summaries.map((entry) => [entry.productCode, entry.featureCodes]));
+  const summaryMap = new Map(summaries.map((entry) => [entry.appCode, entry.featureCodes]));
 
   const deployableApps = useMemo<DeployableAppOption[]>(
     () =>
@@ -33,11 +33,7 @@ export function DeploymentsPage() {
         appCode: app.code,
         appName: app.name,
         appType: app.type,
-        products: [{
-          code: app.code,
-          name: app.name,
-          featureCount: summaryMap.get(app.code)?.length ?? 0
-        }]
+        featureCount: summaryMap.get(app.code)?.length ?? 0
       })),
     [apps, summaries]
   );

@@ -206,7 +206,6 @@ export class LicenseService {
       };
     });
 
-    // Build summary grouped by app (backward compat: productCode = appCode)
     const summaryMap = new Map<string, Set<string>>();
     for (const item of detailed) {
       if (item.app) {
@@ -222,7 +221,6 @@ export class LicenseService {
     return {
       items: detailed,
       summary: Array.from(summaryMap.entries()).map(([appCode, featureCodes]) => ({
-        productCode: appCode, // backward compat for Chrome extension
         appCode,
         featureCodes: Array.from(featureCodes).sort()
       }))
@@ -268,7 +266,6 @@ export class LicenseService {
       items: detailed,
       summary: allFeatureCodes.size > 0
         ? [{
-            productCode: appCode,
             appCode,
             featureCodes: Array.from(allFeatureCodes).sort()
           }]

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { createAppSecret, listAppsAdmin, revokeAppSecret } from '@/api/apps';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,6 +23,7 @@ export function SecretsPage() {
   const [secretVisible, setSecretVisible] = useState(false);
   const [secretAppCode, setSecretAppCode] = useState('');
   const [secretExpiresAt, setSecretExpiresAt] = useState('');
+  const [pendingRevoke, setPendingRevoke] = useState<{ appCode: string; secretId: string; hint: string } | null>(null);
 
   const { data: appsData } = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsData?.items ?? [];
@@ -108,11 +110,7 @@ export function SecretsPage() {
                     size="sm"
                     variant="outline"
                     className="text-red-600 hover:text-red-700"
-                    onClick={() => {
-                      if (confirm(`确认撤销 Secret ${secret.hint}？`)) {
-                        revokeMutation.mutate({ appCode: app.code, secretId: secret.id });
-                      }
-                    }}
+                    onClick={() => setPendingRevoke({ appCode: app.code, secretId: secret.id, hint: secret.hint })}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -160,6 +158,23 @@ export function SecretsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmActionDialog
+        open={!!pendingRevoke}
+        onOpenChange={(open) => {
+          if (!open) setPendingRevoke(null);
+        }}
+        title="确认撤销 Secret？"
+        description={pendingRevoke ? `Secret ${pendingRevoke.hint} 撤销后将立即失效。` : undefined}
+        confirmText="撤销 Secret"
+        isConfirming={revokeMutation.isPending}
+        onConfirm={() => {
+          if (!pendingRevoke) return;
+          const target = pendingRevoke;
+          setPendingRevoke(null);
+          revokeMutation.mutate({ appCode: target.appCode, secretId: target.secretId });
+        }}
+      />
     </div>
   );
 }

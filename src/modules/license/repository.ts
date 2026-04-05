@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, inArray, isNull, ne, notInArray, or } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 
-import { entitlements, features, planFeatures, plans } from '../../db/schema';
+import { apps, entitlements, features, orders, planFeatures, plans, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class LicenseRepository {
@@ -278,6 +278,64 @@ export class LicenseRepository {
 
   async listRecentEntitlements(limit = 50) {
     return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
+  }
+
+  async listEntitlements(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const conditions = [];
+
+    if (query.search) {
+      const pattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(sql`${entitlements.id}::text`, pattern),
+          ilike(sql`${entitlements.sourceId}::text`, pattern),
+          ilike(entitlements.status, pattern),
+          ilike(entitlements.sourceType, pattern),
+          ilike(users.email, pattern),
+          ilike(users.displayName, pattern),
+          ilike(apps.code, pattern),
+          ilike(apps.name, pattern),
+          ilike(plans.code, pattern),
+          ilike(plans.name, pattern),
+          ilike(orders.orderNo, pattern)
+        )!
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const orderJoin = and(eq(entitlements.sourceType, 'order'), eq(entitlements.sourceId, orders.id));
+
+    const [rows, countResult] = await Promise.all([
+      this.db
+        .select({ item: entitlements })
+        .from(entitlements)
+        .leftJoin(users, eq(entitlements.userId, users.id))
+        .leftJoin(apps, eq(entitlements.appId, apps.id))
+        .leftJoin(plans, eq(entitlements.planId, plans.id))
+        .leftJoin(orders, orderJoin)
+        .where(where)
+        .orderBy(desc(entitlements.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(entitlements)
+        .leftJoin(users, eq(entitlements.userId, users.id))
+        .leftJoin(apps, eq(entitlements.appId, apps.id))
+        .leftJoin(plans, eq(entitlements.planId, plans.id))
+        .leftJoin(orders, orderJoin)
+        .where(where)
+    ]);
+
+    return {
+      items: rows.map((row) => row.item),
+      total: countResult[0]?.count ?? 0,
+    };
   }
 
   async listEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {

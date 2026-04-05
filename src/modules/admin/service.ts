@@ -22,7 +22,7 @@ export class AdminService {
   ) {}
 
   private async hydrateOrderRows(
-    orders: Array<Awaited<ReturnType<BillingRepository['listRecentOrders']>>[number]>
+    orders: Array<Awaited<ReturnType<BillingRepository['listOrders']>>['items'][number]>
   ) {
     const userIds = [...new Set(orders.map((item) => item.userId))];
     const appIds = [...new Set(orders.map((item) => item.appId))];
@@ -71,9 +71,20 @@ export class AdminService {
     });
   }
 
-  async listOrders(limit = 50) {
-    const orders = await new BillingRepository(this.db).listRecentOrders(limit);
-    return { items: await this.hydrateOrderRows(orders) };
+  async listOrders(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+    provider?: 'wechat_pay' | 'alipay';
+  }) {
+    const result = await new BillingRepository(this.db).listOrders(query);
+    return {
+      items: await this.hydrateOrderRows(result.items),
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
+    };
   }
 
   async getOrderDetail(orderNo: string) {
@@ -112,8 +123,13 @@ export class AdminService {
     return new BillingService(this.db, this.env).syncOrderStatusByOrderNo(orderNo);
   }
 
-  async listInstalls(limit = 50) {
-    const installs = await new InstallRepository(this.db).listRecentInstalls(limit);
+  async listInstalls(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const result = await new InstallRepository(this.db).listInstalls(query);
+    const installs = result.items;
     const userIds = [...new Set(installs.map((item) => item.userId).filter((item): item is string => Boolean(item)))];
     const appIds = [...new Set(installs.map((item) => item.appId))];
 
@@ -134,12 +150,20 @@ export class AdminService {
           user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
           app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null
         };
-      })
+      }),
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
-  async listEntitlements(limit = 50) {
-    const entitlements = await new LicenseRepository(this.db).listRecentEntitlements(limit);
+  async listEntitlements(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const result = await new LicenseRepository(this.db).listEntitlements(query);
+    const entitlements = result.items;
     const userIds = [...new Set(entitlements.map((item) => item.userId))];
     const appIds = [...new Set(entitlements.map((item) => item.appId))];
     const planIds = [...new Set(entitlements.map((item) => item.planId))];
@@ -179,12 +203,20 @@ export class AdminService {
           plan: plan ? { id: plan.id, code: plan.code, name: plan.name, interval: plan.interval } : null,
           sourceOrder: sourceOrder ? { id: sourceOrder.id, orderNo: sourceOrder.orderNo, status: sourceOrder.status } : null
         };
-      })
+      }),
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
-  async listEvents(limit = 50) {
-    const events = await new EventRepository(this.db).listRecentEvents(limit);
+  async listEvents(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const result = await new EventRepository(this.db).listEvents(query);
+    const events = result.items;
     const userIds = [...new Set(events.map((item) => item.userId).filter((item): item is string => Boolean(item)))];
     const installIds = [...new Set(events.map((item) => item.installId).filter((item): item is string => Boolean(item)))];
     const installs = await new InstallRepository(this.db).listInstallsByIds(installIds);
@@ -216,12 +248,25 @@ export class AdminService {
           install: install ? { id: install.id, extensionInstallId: install.extensionInstallId, status: install.status } : null,
           app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null
         };
-      })
+      }),
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
-  async listBillingWebhookEvents(limit = 50) {
-    return { items: await new BillingRepository(this.db).listRecentWebhookEvents(limit) };
+  async listBillingWebhookEvents(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const result = await new BillingRepository(this.db).listWebhookEvents(query);
+    return {
+      items: result.items,
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
+    };
   }
 
   async grantEntitlement(

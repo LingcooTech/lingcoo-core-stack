@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { AppCatalog, AppFaq, AppHighlight, AppLink, AppScreenshot, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary, ProductSummary } from './types';
+import type { AppCatalog, AppFaq, AppHighlight, AppLink, AppScreenshot, AppSecretCreated, AppWithDetails, CatalogSnapshot, FeatureSummary, PlanSummary } from './types';
 
 export async function listApps(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
@@ -11,10 +11,6 @@ export async function getAppCatalog(appCode: string): Promise<AppCatalog> {
 
 export async function listAppsAdmin(): Promise<{ items: AppWithDetails[] }> {
   return apiClient<{ items: AppWithDetails[] }>('/v1/admin/apps');
-}
-
-export async function listCatalogProducts(): Promise<{ items: ProductSummary[] }> {
-  return apiClient<{ items: ProductSummary[] }>('/v1/products');
 }
 
 export async function listCatalogPlans(): Promise<{ items: PlanSummary[] }> {
@@ -44,8 +40,25 @@ export interface UpsertAppInput {
   sortOrder?: number;
   type: string;
   status: string;
-  productCodes: string[];
-  checkoutOffers?: Array<{
+  features?: Array<{
+    code: string;
+    name: string;
+    kind: string;
+    status: string;
+  }>;
+  plans?: Array<{
+    code: string;
+    name: string;
+    billingProvider: string;
+    billingPriceId?: string;
+    priceAmount: number;
+    currency: string;
+    interval: 'month' | 'year' | 'one_time';
+    status: string;
+    featureCodes: string[];
+    meta?: Record<string, unknown>;
+  }>;
+  offers?: Array<{
     code: string;
     planCode: string;
     title: string;
@@ -56,13 +69,6 @@ export interface UpsertAppInput {
     status: string;
     isDefault?: boolean;
     sortOrder?: number;
-  }>;
-  checkoutDefaultOfferCode?: string;
-  planConfigs?: Array<{
-    code: string;
-    priceAmount: number;
-    currency: string;
-    status: string;
   }>;
   meta?: Record<string, unknown>;
 }
@@ -84,36 +90,5 @@ export async function createAppSecret(appCode: string, expiresAt?: string): Prom
 export async function revokeAppSecret(appCode: string, secretId: string): Promise<unknown> {
   return apiClient(`/v1/admin/apps/${encodeURIComponent(appCode)}/secrets/${encodeURIComponent(secretId)}/revoke`, {
     method: 'POST'
-  });
-}
-
-export interface UpsertCatalogBundleInput {
-  name: string;
-  type: 'chrome_extension' | 'web_app' | 'service';
-  status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  features: Array<{
-    code: string;
-    name: string;
-    kind: string;
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  }>;
-  plans: Array<{
-    code: string;
-    name: string;
-    billingProvider: string;
-    billingPriceId?: string;
-    priceAmount: number;
-    currency: string;
-    interval: 'month' | 'year' | 'one_time';
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    featureCodes: string[];
-    meta?: Record<string, unknown>;
-  }>;
-}
-
-export async function upsertCatalogBundle(productCode: string, payload: UpsertCatalogBundleInput) {
-  return apiClient(`/v1/admin/catalog/products/${encodeURIComponent(productCode)}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload)
   });
 }

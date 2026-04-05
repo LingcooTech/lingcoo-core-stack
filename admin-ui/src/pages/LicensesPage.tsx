@@ -1,18 +1,35 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
 import { grantEntitlement, listEntitlements, revokeEntitlement } from '@/api/admin';
-import type { HydratedEntitlement } from '@/api/types';
-import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { listAppsAdmin, listCatalogPlans } from '@/api/apps';
+import type { HydratedEntitlement, PlanSummary } from '@/api/types';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { DataTable, type Column } from '@/components/shared/DataTable';
+import { FilterBar } from '@/components/shared/FilterBar';
+import { PaginationBar } from '@/components/shared/PaginationBar';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
-import { formatTime } from '@/lib/utils';
+import { formatAmount, formatTime } from '@/lib/utils';
+
+const PAGE_SIZE = 20;
 
 const grantSchema = z.object({
   userEmail: z.string().email('请输入有效邮箱'),
@@ -21,19 +38,81 @@ const grantSchema = z.object({
 });
 type GrantValues = z.infer<typeof grantSchema>;
 
+function formatPlanInterval(interval: string | null | undefined) {
+  if (interval === 'month') return '月付';
+  if (interval === 'year') return '年付';
+  if (interval === 'one_time') return '一次性';
+  return interval || '未设置';
+}
+
 export function LicensesPage() {
   const qc = useQueryClient();
+  const [entitlementToRevoke, setEntitlementToRevoke] = useState<HydratedEntitlement | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const entitlementQuery = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      search: deferredSearchQuery.trim() || undefined
+    }),
+    [deferredSearchQuery, page]
+  );
 
   const { data, isLoading } = useQuery({
-    queryKey: ['entitlements', 100],
-    queryFn: () => listEntitlements(100)
+    queryKey: ['entitlements', entitlementQuery],
+    queryFn: () => listEntitlements(entitlementQuery)
+  });
+  const { data: plansData, isLoading: isPlansLoading } = useQuery({
+    queryKey: ['catalog-plans'],
+    queryFn: listCatalogPlans
+  });
+  const { data: appsData } = useQuery({
+    queryKey: ['apps'],
+    queryFn: listAppsAdmin
   });
   const entitlements = data?.items ?? [];
+  const totalEntitlements = data?.total ?? 0;
+  const appsById = useMemo(
+    () => new Map((appsData?.items ?? []).map((app) => [app.id, app])),
+    [appsData?.items]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [deferredSearchQuery]);
+
+  const planGroups = useMemo(() => {
+    const grouped = new Map<string, { appName: string; appCode: string; plans: PlanSummary[] }>();
+    const plans = [...(plansData?.items ?? [])].sort((a, b) => a.code.localeCompare(b.code));
+    for (const plan of plans) {
+      const app = plan.appId ? appsById.get(plan.appId) : null;
+      const key = app?.id ?? 'unassigned';
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.plans.push(plan);
+        continue;
+      }
+      grouped.set(key, {
+        appName: app?.name ?? '未关联应用',
+        appCode: app?.code ?? 'unassigned',
+        plans: [plan]
+      });
+    }
+    return [...grouped.values()].sort((a, b) => a.appName.localeCompare(b.appName));
+  }, [appsById, plansData?.items]);
 
   const grantForm = useForm<GrantValues>({
     resolver: zodResolver(grantSchema),
     defaultValues: { userEmail: '', planCode: '', reason: '' }
   });
+  const selectedPlanCode = grantForm.watch('planCode');
+  const selectedPlan = useMemo(
+    () => (plansData?.items ?? []).find((plan) => plan.code === selectedPlanCode) ?? null,
+    [plansData?.items, selectedPlanCode]
+  );
+  const selectedPlanApp = selectedPlan?.appId ? appsById.get(selectedPlan.appId) : null;
 
   const grantMutation = useMutation({
     mutationFn: grantEntitlement,
@@ -124,11 +203,7 @@ export function LicensesPage() {
             variant="outline"
             className="text-red-600 hover:text-red-700 text-xs"
             disabled={revokeMutation.isPending}
-            onClick={() => {
-              if (confirm(`确认撤销 ${row.user?.email ?? row.userId} 的授权？`)) {
-                revokeMutation.mutate(row.id);
-              }
-            }}
+            onClick={() => setEntitlementToRevoke(row)}
           >
             撤销
           </Button>
@@ -148,7 +223,7 @@ export function LicensesPage() {
           <h3 className="text-sm font-black mb-4">人工发放授权</h3>
           <Form {...grantForm}>
             <form onSubmit={grantForm.handleSubmit((v) => grantMutation.mutate(v))} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <FormField control={grantForm.control} name="userEmail" render={({ field }) => (
                   <FormItem>
                     <FormLabel>用户邮箱</FormLabel>
@@ -158,8 +233,37 @@ export function LicensesPage() {
                 )} />
                 <FormField control={grantForm.control} name="planCode" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>套餐 Code</FormLabel>
-                    <FormControl><Input placeholder="pro_monthly" {...field} /></FormControl>
+                    <FormLabel>套餐</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={isPlansLoading}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isPlansLoading ? '加载套餐中...' : '选择套餐'} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {planGroups.map((group) => (
+                          <SelectGroup key={group.appCode}>
+                            <SelectLabel>{group.appName}</SelectLabel>
+                            {group.plans.map((plan) => (
+                              <SelectItem key={plan.code} value={plan.code}>
+                                {plan.name} ({plan.code})
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedPlan ? (
+                      <FormDescription>
+                        {selectedPlanApp ? `${selectedPlanApp.name} / ` : ''}
+                        {formatPlanInterval(selectedPlan.interval)}
+                        {typeof selectedPlan.priceAmount === 'number'
+                          ? ` / ${formatAmount(selectedPlan.priceAmount, selectedPlan.currency ?? 'CNY')}`
+                          : ''}
+                      </FormDescription>
+                    ) : (
+                      <FormDescription>从已存在的 plan 中选择，避免手输 code 出错。</FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -182,8 +286,15 @@ export function LicensesPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-black text-muted-foreground uppercase tracking-wider">
-              授权明细 ({entitlements.length})
+              授权明细 ({totalEntitlements})
             </h3>
+          </div>
+          <div className="mb-4">
+            <FilterBar
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="搜索用户、应用、套餐、订单号..."
+            />
           </div>
           <div className="rounded-2xl border border-border bg-white overflow-hidden">
             <DataTable
@@ -194,8 +305,39 @@ export function LicensesPage() {
               getRowKey={(row) => row.id}
             />
           </div>
+          <div className="mt-4">
+            <PaginationBar
+              total={totalEntitlements}
+              page={page}
+              pageSize={PAGE_SIZE}
+              isLoading={isLoading}
+              itemLabel="条授权记录"
+              onPageChange={setPage}
+            />
+          </div>
         </div>
       </div>
+
+      <ConfirmActionDialog
+        open={!!entitlementToRevoke}
+        onOpenChange={(open) => {
+          if (!open) setEntitlementToRevoke(null);
+        }}
+        title="确认撤销授权？"
+        description={
+          entitlementToRevoke
+            ? `将撤销 ${entitlementToRevoke.user?.email ?? entitlementToRevoke.userId} 的当前授权。`
+            : undefined
+        }
+        confirmText="撤销授权"
+        isConfirming={revokeMutation.isPending}
+        onConfirm={() => {
+          if (!entitlementToRevoke) return;
+          const targetId = entitlementToRevoke.id;
+          setEntitlementToRevoke(null);
+          revokeMutation.mutate(targetId);
+        }}
+      />
     </div>
   );
 }

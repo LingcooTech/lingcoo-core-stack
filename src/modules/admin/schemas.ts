@@ -20,7 +20,14 @@ export const alipayPaymentSettingsSchema = z.object({
 });
 
 export const adminListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50)
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+  search: z.string().trim().max(255).optional()
+});
+
+export const adminListOrdersQuerySchema = adminListQuerySchema.extend({
+  status: z.enum(['pending', 'paid', 'failed', 'cancelled', 'refunded']).optional(),
+  provider: z.enum(['wechat_pay', 'alipay']).optional()
 });
 
 export const adminOrderParamsSchema = z.object({

@@ -13,6 +13,7 @@ import {
   adminEntitlementParamsSchema,
   adminGrantEntitlementSchema,
   adminListQuerySchema,
+  adminListOrdersQuerySchema,
   adminListUsersQuerySchema,
   adminUpdateUserSchema,
   adminUserIdParamsSchema,
@@ -109,8 +110,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/v1/admin/orders', { preHandler: app.requireAdmin }, async (request) => {
-    const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listOrders(query.limit);
+    const query = adminListOrdersQuerySchema.parse(request.query);
+    return new AdminService(app.db, app.appEnv).listOrders(query);
   });
 
   app.post('/v1/admin/orders/:orderNo/reconcile', { preHandler: app.requireAdmin }, async (request) => {
@@ -125,12 +126,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/installs', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listInstalls(query.limit);
+    return new AdminService(app.db, app.appEnv).listInstalls(query);
   });
 
   app.get('/v1/admin/entitlements', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listEntitlements(query.limit);
+    return new AdminService(app.db, app.appEnv).listEntitlements(query);
   });
 
   app.post('/v1/admin/entitlements/grant', { preHandler: app.requireAdmin }, async (request) => {
@@ -145,12 +146,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/events', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listEvents(query.limit);
+    return new AdminService(app.db, app.appEnv).listEvents(query);
   });
 
   app.get('/v1/admin/billing-webhooks', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listBillingWebhookEvents(query.limit);
+    return new AdminService(app.db, app.appEnv).listBillingWebhookEvents(query);
   });
 
   app.put('/v1/admin/payment-settings/wechat', { preHandler: app.requireAdmin }, async (request) => {

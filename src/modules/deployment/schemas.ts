@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const createDeploymentSchema = z.object({
   appCode: z.string().trim().min(1).max(64),
-  productCode: z.string().trim().min(1).max(64).optional(),
   label: z.string().trim().min(1).max(120),
   environment: z.string().trim().min(1).max(32).default('production'),
   serverHost: z.string().trim().min(1).max(255).optional(),

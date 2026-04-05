@@ -6,15 +6,6 @@ export interface UserSummary {
   displayName: string | null;
 }
 
-export interface ProductSummary {
-  id: string;
-  code: string;
-  name: string;
-  type?: string;
-  status?: string;
-  createdAt?: string;
-}
-
 export interface PlanSummary {
   id: string;
   code: string;
@@ -53,6 +44,13 @@ export interface CatalogSnapshot {
   plans: PlanSummary[];
   features: FeatureSummary[];
   planFeatures: PlanFeatureSummary[];
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
@@ -239,7 +237,6 @@ export interface AppWithDetails extends App {
 
 export interface AppCatalog {
   app: AppWithDetails;
-  products: ProductSummary[];
   plans: PlanSummary[];
   offers: Array<{
     code: string;
@@ -343,9 +340,7 @@ export interface OrderDetail {
   events: OrderEventSummary[];
 }
 
-export interface OrdersResponse {
-  items: HydratedOrder[];
-}
+export interface OrdersResponse extends PaginatedResponse<HydratedOrder> {}
 
 export interface CheckoutSessionCreated {
   sessionId: string;
@@ -403,9 +398,7 @@ export interface HydratedInstall extends Install {
   app: AppSummary | null;
 }
 
-export interface InstallsResponse {
-  items: HydratedInstall[];
-}
+export interface InstallsResponse extends PaginatedResponse<HydratedInstall> {}
 
 // ─── Entitlements ─────────────────────────────────────────────────────────────
 
@@ -429,10 +422,9 @@ export interface HydratedEntitlement extends Entitlement {
   sourceOrder: { id: string; orderNo: string; status: string } | null;
 }
 
-export interface EntitlementsResponse {
-  items: HydratedEntitlement[];
+export interface EntitlementsResponse extends PaginatedResponse<HydratedEntitlement> {
   summary?: Array<{
-    productCode: string;
+    appCode: string;
     featureCodes: string[];
   }>;
 }
@@ -480,9 +472,7 @@ export interface HydratedEvent extends Event {
   app: AppSummary | null;
 }
 
-export interface EventsResponse {
-  items: HydratedEvent[];
-}
+export interface EventsResponse extends PaginatedResponse<HydratedEvent> {}
 
 // ─── Webhooks ─────────────────────────────────────────────────────────────────
 
@@ -498,9 +488,7 @@ export interface BillingWebhookEvent {
   updatedAt: string;
 }
 
-export interface WebhooksResponse {
-  items: BillingWebhookEvent[];
-}
+export interface WebhooksResponse extends PaginatedResponse<BillingWebhookEvent> {}
 
 // ─── Plans (for license grants) ───────────────────────────────────────────────
 

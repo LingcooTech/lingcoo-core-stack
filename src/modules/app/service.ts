@@ -307,19 +307,8 @@ export class AppService {
     const featureIds = new Set(appFeatures.map((f) => f.id));
     const checkoutOffers = this.buildCheckoutOffersFromDb(app, offers, plans);
 
-    // Backward compat: synthesize products[] from app
-    const products = [{
-      id: app.id,
-      code: app.code,
-      name: app.name,
-      type: app.type,
-      status: app.status,
-      createdAt: app.createdAt
-    }];
-
     return {
       app,
-      products,
       plans,
       offers: checkoutOffers,
       features: appFeatures,

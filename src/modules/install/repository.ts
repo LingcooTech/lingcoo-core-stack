@@ -1,6 +1,6 @@
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
-import { installs } from '../../db/schema';
+import { apps, installs, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class InstallRepository {
@@ -51,6 +51,55 @@ export class InstallRepository {
 
   async listRecentInstalls(limit = 50) {
     return this.db.select().from(installs).orderBy(desc(installs.createdAt)).limit(limit);
+  }
+
+  async listInstalls(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+  }) {
+    const conditions = [];
+
+    if (query.search) {
+      const pattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(installs.extensionInstallId, pattern),
+          ilike(installs.chromeProfileHint, pattern),
+          ilike(installs.appVersion, pattern),
+          ilike(installs.status, pattern),
+          ilike(users.email, pattern),
+          ilike(users.displayName, pattern),
+          ilike(apps.code, pattern),
+          ilike(apps.name, pattern)
+        )!
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [rows, countResult] = await Promise.all([
+      this.db
+        .select({ item: installs })
+        .from(installs)
+        .leftJoin(users, eq(installs.userId, users.id))
+        .leftJoin(apps, eq(installs.appId, apps.id))
+        .where(where)
+        .orderBy(desc(installs.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(installs)
+        .leftJoin(users, eq(installs.userId, users.id))
+        .leftJoin(apps, eq(installs.appId, apps.id))
+        .where(where)
+    ]);
+
+    return {
+      items: rows.map((row) => row.item),
+      total: countResult[0]?.count ?? 0,
+    };
   }
 
   async listInstallsByIds(installIds: string[]) {

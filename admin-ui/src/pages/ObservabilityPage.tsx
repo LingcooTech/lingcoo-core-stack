@@ -1,25 +1,64 @@
 import { useQuery } from '@tanstack/react-query';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { listBillingWebhooks, listEvents } from '@/api/admin';
 import type { BillingWebhookEvent, HydratedEvent } from '@/api/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataTable, type Column } from '@/components/shared/DataTable';
+import { FilterBar } from '@/components/shared/FilterBar';
 import { JsonViewer } from '@/components/shared/JsonViewer';
+import { PaginationBar } from '@/components/shared/PaginationBar';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatTime } from '@/lib/utils';
 
+const PAGE_SIZE = 20;
+
 export function ObservabilityPage() {
+  const [activeTab, setActiveTab] = useState<'events' | 'webhooks'>('events');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [eventPage, setEventPage] = useState(1);
+  const [webhookSearchQuery, setWebhookSearchQuery] = useState('');
+  const [webhookPage, setWebhookPage] = useState(1);
+  const deferredEventSearch = useDeferredValue(eventSearchQuery);
+  const deferredWebhookSearch = useDeferredValue(webhookSearchQuery);
+  const eventQuery = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: (eventPage - 1) * PAGE_SIZE,
+      search: deferredEventSearch.trim() || undefined
+    }),
+    [deferredEventSearch, eventPage]
+  );
+  const webhookQuery = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: (webhookPage - 1) * PAGE_SIZE,
+      search: deferredWebhookSearch.trim() || undefined
+    }),
+    [deferredWebhookSearch, webhookPage]
+  );
+
   const eventsQuery = useQuery({
-    queryKey: ['events', 100],
-    queryFn: () => listEvents(100)
+    queryKey: ['events', eventQuery],
+    queryFn: () => listEvents(eventQuery)
   });
   const webhooksQuery = useQuery({
-    queryKey: ['billing-webhooks', 100],
-    queryFn: () => listBillingWebhooks(100)
+    queryKey: ['billing-webhooks', webhookQuery],
+    queryFn: () => listBillingWebhooks(webhookQuery)
   });
+
+  useEffect(() => {
+    setEventPage(1);
+  }, [deferredEventSearch]);
+
+  useEffect(() => {
+    setWebhookPage(1);
+  }, [deferredWebhookSearch]);
 
   const events = eventsQuery.data?.items ?? [];
   const webhooks = webhooksQuery.data?.items ?? [];
+  const totalEvents = eventsQuery.data?.total ?? 0;
+  const totalWebhooks = webhooksQuery.data?.total ?? 0;
 
   const eventColumns: Column<HydratedEvent>[] = [
     {
@@ -123,13 +162,20 @@ export function ObservabilityPage() {
     <div>
       <SectionHeader sectionKey="observability" />
       <div className="p-6">
-        <Tabs defaultValue="events">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'events' | 'webhooks')}>
           <TabsList className="mb-4">
-            <TabsTrigger value="events">事件流 ({events.length})</TabsTrigger>
-            <TabsTrigger value="webhooks">支付回调 ({webhooks.length})</TabsTrigger>
+            <TabsTrigger value="events">事件流 ({totalEvents})</TabsTrigger>
+            <TabsTrigger value="webhooks">支付回调 ({totalWebhooks})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="events">
+            <div className="mb-4">
+              <FilterBar
+                searchValue={eventSearchQuery}
+                onSearchChange={setEventSearchQuery}
+                searchPlaceholder="搜索事件名、用户、安装 ID、应用..."
+              />
+            </div>
             <div className="rounded-2xl border border-border bg-white overflow-hidden">
               <DataTable
                 columns={eventColumns}
@@ -139,9 +185,26 @@ export function ObservabilityPage() {
                 getRowKey={(row) => row.id}
               />
             </div>
+            <div className="mt-4">
+              <PaginationBar
+                total={totalEvents}
+                page={eventPage}
+                pageSize={PAGE_SIZE}
+                isLoading={eventsQuery.isLoading}
+                itemLabel="条事件"
+                onPageChange={setEventPage}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="webhooks">
+            <div className="mb-4">
+              <FilterBar
+                searchValue={webhookSearchQuery}
+                onSearchChange={setWebhookSearchQuery}
+                searchPlaceholder="搜索回调类型、渠道、事件号..."
+              />
+            </div>
             <div className="rounded-2xl border border-border bg-white overflow-hidden">
               <DataTable
                 columns={webhookColumns}
@@ -149,6 +212,16 @@ export function ObservabilityPage() {
                 isLoading={webhooksQuery.isLoading}
                 emptyMessage="暂无支付回调记录"
                 getRowKey={(row) => row.id}
+              />
+            </div>
+            <div className="mt-4">
+              <PaginationBar
+                total={totalWebhooks}
+                page={webhookPage}
+                pageSize={PAGE_SIZE}
+                isLoading={webhooksQuery.isLoading}
+                itemLabel="条支付回调"
+                onPageChange={setWebhookPage}
               />
             </div>
           </TabsContent>

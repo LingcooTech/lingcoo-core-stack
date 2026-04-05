@@ -14,16 +14,11 @@ export interface DeployableAppOption {
   appCode: string;
   appName: string;
   appType: string;
-  products: Array<{
-    code: string;
-    name: string;
-    featureCount: number;
-  }>;
+  featureCount: number;
 }
 
 export interface CreateDeploymentPayload {
   appCode: string;
-  productCode?: string;
   label: string;
   environment: string;
   serverHost?: string;
@@ -46,7 +41,6 @@ type WizardStep = 1 | 2 | 3;
 export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, creating, issuing }: DeploymentWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedAppCode, setSelectedAppCode] = useState('');
-  const [productCode, setProductCode] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
   const [primaryDomain, setPrimaryDomain] = useState('');
@@ -66,15 +60,6 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     }
   }, [selectedApp, label]);
 
-  useEffect(() => {
-    if (!selectedApp) return;
-    if (selectedApp.products.length === 1) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    } else if (!selectedApp.products.some((p) => p.code === productCode)) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    }
-  }, [selectedApp, productCode]);
-
   const handleSelectApp = useCallback((appCode: string) => {
     setSelectedAppCode(appCode);
     setLabel('');
@@ -83,7 +68,6 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
   const handleCreate = useCallback(async () => {
     const payload: CreateDeploymentPayload = {
       appCode: selectedAppCode,
-      productCode: productCode || undefined,
       label,
       environment,
       serverHost: serverHost || undefined,
@@ -105,12 +89,11 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     } catch {
       /* error handled by parent via toast */
     }
-  }, [selectedAppCode, productCode, label, environment, serverHost, primaryDomain, adminDomain, wsDomain, installPath, onCreateDeployment, onIssueToken]);
+  }, [selectedAppCode, label, environment, serverHost, primaryDomain, adminDomain, wsDomain, installPath, onCreateDeployment, onIssueToken]);
 
   const handleReset = useCallback(() => {
     setStep(1);
     setSelectedAppCode('');
-    setProductCode('');
     setLabel('');
     setEnvironment('production');
     setPrimaryDomain('');
@@ -194,7 +177,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                       <p className="truncate text-sm font-bold text-slate-900">{app.appName}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <Badge variant="secondary" className="text-[10px]">{app.appType}</Badge>
-                        <span className="text-xs text-muted-foreground">{app.products.length} 个产品</span>
+                        <span className="text-xs text-muted-foreground">{app.featureCount} 项能力</span>
                       </div>
                     </div>
                     {isSelected && (
@@ -246,24 +229,6 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                 placeholder="www.futuredecade.com"
               />
             </div>
-
-            {selectedApp && selectedApp.products.length > 1 && (
-              <div className="space-y-2">
-                <Label htmlFor="wizard-product">授权产品</Label>
-                <select
-                  id="wizard-product"
-                  value={productCode}
-                  onChange={(e) => setProductCode(e.target.value)}
-                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {selectedApp.products.map((product) => (
-                    <option key={product.code} value={product.code}>
-                      {product.name} ({product.featureCount} abilities)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="rounded-2xl border border-border">
               <button

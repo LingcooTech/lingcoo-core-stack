@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getOrderDetail, listOrders, reconcileOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
@@ -8,17 +8,35 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterBar } from '@/components/shared/FilterBar';
 import { JsonViewer } from '@/components/shared/JsonViewer';
+import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { formatAmount, formatTime } from '@/lib/utils';
+
+const PAGE_SIZE = 20;
 
 export function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('__all__');
   const [providerFilter, setProviderFilter] = useState('__all__');
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const qc = useQueryClient();
-  const ordersQuery = useQuery({ queryKey: ['orders', 100], queryFn: () => listOrders(100) });
+  const orderQuery = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+      search: deferredSearchQuery.trim() || undefined,
+      status: statusFilter !== '__all__' ? (statusFilter as 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded') : undefined,
+      provider: providerFilter !== '__all__' ? (providerFilter as 'wechat_pay' | 'alipay') : undefined,
+    }),
+    [deferredSearchQuery, page, providerFilter, statusFilter],
+  );
+  const ordersQuery = useQuery({
+    queryKey: ['orders', orderQuery],
+    queryFn: () => listOrders(orderQuery),
+  });
   const orderDetailQuery = useQuery({
     queryKey: ['order-detail', selectedOrderNo],
     queryFn: () => getOrderDetail(selectedOrderNo!),
@@ -37,19 +55,18 @@ export function OrdersPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败')
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [deferredSearchQuery, providerFilter, statusFilter]);
+
   const orders = ordersQuery.data?.items ?? [];
+  const totalOrders = ordersQuery.data?.total ?? 0;
 
-  // Client-side filter
-  const filteredOrders = orders.filter((o) => {
-    const q = searchQuery.toLowerCase();
-    const matchSearch = !q || [o.orderNo, o.user?.email ?? '', o.app?.code ?? '', o.plan?.code ?? ''].some((v) => v.toLowerCase().includes(q));
-    const matchStatus = statusFilter === '__all__' || o.status === statusFilter;
-    const matchProvider = providerFilter === '__all__' || (o.provider ?? '') === providerFilter;
-    return matchSearch && matchStatus && matchProvider;
-  });
-
-  const uniqueStatuses = [...new Set(orders.map((o) => o.status))];
-  const uniqueProviders = [...new Set(orders.map((o) => o.provider ?? '').filter(Boolean))];
+  useEffect(() => {
+    if (selectedOrderNo && !orders.some((order) => order.orderNo === selectedOrderNo)) {
+      setSelectedOrderNo(null);
+    }
+  }, [orders, selectedOrderNo]);
 
   const orderColumns: Column<HydratedOrder>[] = [
     {
@@ -147,14 +164,23 @@ export function OrdersPage() {
               placeholder: '全部状态',
               value: statusFilter,
               onChange: setStatusFilter,
-              options: uniqueStatuses.map((s) => ({ value: s, label: s }))
+              options: [
+                { value: 'pending', label: 'pending' },
+                { value: 'paid', label: 'paid' },
+                { value: 'failed', label: 'failed' },
+                { value: 'cancelled', label: 'cancelled' },
+                { value: 'refunded', label: 'refunded' }
+              ]
             },
             {
               id: 'provider',
               placeholder: '全部渠道',
               value: providerFilter,
               onChange: setProviderFilter,
-              options: uniqueProviders.map((p) => ({ value: p, label: p }))
+              options: [
+                { value: 'wechat_pay', label: 'wechat_pay' },
+                { value: 'alipay', label: 'alipay' }
+              ]
             }
           ]}
         />
@@ -162,12 +188,21 @@ export function OrdersPage() {
         <div className="rounded-2xl border border-border bg-white overflow-hidden">
           <DataTable
             columns={orderColumns}
-            data={filteredOrders}
+            data={orders}
             isLoading={ordersQuery.isLoading}
             emptyMessage="暂无订单"
             getRowKey={(row) => row.orderNo}
           />
         </div>
+
+        <PaginationBar
+          total={totalOrders}
+          page={page}
+          pageSize={PAGE_SIZE}
+          isLoading={ordersQuery.isLoading}
+          itemLabel="条订单"
+          onPageChange={setPage}
+        />
 
         {/* Order Detail Panel */}
         {selectedOrderNo && (

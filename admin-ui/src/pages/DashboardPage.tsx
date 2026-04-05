@@ -13,7 +13,7 @@ export function DashboardPage() {
   const results = useQueries({
     queries: [
       { queryKey: ['payment-settings'], queryFn: getPaymentSettings },
-      { queryKey: ['orders', 50], queryFn: () => listOrders(50) },
+      { queryKey: ['orders', { limit: 50 }], queryFn: () => listOrders({ limit: 50 }) },
       { queryKey: ['apps'], queryFn: listAppsAdmin }
     ]
   });

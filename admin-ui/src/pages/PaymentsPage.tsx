@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -9,6 +10,7 @@ import {
   upsertAlipaySettings,
   upsertWechatSettings
 } from '@/api/payments';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -38,6 +40,7 @@ type AlipayValues = z.infer<typeof alipaySchema>;
 
 export function PaymentsPage() {
   const qc = useQueryClient();
+  const [providerToClear, setProviderToClear] = useState<'wechat_pay' | 'alipay' | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['payment-settings'],
     queryFn: getPaymentSettings
@@ -160,11 +163,7 @@ export function PaymentsPage() {
                         type="button"
                         variant="outline"
                         disabled={clearMutation.isPending}
-                        onClick={() => {
-                          if (confirm('确认清空微信支付数据库配置？环境变量回退仍可能继续生效。')) {
-                            clearMutation.mutate('wechat_pay');
-                          }
-                        }}
+                        onClick={() => setProviderToClear('wechat_pay')}
                       >
                         清空配置
                       </Button>
@@ -244,11 +243,7 @@ export function PaymentsPage() {
                         type="button"
                         variant="outline"
                         disabled={clearMutation.isPending}
-                        onClick={() => {
-                          if (confirm('确认清空支付宝数据库配置？环境变量回退仍可能继续生效。')) {
-                            clearMutation.mutate('alipay');
-                          }
-                        }}
+                        onClick={() => setProviderToClear('alipay')}
                       >
                         清空配置
                       </Button>
@@ -260,6 +255,29 @@ export function PaymentsPage() {
           </Tabs>
         )}
       </div>
+
+      <ConfirmActionDialog
+        open={providerToClear !== null}
+        onOpenChange={(open) => {
+          if (!open) setProviderToClear(null);
+        }}
+        title="确认清空支付配置？"
+        description={
+          providerToClear === 'wechat_pay'
+            ? '将清空微信支付数据库配置；若存在环境变量回退，运行时仍可能继续生效。'
+            : providerToClear === 'alipay'
+              ? '将清空支付宝数据库配置；若存在环境变量回退，运行时仍可能继续生效。'
+              : undefined
+        }
+        confirmText="清空配置"
+        isConfirming={clearMutation.isPending}
+        onConfirm={() => {
+          if (!providerToClear) return;
+          const provider = providerToClear;
+          setProviderToClear(null);
+          clearMutation.mutate(provider);
+        }}
+      />
     </div>
   );
 }

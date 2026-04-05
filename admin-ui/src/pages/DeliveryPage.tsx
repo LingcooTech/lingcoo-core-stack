@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { listAppsAdmin } from '@/api/apps';
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -49,6 +50,7 @@ export function DeliveryPage() {
     [appsQuery.data?.items]
   );
   const [selectedAppCode, setSelectedAppCode] = useState('');
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!selectedAppCode && deployableApps[0]?.code) {
@@ -341,11 +343,7 @@ export function DeliveryPage() {
                           type="button"
                           variant="outline"
                           disabled={clearMutation.isPending}
-                          onClick={() => {
-                            if (confirm(`确认清空 ${selectedAppCode} 的交付设置？`)) {
-                              clearMutation.mutate();
-                            }
-                          }}
+                          onClick={() => setIsClearDialogOpen(true)}
                         >
                           清空设置
                         </Button>
@@ -362,6 +360,19 @@ export function DeliveryPage() {
           </div>
         )}
       </div>
+
+      <ConfirmActionDialog
+        open={isClearDialogOpen}
+        onOpenChange={setIsClearDialogOpen}
+        title="确认清空交付设置？"
+        description={selectedAppCode ? `将清空 ${selectedAppCode} 的当前交付配置。` : undefined}
+        confirmText="清空设置"
+        isConfirming={clearMutation.isPending}
+        onConfirm={() => {
+          setIsClearDialogOpen(false);
+          clearMutation.mutate();
+        }}
+      />
     </div>
   );
 }

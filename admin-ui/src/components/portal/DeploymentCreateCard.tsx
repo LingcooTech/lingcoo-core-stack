@@ -9,11 +9,7 @@ export interface DeployableAppOption {
   appCode: string;
   appName: string;
   appType: string;
-  products: Array<{
-    code: string;
-    name: string;
-    featureCount: number;
-  }>;
+  featureCount: number;
 }
 
 export function DeploymentCreateCard({
@@ -25,7 +21,6 @@ export function DeploymentCreateCard({
   pending?: boolean;
   onSubmit: (payload: {
     appCode: string;
-    productCode?: string;
     label: string;
     environment: string;
     serverHost?: string;
@@ -36,7 +31,6 @@ export function DeploymentCreateCard({
   }) => void;
 }) {
   const [appCode, setAppCode] = useState('');
-  const [productCode, setProductCode] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
   const [serverHost, setServerHost] = useState('');
@@ -58,12 +52,7 @@ export function DeploymentCreateCard({
     if (!label) {
       setLabel(`${selectedApp.appName} Production`);
     }
-    if (selectedApp.products.length === 1) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    } else if (!selectedApp.products.some((product) => product.code === productCode)) {
-      setProductCode(selectedApp.products[0]?.code ?? '');
-    }
-  }, [selectedApp, label, productCode]);
+  }, [selectedApp, label]);
 
   return (
     <Card className="border-slate-200/80 bg-white/95">
@@ -74,7 +63,7 @@ export function DeploymentCreateCard({
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="deployment-app">系统产品</Label>
+            <Label htmlFor="deployment-app">应用</Label>
             <select
               id="deployment-app"
               value={appCode}
@@ -86,23 +75,7 @@ export function DeploymentCreateCard({
             >
               {options.map((option) => (
                 <option key={option.appCode} value={option.appCode}>
-                  {option.appName} ({option.appType})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="deployment-product">授权产品</Label>
-            <select
-              id="deployment-product"
-              value={productCode}
-              onChange={(event) => setProductCode(event.target.value)}
-              className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
-            >
-              {(selectedApp?.products ?? []).map((product) => (
-                <option key={product.code} value={product.code}>
-                  {product.name} ({product.featureCount} abilities)
+                  {option.appName} ({option.appType}, {option.featureCount} 项能力)
                 </option>
               ))}
             </select>
@@ -152,7 +125,6 @@ export function DeploymentCreateCard({
           onClick={() =>
             onSubmit({
               appCode,
-              productCode: productCode || undefined,
               label,
               environment,
               serverHost: serverHost || undefined,

@@ -1,5 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Navigate,
+  Outlet,
+  Route,
+  RouterProvider,
+  useLocation,
+} from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import { Shell } from '@/components/layout/Shell';
@@ -54,9 +62,9 @@ function ProtectedAdminRoute() {
   return <Outlet />;
 }
 
-function AppRoutes() {
-  return (
-    <Routes>
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
       <Route element={<UserShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/apps" element={<HomePage />} />
@@ -89,17 +97,15 @@ function AppRoutes() {
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-}
+    </>,
+  ),
+);
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <RouterProvider router={router} />
         <Toaster position="top-right" richColors />
       </AuthProvider>
     </QueryClientProvider>

@@ -45,7 +45,7 @@ export function AppsPage() {
 
   const appForm = useForm<AppFormValues>({
     resolver: zodResolver(appSchema),
-    defaultValues: { name: '', description: '', type: 'web_app', status: 'active', productCodes: [] }
+    defaultValues: { name: '', description: '', type: 'web_app', status: 'active' }
   });
 
   const availablePlans = useMemo(
@@ -59,7 +59,7 @@ export function AppsPage() {
 
   const upsertMutation = useMutation({
     mutationFn: ({ code, values }: { code: string; values: AppFormValues }) => {
-      const checkoutOffers = editableOffers
+      const offers = editableOffers
         .map((offer, index) => ({
           code: slugify(offer.code),
           planCode: offer.planCode,
@@ -74,10 +74,6 @@ export function AppsPage() {
         }))
         .filter((offer) => offer.code && offer.planCode && offer.title);
 
-      const defaultOfferCode =
-        checkoutOffers.find((offer) => offer.isDefault)?.code ||
-        checkoutOffers[0]?.code ||
-        undefined;
       const meta = { ...(selectedApp?.meta ?? {}) };
       delete meta.checkoutPlanCode;
       delete meta.checkoutOffers;
@@ -85,8 +81,7 @@ export function AppsPage() {
 
       return upsertApp(code, {
         ...values,
-        checkoutOffers,
-        checkoutDefaultOfferCode: defaultOfferCode,
+        offers,
         meta
       });
     },
@@ -108,8 +103,7 @@ export function AppsPage() {
       name: app.name,
       description: app.description ?? '',
       type: app.type as AppFormValues['type'],
-      status: app.status as AppFormValues['status'],
-      productCodes: []
+      status: app.status as AppFormValues['status']
     });
   };
 
@@ -117,7 +111,7 @@ export function AppsPage() {
     setIsNew(true);
     setSelectedApp(null);
     setEditableOffers([]);
-    appForm.reset({ name: '', description: '', type: 'web_app', status: 'active', productCodes: [] });
+    appForm.reset({ name: '', description: '', type: 'web_app', status: 'active' });
   };
 
   const updateOffer = (offerId: string, updater: (current: EditableOffer) => EditableOffer) => {
