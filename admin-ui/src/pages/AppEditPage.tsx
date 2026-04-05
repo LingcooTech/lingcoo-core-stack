@@ -47,7 +47,6 @@ import {
   EMPTY_DELIVERY_SECRET_STATE,
   serializeDeliveryManifestSourceDraft,
   serializeDeliverySettingsDraft,
-  supportsOneClickDelivery,
   type DeliveryManifestSourceDraft,
   type DeliverySecretState,
   type DeliverySettingsDraft,
@@ -177,8 +176,7 @@ export function AppEditPage() {
     [appsData?.items],
   );
 
-  const supportsDeliveryMode = supportsOneClickDelivery(form.type.trim());
-  const showDeliveryTab = supportsDeliveryMode && form.deliveryMode === 'one_click';
+  const showDeliveryTab = form.deliveryMode === 'one_click';
   const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
     ? ['basics', 'content', 'plans', 'offers', 'delivery']
     : ['basics', 'content', 'plans', 'offers'];
@@ -265,12 +263,6 @@ export function AppEditPage() {
     isCatalogFetched,
     isCreateMode,
   ]);
-
-  useEffect(() => {
-    if (!supportsDeliveryMode && form.deliveryMode !== 'none') {
-      setForm((prev) => ({ ...prev, deliveryMode: 'none' }));
-    }
-  }, [form.deliveryMode, supportsDeliveryMode]);
 
   useEffect(() => {
     if (!showDeliveryTab && activeTab === 'delivery') {
@@ -770,7 +762,6 @@ export function AppEditPage() {
             form={form}
             setField={setField}
             isCreateMode={isCreateMode}
-            supportsOneClickDelivery={supportsDeliveryMode}
             isSaving={isBusy}
             saveDisabled={isBusy}
             onSave={saveDraft}

@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getAppDeliveryMode, supportsOneClickDelivery } from '@/lib/app-delivery';
+import { getAppDeliveryMode } from '@/lib/app-delivery';
 
 const deliverySchema = z.object({
   repoUrl: z.string().min(1),
@@ -47,10 +47,7 @@ export function DeliveryPage() {
   const qc = useQueryClient();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const deployableApps = useMemo(
-    () =>
-      (appsQuery.data?.items ?? []).filter(
-        (app) => supportsOneClickDelivery(app.type) && getAppDeliveryMode(app) === 'one_click',
-      ),
+    () => (appsQuery.data?.items ?? []).filter((app) => getAppDeliveryMode(app) === 'one_click'),
     [appsQuery.data?.items]
   );
   const [selectedAppCode, setSelectedAppCode] = useState('');
@@ -160,7 +157,7 @@ export function DeliveryPage() {
           <label className="block text-sm font-bold">选择交付应用</label>
           <Select value={selectedAppCode} onValueChange={setSelectedAppCode}>
             <SelectTrigger>
-              <SelectValue placeholder="选择系统类应用..." />
+              <SelectValue placeholder="选择一键部署应用..." />
             </SelectTrigger>
             <SelectContent>
               {deployableApps.map((app) => (
@@ -360,7 +357,7 @@ export function DeliveryPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-white p-5 text-sm text-muted-foreground">
-            先创建一个 `service` 或 `web_app` 类型的应用，交付设置才会在这里出现。
+            先创建一个应用，并把交付方式切到“一键部署”，交付设置才会在这里出现。
           </div>
         )}
       </div>

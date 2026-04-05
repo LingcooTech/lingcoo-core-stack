@@ -79,13 +79,7 @@ function normalizeMeta(meta: unknown) {
     : {};
 }
 
-export function supportsOneClickDelivery(appType: string) {
-  const normalized = appType.trim().toLowerCase();
-  return normalized === 'service' || normalized === 'web_app';
-}
-
 export function getAppDeliveryMode(input: {
-  type: string;
   meta?: Record<string, unknown> | undefined;
 }): DeliveryMode {
   const meta = normalizeMeta(input.meta);
@@ -95,7 +89,7 @@ export function getAppDeliveryMode(input: {
     return rawMode;
   }
 
-  return supportsOneClickDelivery(input.type) ? 'one_click' : 'none';
+  return 'none';
 }
 
 export function createDeliverySettingsDraft(

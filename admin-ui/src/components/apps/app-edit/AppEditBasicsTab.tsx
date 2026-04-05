@@ -11,7 +11,6 @@ interface AppEditBasicsTabProps {
   form: FormState;
   setField: AppEditFieldSetter;
   isCreateMode: boolean;
-  supportsOneClickDelivery: boolean;
   isSaving: boolean;
   saveDisabled: boolean;
   onSave: () => void;
@@ -21,7 +20,6 @@ export function AppEditBasicsTab({
   form,
   setField,
   isCreateMode,
-  supportsOneClickDelivery,
   isSaving,
   saveDisabled,
   onSave,
@@ -92,6 +90,9 @@ export function AppEditBasicsTab({
                 onChange={(event) => setField('type', event.target.value)}
                 placeholder="如: chrome_extension, web_app, service, saas"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                应用类型只作为分类标签使用，不参与授权、部署或交付方式判断。
+              </p>
             </div>
             <div>
               <Label>交付方式</Label>
@@ -104,15 +105,11 @@ export function AppEditBasicsTab({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">免部署</SelectItem>
-                  <SelectItem value="one_click" disabled={!supportsOneClickDelivery}>
-                    一键部署
-                  </SelectItem>
+                  <SelectItem value="one_click">一键部署</SelectItem>
                 </SelectContent>
               </Select>
               <p className="mt-1 text-xs text-muted-foreground">
-                {supportsOneClickDelivery
-                  ? '免部署不会出现在部署流程中；一键部署会显示交付配置 Tab。'
-                  : '当前应用类型不支持一键部署，只能选择免部署。'}
+                这里决定是否显示交付配置 Tab，以及是否进入部署流程；与应用类型无关。
               </p>
             </div>
             <div>

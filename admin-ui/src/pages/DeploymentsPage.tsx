@@ -10,7 +10,7 @@ import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
-import { getAppDeliveryMode, supportsOneClickDelivery } from '@/lib/app-delivery';
+import { getAppDeliveryMode } from '@/lib/app-delivery';
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
@@ -26,9 +26,6 @@ export function DeploymentsPage() {
   const deployableApps = useMemo<DeployableAppOption[]>(
     () =>
       apps.filter((app) => {
-        if (!supportsOneClickDelivery(app.type)) {
-          return false;
-        }
         if (getAppDeliveryMode(app) !== 'one_click') {
           return false;
         }
@@ -92,7 +89,7 @@ export function DeploymentsPage() {
         <EmptyState
           icon={Boxes}
           title="暂无可部署的应用"
-          description="购买系统类应用后，即可在此创建部署记录并进行安装配置。"
+          description="购买已启用一键部署的应用后，即可在此创建部署记录并进行安装配置。"
         />
       ) : (
         <>

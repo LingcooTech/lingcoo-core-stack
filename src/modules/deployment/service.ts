@@ -26,7 +26,7 @@ export class DeploymentService {
     const app = await new AppService(this.db).getPublicApp(input.appCode);
 
     if (this.readDeliveryMode(app) !== 'one_click') {
-      throw httpError(422, 'This app is not configured as a deployable system product');
+      throw httpError(422, 'This app is not configured for one-click delivery');
     }
 
     const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
@@ -102,7 +102,7 @@ export class DeploymentService {
       return rawMode;
     }
 
-    return app.type === 'service' || app.type === 'web_app' ? 'one_click' : 'none';
+    return 'none';
   }
 
   private readDeploymentDefaults(app: DeploymentAppRecord) {
