@@ -1,7 +1,13 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import { buildEmailRateLimitKey, buildUserRateLimitKey } from '../../lib/rate-limit';
-import { loginSchema, registerSchema, verifyEmailSchema } from './schemas';
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  verifyEmailSchema
+} from './schemas';
 import { AuthService } from './service';
 
 function toAuthResponse(
@@ -11,7 +17,9 @@ function toAuthResponse(
   const token = app.jwt.sign(
     {
       sub: user.id,
-      role: user.role
+      email: user.email,
+      role: user.role,
+      emailVerified: user.emailVerified
     },
     {
       expiresIn: '7d'
@@ -120,5 +128,35 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
 
     return service.sendVerificationCode(user.id, user.email);
+  });
+
+  app.post('/v1/auth/forgot-password', {
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 5,
+        timeWindow: '10 minutes',
+        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+          buildEmailRateLimitKey(request, 'auth-forgot-password')
+      }
+    }
+  }, async (request) => {
+    const payload = forgotPasswordSchema.parse(request.body);
+    return new AuthService(app.db, app.appEnv).requestPasswordReset(payload.email);
+  });
+
+  app.post('/v1/auth/reset-password', {
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 8,
+        timeWindow: '10 minutes',
+        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+          buildEmailRateLimitKey(request, 'auth-reset-password')
+      }
+    }
+  }, async (request) => {
+    const payload = resetPasswordSchema.parse(request.body);
+    return new AuthService(app.db, app.appEnv).resetPassword(payload);
   });
 };

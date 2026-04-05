@@ -33,7 +33,9 @@ declare module '@fastify/jwt' {
   interface FastifyJWT {
     payload: {
       sub: string;
+      email?: string;
       role?: string;
+      emailVerified?: boolean;
       kind?: 'user' | 'app';
       appId?: string;
       appCode?: string;
@@ -41,7 +43,9 @@ declare module '@fastify/jwt' {
     };
     user: {
       sub: string;
+      email?: string;
       role?: string;
+      emailVerified?: boolean;
       kind?: 'user' | 'app';
       appId?: string;
       appCode?: string;

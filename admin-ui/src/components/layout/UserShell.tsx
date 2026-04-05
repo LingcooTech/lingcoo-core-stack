@@ -1,5 +1,5 @@
 import { Boxes, LayoutDashboard, LogIn, LogOut, ReceiptText, Rocket, ShieldCheck } from 'lucide-react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
@@ -21,6 +21,7 @@ const navItems: Array<{ key: UserSectionKey; to: string; label: string; note: st
 ];
 
 export function UserShell() {
+  const location = useLocation();
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
 
   return (
@@ -96,6 +97,20 @@ export function UserShell() {
           </div>
         </div>
       </header>
+
+      {isAuthenticated && user && !user.emailVerified ? (
+        <div className="border-b border-amber-200 bg-amber-50/90">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6">
+            <div>
+              <p className="font-bold text-amber-900">邮箱尚未验证</p>
+              <p className="text-amber-800/80">请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。</p>
+            </div>
+            <Button asChild size="sm">
+              <Link to={`/verify-email?next=${encodeURIComponent(location.pathname)}`}>立即验证</Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <Outlet />

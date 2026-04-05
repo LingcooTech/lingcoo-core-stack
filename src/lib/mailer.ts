@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import type { AppEnv } from './env';
 
 interface MailPayload {
   to: string;
@@ -8,20 +7,29 @@ interface MailPayload {
   html?: string;
 }
 
+export interface MailerConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+  from: string;
+}
+
 export class Mailer {
   private transport: nodemailer.Transporter | null = null;
   private from: string;
 
-  constructor(env: AppEnv) {
-    this.from = env.SMTP_FROM ?? `noreply@${env.APP_NAME}`;
-    if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD) {
+  constructor(config?: MailerConfig | null) {
+    this.from = config?.from ?? 'noreply@fd-core-stack.local';
+    if (config?.host && config.user && config.password) {
       this.transport = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT ?? 465,
-        secure: (env.SMTP_PORT ?? 465) === 465,
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
         auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASSWORD
+          user: config.user,
+          pass: config.password
         }
       });
     }

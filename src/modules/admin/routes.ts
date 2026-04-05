@@ -6,6 +6,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { DeliverySettingsService } from '../../lib/delivery-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
+import { SmtpSettingsService } from '../../lib/smtp-settings';
 import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
 import {
@@ -21,6 +22,7 @@ import {
   adminOrderParamsSchema,
   alipayPaymentSettingsSchema,
   paymentProviderParamsSchema,
+  smtpSettingsSchema,
   wechatPaymentSettingsSchema
 } from './schemas';
 
@@ -67,18 +69,26 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/apps/:appCode', sendSPA);
   app.get('/login', sendSPA);
   app.get('/register', sendSPA);
+  app.get('/verify-email', sendSPA);
+  app.get('/forgot-password', sendSPA);
   app.get('/orders', sendSPA);
   app.get('/access', sendSPA);
   app.get('/deploy', sendSPA);
   app.get('/admin', sendSPA);
   app.get('/admin/login', sendSPA);
+  app.get('/admin/settings', sendSPA);
   app.get('/admin/payments', sendSPA);
   app.get('/admin/apps', sendSPA);
+  app.get('/admin/apps/new', sendSPA);
+  app.get('/admin/apps/:appCode/edit', sendSPA);
+  app.get('/admin/secrets', sendSPA);
+  app.get('/admin/orders', sendSPA);
   app.get('/admin/delivery', sendSPA);
   app.get('/admin/licenses', sendSPA);
   app.get('/admin/operations', sendSPA);
   app.get('/admin/observability', sendSPA);
   app.get('/admin/users', sendSPA);
+  app.get('/admin/installs', sendSPA);
 
   // ─── API Routes (unchanged) ───────────────────────────────────────────────
 
@@ -90,6 +100,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/payment-settings', { preHandler: app.requireAdmin }, async () => {
     return new PaymentSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {
+    return new SmtpSettingsService(app.db, app.appEnv).getOverview();
   });
 
   app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
@@ -167,6 +181,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.delete('/v1/admin/payment-settings/:provider', { preHandler: app.requireAdmin }, async (request) => {
     const params = paymentProviderParamsSchema.parse(request.params);
     await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
+    return { ok: true };
+  });
+
+  app.put('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = smtpSettingsSchema.parse(request.body);
+    return new SmtpSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  });
+
+  app.delete('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {
+    await new SmtpSettingsService(app.db, app.appEnv).clearSettings();
     return { ok: true };
   });
 

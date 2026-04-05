@@ -1,6 +1,12 @@
 import { and, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
 
-import { authIdentities, emailVerificationCodes, passwordCredentials, users } from '../../db/schema';
+import {
+  authIdentities,
+  emailVerificationCodes,
+  passwordCredentials,
+  passwordResetCodes,
+  users
+} from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class AuthRepository {
@@ -134,6 +140,54 @@ export class AuthRepository {
       .where(eq(emailVerificationCodes.userId, userId));
   }
 
+  // ─── Password Reset ────────────────────────────────────────────────────────
+
+  async createPasswordResetCode(userId: string, code: string, expiresAt: Date) {
+    await this.db
+      .delete(passwordResetCodes)
+      .where(eq(passwordResetCodes.userId, userId));
+
+    const [record] = await this.db
+      .insert(passwordResetCodes)
+      .values({ userId, code, expiresAt })
+      .returning();
+
+    return record;
+  }
+
+  async findActivePasswordResetCode(userId: string, code: string) {
+    const [record] = await this.db
+      .select()
+      .from(passwordResetCodes)
+      .where(
+        and(
+          eq(passwordResetCodes.userId, userId),
+          eq(passwordResetCodes.code, code),
+          gt(passwordResetCodes.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    return record ?? null;
+  }
+
+  async findLatestPasswordResetCode(userId: string) {
+    const [record] = await this.db
+      .select()
+      .from(passwordResetCodes)
+      .where(eq(passwordResetCodes.userId, userId))
+      .orderBy(desc(passwordResetCodes.createdAt))
+      .limit(1);
+
+    return record ?? null;
+  }
+
+  async deletePasswordResetCodes(userId: string) {
+    await this.db
+      .delete(passwordResetCodes)
+      .where(eq(passwordResetCodes.userId, userId));
+  }
+
   async markEmailVerified(userId: string) {
     const now = new Date();
     const [user] = await this.db
@@ -180,6 +234,28 @@ export class AuthRepository {
       .returning();
 
     return credential ?? null;
+  }
+
+  async upsertPasswordCredential(userId: string, passwordHash: string) {
+    const now = new Date();
+    const [credential] = await this.db
+      .insert(passwordCredentials)
+      .values({
+        userId,
+        passwordHash,
+        createdAt: now,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: passwordCredentials.userId,
+        set: {
+          passwordHash,
+          updatedAt: now
+        }
+      })
+      .returning();
+
+    return credential;
   }
 
   async listUsers(query: {

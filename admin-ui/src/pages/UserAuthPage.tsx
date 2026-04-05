@@ -41,8 +41,8 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
     try {
       const result = mode === 'register' ? await register(values.email, values.password) : await login(values.email, values.password);
       authLogin(result.token);
-      if (mode === 'register' && result.user.emailVerified === false) {
-        toast.success('注册成功，请验证邮箱');
+      if (result.user.emailVerified === false) {
+        toast.success(mode === 'register' ? '注册成功，请验证邮箱' : '登录成功，请先验证邮箱');
         navigate(`/verify-email?next=${encodeURIComponent(next)}`, { replace: true });
         return;
       }
@@ -105,6 +105,16 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
           </Form>
 
           <div className="mt-5 text-sm text-muted-foreground">
+            {mode === 'login' ? (
+              <div className="mb-3">
+                <Link
+                  to={`/forgot-password${form.getValues('email') ? `?email=${encodeURIComponent(form.getValues('email'))}` : ''}`}
+                  className="font-bold text-primary hover:underline"
+                >
+                  忘记密码？
+                </Link>
+              </div>
+            ) : null}
             {mode === 'register' ? '已经有账号？' : '还没有账号？'}{' '}
             <Link
               to={{

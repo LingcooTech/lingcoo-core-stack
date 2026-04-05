@@ -19,6 +19,15 @@ export const alipayPaymentSettingsSchema = z.object({
   publicKeyPem: z.string().trim().optional()
 });
 
+export const smtpSettingsSchema = z.object({
+  host: z.string().trim().min(1).max(255).optional(),
+  port: z.coerce.number().int().min(1).max(65535).optional(),
+  secure: z.boolean().optional(),
+  user: z.string().trim().min(1).max(255).optional(),
+  password: z.string().trim().min(1).max(255).optional(),
+  from: z.string().trim().email().optional()
+});
+
 export const adminListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),

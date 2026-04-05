@@ -4,16 +4,16 @@ export type AdminSectionKey =
   | 'secrets'
   | 'orders'
   | 'payments'
+  | 'settings'
   | 'users'
   | 'licenses'
   | 'installs'
-  | 'delivery'
   | 'observability';
 
 export type AdminSectionDataScope =
   | 'paymentSettings'
+  | 'systemSettings'
   | 'apps'
-  | 'delivery'
   | 'plans'
   | 'entitlements'
   | 'operations'
@@ -161,6 +161,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['paymentSettings'],
     commandAliases: ['payments', 'billing', 'wechat', 'alipay', '支付配置', '微信支付']
   },
+  settings: {
+    groupLabel: '运维',
+    navTitle: '系统设置',
+    navNote: 'SMTP 与系统基础配置',
+    icon: 'ST',
+    title: '系统设置',
+    lead: '维护邮件发送与其他系统级配置，支撑注册验证、找回密码和平台通知。',
+    href: '/admin/settings',
+    contextCards: [
+      { label: '用途', value: '平台基础能力', note: '认证邮件和全局配置都在这里统一维护。' },
+      { label: '安全', value: '加密存储', note: '敏感凭证以加密形式存入数据库。' }
+    ],
+    heroActions: [
+      { label: '系统设置', href: '/admin/settings', tone: 'primary' },
+      { label: '支付配置', href: '/admin/payments', tone: 'secondary' }
+    ],
+    pageDataScopes: ['systemSettings'],
+    commandAliases: ['settings', 'system', 'smtp', '邮件配置', '系统设置']
+  },
   users: {
     groupLabel: '客户管理',
     navTitle: '用户管理',
@@ -218,25 +237,6 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['operations'],
     commandAliases: ['installs', 'installations', '安装', '安装实例']
   },
-  delivery: {
-    groupLabel: '运维',
-    navTitle: '部署配置',
-    navNote: '部署源、凭证与版本配置',
-    icon: 'DL',
-    title: '部署配置',
-    lead: '配置系统产品的安装源、镜像、凭证和组件版本。',
-    href: '/admin/delivery',
-    contextCards: [
-      { label: '用途', value: '交付配置', note: '配置后用户可通过部署中心一键安装。' },
-      { label: '范围', value: '系统产品', note: '仅适用于 Web 应用和系统服务类产品。' }
-    ],
-    heroActions: [
-      { label: '部署配置', href: '/admin/delivery', tone: 'primary' },
-      { label: '返回总览', href: '/admin', tone: 'secondary' }
-    ],
-    pageDataScopes: ['delivery'],
-    commandAliases: ['delivery', 'deploy', 'installer', '部署配置', '交付']
-  },
   observability: {
     groupLabel: '运维',
     navTitle: '事件日志',
@@ -260,10 +260,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
-  { label: '应用管理', items: ['apps'] },
+  { label: '应用管理', items: ['apps', 'secrets'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
-  { label: '运维', items: ['delivery', 'observability'] }
+  { label: '运维', items: ['settings', 'observability'] }
 ];
 
 export const adminCommandItems: AdminCommandItem[] = [

@@ -109,6 +109,16 @@ export const emailVerificationCodes = pgTable('email_verification_codes', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const passwordResetCodes = pgTable('password_reset_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  code: varchar('code', { length: 6 }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const appSecrets = pgTable('app_secrets', {
   id: uuid('id').defaultRandom().primaryKey(),
   appId: uuid('app_id')

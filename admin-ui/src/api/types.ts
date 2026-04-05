@@ -71,11 +71,21 @@ export interface AuthResponse {
 }
 
 export interface VerifyEmailResponse {
+  verified: boolean;
   user: { id: string; email: string; displayName: string | null; role: string; emailVerified: boolean };
 }
 
 export interface ResendVerificationResponse {
   sent: boolean;
+  alreadyVerified?: boolean;
+}
+
+export interface ForgotPasswordResponse {
+  sent: boolean;
+}
+
+export interface ResetPasswordResponse {
+  reset: boolean;
 }
 
 export interface AdminUser {
@@ -128,6 +138,21 @@ export interface PaymentProviderConfig {
 
 export interface PaymentSettingsOverview {
   items: PaymentProviderConfig[];
+}
+
+export interface SmtpSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'env' | 'none';
+  values: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    from: string;
+  };
+  secrets: {
+    password: PaymentProviderSecretStatus;
+  };
 }
 
 export interface DeliverySettingsOverview {

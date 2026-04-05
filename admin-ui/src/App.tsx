@@ -17,8 +17,8 @@ import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { DeliveryPage } from '@/pages/DeliveryPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
 import { HomePage } from '@/pages/HomePage';
 import { InstallsPage } from '@/pages/InstallsPage';
 import { LicensesPage } from '@/pages/LicensesPage';
@@ -29,6 +29,7 @@ import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
 import { SecretsPage } from '@/pages/SecretsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
@@ -72,6 +73,7 @@ const router = createBrowserRouter(
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedUserRoute />}>
           <Route path="/orders" element={<MyOrdersPage />} />
           <Route path="/access" element={<MyAccessPage />} />
@@ -89,10 +91,11 @@ const router = createBrowserRouter(
           <Route path="/admin/secrets" element={<SecretsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/licenses" element={<LicensesPage />} />
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/installs" element={<InstallsPage />} />
-          <Route path="/admin/delivery" element={<DeliveryPage />} />
+          <Route path="/admin/delivery" element={<Navigate to="/admin/apps" replace />} />
           <Route path="/admin/observability" element={<ObservabilityPage />} />
           <Route path="/admin/operations" element={<Navigate to="/admin/orders" replace />} />
         </Route>

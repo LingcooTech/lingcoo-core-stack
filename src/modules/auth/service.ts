@@ -5,6 +5,7 @@ import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { Mailer } from '../../lib/mailer';
 import { hashPassword, verifyPassword } from '../../lib/security';
+import { SmtpSettingsService } from '../../lib/smtp-settings';
 import { EventService } from '../event/service';
 import { AuthRepository } from './repository';
 
@@ -29,6 +30,26 @@ export class AuthService {
     return String(randomInt(0, 1_000_000)).padStart(6, '0');
   }
 
+  private async createMailer() {
+    if (!this.env) {
+      return new Mailer();
+    }
+
+    const config = await new SmtpSettingsService(this.db, this.env).getRuntimeSettings();
+    return new Mailer(
+      config && config.password
+        ? {
+            host: config.host,
+            port: config.port,
+            secure: config.secure,
+            user: config.user,
+            password: config.password,
+            from: config.from
+          }
+        : null
+    );
+  }
+
   async sendVerificationCode(userId: string, email: string) {
     const repository = new AuthRepository(this.db);
 
@@ -45,17 +66,15 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await repository.createVerificationCode(userId, code, expiresAt);
 
-    if (this.env) {
-      const mailer = new Mailer(this.env);
-      if (mailer.isConfigured) {
-        await mailer.send({
-          to: email,
-          subject: 'Email Verification Code',
-          text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
-          html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
-        });
-        return { sent: true };
-      }
+    const mailer = await this.createMailer();
+    if (mailer.isConfigured) {
+      await mailer.send({
+        to: email,
+        subject: 'Email Verification Code',
+        text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+        html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
+      });
+      return { sent: true };
     }
 
     return { sent: false };
@@ -69,7 +88,7 @@ export class AuthService {
       throw httpError(400, 'Invalid or expired verification code');
     }
 
-    await repository.markEmailVerified(userId);
+    const user = await repository.markEmailVerified(userId);
     await repository.deleteVerificationCodes(userId);
 
     await new EventService(this.db).capture({
@@ -78,7 +97,11 @@ export class AuthService {
       properties: {}
     });
 
-    return { verified: true };
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+
+    return { verified: true, user };
   }
 
   private async ensureBootstrapAdmin(userId: string) {
@@ -146,11 +169,7 @@ export class AuthService {
     });
 
     // If mailer is configured, send verification code; otherwise auto-verify
-    let mailerConfigured = false;
-    if (this.env) {
-      const mailer = new Mailer(this.env);
-      mailerConfigured = mailer.isConfigured;
-    }
+    const mailerConfigured = (await this.createMailer()).isConfigured;
 
     if (mailerConfigured) {
       try {
@@ -196,6 +215,72 @@ export class AuthService {
     user = (await this.ensureBootstrapAdmin(user.id)) ?? user;
 
     return user;
+  }
+
+  async requestPasswordReset(email: string) {
+    const repository = new AuthRepository(this.db);
+    const mailer = await this.createMailer();
+
+    if (!mailer.isConfigured) {
+      throw httpError(503, 'Password reset email is not configured');
+    }
+
+    const user = await repository.findUserByEmail(email);
+    if (!user) {
+      return { sent: true };
+    }
+
+    const latest = await repository.findLatestPasswordResetCode(user.id);
+    if (latest) {
+      const elapsed = Date.now() - latest.createdAt.getTime();
+      if (elapsed < 60_000) {
+        throw httpError(429, 'Please wait before requesting another reset code');
+      }
+    }
+
+    const code = this.generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await repository.createPasswordResetCode(user.id, code, expiresAt);
+    await mailer.send({
+      to: user.email,
+      subject: 'Password Reset Code',
+      text: `Your password reset code is: ${code}\n\nThis code expires in 10 minutes.`,
+      html: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
+    });
+
+    await new EventService(this.db).capture({
+      userId: user.id,
+      eventName: 'auth.password_reset_requested',
+      properties: {}
+    });
+
+    return { sent: true };
+  }
+
+  async resetPassword(input: { email: string; code: string; newPassword: string }) {
+    const repository = new AuthRepository(this.db);
+    const user = await repository.findUserByEmail(input.email);
+
+    if (!user) {
+      throw httpError(400, 'Invalid or expired reset code');
+    }
+
+    const record = await repository.findActivePasswordResetCode(user.id, input.code);
+    if (!record) {
+      throw httpError(400, 'Invalid or expired reset code');
+    }
+
+    await repository.upsertPasswordCredential(user.id, hashPassword(input.newPassword));
+    await repository.deletePasswordResetCodes(user.id);
+
+    await new EventService(this.db).capture({
+      userId: user.id,
+      eventName: 'auth.password_reset_completed',
+      properties: {}
+    });
+
+    return { reset: true };
   }
 
   async getUserById(userId: string) {
