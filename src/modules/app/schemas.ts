@@ -43,7 +43,7 @@ export const upsertAppSchema = z.object({
   links: z.array(linkSchema).max(20).optional(),
   category: z.string().trim().max(64).optional(),
   sortOrder: z.number().int().min(0).max(99999).optional(),
-  type: z.enum(['chrome_extension', 'web_app', 'service']).default('chrome_extension'),
+  type: z.string().trim().min(1).max(64).default('web_app'),
   status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
   features: z
     .array(
@@ -96,6 +96,13 @@ export const upsertAppSchema = z.object({
 export const createAppSecretSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   expiresAt: z.string().datetime().optional()
+});
+
+export const syncDeliveryManifestSchema = z.object({
+  repoUrl: z.string().trim().url().optional(),
+  repoBranch: z.string().trim().min(1).max(120).optional(),
+  manifestPath: z.string().trim().min(1).max(255).optional(),
+  manifestUrl: z.string().trim().url().optional()
 });
 
 export const createAppSessionSchema = z.object({

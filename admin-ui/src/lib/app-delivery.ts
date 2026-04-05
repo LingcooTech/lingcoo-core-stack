@@ -3,6 +3,13 @@ import type { DeliverySettingsOverview } from '@/api/types';
 
 export type DeliveryMode = 'none' | 'one_click';
 
+export interface DeliveryManifestSourceDraft {
+  repoUrl: string;
+  repoBranch: string;
+  manifestPath: string;
+  manifestUrl: string;
+}
+
 export interface DeliverySettingsDraft {
   repoUrl: string;
   repoBranch: string;
@@ -59,6 +66,13 @@ export const EMPTY_DELIVERY_SECRET_STATE: DeliverySecretState = {
   githubTokenConfigured: false,
 };
 
+export const DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT: DeliveryManifestSourceDraft = {
+  repoUrl: '',
+  repoBranch: 'main',
+  manifestPath: 'fd-delivery.manifest.json',
+  manifestUrl: '',
+};
+
 function normalizeMeta(meta: unknown) {
   return meta && typeof meta === 'object' && !Array.isArray(meta)
     ? (meta as Record<string, unknown>)
@@ -66,7 +80,8 @@ function normalizeMeta(meta: unknown) {
 }
 
 export function supportsOneClickDelivery(appType: string) {
-  return appType === 'service' || appType === 'web_app';
+  const normalized = appType.trim().toLowerCase();
+  return normalized === 'service' || normalized === 'web_app';
 }
 
 export function getAppDeliveryMode(input: {
@@ -101,6 +116,68 @@ export function createDeliverySecretState(
     acrPasswordConfigured: overview?.secrets.acrPassword.configured ?? false,
     githubTokenConfigured: overview?.secrets.githubToken.configured ?? false,
   };
+}
+
+export function createDeliveryManifestSourceDraft(input?: {
+  meta?: Record<string, unknown> | undefined;
+} | null): DeliveryManifestSourceDraft {
+  const meta = normalizeMeta(input?.meta);
+  const source = normalizeMeta(meta.deliveryManifestSource);
+
+  return {
+    repoUrl: typeof source.repoUrl === 'string' ? source.repoUrl : '',
+    repoBranch:
+      typeof source.repoBranch === 'string' && source.repoBranch.trim()
+        ? source.repoBranch
+        : DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.repoBranch,
+    manifestPath:
+      typeof source.manifestPath === 'string' && source.manifestPath.trim()
+        ? source.manifestPath
+        : DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.manifestPath,
+    manifestUrl: typeof source.manifestUrl === 'string' ? source.manifestUrl : '',
+  };
+}
+
+export function buildDeliveryManifestSourcePayload(draft: DeliveryManifestSourceDraft) {
+  const repoUrl = draft.repoUrl.trim();
+  const repoBranch = draft.repoBranch.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.repoBranch;
+  const manifestPath =
+    draft.manifestPath.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.manifestPath;
+  const manifestUrl = draft.manifestUrl.trim();
+
+  if (!repoUrl && !manifestUrl) {
+    return {};
+  }
+
+  const payload: {
+    repoUrl?: string;
+    repoBranch?: string;
+    manifestPath?: string;
+    manifestUrl?: string;
+  } = {
+    repoBranch,
+    manifestPath,
+  };
+
+  if (repoUrl) {
+    payload.repoUrl = repoUrl;
+  }
+
+  if (manifestUrl) {
+    payload.manifestUrl = manifestUrl;
+  }
+
+  return payload;
+}
+
+export function serializeDeliveryManifestSourceDraft(draft: DeliveryManifestSourceDraft) {
+  return JSON.stringify({
+    repoUrl: draft.repoUrl.trim(),
+    repoBranch: draft.repoBranch.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.repoBranch,
+    manifestPath:
+      draft.manifestPath.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.manifestPath,
+    manifestUrl: draft.manifestUrl.trim(),
+  });
 }
 
 export function computeDeliveryConfigured(

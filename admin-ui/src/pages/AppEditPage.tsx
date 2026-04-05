@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
+import { listAppsAdmin, listCatalogSnapshot, syncAppDeliveryManifest, upsertApp } from '@/api/apps';
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import type { AppWithDetails } from '@/api/types';
 import { AppEditBasicsTab } from '@/components/apps/app-edit/AppEditBasicsTab';
@@ -40,11 +40,15 @@ import { Tabs } from '@/components/ui/tabs';
 import { useUnsavedChangesPrompt } from '@/hooks/useUnsavedChangesPrompt';
 import {
   buildDeliverySettingsPayload,
+  buildDeliveryManifestSourcePayload,
+  createDeliveryManifestSourceDraft,
   createDeliverySecretState,
   createDeliverySettingsDraft,
   EMPTY_DELIVERY_SECRET_STATE,
+  serializeDeliveryManifestSourceDraft,
   serializeDeliverySettingsDraft,
   supportsOneClickDelivery,
+  type DeliveryManifestSourceDraft,
   type DeliverySecretState,
   type DeliverySettingsDraft,
 } from '@/lib/app-delivery';
@@ -53,6 +57,17 @@ interface SaveMutationRequest {
   appRequest: SaveRequest;
   saveDeliverySettings: boolean;
   deliveryDraft: DeliverySettingsDraft;
+}
+
+interface SyncManifestRequest {
+  appCode: string;
+  payload: {
+    repoUrl?: string;
+    repoBranch?: string;
+    manifestPath?: string;
+    manifestUrl?: string;
+  };
+  snapshot: string;
 }
 
 function ensureDefaultOffer(offers: EditableOffer[]) {
@@ -81,6 +96,23 @@ function replaceAppInList(current: { items: AppWithDetails[] } | undefined, next
   };
 }
 
+function buildDraftSnapshot(
+  form: FormState,
+  editableFeatures: EditableFeature[],
+  editablePlans: EditablePlan[],
+  editableOffers: EditableOffer[],
+  deliverySettings: DeliverySettingsDraft,
+  deliverySecrets: DeliverySecretState,
+) {
+  return serializeDraft(
+    form,
+    editableFeatures,
+    editablePlans,
+    editableOffers,
+    serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+  );
+}
+
 export function AppEditPage() {
   const { appCode } = useParams<{ appCode: string }>();
   const navigate = useNavigate();
@@ -95,11 +127,15 @@ export function AppEditPage() {
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettingsDraft>(
     createDeliverySettingsDraft(),
   );
+  const [manifestSource, setManifestSource] = useState<DeliveryManifestSourceDraft>(
+    createDeliveryManifestSourceDraft(),
+  );
   const [deliverySecrets, setDeliverySecrets] = useState<DeliverySecretState>(
     EMPTY_DELIVERY_SECRET_STATE,
   );
   const [initialized, setInitialized] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [savedDraftSnapshot, setSavedDraftSnapshot] = useState('');
+  const [savedManifestSourceSnapshot, setSavedManifestSourceSnapshot] = useState('');
   const [allowNavigation, setAllowNavigation] = useState(false);
 
   const { data: appsData, isLoading: isAppsLoading } = useQuery({
@@ -141,7 +177,7 @@ export function AppEditPage() {
     [appsData?.items],
   );
 
-  const supportsDeliveryMode = supportsOneClickDelivery(form.type);
+  const supportsDeliveryMode = supportsOneClickDelivery(form.type.trim());
   const showDeliveryTab = supportsDeliveryMode && form.deliveryMode === 'one_click';
   const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
     ? ['basics', 'content', 'plans', 'offers', 'delivery']
@@ -152,14 +188,26 @@ export function AppEditPage() {
     setAllowNavigation(false);
 
     if (isCreateMode) {
-      const emptySnapshot = serializeDraft(EMPTY_FORM_STATE, [], [], [], null);
+      const emptyDeliverySettings = createDeliverySettingsDraft();
+      const emptyManifestSource = createDeliveryManifestSourceDraft();
       setForm(EMPTY_FORM_STATE);
       setEditableFeatures([]);
       setEditablePlans([]);
       setEditableOffers([]);
-      setDeliverySettings(createDeliverySettingsDraft());
+      setDeliverySettings(emptyDeliverySettings);
+      setManifestSource(emptyManifestSource);
       setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
-      setSavedSnapshot(emptySnapshot);
+      setSavedDraftSnapshot(
+        buildDraftSnapshot(
+          EMPTY_FORM_STATE,
+          [],
+          [],
+          [],
+          emptyDeliverySettings,
+          EMPTY_DELIVERY_SECRET_STATE,
+        ),
+      );
+      setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(emptyManifestSource));
       setInitialized(true);
       return;
     }
@@ -169,8 +217,10 @@ export function AppEditPage() {
     setEditablePlans([]);
     setEditableOffers([]);
     setDeliverySettings(createDeliverySettingsDraft());
+    setManifestSource(createDeliveryManifestSourceDraft());
     setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
-    setSavedSnapshot('');
+    setSavedDraftSnapshot('');
+    setSavedManifestSourceSnapshot('');
     setInitialized(false);
   }, [appCode, isCreateMode]);
 
@@ -184,6 +234,7 @@ export function AppEditPage() {
     const nextPlans = createEditablePlans(app, appPlanFeatures);
     const nextOffers = createEditableOffers(app);
     const nextDeliverySettings = createDeliverySettingsDraft(deliverySettingsQuery.data);
+    const nextManifestSource = createDeliveryManifestSourceDraft(app);
     const nextDeliverySecrets = createDeliverySecretState(deliverySettingsQuery.data);
 
     setForm(nextForm);
@@ -191,16 +242,19 @@ export function AppEditPage() {
     setEditablePlans(nextPlans);
     setEditableOffers(nextOffers);
     setDeliverySettings(nextDeliverySettings);
+    setManifestSource(nextManifestSource);
     setDeliverySecrets(nextDeliverySecrets);
-    setSavedSnapshot(
-      serializeDraft(
+    setSavedDraftSnapshot(
+      buildDraftSnapshot(
         nextForm,
         nextFeatures,
         nextPlans,
         nextOffers,
-        serializeDeliverySettingsDraft(nextForm.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+        nextDeliverySettings,
+        nextDeliverySecrets,
       ),
     );
+    setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(nextManifestSource));
     setInitialized(true);
   }, [
     app,
@@ -239,17 +293,26 @@ export function AppEditPage() {
 
   const currentSnapshot = useMemo(
     () =>
-      serializeDraft(
+      buildDraftSnapshot(
         form,
         editableFeatures,
         editablePlans,
         editableOffers,
-        serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+        deliverySettings,
+        deliverySecrets,
       ),
     [deliverySecrets, deliverySettings, editableFeatures, editableOffers, editablePlans, form],
   );
+  const currentManifestSourceSnapshot = useMemo(
+    () => serializeDeliveryManifestSourceDraft(manifestSource),
+    [manifestSource],
+  );
 
-  const hasUnsavedChanges = initialized && !allowNavigation && currentSnapshot !== savedSnapshot;
+  const hasUnsavedChanges =
+    initialized &&
+    !allowNavigation &&
+    (currentSnapshot !== savedDraftSnapshot ||
+      currentManifestSourceSnapshot !== savedManifestSourceSnapshot);
   const { isDialogOpen, confirmNavigation, stayOnPage } = useUnsavedChangesPrompt(hasUnsavedChanges);
 
   const saveMutation = useMutation({
@@ -268,16 +331,18 @@ export function AppEditPage() {
       const nextDeliverySecrets = deliveryOverview
         ? createDeliverySecretState(deliveryOverview)
         : deliverySecrets;
-      const nextSnapshot = serializeDraft(
+      const nextSnapshot = buildDraftSnapshot(
         form,
         editableFeatures,
         editablePlans,
         editableOffers,
-        serializeDeliverySettingsDraft(form.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+        nextDeliverySettings,
+        nextDeliverySecrets,
       );
 
       flushSync(() => {
-        setSavedSnapshot(nextSnapshot);
+        setSavedDraftSnapshot(nextSnapshot);
+        setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(manifestSource));
         if (deliveryOverview) {
           setDeliverySettings(nextDeliverySettings);
           setDeliverySecrets(nextDeliverySecrets);
@@ -310,6 +375,22 @@ export function AppEditPage() {
     },
   });
 
+  const syncManifestMutation = useMutation({
+    mutationFn: ({ appCode: targetAppCode, payload }: SyncManifestRequest) =>
+      syncAppDeliveryManifest(targetAppCode, payload),
+    onSuccess: (result, variables) => {
+      setSavedManifestSourceSnapshot(variables.snapshot);
+      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
+        replaceAppInList(current, result),
+      );
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+      toast.success('交付 Manifest 已同步');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '同步交付 Manifest 失败');
+    },
+  });
+
   const clearDeliveryMutation = useMutation({
     mutationFn: async (targetAppCode: string) => {
       await clearDeliverySettings(targetAppCode);
@@ -321,13 +402,14 @@ export function AppEditPage() {
 
       setDeliverySettings(nextDeliverySettings);
       setDeliverySecrets(nextDeliverySecrets);
-      setSavedSnapshot(
-        serializeDraft(
+      setSavedDraftSnapshot(
+        buildDraftSnapshot(
           form,
           editableFeatures,
           editablePlans,
           editableOffers,
-          serializeDeliverySettingsDraft(form.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+          nextDeliverySettings,
+          nextDeliverySecrets,
         ),
       );
 
@@ -348,6 +430,13 @@ export function AppEditPage() {
     value: DeliverySettingsDraft[K],
   ) => {
     setDeliverySettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setManifestField = <K extends keyof DeliveryManifestSourceDraft>(
+    key: K,
+    value: DeliveryManifestSourceDraft[K],
+  ) => {
+    setManifestSource((prev) => ({ ...prev, [key]: value }));
   };
 
   const updateFeature = (
@@ -550,22 +639,67 @@ export function AppEditPage() {
       editableOffers,
       app?.meta,
     );
+    const manifestPayload = buildDeliveryManifestSourcePayload(manifestSource);
+    const nextMeta = { ...(appRequest.payload.meta ?? {}) };
+
+    if (Object.keys(manifestPayload).length > 0) {
+      nextMeta.deliveryManifestSource = manifestPayload;
+    } else {
+      delete nextMeta.deliveryManifestSource;
+    }
+
+    appRequest.payload.meta = nextMeta;
 
     saveMutation.mutate({
       appRequest: {
         ...appRequest,
-        snapshot: serializeDraft(
+        snapshot: buildDraftSnapshot(
           form,
           editableFeatures,
           editablePlans,
           editableOffers,
-          serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+          deliverySettings,
+          deliverySecrets,
         ),
       },
       saveDeliverySettings: showDeliveryTab,
       deliveryDraft: deliverySettings,
     });
   };
+
+  const handleSyncManifest = () => {
+    if (isCreateMode) {
+      toast.error('请先保存应用，再同步 delivery manifest。');
+      return;
+    }
+
+    const targetAppCode = form.appCode.trim();
+    if (!targetAppCode) {
+      toast.error('缺少 App Code。');
+      return;
+    }
+
+    const payload = buildDeliveryManifestSourcePayload(manifestSource);
+    if (Object.keys(payload).length === 0) {
+      toast.error('请先填写仓库 URL 或 Manifest URL。');
+      return;
+    }
+
+    syncManifestMutation.mutate({
+      appCode: targetAppCode,
+      payload,
+      snapshot: serializeDeliveryManifestSourceDraft(manifestSource),
+    });
+  };
+
+  const hasSyncedManifest = Boolean(
+    app?.meta &&
+      typeof app.meta === 'object' &&
+      !Array.isArray(app.meta) &&
+      Object.prototype.hasOwnProperty.call(app.meta, 'deliveryManifest'),
+  );
+  const isBusy =
+    saveMutation.isPending || clearDeliveryMutation.isPending || syncManifestMutation.isPending;
 
   const handleClearDelivery = () => {
     if (isCreateMode) {
@@ -626,8 +760,8 @@ export function AppEditPage() {
           offersCount={editableOffers.length}
           plansCount={editablePlans.length}
           featuresCount={editableFeatures.length}
-          isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-          saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+          isSaving={isBusy}
+          saveDisabled={isBusy}
           onSave={saveDraft}
         />
 
@@ -637,15 +771,15 @@ export function AppEditPage() {
             setField={setField}
             isCreateMode={isCreateMode}
             supportsOneClickDelivery={supportsDeliveryMode}
-            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+            isSaving={isBusy}
+            saveDisabled={isBusy}
             onSave={saveDraft}
           />
           <AppEditContentTab
             form={form}
             setField={setField}
-            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+            isSaving={isBusy}
+            saveDisabled={isBusy}
             onSave={saveDraft}
           />
           <AppEditPlansTab
@@ -657,8 +791,8 @@ export function AppEditPage() {
             updatePlan={updatePlan}
             addPlan={addPlan}
             removePlan={removePlan}
-            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+            isSaving={isBusy}
+            saveDisabled={isBusy}
             onSave={saveDraft}
           />
           <AppEditOffersTab
@@ -670,8 +804,8 @@ export function AppEditPage() {
             addOffer={addOffer}
             removeOffer={removeOffer}
             markDefaultOffer={markDefaultOffer}
-            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+            isSaving={isBusy}
+            saveDisabled={isBusy}
             onSave={saveDraft}
           />
           {showDeliveryTab ? (
@@ -679,13 +813,18 @@ export function AppEditPage() {
               appCode={form.appCode}
               isCreateMode={isCreateMode}
               deliverySettings={deliverySettings}
+              manifestSource={manifestSource}
               acrPasswordConfigured={deliverySecrets.acrPasswordConfigured}
               githubTokenConfigured={deliverySecrets.githubTokenConfigured}
               updateField={setDeliveryField}
+              updateManifestField={setManifestField}
+              hasSyncedManifest={hasSyncedManifest}
+              isSyncingManifest={syncManifestMutation.isPending}
+              onSyncManifest={handleSyncManifest}
               onClear={handleClearDelivery}
-              clearDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
-              isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
-              saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+              clearDisabled={isBusy}
+              isSaving={isBusy}
+              saveDisabled={isBusy}
               onSave={saveDraft}
             />
           ) : null}

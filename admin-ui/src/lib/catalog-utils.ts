@@ -4,7 +4,7 @@ import type { AppWithDetails, PlanSummary } from '@/api/types';
 export const appSchema = z.object({
   name: z.string().min(1, '应用名称不能为空'),
   description: z.string().optional(),
-  type: z.enum(['chrome_extension', 'web_app', 'service']),
+  type: z.string().trim().min(1).max(64),
   status: z.enum(['active', 'inactive', 'cancelled', 'expired'])
 });
 export type AppFormValues = z.infer<typeof appSchema>;

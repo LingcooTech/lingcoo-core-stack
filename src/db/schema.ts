@@ -15,7 +15,6 @@ import {
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
-export const appTypeEnum = pgEnum('app_type', ['chrome_extension', 'web_app', 'service']);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
 export const recordStatusEnum = pgEnum('record_status', ['active', 'inactive', 'cancelled', 'expired']);
@@ -72,7 +71,7 @@ export const apps = pgTable('apps', {
   links: jsonb('links').notNull().default(sql`'[]'::jsonb`),
   category: varchar('category', { length: 64 }),
   sortOrder: integer('sort_order').notNull().default(0),
-  type: appTypeEnum('type').notNull().default('chrome_extension'),
+  type: varchar('type', { length: 64 }).notNull().default('web_app'),
   status: recordStatusEnum('status').notNull().default('active'),
   meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

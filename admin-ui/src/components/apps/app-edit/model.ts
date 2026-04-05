@@ -296,6 +296,12 @@ export function validateDraft(
       message: '请填写应用名称。',
     };
   }
+  if (!form.type.trim()) {
+    return {
+      tab: 'basics',
+      message: '请填写应用类型。',
+    };
+  }
 
   const featureCodes = editableFeatures.map((feature) => slugify(feature.code));
   const planCodes = editablePlans.map((plan) => slugify(plan.code));
@@ -458,7 +464,7 @@ export function buildSaveRequest(
       tagline: form.tagline || undefined,
       content: form.content || undefined,
       category: form.category || undefined,
-      type: form.type,
+      type: form.type.trim(),
       status: form.status,
       iconUrl: form.iconUrl || undefined,
       coverUrl: form.coverUrl || undefined,

@@ -92,3 +92,20 @@ export async function revokeAppSecret(appCode: string, secretId: string): Promis
     method: 'POST'
   });
 }
+
+export interface SyncAppDeliveryManifestInput {
+  repoUrl?: string;
+  repoBranch?: string;
+  manifestPath?: string;
+  manifestUrl?: string;
+}
+
+export async function syncAppDeliveryManifest(
+  appCode: string,
+  payload: SyncAppDeliveryManifestInput
+): Promise<AppWithDetails> {
+  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/delivery-manifest/sync`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}

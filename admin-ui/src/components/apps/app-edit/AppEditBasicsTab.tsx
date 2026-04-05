@@ -87,16 +87,11 @@ export function AppEditBasicsTab({
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label>类型</Label>
-              <Select value={form.type} onValueChange={(value) => setField('type', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="chrome_extension">Chrome Extension</SelectItem>
-                  <SelectItem value="web_app">Web App</SelectItem>
-                  <SelectItem value="service">Service</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                value={form.type}
+                onChange={(event) => setField('type', event.target.value)}
+                placeholder="如: chrome_extension, web_app, service, saas"
+              />
             </div>
             <div>
               <Label>交付方式</Label>

@@ -42,7 +42,7 @@ export class AppRepository {
     links?: unknown[];
     category?: string;
     sortOrder?: number;
-    type: 'chrome_extension' | 'web_app' | 'service';
+    type: string;
     status: 'active' | 'inactive' | 'cancelled' | 'expired';
     meta?: Record<string, unknown>;
   }) {
@@ -93,6 +93,16 @@ export class AppRepository {
       .returning();
 
     return app;
+  }
+
+  async updateAppMetaByCode(code: string, meta: Record<string, unknown>) {
+    const [app] = await this.db
+      .update(apps)
+      .set({ meta, updatedAt: new Date() })
+      .where(eq(apps.code, code))
+      .returning();
+
+    return app ?? null;
   }
 
   async listOffersByAppId(appId: string) {

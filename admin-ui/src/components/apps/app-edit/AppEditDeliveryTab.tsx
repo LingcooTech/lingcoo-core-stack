@@ -8,18 +8,30 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TabsContent } from '@/components/ui/tabs';
-import { computeDeliveryConfigured, type DeliverySettingsDraft } from '@/lib/app-delivery';
+import {
+  computeDeliveryConfigured,
+  type DeliveryManifestSourceDraft,
+  type DeliverySettingsDraft,
+} from '@/lib/app-delivery';
 
 interface AppEditDeliveryTabProps {
   appCode: string;
   isCreateMode: boolean;
   deliverySettings: DeliverySettingsDraft;
+  manifestSource: DeliveryManifestSourceDraft;
   acrPasswordConfigured: boolean;
   githubTokenConfigured: boolean;
   updateField: <K extends keyof DeliverySettingsDraft>(
     key: K,
     value: DeliverySettingsDraft[K],
   ) => void;
+  updateManifestField: <K extends keyof DeliveryManifestSourceDraft>(
+    key: K,
+    value: DeliveryManifestSourceDraft[K],
+  ) => void;
+  hasSyncedManifest: boolean;
+  isSyncingManifest: boolean;
+  onSyncManifest: () => void;
   onClear: () => void;
   clearDisabled: boolean;
   isSaving: boolean;
@@ -31,9 +43,14 @@ export function AppEditDeliveryTab({
   appCode,
   isCreateMode,
   deliverySettings,
+  manifestSource,
   acrPasswordConfigured,
   githubTokenConfigured,
   updateField,
+  updateManifestField,
+  hasSyncedManifest,
+  isSyncingManifest,
+  onSyncManifest,
   onClear,
   clearDisabled,
   isSaving,
@@ -80,6 +97,76 @@ export function AppEditDeliveryTab({
               </div>
             </div>
           </div>
+
+          <Card className="border-dashed">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base">交付 Manifest</CardTitle>
+                  <CardDescription>
+                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，用于保留当前应用的交付声明。
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onSyncManifest}
+                  disabled={
+                    isCreateMode ||
+                    isSyncingManifest ||
+                    (!manifestSource.repoUrl.trim() && !manifestSource.manifestUrl.trim())
+                  }
+                >
+                  {isSyncingManifest ? '同步中...' : '同步 Manifest'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>仓库 URL</Label>
+                  <Input
+                    value={manifestSource.repoUrl}
+                    onChange={(event) => updateManifestField('repoUrl', event.target.value)}
+                    placeholder="https://github.com/FutureDecade/fd-retail-system.git"
+                  />
+                </div>
+                <div>
+                  <Label>仓库分支</Label>
+                  <Input
+                    value={manifestSource.repoBranch}
+                    onChange={(event) => updateManifestField('repoBranch', event.target.value)}
+                    placeholder="main"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label>Manifest Path</Label>
+                  <Input
+                    value={manifestSource.manifestPath}
+                    onChange={(event) => updateManifestField('manifestPath', event.target.value)}
+                    placeholder="fd-delivery.manifest.json"
+                  />
+                </div>
+                <div>
+                  <Label>Manifest URL（可选）</Label>
+                  <Input
+                    value={manifestSource.manifestUrl}
+                    onChange={(event) => updateManifestField('manifestUrl', event.target.value)}
+                    placeholder="https://raw.githubusercontent.com/..."
+                  />
+                </div>
+              </div>
+              <div className="rounded-xl border bg-muted/40 p-3 text-xs text-muted-foreground">
+                {isCreateMode
+                  ? '请先保存应用，再同步 delivery manifest。'
+                  : hasSyncedManifest
+                    ? '当前已存在同步后的 deliveryManifest。'
+                    : '当前尚未同步 deliveryManifest。'}
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="border-dashed">
             <CardHeader>
