@@ -1,25 +1,19 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword } from '../../lib/security';
 import { AppRepository } from '../app/repository';
-import { AppService } from '../app/service';
 import { AuthRepository } from '../auth/repository';
 import { BillingRepository } from '../billing/repository';
 import { BillingService } from '../billing/service';
 import { CheckoutRepository } from '../checkout/repository';
-import { EventRepository } from '../event/repository';
 import { EventService } from '../event/service';
+import { EventRepository } from '../event/repository';
 import { InstallRepository } from '../install/repository';
 import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
-
-type OrderRecord = Awaited<ReturnType<BillingRepository['listRecentOrders']>>[number];
-type PriceRecord = Awaited<ReturnType<LicenseRepository['listPrices']>>[number];
-type ProductRecord = Awaited<ReturnType<LicenseRepository['listProducts']>>[number];
-type AuthorizationTemplateRecord = Awaited<ReturnType<LicenseRepository['listAuthorizationTemplates']>>[number];
 
 export class AdminService {
   constructor(
@@ -27,99 +21,34 @@ export class AdminService {
     private readonly env: AppEnv
   ) {}
 
-  private normalizeRecordMeta(value: unknown) {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? { ...(value as Record<string, unknown>) }
-      : {};
-  }
-
-  private readProductType(product: ProductRecord) {
-    const meta = this.normalizeRecordMeta(product.meta);
-    const explicitType = meta.productType ?? meta.legacyType;
-    if (explicitType === 'chrome_extension' || explicitType === 'web_app' || explicitType === 'service') {
-      return explicitType;
-    }
-
-    return product.deliveryMode === 'direct_access' ? 'web_app' : 'service';
-  }
-
-  private readAuthorizationKind(template: AuthorizationTemplateRecord) {
-    const meta = this.normalizeRecordMeta(template.meta);
-    const kind = meta.kind;
-    return typeof kind === 'string' && kind.trim() ? kind.trim() : 'tier';
-  }
-
-  private toProductSummary(product: ProductRecord) {
-    return {
-      ...product,
-      type: this.readProductType(product)
-    };
-  }
-
-  private toPriceSummary(price: PriceRecord, product?: ProductRecord | null, template?: AuthorizationTemplateRecord | null) {
-    return {
-      ...price,
-      interval: price.billingType === 'one_time' ? 'one_time' : price.billingInterval,
-      priceAmount: price.amount,
-      productId: product?.id ?? price.productId,
-      productCode: product?.code,
-      productName: product?.name,
-      authorizationTemplateCode: template?.code,
-      authorizationTemplateName: template?.name
-    };
-  }
-
-  private toAuthorizationTemplateSummary(template: AuthorizationTemplateRecord, product?: ProductRecord | null) {
-    return {
-      id: template.id,
-      code: template.code,
-      name: template.name,
-      kind: this.readAuthorizationKind(template),
-      productId: template.productId,
-      productCode: product?.code,
-      productName: product?.name,
-      status: template.status,
-      description: template.description,
-      createdAt: template.createdAt,
-      updatedAt: template.updatedAt
-    };
-  }
-
-  private async hydrateOrderRows(orders: OrderRecord[]) {
-    if (orders.length === 0) {
-      return [];
-    }
-
+  private async hydrateOrderRows(
+    orders: Array<Awaited<ReturnType<BillingRepository['listRecentOrders']>>[number]>
+  ) {
     const userIds = [...new Set(orders.map((item) => item.userId))];
     const productIds = [...new Set(orders.map((item) => item.productId))];
-    const priceIds = [...new Set(orders.map((item) => item.priceId))];
-    const appIds = [...new Set(orders.map((item) => item.appId))];
+    const planIds = [...new Set(orders.map((item) => item.planId))];
     const sessions = await new CheckoutRepository(this.db).listSessionsByOrderIds(orders.map((item) => item.id));
+    const appIds = [...new Set(sessions.map((item) => item.appId))];
 
-    const [users, products, prices, apps] = await Promise.all([
+    const [users, products, plans, apps] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
       new LicenseRepository(this.db).listProductsByIds(productIds),
-      new LicenseRepository(this.db).listPricesByIds(priceIds),
+      new LicenseRepository(this.db).listPlansByIds(planIds),
       new AppRepository(this.db).listAppsByIds(appIds)
-    ]);
-    const templates = await new LicenseRepository(this.db).listAuthorizationTemplatesByIds([
-      ...new Set(prices.map((item) => item.authorizationTemplateId))
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
     const productMap = new Map(products.map((item) => [item.id, item]));
-    const priceMap = new Map(prices.map((item) => [item.id, item]));
-    const templateMap = new Map(templates.map((item) => [item.id, item]));
+    const planMap = new Map(plans.map((item) => [item.id, item]));
     const appMap = new Map(apps.map((item) => [item.id, item]));
     const sessionMap = new Map(sessions.map((item) => [item.orderId, item]));
 
     return orders.map((order) => {
+      const session = sessionMap.get(order.id) ?? null;
+      const app = session ? appMap.get(session.appId) ?? null : null;
       const user = userMap.get(order.userId) ?? null;
       const product = productMap.get(order.productId) ?? null;
-      const price = priceMap.get(order.priceId) ?? null;
-      const authorizationTemplate = price ? templateMap.get(price.authorizationTemplateId) ?? null : null;
-      const app = appMap.get(order.appId) ?? null;
-      const session = sessionMap.get(order.id) ?? null;
+      const plan = planMap.get(order.planId) ?? null;
 
       return {
         ...order,
@@ -130,8 +59,21 @@ export class AdminService {
               displayName: user.displayName
             }
           : null,
-        product: product ? this.toProductSummary(product) : null,
-        price: price ? this.toPriceSummary(price, product, authorizationTemplate) : null,
+        product: product
+          ? {
+              id: product.id,
+              code: product.code,
+              name: product.name
+            }
+          : null,
+        plan: plan
+          ? {
+              id: plan.id,
+              code: plan.code,
+              name: plan.name,
+              interval: plan.interval
+            }
+          : null,
         checkoutSession: session
           ? {
               id: session.id,
@@ -161,7 +103,9 @@ export class AdminService {
   }
 
   async listOrders(limit = 50) {
-    const orders = await new BillingRepository(this.db).listRecentOrders(limit);
+    const repository = new BillingRepository(this.db);
+    const orders = await repository.listRecentOrders(limit);
+
     return {
       items: await this.hydrateOrderRows(orders)
     };
@@ -169,31 +113,37 @@ export class AdminService {
 
   async getOrderDetail(orderNo: string) {
     const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
+
     if (!order) {
       throw httpError(404, 'Order not found');
     }
 
-    const [item] = await this.hydrateOrderRows([order]);
-    const [paymentAttempts, grants, events, prices] = await Promise.all([
+    const [hydratedOrder] = await this.hydrateOrderRows([order]);
+    const [attempts, entitlements, events] = await Promise.all([
       new CheckoutRepository(this.db).listPaymentAttemptsByOrderIds([order.id]),
-      new LicenseRepository(this.db).listAuthorizationGrantsBySource('order', order.id),
-      new EventRepository(this.db).listRecentEventsByOrderNo(orderNo, 20),
-      new LicenseRepository(this.db).listPricesByIds([order.priceId])
+      new LicenseRepository(this.db).listEntitlementsBySource('order', order.id),
+      new EventRepository(this.db).listRecentEventsByOrderNo(orderNo, 20)
     ]);
-    const templateIds = [...new Set(grants.map((grant) => grant.authorizationTemplateId))];
-    const templates = await new LicenseRepository(this.db).listAuthorizationTemplatesByIds(templateIds);
-    const templateMap = new Map(templates.map((item) => [item.id, item]));
-    const price = prices[0] ?? null;
+    const featureIds = [...new Set(entitlements.map((item) => item.featureId))];
+    const features = await new LicenseRepository(this.db).listFeaturesByIds(featureIds);
+    const featureMap = new Map(features.map((item) => [item.id, item]));
 
     return {
-      item,
-      paymentAttempts,
-      authorizationGrants: grants.map((grant) => {
-        const template = templateMap.get(grant.authorizationTemplateId) ?? null;
+      item: hydratedOrder,
+      paymentAttempts: attempts,
+      entitlements: entitlements.map((entitlement) => {
+        const feature = featureMap.get(entitlement.featureId) ?? null;
+
         return {
-          ...grant,
-          authorizationTemplate: template ?? null,
-          price: price ? this.toPriceSummary(price, item.product, template) : null
+          ...entitlement,
+          feature: feature
+            ? {
+                id: feature.id,
+                code: feature.code,
+                name: feature.name,
+                kind: feature.kind
+              }
+            : null
         };
       }),
       events
@@ -228,9 +178,6 @@ export class AdminService {
 
         return {
           ...install,
-          extensionInstallId: install.instanceCode,
-          chromeProfileHint: install.profileHint,
-          appVersion: install.clientVersion,
           user: user
             ? {
                 id: user.id,
@@ -246,53 +193,55 @@ export class AdminService {
                 type: app.type
               }
             : null,
-          product: product ? this.toProductSummary(product) : null
+          product: product
+            ? {
+                id: product.id,
+                code: product.code,
+                name: product.name
+              }
+            : null
         };
       })
     };
   }
 
-  async listAuthorizationGrants(limit = 50) {
-    const grants = await new LicenseRepository(this.db).listRecentAuthorizationGrants(limit);
-    const userIds = [...new Set(grants.map((item) => item.userId))];
-    const productIds = [...new Set(grants.map((item) => item.productId))];
-    const templateIds = [...new Set(grants.map((item) => item.authorizationTemplateId))];
-    const priceIds = [...new Set(grants.map((item) => item.priceId).filter((item): item is string => Boolean(item)))];
+  async listEntitlements(limit = 50) {
+    const entitlements = await new LicenseRepository(this.db).listRecentEntitlements(limit);
+    const userIds = [...new Set(entitlements.map((item) => item.userId))];
+    const productIds = [...new Set(entitlements.map((item) => item.productId))];
+    const featureIds = [...new Set(entitlements.map((item) => item.featureId))];
     const orderIds = [
       ...new Set(
-        grants
+        entitlements
           .filter((item) => item.sourceType === 'order' && item.sourceId)
           .map((item) => item.sourceId as string)
       )
     ];
 
-    const [users, products, templates, prices, orders] = await Promise.all([
+    const [users, products, features, orders] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
       new LicenseRepository(this.db).listProductsByIds(productIds),
-      new LicenseRepository(this.db).listAuthorizationTemplatesByIds(templateIds),
-      new LicenseRepository(this.db).listPricesByIds(priceIds),
+      new LicenseRepository(this.db).listFeaturesByIds(featureIds),
       new BillingRepository(this.db).listOrdersByIds(orderIds)
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
     const productMap = new Map(products.map((item) => [item.id, item]));
-    const templateMap = new Map(templates.map((item) => [item.id, item]));
-    const priceMap = new Map(prices.map((item) => [item.id, item]));
+    const featureMap = new Map(features.map((item) => [item.id, item]));
     const orderMap = new Map(orders.map((item) => [item.id, item]));
 
     return {
-      items: grants.map((grant) => {
-        const user = userMap.get(grant.userId) ?? null;
-        const product = productMap.get(grant.productId) ?? null;
-        const template = templateMap.get(grant.authorizationTemplateId) ?? null;
-        const price = grant.priceId ? priceMap.get(grant.priceId) ?? null : null;
+      items: entitlements.map((entitlement) => {
+        const user = userMap.get(entitlement.userId) ?? null;
+        const product = productMap.get(entitlement.productId) ?? null;
+        const feature = featureMap.get(entitlement.featureId) ?? null;
         const sourceOrder =
-          grant.sourceType === 'order' && grant.sourceId
-            ? orderMap.get(grant.sourceId) ?? null
+          entitlement.sourceType === 'order' && entitlement.sourceId
+            ? orderMap.get(entitlement.sourceId) ?? null
             : null;
 
         return {
-          ...grant,
+          ...entitlement,
           user: user
             ? {
                 id: user.id,
@@ -300,9 +249,21 @@ export class AdminService {
                 displayName: user.displayName
               }
             : null,
-          product: product ? this.toProductSummary(product) : null,
-          price: price ? this.toPriceSummary(price, product, template) : null,
-          authorizationTemplate: template ?? null,
+          product: product
+            ? {
+                id: product.id,
+                code: product.code,
+                name: product.name
+              }
+            : null,
+          feature: feature
+            ? {
+                id: feature.id,
+                code: feature.code,
+                name: feature.name,
+                kind: feature.kind
+              }
+            : null,
           sourceOrder: sourceOrder
             ? {
                 id: sourceOrder.id,
@@ -315,200 +276,161 @@ export class AdminService {
     };
   }
 
-  async upsertProduct(
+  async upsertCatalogBundle(
     productCode: string,
     input: {
       name: string;
-      tagline?: string;
-      description?: string;
-      content?: string;
-      iconUrl?: string;
-      coverUrl?: string;
-      screenshots?: unknown[];
-      highlights?: unknown[];
-      faq?: unknown[];
-      links?: unknown[];
-      category?: string;
-      deliveryMode?: 'direct_access' | 'one_click_deploy';
-      sortOrder?: number;
+      type: 'chrome_extension' | 'web_app' | 'service';
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      type?: 'chrome_extension' | 'web_app' | 'service';
-      meta?: Record<string, unknown>;
+      features: Array<{
+        code: string;
+        name: string;
+        kind: string;
+        status: 'active' | 'inactive' | 'cancelled' | 'expired';
+      }>;
+      plans: Array<{
+        code: string;
+        name: string;
+        billingProvider: string;
+        billingPriceId?: string;
+        priceAmount: number;
+        currency: string;
+        interval: 'month' | 'year' | 'one_time';
+        status: 'active' | 'inactive' | 'cancelled' | 'expired';
+        featureCodes: string[];
+        meta?: Record<string, unknown>;
+      }>;
     },
     actorUserId: string
   ) {
-    const product = await this.db.transaction(async (tx) => {
-      const repository = new LicenseRepository(tx as DbClient);
-      const existing = await repository.getProductByCode(productCode);
-      const existingMeta = existing ? this.normalizeRecordMeta(existing.meta) : {};
-      const nextMeta = {
-        ...existingMeta,
-        ...(input.meta ?? {}),
-        ...(input.type ? { productType: input.type } : {})
-      };
+    const normalizedFeatures = [
+      ...new Map(
+        input.features.map((feature) => [
+          feature.code.trim(),
+          {
+            code: feature.code.trim(),
+            name: feature.name.trim(),
+            kind: feature.kind.trim() || 'boolean',
+            status: feature.status
+          }
+        ])
+      ).values()
+    ].filter((feature) => feature.code && feature.name);
 
-      const saved = await repository.upsertProduct({
+    const normalizedPlans = [
+      ...new Map(
+        input.plans.map((plan) => [
+          plan.code.trim(),
+          {
+            code: plan.code.trim(),
+            name: plan.name.trim(),
+            billingProvider: plan.billingProvider.trim() || 'self_hosted',
+            billingPriceId: plan.billingPriceId?.trim() || null,
+            priceAmount: plan.priceAmount,
+            currency: plan.currency.trim().toUpperCase() || 'CNY',
+            interval: plan.interval,
+            status: plan.status,
+            featureCodes: [...new Set(plan.featureCodes.map((code) => code.trim()).filter(Boolean))],
+            meta: plan.meta ?? {}
+          }
+        ])
+      ).values()
+    ].filter((plan) => plan.code && plan.name);
+
+    if (normalizedFeatures.length === 0) {
+      throw httpError(422, 'At least one feature is required');
+    }
+
+    if (normalizedPlans.length === 0) {
+      throw httpError(422, 'At least one plan is required');
+    }
+
+    const declaredFeatureCodes = new Set(normalizedFeatures.map((feature) => feature.code));
+    const missingFeatureRefs = normalizedPlans.flatMap((plan) =>
+      plan.featureCodes.filter((featureCode) => !declaredFeatureCodes.has(featureCode)).map((featureCode) => `${plan.code}:${featureCode}`)
+    );
+
+    if (missingFeatureRefs.length > 0) {
+      throw httpError(422, `Unknown feature references: ${missingFeatureRefs.join(', ')}`);
+    }
+
+    const result = await this.db.transaction(async (tx) => {
+      const licenseRepository = new LicenseRepository(tx as DbClient);
+      const product = await licenseRepository.upsertProduct({
         code: productCode,
-        name: input.name.trim(),
-        tagline: input.tagline?.trim() || null,
-        description: input.description?.trim() || null,
-        content: input.content?.trim() || null,
-        iconUrl: input.iconUrl?.trim() || null,
-        coverUrl: input.coverUrl?.trim() || null,
-        screenshots: input.screenshots ?? [],
-        highlights: input.highlights ?? [],
-        faq: input.faq ?? [],
-        links: input.links ?? [],
-        category: input.category?.trim() || null,
-        deliveryMode: input.deliveryMode ?? existing?.deliveryMode ?? 'direct_access',
-        sortOrder: input.sortOrder ?? existing?.sortOrder ?? 0,
-        status: input.status,
-        meta: nextMeta
+        name: input.name,
+        type: input.type,
+        status: input.status
       });
+
+      const features = [];
+      for (const featureInput of normalizedFeatures) {
+        features.push(
+          await licenseRepository.upsertFeature({
+            productId: product.id,
+            code: featureInput.code,
+            name: featureInput.name,
+            kind: featureInput.kind,
+            status: featureInput.status
+          })
+        );
+      }
+
+      const featureMap = new Map(features.map((feature) => [feature.code, feature]));
+      const plans = [];
+      const planFeatureMappings = [];
+
+      for (const planInput of normalizedPlans) {
+        const plan = await licenseRepository.upsertPlan({
+          productId: product.id,
+          code: planInput.code,
+          name: planInput.name,
+          billingProvider: planInput.billingProvider,
+          billingPriceId: planInput.billingPriceId,
+          priceAmount: planInput.priceAmount,
+          currency: planInput.currency,
+          interval: planInput.interval,
+          meta: planInput.meta,
+          status: planInput.status
+        });
+        plans.push(plan);
+
+        const featureIds = planInput.featureCodes
+          .map((featureCode) => featureMap.get(featureCode)?.id ?? null)
+          .filter((featureId): featureId is string => Boolean(featureId));
+
+        const mappings = await licenseRepository.replacePlanFeatureMappings(plan.id, featureIds);
+        planFeatureMappings.push(...mappings);
+      }
+
+      await licenseRepository.deactivateFeaturesByProductExceptCodes(
+        product.id,
+        normalizedFeatures.map((feature) => feature.code)
+      );
+      await licenseRepository.deactivatePlansByProductExceptCodes(
+        product.id,
+        normalizedPlans.map((plan) => plan.code)
+      );
 
       await new EventService(tx as DbClient).capture({
         userId: actorUserId,
-        productId: saved.id,
-        eventName: 'admin.product_upserted',
+        eventName: 'catalog.bundle_upserted',
         properties: {
           productCode,
-          status: input.status,
-          deliveryMode: saved.deliveryMode,
-          productType: this.readProductType(saved)
-        }
-      });
-
-      return saved;
-    });
-
-    return this.toProductSummary(product);
-  }
-
-  async upsertPrice(
-    priceCode: string,
-    input: {
-      productCode: string;
-      authorizationTemplateCode: string;
-      name: string;
-      billingProvider: string;
-      billingPriceId?: string;
-      billingType: 'one_time' | 'recurring';
-      billingInterval?: 'month' | 'year';
-      amount: number;
-      currency: string;
-      grantStrategy: 'lifetime' | 'fixed_duration' | 'subscription_period';
-      grantDurationDays?: number;
-      status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      meta?: Record<string, unknown>;
-    },
-    actorUserId: string
-  ) {
-    const result = await this.db.transaction(async (tx) => {
-      const repository = new LicenseRepository(tx as DbClient);
-      const product = await repository.getProductByCode(input.productCode);
-      if (!product) {
-        throw httpError(404, 'Product not found');
-      }
-
-      const authorizationTemplate = await repository.getAuthorizationTemplateByCode(input.authorizationTemplateCode);
-      if (!authorizationTemplate || authorizationTemplate.productId !== product.id) {
-        throw httpError(422, 'Authorization template does not belong to the selected product');
-      }
-
-      const price = await repository.upsertPrice({
-        productId: product.id,
-        authorizationTemplateId: authorizationTemplate.id,
-        code: priceCode,
-        name: input.name.trim(),
-        billingProvider: input.billingProvider.trim() || 'self_hosted',
-        billingPriceId: input.billingPriceId?.trim() || null,
-        billingType: input.billingType,
-        billingInterval: input.billingType === 'one_time' ? null : (input.billingInterval ?? null),
-        amount: input.amount,
-        currency: input.currency.trim().toUpperCase() || 'CNY',
-        grantStrategy: input.grantStrategy,
-        grantDurationDays: input.grantDurationDays ?? null,
-        status: input.status,
-        meta: input.meta ?? {}
-      });
-
-      await new EventService(tx as DbClient).capture({
-        userId: actorUserId,
-        productId: product.id,
-        eventName: 'admin.price_upserted',
-        properties: {
-          productCode: product.code,
-          priceCode,
-          billingType: input.billingType,
-          billingInterval: input.billingInterval ?? null,
-          amount: input.amount,
-          authorizationTemplateCode: authorizationTemplate.code
+          featureCodes: normalizedFeatures.map((feature) => feature.code),
+          planCodes: normalizedPlans.map((plan) => plan.code)
         }
       });
 
       return {
         product,
-        price,
-        authorizationTemplate
+        features,
+        plans,
+        planFeatures: planFeatureMappings
       };
     });
 
-    return {
-      price: this.toPriceSummary(result.price, result.product, result.authorizationTemplate),
-      product: this.toProductSummary(result.product),
-      authorizationTemplate: this.toAuthorizationTemplateSummary(result.authorizationTemplate, result.product)
-    };
-  }
-
-  async upsertAuthorizationTemplate(
-    authorizationTemplateCode: string,
-    input: {
-      productCode: string;
-      name: string;
-      description?: string;
-      status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      kind?: string;
-      meta?: Record<string, unknown>;
-    },
-    actorUserId: string
-  ) {
-    const result = await this.db.transaction(async (tx) => {
-      const repository = new LicenseRepository(tx as DbClient);
-      const product = await repository.getProductByCode(input.productCode);
-      if (!product) {
-        throw httpError(404, 'Product not found');
-      }
-
-      const authorizationTemplate = await repository.upsertAuthorizationTemplate({
-        productId: product.id,
-        code: authorizationTemplateCode,
-        name: input.name.trim(),
-        description: input.description?.trim() || null,
-        status: input.status,
-        meta: {
-          ...(input.meta ?? {}),
-          ...(input.kind ? { kind: input.kind } : {})
-        }
-      });
-
-      await new EventService(tx as DbClient).capture({
-        userId: actorUserId,
-        productId: product.id,
-        eventName: 'admin.authorization_template_upserted',
-        properties: {
-          productCode: product.code,
-          authorizationTemplateCode,
-          status: authorizationTemplate.status
-        }
-      });
-
-      return { product, authorizationTemplate };
-    });
-
-    return {
-      authorizationTemplate: this.toAuthorizationTemplateSummary(result.authorizationTemplate, result.product),
-      product: this.toProductSummary(result.product)
-    };
+    return result;
   }
 
   async listEvents(limit = 50) {
@@ -546,7 +468,6 @@ export class AdminService {
 
         return {
           ...event,
-          createdAt: event.eventTime,
           user: user
             ? {
                 id: user.id,
@@ -557,7 +478,7 @@ export class AdminService {
           install: install
             ? {
                 id: install.id,
-                extensionInstallId: install.instanceCode,
+                extensionInstallId: install.extensionInstallId,
                 status: install.status
               }
             : null,
@@ -569,7 +490,13 @@ export class AdminService {
                 type: app.type
               }
             : null,
-          product: product ? this.toProductSummary(product) : null
+          product: product
+            ? {
+                id: product.id,
+                code: product.code,
+                name: product.name
+              }
+            : null
         };
       })
     };
@@ -581,11 +508,10 @@ export class AdminService {
     };
   }
 
-  async grantAuthorization(
+  async grantEntitlement(
     input: {
       userEmail: string;
-      authorizationTemplateCode: string;
-      expiresAt?: string;
+      planCode: string;
       reason?: string;
     },
     actorUserId: string
@@ -595,25 +521,29 @@ export class AdminService {
       throw httpError(404, 'User not found');
     }
 
+    const checkoutPlan = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
+    const sourceId = randomUUID();
     const result = await this.db.transaction(async (tx) => {
       const txDb = tx as DbClient;
-      const grant = await new LicenseService(txDb).grantManualAuthorization({
+      const grant = await new LicenseService(txDb).grantEntitlementsForPlan({
         userId: user.id,
-        authorizationTemplateCode: input.authorizationTemplateCode,
-        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-        reason: input.reason
+        planId: checkoutPlan.plan.id,
+        sourceType: 'grant',
+        sourceId
       });
 
       await new EventService(txDb).capture({
         userId: user.id,
         productId: grant.product.id,
-        eventName: 'admin.authorization_grants_created',
+        eventName: 'admin.entitlements_granted',
         properties: {
           actorUserId,
-          authorizationTemplateCode: grant.authorizationTemplate.code,
+          planId: grant.plan.id,
+          planCode: grant.plan.code,
+          sourceId,
           reason: input.reason ?? null,
-          expiresAt: input.expiresAt ?? null,
-          grantCount: grant.grants.length
+          granted: grant.granted,
+          grantReason: grant.reason
         }
       });
 
@@ -626,40 +556,54 @@ export class AdminService {
         email: user.email,
         displayName: user.displayName
       },
-      authorizationTemplate: this.toAuthorizationTemplateSummary(result.authorizationTemplate, result.product),
-      product: this.toProductSummary(result.product),
-      sourceId: result.grants[0]?.sourceId ?? null,
-      expiresAt: result.grants[0]?.expiresAt ?? null,
-      grantCount: result.grants.length
+      plan: {
+        id: result.plan.id,
+        code: result.plan.code,
+        name: result.plan.name,
+        interval: result.plan.interval
+      },
+      product: {
+        id: result.product.id,
+        code: result.product.code,
+        name: result.product.name
+      },
+      granted: result.granted,
+      reason: result.reason,
+      sourceId,
+      entitlementCount: result.entitlements.length
     };
   }
 
-  async revokeAuthorization(grantId: string, actorUserId: string) {
+  async revokeEntitlement(entitlementId: string, actorUserId: string) {
     const repository = new LicenseRepository(this.db);
-    const grant = await repository.findAuthorizationGrantById(grantId);
-    if (!grant) {
-      throw httpError(404, 'Authorization grant not found');
+    const entitlement = await repository.findEntitlementById(entitlementId);
+
+    if (!entitlement) {
+      throw httpError(404, 'Entitlement not found');
     }
 
     const revoked = await this.db.transaction(async (tx) => {
-      const txRepository = new LicenseRepository(tx as DbClient);
-      const items =
-        grant.sourceId && grant.sourceType
-          ? await txRepository.revokeAuthorizationGrantsBySource(grant.sourceType, grant.sourceId)
-          : await (async () => {
-              const row = await txRepository.revokeAuthorizationGrant(grant.id);
-              return row ? [row] : [];
+      const txDb = tx as DbClient;
+      const txRepository = new LicenseRepository(txDb);
+      const changed =
+        entitlement.sourceId && entitlement.sourceType
+          ? await txRepository.cancelEntitlementsBySource(entitlement.sourceType, entitlement.sourceId)
+          : (() => {
+              const row = txRepository.cancelEntitlementById(entitlement.id);
+              return row.then((item) => (item ? [item] : []));
             })();
 
-      await new EventService(tx as DbClient).capture({
-        userId: grant.userId,
-        productId: grant.productId,
-        eventName: 'admin.authorization_grants_revoked',
+      const items = await changed;
+
+      await new EventService(txDb).capture({
+        userId: entitlement.userId,
+        productId: entitlement.productId,
+        eventName: 'admin.entitlements_revoked',
         properties: {
           actorUserId,
-          sourceType: grant.sourceType,
-          sourceId: grant.sourceId ?? null,
-          grantId: grant.id,
+          sourceType: entitlement.sourceType,
+          sourceId: entitlement.sourceId ?? null,
+          entitlementId: entitlement.id,
           revokedCount: items.length
         }
       });
@@ -668,14 +612,16 @@ export class AdminService {
     });
 
     return {
-      grantId: grant.id,
-      sourceType: grant.sourceType,
-      sourceId: grant.sourceId,
+      entitlementId: entitlement.id,
+      sourceType: entitlement.sourceType,
+      sourceId: entitlement.sourceId,
       revokedCount: revoked.length,
-      userId: grant.userId,
-      productId: grant.productId
+      userId: entitlement.userId,
+      productId: entitlement.productId
     };
   }
+
+  // ─── User Management ────────────────────────────────────────────────────
 
   async listUsers(query: { limit: number; offset: number; search?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }) {
     const result = await new AuthRepository(this.db).listUsers(query);
@@ -692,7 +638,6 @@ export class AdminService {
     if (!user) {
       throw httpError(404, 'User not found');
     }
-
     return {
       id: user.id,
       email: user.email,
@@ -711,10 +656,12 @@ export class AdminService {
     input: { displayName?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' },
     actorUserId: string
   ) {
+    // Prevent self-demotion
     if (userId === actorUserId && input.role && input.role !== 'admin') {
       throw httpError(400, 'Cannot demote your own admin role');
     }
 
+    // Prevent self-suspension
     if (userId === actorUserId && input.status === 'suspended') {
       throw httpError(400, 'Cannot suspend your own account');
     }
@@ -726,6 +673,7 @@ export class AdminService {
     }
 
     const updated = await repository.updateUser(userId, input);
+
     await new EventService(this.db).capture({
       userId: actorUserId,
       eventName: 'admin.user_updated',

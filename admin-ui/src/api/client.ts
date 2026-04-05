@@ -31,12 +31,9 @@ export async function apiClient<T = unknown>(
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>)
   };
-
-  if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
-  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

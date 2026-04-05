@@ -15,7 +15,7 @@ export function MyOrdersPage() {
     onSuccess: () => {
       toast.success('订单状态已同步');
       void qc.invalidateQueries({ queryKey: ['my-orders'] });
-      void qc.invalidateQueries({ queryKey: ['my-authorizations'] });
+      void qc.invalidateQueries({ queryKey: ['my-entitlements'] });
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '同步失败');
@@ -42,7 +42,7 @@ export function MyOrdersPage() {
           <EmptyState
             icon={FileSearch}
             title="还没有订单记录"
-            description="还没有订单记录，去产品中心看看吧"
+            description="还没有订单记录，去应用中心看看吧"
           />
         ) : (
           orders.map((order) => (

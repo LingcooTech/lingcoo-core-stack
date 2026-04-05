@@ -2,7 +2,7 @@ import { useQueries } from '@tanstack/react-query';
 import { ArrowRight, CreditCard, Package, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { listOrders } from '@/api/admin';
-import { listAppsAdmin, listCatalogSnapshot } from '@/api/apps';
+import { listAppsAdmin } from '@/api/apps';
 import { getPaymentSettings } from '@/api/payments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionHeader } from '@/components/shared/SectionHeader';
@@ -14,28 +14,27 @@ export function DashboardPage() {
     queries: [
       { queryKey: ['payment-settings'], queryFn: getPaymentSettings },
       { queryKey: ['orders', 50], queryFn: () => listOrders(50) },
-      { queryKey: ['apps'], queryFn: listAppsAdmin },
-      { queryKey: ['catalog'], queryFn: listCatalogSnapshot }
+      { queryKey: ['apps'], queryFn: listAppsAdmin }
     ]
   });
 
-  const [paymentsResult, ordersResult, appsResult, catalogResult] = results;
+  const [paymentsResult, ordersResult, appsResult] = results;
   const paymentData = paymentsResult.data;
   const orders = ordersResult.data?.items ?? [];
   const apps = appsResult.data?.items ?? [];
-  const products = catalogResult.data?.products ?? [];
 
+  const paidOrders = orders.filter((o) => o.status === 'paid');
   const pendingOrders = orders.filter((o) => ['pending', 'processing'].includes(o.status));
-  const deployableProducts = apps.filter((app) => app.meta?.productDeliveryMode === 'one_click_deploy').length;
+  const activeSecrets = apps.flatMap((a) => a.secrets ?? []).filter((s) => !s.expiresAt || new Date(s.expiresAt) > new Date());
 
   const wechat = paymentData?.items.find((i) => i.code === 'wechat_pay');
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
 
   const quickLinks = [
-    { label: '应用列表', href: '/admin/applications', icon: Package, color: 'text-violet-600 bg-violet-50' },
-    { label: '价格方案', href: '/admin/pricing', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '授权管理', href: '/admin/authorizations', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
-    { label: '交易管理', href: '/admin/transactions', icon: Zap, color: 'text-amber-600 bg-amber-50' }
+    { label: '支付配置', desc: '微信 / 支付宝通道', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
+    { label: '应用管理', desc: '注册与管理应用', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
+    { label: '授权管理', desc: '发放 / 撤销授权', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
+    { label: '订单管理', desc: '订单与支付记录', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
   ];
 
   return (
@@ -44,10 +43,10 @@ export function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} />
-          <MetricCard label="商品数量" value={products.length} loading={catalogResult.isLoading} />
-          <MetricCard label="可部署产品" value={deployableProducts} loading={appsResult.isLoading} />
-          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
+          <MetricCard label="接入应用" value={apps.length} sublabel="应用总数" loading={appsResult.isLoading} />
+          <MetricCard label="活跃 Secret" value={activeSecrets.length} sublabel="有效密钥" loading={appsResult.isLoading} />
+          <MetricCard label="已支付订单" value={paidOrders.length} sublabel={`最近 ${orders.length} 条`} loading={ordersResult.isLoading} />
+          <MetricCard label="待处理订单" value={pendingOrders.length} sublabel="pending / processing" loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>
 
         {/* Payment Status */}
@@ -58,13 +57,13 @@ export function DashboardPage() {
               name="微信支付"
               config={wechat}
               loading={paymentsResult.isLoading}
-              href="/admin/settings/payments"
+              href="/admin/payments"
             />
             <PaymentStatusCard
               name="支付宝"
               config={alipay}
               loading={paymentsResult.isLoading}
-              href="/admin/settings/payments"
+              href="/admin/payments"
             />
           </div>
         </div>
@@ -86,6 +85,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-black text-foreground">{link.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </Link>
@@ -99,7 +99,7 @@ export function DashboardPage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-black text-muted-foreground uppercase tracking-wider">最近订单</h2>
-              <Link to="/admin/transactions" className="text-xs font-bold text-primary hover:underline">
+              <Link to="/admin/orders" className="text-xs font-bold text-primary hover:underline">
                 查看全部 →
               </Link>
             </div>
@@ -132,11 +132,13 @@ export function DashboardPage() {
 function MetricCard({
   label,
   value,
+  sublabel,
   loading,
   tone = 'neutral'
 }: {
   label: string;
   value: number;
+  sublabel: string;
   loading?: boolean;
   tone?: 'ok' | 'warn' | 'neutral';
 }) {
@@ -157,6 +159,7 @@ function MetricCard({
             >
               {value}
             </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>
           </>
         )}
       </CardContent>

@@ -81,7 +81,7 @@ export function PaymentsPage() {
 
   return (
     <div>
-      <SectionHeader sectionKey="paymentSettings" />
+      <SectionHeader sectionKey="payments" />
       <div className="p-6">
         {isLoading ? (
           <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 rounded-xl bg-muted animate-pulse" />)}</div>

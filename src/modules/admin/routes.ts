@@ -10,19 +10,15 @@ import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
 import {
   adminAppCodeParamsSchema,
-  adminAuthorizationGrantParamsSchema,
-  adminAuthorizationTemplateCodeParamsSchema,
-  adminGrantAuthorizationSchema,
+  adminCatalogProductParamsSchema,
+  adminEntitlementParamsSchema,
+  adminGrantEntitlementSchema,
   adminListQuerySchema,
   adminListUsersQuerySchema,
-  adminPriceCodeParamsSchema,
-  adminProductCodeParamsSchema,
   adminUpdateUserSchema,
   adminUserIdParamsSchema,
   adminUpsertDeliverySettingsSchema,
-  adminUpsertAuthorizationTemplateSchema,
-  adminUpsertPriceSchema,
-  adminUpsertProductSchema,
+  adminUpsertCatalogBundleSchema,
   adminOrderParamsSchema,
   alipayPaymentSettingsSchema,
   paymentProviderParamsSchema,
@@ -77,20 +73,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/deploy', sendSPA);
   app.get('/admin', sendSPA);
   app.get('/admin/login', sendSPA);
-  app.get('/admin/applications', sendSPA);
-  app.get('/admin/applications/new', sendSPA);
-  app.get('/admin/applications/:appCode', sendSPA);
-  app.get('/admin/products', sendSPA);
-  app.get('/admin/products/new', sendSPA);
-  app.get('/admin/products/:productCode', sendSPA);
-  app.get('/admin/pricing', sendSPA);
-  app.get('/admin/authorization-templates', sendSPA);
-  app.get('/admin/transactions', sendSPA);
-  app.get('/admin/authorizations', sendSPA);
-  app.get('/admin/instances', sendSPA);
-  app.get('/admin/events', sendSPA);
-  app.get('/admin/logs', sendSPA);
-  app.get('/admin/settings/payments', sendSPA);
+  app.get('/admin/payments', sendSPA);
+  app.get('/admin/apps', sendSPA);
+  app.get('/admin/delivery', sendSPA);
+  app.get('/admin/licenses', sendSPA);
+  app.get('/admin/operations', sendSPA);
+  app.get('/admin/observability', sendSPA);
   app.get('/admin/users', sendSPA);
 
   // ─── API Routes (unchanged) ───────────────────────────────────────────────
@@ -142,41 +130,25 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new AdminService(app.db, app.appEnv).listInstalls(query.limit);
   });
 
-  app.get('/v1/admin/authorization-grants', { preHandler: app.requireAdmin }, async (request) => {
+  app.get('/v1/admin/entitlements', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listAuthorizationGrants(query.limit);
+    return new AdminService(app.db, app.appEnv).listEntitlements(query.limit);
   });
 
-  app.put('/v1/admin/products/:productCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminProductCodeParamsSchema.parse(request.params);
-    const payload = adminUpsertProductSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).upsertProduct(params.productCode, payload, request.user.sub);
+  app.put('/v1/admin/catalog/products/:productCode', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminCatalogProductParamsSchema.parse(request.params);
+    const payload = adminUpsertCatalogBundleSchema.parse(request.body);
+    return new AdminService(app.db, app.appEnv).upsertCatalogBundle(params.productCode, payload, request.user.sub);
   });
 
-  app.put('/v1/admin/prices/:priceCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminPriceCodeParamsSchema.parse(request.params);
-    const payload = adminUpsertPriceSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).upsertPrice(params.priceCode, payload, request.user.sub);
+  app.post('/v1/admin/entitlements/grant', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = adminGrantEntitlementSchema.parse(request.body);
+    return new AdminService(app.db, app.appEnv).grantEntitlement(payload, request.user.sub);
   });
 
-  app.put('/v1/admin/authorization-templates/:authorizationTemplateCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminAuthorizationTemplateCodeParamsSchema.parse(request.params);
-    const payload = adminUpsertAuthorizationTemplateSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).upsertAuthorizationTemplate(
-      params.authorizationTemplateCode,
-      payload,
-      request.user.sub
-    );
-  });
-
-  app.post('/v1/admin/authorization-grants/grant', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = adminGrantAuthorizationSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).grantAuthorization(payload, request.user.sub);
-  });
-
-  app.post('/v1/admin/authorization-grants/:grantId/revoke', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminAuthorizationGrantParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).revokeAuthorization(params.grantId, request.user.sub);
+  app.post('/v1/admin/entitlements/:entitlementId/revoke', { preHandler: app.requireAdmin }, async (request) => {
+    const params = adminEntitlementParamsSchema.parse(request.params);
+    return new AdminService(app.db, app.appEnv).revokeEntitlement(params.entitlementId, request.user.sub);
   });
 
   app.get('/v1/admin/events', { preHandler: app.requireAdmin }, async (request) => {
@@ -218,12 +190,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.put('/v1/admin/users/:userId', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminUserIdParamsSchema.parse(request.params);
-    const payload = adminUpdateUserSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).updateUser(params.userId, payload, request.user.sub);
-  });
-
-  app.patch('/v1/admin/users/:userId', { preHandler: app.requireAdmin }, async (request) => {
     const params = adminUserIdParamsSchema.parse(request.params);
     const payload = adminUpdateUserSchema.parse(request.body);
     return new AdminService(app.db, app.appEnv).updateUser(params.userId, payload, request.user.sub);

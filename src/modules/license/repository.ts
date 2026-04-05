@@ -1,29 +1,81 @@
-import { and, desc, eq, gte, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, ne, notInArray, or } from 'drizzle-orm';
 
-import {
-  authorizationGrants,
-  authorizationTemplates,
-  checkoutOffers,
-  prices,
-  products
-} from '../../db/schema';
+import { entitlements, features, planFeatures, plans, products } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class LicenseRepository {
   constructor(private readonly db: DbExecutor) {}
 
   async listProducts() {
-    return this.db.select().from(products).orderBy(desc(products.sortOrder), products.name);
+    return this.db.select().from(products).orderBy(desc(products.createdAt));
   }
 
-  async getProductByCode(code: string) {
-    const [product] = await this.db.select().from(products).where(eq(products.code, code)).limit(1);
-    return product ?? null;
+  async listPlans() {
+    return this.db.select().from(plans).orderBy(desc(plans.createdAt));
+  }
+
+  async listPlansByProductIds(productIds: string[]) {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(plans).where(inArray(plans.productId, productIds));
+  }
+
+  async listPlansByProductId(productId: string) {
+    return this.db.select().from(plans).where(eq(plans.productId, productId));
+  }
+
+  async listFeatures() {
+    return this.db.select().from(features).orderBy(desc(features.createdAt));
+  }
+
+  async listFeaturesByProductId(productId: string) {
+    return this.db.select().from(features).where(eq(features.productId, productId));
+  }
+
+  async listPlanFeatureMappings() {
+    return this.db.select().from(planFeatures);
+  }
+
+  async getPlanByCode(code: string) {
+    const [plan] = await this.db.select().from(plans).where(eq(plans.code, code)).limit(1);
+    return plan ?? null;
+  }
+
+  async findEntitlementById(entitlementId: string) {
+    const [entitlement] = await this.db.select().from(entitlements).where(eq(entitlements.id, entitlementId)).limit(1);
+    return entitlement ?? null;
+  }
+
+  async getPlanById(planId: string) {
+    const [plan] = await this.db.select().from(plans).where(eq(plans.id, planId)).limit(1);
+    return plan ?? null;
+  }
+
+  async listPlansByIds(planIds: string[]) {
+    if (planIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(plans).where(inArray(plans.id, planIds));
   }
 
   async getProductById(productId: string) {
     const [product] = await this.db.select().from(products).where(eq(products.id, productId)).limit(1);
     return product ?? null;
+  }
+
+  async listPlanFeatureMappingsByPlanId(planId: string) {
+    return this.db.select().from(planFeatures).where(eq(planFeatures.planId, planId));
+  }
+
+  async listFeaturesByIds(featureIds: string[]) {
+    if (featureIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(features).where(inArray(features.id, featureIds));
   }
 
   async listProductsByIds(productIds: string[]) {
@@ -45,63 +97,24 @@ export class LicenseRepository {
   async upsertProduct(input: {
     code: string;
     name: string;
-    tagline?: string | null;
-    description?: string | null;
-    content?: string | null;
-    iconUrl?: string | null;
-    coverUrl?: string | null;
-    screenshots?: unknown[];
-    highlights?: unknown[];
-    faq?: unknown[];
-    links?: unknown[];
-    category?: string | null;
-    deliveryMode?: 'direct_access' | 'one_click_deploy';
-    sortOrder?: number;
+    type: 'chrome_extension' | 'web_app' | 'service';
     status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    meta?: Record<string, unknown>;
   }) {
-    const now = new Date();
     const [product] = await this.db
       .insert(products)
       .values({
         code: input.code,
         name: input.name,
-        tagline: input.tagline ?? null,
-        description: input.description ?? null,
-        content: input.content ?? null,
-        iconUrl: input.iconUrl ?? null,
-        coverUrl: input.coverUrl ?? null,
-        screenshots: input.screenshots ?? [],
-        highlights: input.highlights ?? [],
-        faq: input.faq ?? [],
-        links: input.links ?? [],
-        category: input.category ?? null,
-        deliveryMode: input.deliveryMode ?? 'direct_access',
-        sortOrder: input.sortOrder ?? 0,
+        type: input.type,
         status: input.status,
-        meta: input.meta ?? {},
-        createdAt: now,
-        updatedAt: now
+        createdAt: new Date()
       })
       .onConflictDoUpdate({
         target: products.code,
         set: {
           name: input.name,
-          tagline: input.tagline ?? null,
-          description: input.description ?? null,
-          content: input.content ?? null,
-          iconUrl: input.iconUrl ?? null,
-          coverUrl: input.coverUrl ?? null,
-          screenshots: input.screenshots ?? [],
-          highlights: input.highlights ?? [],
-          faq: input.faq ?? [],
-          links: input.links ?? [],
-          category: input.category ?? null,
-          deliveryMode: input.deliveryMode ?? 'direct_access',
-          sortOrder: input.sortOrder ?? 0,
-          status: input.status,
-          meta: input.meta ?? {},
-          updatedAt: now
+          type: input.type,
+          status: input.status
         }
       })
       .returning();
@@ -109,314 +122,173 @@ export class LicenseRepository {
     return product;
   }
 
-  async listAuthorizationTemplates() {
-    return this.db.select().from(authorizationTemplates).orderBy(desc(authorizationTemplates.createdAt));
-  }
-
-  async listAuthorizationTemplatesByProductId(productId: string) {
-    return this.db.select().from(authorizationTemplates).where(eq(authorizationTemplates.productId, productId));
-  }
-
-  async listAuthorizationTemplatesByIds(templateIds: string[]) {
-    if (templateIds.length === 0) {
+  async listPlansByCodes(planCodes: string[]) {
+    if (planCodes.length === 0) {
       return [];
     }
 
-    return this.db.select().from(authorizationTemplates).where(inArray(authorizationTemplates.id, templateIds));
+    return this.db.select().from(plans).where(inArray(plans.code, planCodes));
   }
 
-  async getAuthorizationTemplateByCode(code: string) {
-    const [template] = await this.db
-      .select()
-      .from(authorizationTemplates)
-      .where(eq(authorizationTemplates.code, code))
-      .limit(1);
-
-    return template ?? null;
-  }
-
-  async getAuthorizationTemplateById(templateId: string) {
-    const [template] = await this.db
-      .select()
-      .from(authorizationTemplates)
-      .where(eq(authorizationTemplates.id, templateId))
-      .limit(1);
-
-    return template ?? null;
-  }
-
-  async upsertAuthorizationTemplate(input: {
+  async upsertPlan(input: {
     productId: string;
     code: string;
     name: string;
-    description?: string | null;
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    meta?: Record<string, unknown>;
-  }) {
-    const now = new Date();
-    const [template] = await this.db
-      .insert(authorizationTemplates)
-      .values({
-        productId: input.productId,
-        code: input.code,
-        name: input.name,
-        description: input.description ?? null,
-        status: input.status,
-        meta: input.meta ?? {},
-        createdAt: now,
-        updatedAt: now
-      })
-      .onConflictDoUpdate({
-        target: authorizationTemplates.code,
-        set: {
-          productId: input.productId,
-          name: input.name,
-          description: input.description ?? null,
-          status: input.status,
-          meta: input.meta ?? {},
-          updatedAt: now
-        }
-      })
-      .returning();
-
-    return template;
-  }
-
-  async listPrices() {
-    return this.db.select().from(prices).orderBy(desc(prices.createdAt));
-  }
-
-  async listPricesByProductIds(productIds: string[]) {
-    if (productIds.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(prices).where(inArray(prices.productId, productIds));
-  }
-
-  async listPricesByProductId(productId: string) {
-    return this.db.select().from(prices).where(eq(prices.productId, productId));
-  }
-
-  async listPricesByIds(priceIds: string[]) {
-    if (priceIds.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(prices).where(inArray(prices.id, priceIds));
-  }
-
-  async listPricesByCodes(priceCodes: string[]) {
-    if (priceCodes.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(prices).where(inArray(prices.code, priceCodes));
-  }
-
-  async getPriceByCode(code: string) {
-    const [price] = await this.db.select().from(prices).where(eq(prices.code, code)).limit(1);
-    return price ?? null;
-  }
-
-  async getPriceById(priceId: string) {
-    const [price] = await this.db.select().from(prices).where(eq(prices.id, priceId)).limit(1);
-    return price ?? null;
-  }
-
-  async upsertPrice(input: {
-    productId: string;
-    authorizationTemplateId: string;
-    code: string;
-    name: string;
-    billingProvider?: string;
+    billingProvider: string;
     billingPriceId?: string | null;
-    billingType: 'one_time' | 'recurring';
-    billingInterval?: 'month' | 'year' | null;
-    amount: number;
+    priceAmount: number;
     currency: string;
-    grantStrategy: 'lifetime' | 'fixed_duration' | 'subscription_period';
-    grantDurationDays?: number | null;
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    interval: 'month' | 'year' | 'one_time';
     meta?: Record<string, unknown>;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
   }) {
-    const now = new Date();
-    const [price] = await this.db
-      .insert(prices)
+    const [plan] = await this.db
+      .insert(plans)
       .values({
         productId: input.productId,
-        authorizationTemplateId: input.authorizationTemplateId,
         code: input.code,
         name: input.name,
-        billingProvider: input.billingProvider ?? 'self_hosted',
+        billingProvider: input.billingProvider,
         billingPriceId: input.billingPriceId ?? null,
-        billingType: input.billingType,
-        billingInterval: input.billingInterval ?? null,
-        amount: input.amount,
+        priceAmount: input.priceAmount,
         currency: input.currency,
-        grantStrategy: input.grantStrategy,
-        grantDurationDays: input.grantDurationDays ?? null,
-        status: input.status,
+        interval: input.interval,
         meta: input.meta ?? {},
-        createdAt: now,
-        updatedAt: now
+        status: input.status,
+        createdAt: new Date()
       })
       .onConflictDoUpdate({
-        target: prices.code,
+        target: plans.code,
         set: {
           productId: input.productId,
-          authorizationTemplateId: input.authorizationTemplateId,
           name: input.name,
-          billingProvider: input.billingProvider ?? 'self_hosted',
+          billingProvider: input.billingProvider,
           billingPriceId: input.billingPriceId ?? null,
-          billingType: input.billingType,
-          billingInterval: input.billingInterval ?? null,
-          amount: input.amount,
+          priceAmount: input.priceAmount,
           currency: input.currency,
-          grantStrategy: input.grantStrategy,
-          grantDurationDays: input.grantDurationDays ?? null,
-          status: input.status,
+          interval: input.interval,
           meta: input.meta ?? {},
-          updatedAt: now
+          status: input.status
         }
       })
       .returning();
 
-    return price;
+    return plan;
   }
 
-  async listCheckoutOffers() {
-    return this.db.select().from(checkoutOffers).orderBy(checkoutOffers.sortOrder, checkoutOffers.code);
+  async upsertFeature(input: {
+    productId: string;
+    code: string;
+    name: string;
+    kind: string;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  }) {
+    const [feature] = await this.db
+      .insert(features)
+      .values({
+        productId: input.productId,
+        code: input.code,
+        name: input.name,
+        kind: input.kind,
+        status: input.status,
+        createdAt: new Date()
+      })
+      .onConflictDoUpdate({
+        target: features.code,
+        set: {
+          productId: input.productId,
+          name: input.name,
+          kind: input.kind,
+          status: input.status
+        }
+      })
+      .returning();
+
+    return feature;
   }
 
-  async listCheckoutOffersByAppIds(appIds: string[]) {
-    if (appIds.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(checkoutOffers).where(inArray(checkoutOffers.appId, appIds));
-  }
-
-  async listCheckoutOffersByIds(offerIds: string[]) {
-    if (offerIds.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(checkoutOffers).where(inArray(checkoutOffers.id, offerIds));
-  }
-
-  async getCheckoutOfferByCode(code: string) {
-    const [offer] = await this.db.select().from(checkoutOffers).where(eq(checkoutOffers.code, code)).limit(1);
-    return offer ?? null;
-  }
-
-  async replaceAppCheckoutOffers(
-    appId: string,
-    values: Array<{
-      priceId: string;
-      code: string;
-      title: string;
-      description?: string | null;
-      badge?: string | null;
-      status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      isDefault?: boolean;
-      sortOrder?: number;
-    }>
+  async replacePlanFeatureMappings(
+    planId: string,
+    featureIds: string[],
+    featureValue: Record<string, unknown> = { enabled: true }
   ) {
-    await this.db.delete(checkoutOffers).where(eq(checkoutOffers.appId, appId));
+    await this.db.delete(planFeatures).where(eq(planFeatures.planId, planId));
 
-    if (values.length === 0) {
+    if (featureIds.length === 0) {
       return [];
     }
 
     return this.db
-      .insert(checkoutOffers)
+      .insert(planFeatures)
       .values(
-        values.map((value, index) => ({
-          appId,
-          priceId: value.priceId,
-          code: value.code,
-          title: value.title,
-          description: value.description ?? null,
-          badge: value.badge ?? null,
-          status: value.status,
-          isDefault: value.isDefault ?? index === 0,
-          sortOrder: value.sortOrder ?? index,
-          createdAt: new Date(),
-          updatedAt: new Date()
+        featureIds.map((featureId) => ({
+          planId,
+          featureId,
+          value: featureValue
         }))
       )
       .returning();
   }
 
-  async findAuthorizationGrantById(grantId: string) {
-    const [grant] = await this.db
-      .select()
-      .from(authorizationGrants)
-      .where(eq(authorizationGrants.id, grantId))
-      .limit(1);
-
-    return grant ?? null;
-  }
-
-  async listRecentAuthorizationGrants(limit = 50) {
-    return this.db.select().from(authorizationGrants).orderBy(desc(authorizationGrants.createdAt)).limit(limit);
-  }
-
-  async listAuthorizationGrantsBySource(sourceType: 'subscription' | 'order' | 'manual' | 'trial', sourceId: string) {
+  async deactivatePlansByProductExceptCodes(productId: string, retainedCodes: string[]) {
     return this.db
-      .select()
-      .from(authorizationGrants)
-      .where(and(eq(authorizationGrants.sourceType, sourceType), eq(authorizationGrants.sourceId, sourceId)))
-      .orderBy(desc(authorizationGrants.createdAt));
-  }
-
-  async listEffectiveAuthorizationGrantsByUserId(userId: string) {
-    const now = new Date();
-    return this.db
-      .select()
-      .from(authorizationGrants)
+      .update(plans)
+      .set({ status: 'inactive' })
       .where(
-        and(
-          eq(authorizationGrants.userId, userId),
-          eq(authorizationGrants.status, 'active'),
-          or(isNull(authorizationGrants.expiresAt), gte(authorizationGrants.expiresAt, now))
-        )
+        retainedCodes.length > 0
+          ? and(eq(plans.productId, productId), notInArray(plans.code, retainedCodes))
+          : eq(plans.productId, productId)
       )
-      .orderBy(desc(authorizationGrants.createdAt));
+      .returning();
   }
 
-  async listEffectiveAuthorizationGrantsByUserIdAndProductId(userId: string, productId: string) {
-    const now = new Date();
+  async deactivateFeaturesByProductExceptCodes(productId: string, retainedCodes: string[]) {
     return this.db
-      .select()
-      .from(authorizationGrants)
+      .update(features)
+      .set({ status: 'inactive' })
       .where(
-        and(
-          eq(authorizationGrants.userId, userId),
-          eq(authorizationGrants.productId, productId),
-          eq(authorizationGrants.status, 'active'),
-          or(isNull(authorizationGrants.expiresAt), gte(authorizationGrants.expiresAt, now))
-        )
+        retainedCodes.length > 0
+          ? and(eq(features.productId, productId), notInArray(features.code, retainedCodes))
+          : eq(features.productId, productId)
       )
-      .orderBy(desc(authorizationGrants.createdAt));
+      .returning();
   }
 
-  async deleteAuthorizationGrantsBySource(sourceType: 'subscription' | 'order' | 'manual' | 'trial', sourceId: string) {
-    return this.db
-      .delete(authorizationGrants)
-      .where(and(eq(authorizationGrants.sourceType, sourceType), eq(authorizationGrants.sourceId, sourceId)));
+  async updatePlanById(
+    planId: string,
+    input: {
+      priceAmount: number;
+      currency: string;
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    }
+  ) {
+    const [plan] = await this.db
+      .update(plans)
+      .set({
+        priceAmount: input.priceAmount,
+        currency: input.currency,
+        status: input.status
+      })
+      .where(eq(plans.id, planId))
+      .returning();
+
+    return plan ?? null;
   }
 
-  async createAuthorizationGrants(
+  async deleteEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
+    await this.db
+      .delete(entitlements)
+      .where(and(eq(entitlements.sourceType, sourceType), eq(entitlements.sourceId, sourceId)));
+  }
+
+  async createEntitlements(
     values: Array<{
       userId: string;
       productId: string;
-      authorizationTemplateId: string;
-      priceId?: string | null;
-      sourceType: 'subscription' | 'order' | 'manual' | 'trial';
+      featureId: string;
+      sourceType: 'order' | 'subscription' | 'grant' | 'trial';
       sourceId?: string | null;
-      status?: 'active' | 'inactive' | 'cancelled' | 'expired';
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
       startsAt?: Date | null;
       expiresAt?: Date | null;
       meta?: Record<string, unknown>;
@@ -426,52 +298,79 @@ export class LicenseRepository {
       return [];
     }
 
+    return this.db.insert(entitlements).values(values).returning();
+  }
+
+  async listEffectiveEntitlementsByUserId(userId: string, now = new Date()) {
     return this.db
-      .insert(authorizationGrants)
-      .values(
-        values.map((value) => ({
-          userId: value.userId,
-          productId: value.productId,
-          authorizationTemplateId: value.authorizationTemplateId,
-          priceId: value.priceId ?? null,
-          sourceType: value.sourceType,
-          sourceId: value.sourceId ?? null,
-          status: value.status ?? 'active',
-          startsAt: value.startsAt ?? null,
-          expiresAt: value.expiresAt ?? null,
-          meta: value.meta ?? {},
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }))
+      .select()
+      .from(entitlements)
+      .where(
+        and(
+          eq(entitlements.userId, userId),
+          eq(entitlements.status, 'active'),
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
+        )
       )
-      .returning();
+      .orderBy(desc(entitlements.createdAt));
   }
 
-  async revokeAuthorizationGrant(grantId: string) {
-    const [grant] = await this.db
-      .update(authorizationGrants)
-      .set({
-        status: 'cancelled',
-        updatedAt: new Date()
-      })
-      .where(and(eq(authorizationGrants.id, grantId), ne(authorizationGrants.status, 'cancelled')))
-      .returning();
-
-    return grant ?? null;
-  }
-
-  async revokeAuthorizationGrantsBySource(sourceType: 'subscription' | 'order' | 'manual' | 'trial', sourceId: string) {
+  async listEffectiveEntitlementsByUserIdAndProductId(userId: string, productId: string, now = new Date()) {
     return this.db
-      .update(authorizationGrants)
+      .select()
+      .from(entitlements)
+      .where(
+        and(
+          eq(entitlements.userId, userId),
+          eq(entitlements.productId, productId),
+          eq(entitlements.status, 'active'),
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
+        )
+      )
+      .orderBy(desc(entitlements.createdAt));
+  }
+
+  async listRecentEntitlements(limit = 50) {
+    return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
+  }
+
+  async listEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(and(eq(entitlements.sourceType, sourceType), eq(entitlements.sourceId, sourceId)))
+      .orderBy(desc(entitlements.createdAt));
+  }
+
+  async cancelEntitlementById(entitlementId: string, effectiveAt = new Date()) {
+    const [entitlement] = await this.db
+      .update(entitlements)
       .set({
         status: 'cancelled',
-        updatedAt: new Date()
+        expiresAt: effectiveAt
+      })
+      .where(and(eq(entitlements.id, entitlementId), ne(entitlements.status, 'cancelled')))
+      .returning();
+
+    return entitlement ?? null;
+  }
+
+  async cancelEntitlementsBySource(
+    sourceType: 'order' | 'subscription' | 'grant' | 'trial',
+    sourceId: string,
+    effectiveAt = new Date()
+  ) {
+    return this.db
+      .update(entitlements)
+      .set({
+        status: 'cancelled',
+        expiresAt: effectiveAt
       })
       .where(
         and(
-          eq(authorizationGrants.sourceType, sourceType),
-          eq(authorizationGrants.sourceId, sourceId),
-          ne(authorizationGrants.status, 'cancelled')
+          eq(entitlements.sourceType, sourceType),
+          eq(entitlements.sourceId, sourceId),
+          ne(entitlements.status, 'cancelled')
         )
       )
       .returning();

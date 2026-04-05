@@ -31,12 +31,12 @@ export class DeploymentService {
       throw httpError(422, 'This app is not configured as a deployable system product');
     }
 
-    const authorizationView = await new AppService(this.db).listUserAuthorizationsForApp(input.appCode, input.userId);
-    const authorizedProductCodes = new Set(authorizationView.summary.map((item) => item.productCode));
-    const deployableProducts = app.products.filter((product) => authorizedProductCodes.has(product.code));
+    const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
+    const entitledProductCodes = new Set(entitlementView.summary.map((item) => item.productCode));
+    const deployableProducts = app.products.filter((product) => entitledProductCodes.has(product.code));
 
     if (deployableProducts.length === 0) {
-      throw httpError(403, 'You do not have an active deployment authorization for this app');
+      throw httpError(403, 'You do not have an active deployment entitlement for this app');
     }
 
     if (input.productCode) {
@@ -48,7 +48,7 @@ export class DeploymentService {
       return {
         app,
         product: matched,
-        authorizationSummary: authorizationView.summary.filter((item) => item.productCode === matched.code)
+        entitlementSummary: entitlementView.summary.filter((item) => item.productCode === matched.code)
       };
     }
 
@@ -59,7 +59,7 @@ export class DeploymentService {
     return {
       app,
       product: deployableProducts[0],
-      authorizationSummary: authorizationView.summary.filter((item) => item.productCode === deployableProducts[0].code)
+      entitlementSummary: entitlementView.summary.filter((item) => item.productCode === deployableProducts[0].code)
     };
   }
 
@@ -96,17 +96,11 @@ export class DeploymentService {
           ? { id: user.id, email: user.email, displayName: user.displayName }
           : null,
         app: app
-          ? { id: app.id, code: app.code, name: app.name, type: app.type, meta: app.meta }
+          ? { id: app.id, code: app.code, name: app.name, type: app.type }
           : null,
         product: product
-          ? { id: product.id, code: product.code, name: product.name, type: app?.type ?? 'service' }
+          ? { id: product.id, code: product.code, name: product.name, type: product.type }
           : null,
-        endpoints: this.buildDeploymentEndpoints({
-          deployment: row,
-          manifest: app?.meta && typeof app.meta === 'object' && !Array.isArray(app.meta)
-            ? ((app.meta as Record<string, unknown>).deliveryManifest as { domainSlots?: Array<{ key: string; sourceField?: 'primaryDomain' | 'adminDomain' | 'wsDomain' }> } | undefined) ?? null
-            : null
-        }),
         latestToken: token
           ? {
               id: token.id,
@@ -127,51 +121,6 @@ export class DeploymentService {
 
   private normalizeMeta(meta: unknown) {
     return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
-  }
-
-  private normalizeEndpointMap(value: unknown) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return {};
-    }
-
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .map(([key, rawValue]) => [key, typeof rawValue === 'string' ? rawValue.trim() : ''])
-        .filter(([, rawValue]) => typeof rawValue === 'string' && rawValue.length > 0)
-    );
-  }
-
-  private buildDeploymentEndpoints(input: {
-    deployment: { primaryDomain?: string | null; adminDomain?: string | null; wsDomain?: string | null; meta?: unknown };
-    manifest?: { domainSlots?: Array<{ key: string; sourceField?: 'primaryDomain' | 'adminDomain' | 'wsDomain' }> } | null;
-  }) {
-    const meta =
-      input.deployment.meta && typeof input.deployment.meta === 'object' && !Array.isArray(input.deployment.meta)
-        ? (input.deployment.meta as Record<string, unknown>)
-        : {};
-    const storedEndpoints = this.normalizeEndpointMap(meta.endpoints);
-    const slots = input.manifest?.domainSlots ?? [];
-    const derived = Object.fromEntries(
-      slots
-        .map((slot) => {
-          const value =
-            storedEndpoints[slot.key] ||
-            (slot.sourceField === 'primaryDomain'
-              ? input.deployment.primaryDomain ?? ''
-              : slot.sourceField === 'adminDomain'
-                ? input.deployment.adminDomain ?? ''
-                : slot.sourceField === 'wsDomain'
-                  ? input.deployment.wsDomain ?? ''
-                  : '');
-          return [slot.key, value];
-        })
-        .filter(([, value]) => typeof value === 'string' && value.length > 0)
-    );
-
-    return {
-      ...storedEndpoints,
-      ...derived
-    };
   }
 
   private readDeploymentDefaults(app: DeploymentAppRecord) {
@@ -204,7 +153,6 @@ export class DeploymentService {
   private buildRemoteInstallCommand(input: {
     token: string;
     exchangeUrl: string;
-    remoteInstallScriptUrl: string;
     installPath?: string | null;
     repoUrl?: string;
     repoBranch?: string;
@@ -226,7 +174,9 @@ export class DeploymentService {
       commandParts.push(`REPO_BRANCH='${input.repoBranch}'`);
     }
 
-    commandParts.push(`bash <(curl -fsSL ${JSON.stringify(input.remoteInstallScriptUrl)})`);
+    commandParts.push(
+      "bash <(curl -fsSL https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh)"
+    );
 
     return commandParts.join(' ');
   }
@@ -236,66 +186,87 @@ export class DeploymentService {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     token?: string;
   }) {
-    const delivery = await new DeliverySettingsService(this.db, this.env).buildBootstrapContext(input.app.code);
+    const appDefaults = this.readDeploymentDefaults(input.app);
+    const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(input.app.code);
+    const defaults = {
+      repoUrl: appDefaults.repoUrl || deliverySettings?.repoUrl,
+      repoBranch: appDefaults.repoBranch || deliverySettings?.repoBranch,
+      frontendImage: appDefaults.frontendImage || deliverySettings?.frontendImage,
+      websocketImage: appDefaults.websocketImage || deliverySettings?.websocketImage,
+      letsencryptEmail: appDefaults.letsencryptEmail || deliverySettings?.letsencryptEmail,
+      wordpressFetchReleaseAssets:
+        typeof appDefaults.wordpressFetchReleaseAssets === 'boolean'
+          ? appDefaults.wordpressFetchReleaseAssets
+          : deliverySettings?.wordpressFetchReleaseAssets,
+      wordpressRunInit:
+        typeof appDefaults.wordpressRunInit === 'boolean'
+          ? appDefaults.wordpressRunInit
+          : deliverySettings?.wordpressRunInit,
+      wordpressReleaseOwner: appDefaults.wordpressReleaseOwner || deliverySettings?.wordpressReleaseOwner,
+      fdThemeReleaseTag: appDefaults.fdThemeReleaseTag || deliverySettings?.fdThemeReleaseTag,
+      fdAdminUiReleaseTag: appDefaults.fdAdminUiReleaseTag || deliverySettings?.fdAdminUiReleaseTag,
+      fdMemberReleaseTag: appDefaults.fdMemberReleaseTag || deliverySettings?.fdMemberReleaseTag,
+      fdPaymentReleaseTag: appDefaults.fdPaymentReleaseTag || deliverySettings?.fdPaymentReleaseTag,
+      fdCommerceReleaseTag: appDefaults.fdCommerceReleaseTag || deliverySettings?.fdCommerceReleaseTag,
+      fdContentTypesReleaseTag: appDefaults.fdContentTypesReleaseTag || deliverySettings?.fdContentTypesReleaseTag,
+      fdWebsocketPushReleaseTag: appDefaults.fdWebsocketPushReleaseTag || deliverySettings?.fdWebsocketPushReleaseTag,
+      wpgraphqlJwtAuthReleaseTag:
+        appDefaults.wpgraphqlJwtAuthReleaseTag || deliverySettings?.wpgraphqlJwtAuthReleaseTag,
+      wpgraphqlTaxQueryRef: appDefaults.wpgraphqlTaxQueryRef || deliverySettings?.wpgraphqlTaxQueryRef,
+      acrUsername: deliverySettings?.acrUsername,
+      acrPassword: deliverySettings?.acrPassword,
+      githubToken: deliverySettings?.githubToken
+    };
     const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
-    const domainValues = Object.fromEntries(
-      delivery.manifest.domainSlots.map((slot) => [
-        slot.envKey,
-        this.buildDeploymentEndpoints({
-          deployment: input.deployment,
-          manifest: delivery.manifest
-        })[slot.key] ?? undefined
-      ])
-    );
-    const envValues = Object.fromEntries(
-      delivery.manifest.envFields
-        .map((field) => {
-          const value = delivery.values[field.key];
-          if (typeof value === 'boolean') {
-            return [field.key, String(value)];
-          }
-          if (typeof value === 'string' && value.trim()) {
-            return [field.key, value.trim()];
-          }
-          return [field.key, undefined];
-        })
-        .filter(([, value]) => typeof value === 'string' && value.length > 0)
-    );
-    const secretValues = Object.fromEntries(
-      delivery.manifest.secretFields
-        .map((field) => [field.key, delivery.secrets[field.key] || undefined])
-        .filter(([, value]) => typeof value === 'string' && value.length > 0)
-    );
     const envDefaults = Object.fromEntries(
       Object.entries({
-        ...domainValues,
-        ...envValues,
-        ...secretValues
+        FRONTEND_DOMAIN: input.deployment?.primaryDomain ?? undefined,
+        ADMIN_DOMAIN: input.deployment?.adminDomain ?? undefined,
+        WS_DOMAIN: input.deployment?.wsDomain ?? undefined,
+        FRONTEND_IMAGE: defaults.frontendImage,
+        WEBSOCKET_IMAGE: defaults.websocketImage,
+        LETSENCRYPT_EMAIL: defaults.letsencryptEmail,
+        WORDPRESS_FETCH_RELEASE_ASSETS:
+          typeof defaults.wordpressFetchReleaseAssets === 'boolean' ? String(defaults.wordpressFetchReleaseAssets) : undefined,
+        WORDPRESS_RUN_INIT:
+          typeof defaults.wordpressRunInit === 'boolean' ? String(defaults.wordpressRunInit) : undefined,
+        WORDPRESS_RELEASE_OWNER: defaults.wordpressReleaseOwner,
+        FD_THEME_RELEASE_TAG: defaults.fdThemeReleaseTag,
+        FD_ADMIN_UI_RELEASE_TAG: defaults.fdAdminUiReleaseTag,
+        FD_MEMBER_RELEASE_TAG: defaults.fdMemberReleaseTag,
+        FD_PAYMENT_RELEASE_TAG: defaults.fdPaymentReleaseTag,
+        FD_COMMERCE_RELEASE_TAG: defaults.fdCommerceReleaseTag,
+        FD_CONTENT_TYPES_RELEASE_TAG: defaults.fdContentTypesReleaseTag,
+        FD_WEBSOCKET_PUSH_RELEASE_TAG: defaults.fdWebsocketPushReleaseTag,
+        WPGRAPHQL_JWT_AUTH_RELEASE_TAG: defaults.wpgraphqlJwtAuthReleaseTag,
+        WPGRAPHQL_TAX_QUERY_REF: defaults.wpgraphqlTaxQueryRef,
+        ACR_USERNAME: defaults.acrUsername,
+        ACR_PASSWORD: defaults.acrPassword,
+        GH_TOKEN: defaults.githubToken,
+        GITHUB_TOKEN: defaults.githubToken
       }).filter(([, value]) => typeof value === 'string' && value.length > 0)
     );
 
     return {
-      installPath: input.deployment?.installPath ?? delivery.manifest.installer.installPath,
+      installPath: input.deployment?.installPath ?? '/opt/fd-headless-wp-system',
       exchangeUrl,
       repository: {
-        url: delivery.manifest.installer.repoUrl,
-        branch: delivery.manifest.installer.repoBranch
+        url: defaults.repoUrl ?? 'https://github.com/FutureDecade/fd-headless-wp-system.git',
+        branch: defaults.repoBranch ?? 'main'
       },
-      remoteInstallScriptUrl: delivery.manifest.installer.remoteInstallScriptUrl,
-      manifest: delivery.manifest,
       envDefaults,
       remoteInstallCommand: input.token
         ? this.buildRemoteInstallCommand({
             token: input.token,
             exchangeUrl,
-            remoteInstallScriptUrl: delivery.manifest.installer.remoteInstallScriptUrl,
             installPath: input.deployment?.installPath,
-            repoUrl: delivery.manifest.installer.repoUrl,
-            repoBranch: delivery.manifest.installer.repoBranch
+            repoUrl: defaults.repoUrl,
+            repoBranch: defaults.repoBranch
           })
         : null,
-      notes: delivery.manifest.notes ?? [
-        'Installer bootstrap now preloads deployment domains and any app-level deployment defaults into the install flow.'
+      notes: [
+        'Installer bootstrap now preloads deployment domains and any app-level deployment defaults into the existing install flow.',
+        'If an env key is not present here, the installer will fall back to its current interactive prompt.'
       ]
     };
   }
@@ -321,7 +292,6 @@ export class DeploymentService {
     primaryDomain?: string;
     adminDomain?: string;
     wsDomain?: string;
-    endpoints?: Record<string, string>;
     installPath?: string;
   }) {
     const selection = await this.resolveDeployableProduct({
@@ -330,24 +300,6 @@ export class DeploymentService {
       productCode: input.productCode
     });
 
-    const manifest = await new DeliverySettingsService(this.db, this.env).getManifest(selection.app.code);
-    const endpoints = this.normalizeEndpointMap(input.endpoints);
-    const primaryDomain =
-      input.primaryDomain ??
-      (manifest.domainSlots.find((slot) => slot.sourceField === 'primaryDomain')
-        ? endpoints[manifest.domainSlots.find((slot) => slot.sourceField === 'primaryDomain')!.key] ?? null
-        : null);
-    const adminDomain =
-      input.adminDomain ??
-      (manifest.domainSlots.find((slot) => slot.sourceField === 'adminDomain')
-        ? endpoints[manifest.domainSlots.find((slot) => slot.sourceField === 'adminDomain')!.key] ?? null
-        : null);
-    const wsDomain =
-      input.wsDomain ??
-      (manifest.domainSlots.find((slot) => slot.sourceField === 'wsDomain')
-        ? endpoints[manifest.domainSlots.find((slot) => slot.sourceField === 'wsDomain')!.key] ?? null
-        : null);
-
     const deployment = await new DeploymentRepository(this.db).createDeployment({
       userId: input.userId,
       appId: selection.app.id,
@@ -355,14 +307,13 @@ export class DeploymentService {
       label: input.label,
       environment: input.environment,
       serverHost: input.serverHost ?? null,
-      primaryDomain,
-      adminDomain,
-      wsDomain,
+      primaryDomain: input.primaryDomain ?? null,
+      adminDomain: input.adminDomain ?? null,
+      wsDomain: input.wsDomain ?? null,
       installPath: input.installPath ?? '/opt/fd-headless-wp-system',
       meta: {
         appCode: selection.app.code,
-        productCode: selection.product.code,
-        endpoints
+        productCode: selection.product.code
       }
     });
 

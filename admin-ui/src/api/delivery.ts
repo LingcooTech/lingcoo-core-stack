@@ -2,8 +2,26 @@ import { apiClient } from './client';
 import type { DeliverySettingsOverview } from './types';
 
 export interface UpsertDeliverySettingsInput {
-  values?: Record<string, string | boolean | null>;
-  secrets?: Record<string, string>;
+  repoUrl?: string;
+  repoBranch?: string;
+  frontendImage?: string;
+  websocketImage?: string;
+  letsencryptEmail?: string;
+  acrUsername?: string;
+  acrPassword?: string;
+  githubToken?: string;
+  wordpressFetchReleaseAssets?: boolean;
+  wordpressRunInit?: boolean;
+  wordpressReleaseOwner?: string;
+  fdThemeReleaseTag?: string;
+  fdAdminUiReleaseTag?: string;
+  fdMemberReleaseTag?: string;
+  fdPaymentReleaseTag?: string;
+  fdCommerceReleaseTag?: string;
+  fdContentTypesReleaseTag?: string;
+  fdWebsocketPushReleaseTag?: string;
+  wpgraphqlJwtAuthReleaseTag?: string;
+  wpgraphqlTaxQueryRef?: string;
 }
 
 export async function getDeliverySettings(appCode: string): Promise<DeliverySettingsOverview> {

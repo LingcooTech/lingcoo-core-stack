@@ -31,7 +31,17 @@ export class AppRepository {
   async upsertApp(input: {
     code: string;
     name: string;
-    description?: string | null;
+    tagline?: string;
+    description?: string;
+    content?: string;
+    iconUrl?: string;
+    coverUrl?: string;
+    screenshots?: unknown[];
+    highlights?: unknown[];
+    faq?: unknown[];
+    links?: unknown[];
+    category?: string;
+    sortOrder?: number;
     type: 'chrome_extension' | 'web_app' | 'service';
     status: 'active' | 'inactive' | 'cancelled' | 'expired';
     meta?: Record<string, unknown>;
@@ -42,7 +52,17 @@ export class AppRepository {
       .values({
         code: input.code,
         name: input.name,
+        tagline: input.tagline ?? null,
         description: input.description ?? null,
+        content: input.content ?? null,
+        iconUrl: input.iconUrl ?? null,
+        coverUrl: input.coverUrl ?? null,
+        screenshots: input.screenshots ?? [],
+        highlights: input.highlights ?? [],
+        faq: input.faq ?? [],
+        links: input.links ?? [],
+        category: input.category ?? null,
+        sortOrder: input.sortOrder ?? 0,
         type: input.type,
         status: input.status,
         meta: input.meta ?? {},
@@ -53,7 +73,17 @@ export class AppRepository {
         target: apps.code,
         set: {
           name: input.name,
+          tagline: input.tagline ?? null,
           description: input.description ?? null,
+          content: input.content ?? null,
+          iconUrl: input.iconUrl ?? null,
+          coverUrl: input.coverUrl ?? null,
+          screenshots: input.screenshots ?? [],
+          highlights: input.highlights ?? [],
+          faq: input.faq ?? [],
+          links: input.links ?? [],
+          category: input.category ?? null,
+          sortOrder: input.sortOrder ?? 0,
           type: input.type,
           status: input.status,
           meta: input.meta ?? {},
@@ -63,19 +93,6 @@ export class AppRepository {
       .returning();
 
     return app;
-  }
-
-  async updateAppMetaByCode(code: string, meta: Record<string, unknown>) {
-    const [app] = await this.db
-      .update(apps)
-      .set({
-        meta,
-        updatedAt: new Date()
-      })
-      .where(eq(apps.code, code))
-      .returning();
-
-    return app ?? null;
   }
 
   async listProductMappingsByAppIds(appIds: string[]) {
@@ -90,19 +107,16 @@ export class AppRepository {
     await this.db.delete(appProducts).where(eq(appProducts.appId, appId));
 
     if (productIds.length === 0) {
-      return [];
+      return;
     }
 
-    return this.db
-      .insert(appProducts)
-      .values(
-        productIds.map((productId) => ({
-          appId,
-          productId,
-          createdAt: new Date()
-        }))
-      )
-      .returning();
+    await this.db.insert(appProducts).values(
+      productIds.map((productId) => ({
+        appId,
+        productId,
+        createdAt: new Date()
+      }))
+    );
   }
 
   async createAppSecret(input: {
@@ -132,7 +146,7 @@ export class AppRepository {
       return [];
     }
 
-    return this.db.select().from(appSecrets).where(inArray(appSecrets.appId, appIds)).orderBy(desc(appSecrets.createdAt));
+    return this.db.select().from(appSecrets).where(inArray(appSecrets.appId, appIds));
   }
 
   async findAppSecretById(id: string) {

@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { listInstalls } from '@/api/admin';
 import type { HydratedInstall } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { formatTime } from '@/lib/utils';
 
@@ -67,8 +66,11 @@ export function InstallsPage() {
 
   return (
     <div>
-      <SectionHeader sectionKey="instances" />
-      <div className="px-6 py-6">
+      <div className="p-6">
+        <h1 className="text-2xl font-black tracking-tight">安装实例</h1>
+        <p className="text-sm text-muted-foreground mt-1">查看应用安装记录与设备信息</p>
+      </div>
+      <div className="px-6 pb-6">
         <div className="rounded-2xl border border-border bg-white overflow-hidden">
           <DataTable
             columns={installColumns}

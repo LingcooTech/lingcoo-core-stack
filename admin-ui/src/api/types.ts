@@ -12,37 +12,20 @@ export interface ProductSummary {
   name: string;
   type?: string;
   status?: string;
-  tagline?: string | null;
-  description?: string | null;
-  content?: string | null;
-  iconUrl?: string | null;
-  coverUrl?: string | null;
-  category?: string | null;
-  deliveryMode?: 'direct_access' | 'one_click_deploy';
-  sortOrder?: number;
   createdAt?: string;
-  updatedAt?: string;
 }
 
-export interface PriceSummary {
+export interface PlanSummary {
   id: string;
   code: string;
   name: string;
-  billingType: 'one_time' | 'recurring';
-  billingInterval: 'month' | 'year' | null;
-  interval: 'month' | 'year' | 'one_time' | null;
-  amount: number;
-  priceAmount: number;
-  currency: string;
-  status: string;
-  productId: string;
+  interval: string | null;
+  priceAmount?: number;
+  currency?: string;
+  status?: string;
+  productId?: string;
   productCode?: string;
   productName?: string;
-  authorizationTemplateId: string;
-  authorizationTemplateCode?: string;
-  authorizationTemplateName?: string;
-  grantStrategy?: 'lifetime' | 'fixed_duration' | 'subscription_period';
-  grantDurationDays?: number | null;
 }
 
 export interface AppSummary {
@@ -50,58 +33,29 @@ export interface AppSummary {
   code: string;
   name: string;
   type: string;
-  meta?: Record<string, unknown>;
 }
 
-export interface AuthorizationTemplateSummary {
+export interface FeatureSummary {
   id: string;
   code: string;
   name: string;
   kind: string;
   productId?: string;
-  productCode?: string;
-  productName?: string;
-  description?: string | null;
   status?: string;
   createdAt?: string;
 }
 
-export interface PriceAuthorizationSummary {
-  priceId: string;
-  authorizationTemplateId: string;
+export interface PlanFeatureSummary {
+  planId: string;
+  featureId: string;
   value: string | null;
-}
-
-export interface CheckoutOfferSummary {
-  code: string;
-  priceCode: string;
-  priceId: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  authorizationTemplateId: string;
-  authorizationTemplateCode: string;
-  authorizationTemplateName: string;
-  title: string;
-  description: string | null;
-  badge: string | null;
-  billingType: 'one_time' | 'recurring';
-  billingInterval: 'month' | 'year' | null;
-  interval: 'month' | 'year' | 'one_time';
-  amount: number;
-  priceAmount: number;
-  currency: string;
-  status: string;
-  isDefault: boolean;
-  sortOrder: number;
 }
 
 export interface CatalogSnapshot {
   products: ProductSummary[];
-  prices: PriceSummary[];
-  authorizationTemplates: AuthorizationTemplateSummary[];
-  priceAuthorizations: PriceAuthorizationSummary[];
-  checkoutOffers: CheckoutOfferSummary[];
+  plans: PlanSummary[];
+  features: FeatureSummary[];
+  planFeatures: PlanFeatureSummary[];
 }
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
@@ -163,7 +117,7 @@ export interface AdminResetPasswordResult {
   temporaryPassword: string;
 }
 
-// ─── Payment Settings ───────────────────────────────────────────────────────
+// ─── Payment Settings ────────────────────────────────────────────────────────
 
 export interface PaymentProviderSecretStatus {
   configured: boolean;
@@ -184,54 +138,30 @@ export interface PaymentSettingsOverview {
 export interface DeliverySettingsOverview {
   appCode: string;
   configured: boolean;
-  manifest: DeliveryManifest;
-  values: Record<string, string | boolean | null>;
-  secrets: Record<string, PaymentProviderSecretStatus>;
-}
-
-export interface DeliveryFieldGroup {
-  key: string;
-  label: string;
-  description?: string;
-}
-
-export interface DeliveryFieldDefinition {
-  key: string;
-  label: string;
-  description?: string;
-  group?: string;
-  type: 'text' | 'url' | 'email' | 'boolean' | 'secret';
-  scope: 'system' | 'preset' | 'user_input';
-  required: boolean;
-  editable?: boolean;
-  advanced?: boolean;
-  placeholder?: string;
-  defaultValue?: string | boolean | null;
-}
-
-export interface DeliveryDomainSlot {
-  key: string;
-  label: string;
-  envKey: string;
-  sourceField?: 'primaryDomain' | 'adminDomain' | 'wsDomain';
-  required: boolean;
-  description?: string;
-  placeholder?: string;
-}
-
-export interface DeliveryManifest {
-  version: '1';
-  installer: {
+  values: {
     repoUrl: string;
     repoBranch: string;
-    remoteInstallScriptUrl: string;
-    installPath: string;
+    frontendImage: string;
+    websocketImage: string;
+    letsencryptEmail: string;
+    acrUsername: string;
+    wordpressFetchReleaseAssets: boolean;
+    wordpressRunInit: boolean;
+    wordpressReleaseOwner: string;
+    fdThemeReleaseTag: string;
+    fdAdminUiReleaseTag: string;
+    fdMemberReleaseTag: string;
+    fdPaymentReleaseTag: string;
+    fdCommerceReleaseTag: string;
+    fdContentTypesReleaseTag: string;
+    fdWebsocketPushReleaseTag: string;
+    wpgraphqlJwtAuthReleaseTag: string;
+    wpgraphqlTaxQueryRef: string;
   };
-  groups: DeliveryFieldGroup[];
-  domainSlots: DeliveryDomainSlot[];
-  envFields: DeliveryFieldDefinition[];
-  secretFields: DeliveryFieldDefinition[];
-  notes?: string[];
+  secrets: {
+    acrPassword: PaymentProviderSecretStatus;
+    githubToken: PaymentProviderSecretStatus;
+  };
 }
 
 // ─── Apps ───────────────────────────────────────────────────────────────────
@@ -261,8 +191,6 @@ export interface AppLink {
 export interface AppSecret {
   id: string;
   hint: string;
-  status?: string;
-  lastUsedAt?: string | null;
   expiresAt: string | null;
   createdAt: string;
 }
@@ -291,19 +219,50 @@ export interface App {
 
 export interface AppWithDetails extends App {
   products: ProductSummary[];
-  prices: PriceSummary[];
-  authorizationTemplates: AuthorizationTemplateSummary[];
-  checkoutOffers: CheckoutOfferSummary[];
+  plans: PlanSummary[];
+  checkoutOffers: Array<{
+    code: string;
+    planCode: string;
+    planId: string;
+    productId: string;
+    productCode: string;
+    productName: string;
+    title: string;
+    description: string | null;
+    badge: string | null;
+    interval: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    isDefault: boolean;
+    sortOrder: number;
+  }>;
   secrets: AppSecret[];
 }
 
 export interface AppCatalog {
   app: AppWithDetails;
   products: ProductSummary[];
-  prices: PriceSummary[];
-  authorizationTemplates: AuthorizationTemplateSummary[];
-  priceAuthorizations: PriceAuthorizationSummary[];
-  offers: CheckoutOfferSummary[];
+  plans: PlanSummary[];
+  offers: Array<{
+    code: string;
+    planCode: string;
+    planId: string;
+    productId: string;
+    productCode: string;
+    productName: string;
+    title: string;
+    description: string | null;
+    badge: string | null;
+    interval: string;
+    priceAmount: number;
+    currency: string;
+    status: string;
+    isDefault: boolean;
+    sortOrder: number;
+  }>;
+  features: FeatureSummary[];
+  planFeatures: PlanFeatureSummary[];
 }
 
 export interface AppSecretCreated {
@@ -315,7 +274,7 @@ export interface AppSecretCreated {
   expiresAt: string | null;
 }
 
-// ─── Orders ─────────────────────────────────────────────────────────────────
+// ─── Orders ──────────────────────────────────────────────────────────────────
 
 export interface CheckoutSessionSummary {
   id: string;
@@ -345,13 +304,13 @@ export interface Order {
   updatedAt: string;
   userId: string;
   productId: string;
-  priceId: string;
+  planId: string;
 }
 
 export interface HydratedOrder extends Order {
   user: UserSummary | null;
   product: ProductSummary | null;
-  price: PriceSummary | null;
+  plan: PlanSummary | null;
   checkoutSession: CheckoutSessionSummary | null;
   app: AppSummary | null;
 }
@@ -367,6 +326,14 @@ export interface PaymentAttempt {
   createdAt: string;
 }
 
+export interface EntitlementSummary {
+  id: string;
+  status: string;
+  startsAt: string | null;
+  expiresAt: string | null;
+  feature: FeatureSummary | null;
+}
+
 export interface OrderEventSummary {
   eventName: string;
   eventTime: string;
@@ -376,7 +343,7 @@ export interface OrderEventSummary {
 export interface OrderDetail {
   item: HydratedOrder;
   paymentAttempts: PaymentAttempt[];
-  authorizationGrants: HydratedAuthorizationGrant[];
+  entitlements: EntitlementSummary[];
   events: OrderEventSummary[];
 }
 
@@ -393,22 +360,11 @@ export interface CheckoutSessionCreated {
     code: string;
     name: string;
   };
-  price: {
+  plan: {
     code: string;
     name: string;
-    billingType: 'one_time' | 'recurring';
-    billingInterval: 'month' | 'year' | null;
-    amount: number;
-    currency: string;
-  };
-  authorizationTemplate: {
-    code: string;
-    name: string;
-  };
-  offer: {
-    code: string;
-    title: string;
-    amount: number;
+    interval: string | null;
+    priceAmount: number;
     currency: string;
   };
   order: {
@@ -433,7 +389,7 @@ export interface ReconcileResponse {
   };
 }
 
-// ─── Installs ───────────────────────────────────────────────────────────────
+// ─── Installs ────────────────────────────────────────────────────────────────
 
 export interface Install {
   id: string;
@@ -456,9 +412,9 @@ export interface InstallsResponse {
   items: HydratedInstall[];
 }
 
-// ─── Authorizations ────────────────────────────────────────────────────────
+// ─── Entitlements ─────────────────────────────────────────────────────────────
 
-export interface AuthorizationGrant {
+export interface Entitlement {
   id: string;
   status: string;
   sourceType: string;
@@ -469,43 +425,41 @@ export interface AuthorizationGrant {
   updatedAt: string;
   userId: string;
   productId: string;
-  priceId?: string | null;
 }
 
-export interface HydratedAuthorizationGrant extends AuthorizationGrant {
+export interface HydratedEntitlement extends Entitlement {
   user: UserSummary | null;
   product: ProductSummary | null;
-  price: PriceSummary | null;
-  authorizationTemplate: AuthorizationTemplateSummary | null;
+  feature: FeatureSummary | null;
   sourceOrder: { id: string; orderNo: string; status: string } | null;
 }
 
-export interface AuthorizationGrantsResponse {
-  items: HydratedAuthorizationGrant[];
+export interface EntitlementsResponse {
+  items: HydratedEntitlement[];
   summary?: Array<{
     productCode: string;
-    authorizationTemplateCodes: string[];
+    featureCodes: string[];
   }>;
 }
 
-export interface GrantAuthorizationInput {
+export interface GrantEntitlementInput {
   userEmail: string;
-  authorizationTemplateCode: string;
-  expiresAt?: string;
+  planCode: string;
   reason?: string;
 }
 
-export interface GrantAuthorizationResult {
+export interface GrantEntitlementResult {
   user: UserSummary;
-  authorizationTemplate: AuthorizationTemplateSummary;
+  plan: PlanSummary;
   product: ProductSummary;
-  grantCount: number;
-  sourceId: string | null;
-  expiresAt: string | null;
+  granted: boolean;
+  reason: string;
+  sourceId: string;
+  entitlementCount: number;
 }
 
-export interface RevokeAuthorizationResult {
-  grantId: string;
+export interface RevokeEntitlementResult {
+  entitlementId: string;
   sourceType: string;
   sourceId: string | null;
   revokedCount: number;
@@ -513,7 +467,7 @@ export interface RevokeAuthorizationResult {
   productId: string;
 }
 
-// ─── Events ────────────────────────────────────────────────────────────────
+// ─── Events ───────────────────────────────────────────────────────────────────
 
 export interface Event {
   id: string;
@@ -538,7 +492,7 @@ export interface EventsResponse {
   items: HydratedEvent[];
 }
 
-// ─── Webhooks ──────────────────────────────────────────────────────────────
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
 
 export interface BillingWebhookEvent {
   id: string;
@@ -556,7 +510,21 @@ export interface WebhooksResponse {
   items: BillingWebhookEvent[];
 }
 
-// ─── Deployments ───────────────────────────────────────────────────────────
+// ─── Plans (for license grants) ───────────────────────────────────────────────
+
+export interface Plan {
+  id: string;
+  code: string;
+  name: string;
+  interval: string | null;
+  productId: string;
+}
+
+export interface PlansResponse {
+  items: Plan[];
+}
+
+// ─── Deployments ──────────────────────────────────────────────────────────────
 
 export interface DeploymentTokenSummary {
   id: string;
@@ -581,8 +549,6 @@ export interface DeploymentSummary {
   lastDeployedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  endpoints?: Record<string, string>;
-  meta?: Record<string, unknown>;
   user: UserSummary | null;
   app: AppSummary | null;
   product: ProductSummary | null;

@@ -34,7 +34,7 @@ export function UserShell() {
               </div>
               <div>
                 <p className="text-sm font-black tracking-tight">FD Stack</p>
-                <p className="text-[11px] text-muted-foreground">产品中心</p>
+                <p className="text-[11px] text-muted-foreground">应用中心</p>
               </div>
             </Link>
 

@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
-import { appProducts, apps, authorizationTemplates, prices, products } from '../db/schema';
 import { loadEnv } from '../lib/env';
+import { appProducts, apps, features, planFeatures, plans, products } from '../db/schema';
 
 async function main() {
   const env = loadEnv();
@@ -17,139 +17,114 @@ async function main() {
       .values({
         code: 'ai_web_translator',
         name: 'AI Web Translator',
-        tagline: '浏览器内的智能翻译与发布工作台',
-        description: '把浏览、翻译、校对和发布流程商品化后的示例产品。',
-        deliveryMode: 'direct_access',
-        status: 'active',
-        meta: {
-          productType: 'chrome_extension',
-          seededBy: 'seed-mvp'
-        }
+        type: 'chrome_extension',
+        status: 'active'
       })
       .onConflictDoUpdate({
         target: products.code,
         set: {
           name: 'AI Web Translator',
-          tagline: '浏览器内的智能翻译与发布工作台',
-          description: '把浏览、翻译、校对和发布流程商品化后的示例产品。',
-          deliveryMode: 'direct_access',
-          status: 'active',
-          meta: {
-            productType: 'chrome_extension',
-            seededBy: 'seed-mvp'
-          }
+          type: 'chrome_extension',
+          status: 'active'
         }
       })
       .returning();
 
-    const seededTemplates = await Promise.all(
+    const seededFeatures = await Promise.all(
       [
-        {
-          code: 'translator_free',
-          name: 'Translator Free',
-          description: '免费试用档位'
-        },
-        {
-          code: 'translator_pro',
-          name: 'Translator Pro',
-          description: '专业版授权档位'
-        }
+        { code: 'full_context_translation', name: 'Full Context Translation' },
+        { code: 'advanced_proofreading', name: 'Advanced Proofreading' },
+        { code: 'wordpress_publish', name: 'WordPress Publish' },
+        { code: 'notion_publish', name: 'Notion Publish' }
       ].map((item) =>
         db
-          .insert(authorizationTemplates)
+          .insert(features)
           .values({
             productId: product.id,
             code: item.code,
             name: item.name,
-            description: item.description,
-            status: 'active',
-            meta: {
-              kind: 'tier',
-              seededBy: 'seed-mvp'
-            }
+            kind: 'boolean',
+            status: 'active'
           })
           .onConflictDoUpdate({
-            target: authorizationTemplates.code,
+            target: features.code,
             set: {
-              productId: product.id,
               name: item.name,
-              description: item.description,
-              status: 'active',
-              meta: {
-                kind: 'tier',
-                seededBy: 'seed-mvp'
-              }
+              status: 'active'
             }
           })
           .returning()
-          .then(([template]) => template)
+          .then(([feature]) => feature)
       )
     );
 
-    const proTemplate = seededTemplates.find((item) => item.code === 'translator_pro');
-    if (!proTemplate) {
-      throw new Error('translator_pro authorization template was not created');
-    }
-
-    const seededPrices = await Promise.all(
+    const seededPlans = await Promise.all(
       [
         {
           code: 'translator_pro_monthly',
           name: 'Translator Pro Monthly',
-          amount: 1990,
-          billingType: 'recurring' as const,
-          billingInterval: 'month' as const,
-          grantStrategy: 'subscription_period' as const
+          priceAmount: 1990,
+          interval: 'month' as const
         },
         {
           code: 'translator_pro_yearly',
           name: 'Translator Pro Yearly',
-          amount: 19900,
-          billingType: 'recurring' as const,
-          billingInterval: 'year' as const,
-          grantStrategy: 'subscription_period' as const
+          priceAmount: 19900,
+          interval: 'year' as const
         }
       ].map((item) =>
         db
-          .insert(prices)
+          .insert(plans)
           .values({
             productId: product.id,
-            authorizationTemplateId: proTemplate.id,
             code: item.code,
             name: item.name,
             billingProvider: 'self_hosted',
             billingPriceId: null,
-            billingType: item.billingType,
-            billingInterval: item.billingInterval,
-            amount: item.amount,
+            priceAmount: item.priceAmount,
             currency: 'CNY',
-            grantStrategy: item.grantStrategy,
-            status: 'active',
+            interval: item.interval,
             meta: {
               seededBy: 'seed-mvp'
-            }
+            },
+            status: 'active'
           })
           .onConflictDoUpdate({
-            target: prices.code,
+            target: plans.code,
             set: {
-              productId: product.id,
-              authorizationTemplateId: proTemplate.id,
               name: item.name,
-              billingType: item.billingType,
-              billingInterval: item.billingInterval,
-              amount: item.amount,
+              priceAmount: item.priceAmount,
               currency: 'CNY',
-              grantStrategy: item.grantStrategy,
-              status: 'active',
-              meta: {
-                seededBy: 'seed-mvp'
-              }
+              interval: item.interval,
+              status: 'active'
             }
           })
           .returning()
-          .then(([price]) => price)
+          .then(([plan]) => plan)
       )
     );
+
+    for (const plan of seededPlans) {
+      for (const feature of seededFeatures) {
+        await db
+          .insert(planFeatures)
+          .values({
+            planId: plan.id,
+            featureId: feature.id,
+            value: {
+              enabled: true
+            }
+          })
+          .onConflictDoUpdate({
+            target: [planFeatures.planId, planFeatures.featureId],
+            set: {
+              value: {
+                enabled: true
+              }
+            }
+          });
+      }
+    }
 
     const [seededApp] = await db
       .insert(apps)
@@ -191,8 +166,8 @@ async function main() {
           ok: true,
           product: product.code,
           app: seededApp.code,
-          prices: seededPrices.map((price) => price.code),
-          authorizationTemplates: seededTemplates.map((template) => template.code)
+          plans: seededPlans.map((plan) => plan.code),
+          features: seededFeatures.map((feature) => feature.code)
         },
         null,
         2

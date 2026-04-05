@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, ne, or, isNull } from 'drizzle-orm';
 
-import { checkoutSessions, orders, paymentAttempts } from '../../db/schema';
+import { checkoutSessions, paymentAttempts } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class CheckoutRepository {
@@ -9,6 +9,9 @@ export class CheckoutRepository {
   async createSession(input: {
     sessionCode: string;
     userId: string;
+    appId: string;
+    productId: string;
+    planId: string;
     orderId: string;
     provider: 'wechat_pay' | 'alipay';
     status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired';
@@ -26,6 +29,9 @@ export class CheckoutRepository {
       .values({
         sessionCode: input.sessionCode,
         userId: input.userId,
+        appId: input.appId,
+        productId: input.productId,
+        planId: input.planId,
         orderId: input.orderId,
         provider: input.provider,
         status: input.status ?? 'pending',
@@ -89,30 +95,26 @@ export class CheckoutRepository {
   async findLatestReusablePendingSession(input: {
     userId: string;
     appId: string;
-    priceId: string;
+    planId: string;
     provider: 'wechat_pay' | 'alipay';
   }) {
     const [session] = await this.db
-      .select({
-        session: checkoutSessions
-      })
+      .select()
       .from(checkoutSessions)
-      .innerJoin(orders, eq(orders.id, checkoutSessions.orderId))
       .where(
         and(
           eq(checkoutSessions.userId, input.userId),
-          eq(orders.appId, input.appId),
-          eq(orders.priceId, input.priceId),
+          eq(checkoutSessions.appId, input.appId),
+          eq(checkoutSessions.planId, input.planId),
           eq(checkoutSessions.provider, input.provider),
           eq(checkoutSessions.status, 'pending'),
-          eq(orders.status, 'pending'),
           or(isNull(checkoutSessions.expiresAt), gte(checkoutSessions.expiresAt, new Date()))
         )
       )
       .orderBy(desc(checkoutSessions.createdAt))
       .limit(1);
 
-    return session?.session ?? null;
+    return session ?? null;
   }
 
   async listSessionsByOrderIds(orderIds: string[]) {

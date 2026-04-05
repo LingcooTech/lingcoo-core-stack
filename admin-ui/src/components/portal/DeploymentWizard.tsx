@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { DeliveryManifest, IssueDeploymentTokenResult } from '@/api/types';
+import type { IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { cn, getInitials, formatTime } from '@/lib/utils';
 
 export interface DeployableAppOption {
-  productCode: string;
-  productName: string;
-  featureCount: number;
   appCode: string;
-  profileName: string;
-  productType: string;
-  deliveryManifest?: DeliveryManifest | null;
+  appName: string;
+  appType: string;
+  products: Array<{
+    code: string;
+    name: string;
+    featureCount: number;
+  }>;
 }
 
 export interface CreateDeploymentPayload {
@@ -29,7 +30,6 @@ export interface CreateDeploymentPayload {
   primaryDomain?: string;
   adminDomain?: string;
   wsDomain?: string;
-  endpoints?: Record<string, string>;
   installPath?: string;
 }
 
@@ -45,63 +45,51 @@ type WizardStep = 1 | 2 | 3;
 
 export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, creating, issuing }: DeploymentWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
-  const [selectedProductCode, setSelectedProductCode] = useState('');
+  const [selectedAppCode, setSelectedAppCode] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
+  const [primaryDomain, setPrimaryDomain] = useState('');
   const [serverHost, setServerHost] = useState('');
+  const [adminDomain, setAdminDomain] = useState('');
+  const [wsDomain, setWsDomain] = useState('');
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
-  const [endpointValues, setEndpointValues] = useState<Record<string, string>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenResult, setTokenResult] = useState<IssueDeploymentTokenResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const selectedProduct = useMemo(
-    () => options.find((option) => option.productCode === selectedProductCode) ?? null,
-    [options, selectedProductCode]
-  );
+  const selectedApp = useMemo(() => options.find((o) => o.appCode === selectedAppCode) ?? null, [options, selectedAppCode]);
 
   useEffect(() => {
-    if (selectedProduct && !label) {
-      setLabel(`${selectedProduct.productName} Production`);
+    if (selectedApp && !label) {
+      setLabel(`${selectedApp.appName} Production`);
     }
-  }, [selectedProduct, label]);
+  }, [selectedApp, label]);
 
   useEffect(() => {
-    if (!selectedProduct?.deliveryManifest) {
-      return;
+    if (!selectedApp) return;
+    if (selectedApp.products.length === 1) {
+      setProductCode(selectedApp.products[0]?.code ?? '');
+    } else if (!selectedApp.products.some((p) => p.code === productCode)) {
+      setProductCode(selectedApp.products[0]?.code ?? '');
     }
+  }, [selectedApp, productCode]);
 
-    setInstallPath(selectedProduct.deliveryManifest.installer.installPath);
-    setEndpointValues((current) =>
-      Object.fromEntries(selectedProduct.deliveryManifest?.domainSlots.map((slot) => [slot.key, current[slot.key] ?? '']) ?? [])
-    );
-  }, [selectedProduct]);
-
-  const handleSelectProduct = useCallback((productCode: string) => {
-    setSelectedProductCode(productCode);
+  const handleSelectApp = useCallback((appCode: string) => {
+    setSelectedAppCode(appCode);
     setLabel('');
   }, []);
 
-  const domainSlots = selectedProduct?.deliveryManifest?.domainSlots ?? [];
-  const findLegacyFieldValue = useCallback(
-    (sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') =>
-      endpointValues[domainSlots.find((slot) => slot.sourceField === sourceField)?.key ?? ''] || undefined,
-    [domainSlots, endpointValues]
-  );
-
   const handleCreate = useCallback(async () => {
     const payload: CreateDeploymentPayload = {
-      appCode: selectedProduct?.appCode ?? '',
-      productCode: selectedProduct?.productCode,
+      appCode: selectedAppCode,
+      productCode: productCode || undefined,
       label,
       environment,
       serverHost: serverHost || undefined,
-      primaryDomain: findLegacyFieldValue('primaryDomain'),
-      adminDomain: findLegacyFieldValue('adminDomain'),
-      wsDomain: findLegacyFieldValue('wsDomain'),
-      endpoints: Object.fromEntries(
-        Object.entries(endpointValues).filter(([, value]) => value.trim().length > 0)
-      ),
+      primaryDomain: primaryDomain || undefined,
+      adminDomain: adminDomain || undefined,
+      wsDomain: wsDomain || undefined,
       installPath: installPath || undefined
     };
 
@@ -117,15 +105,18 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     } catch {
       /* error handled by parent via toast */
     }
-  }, [selectedProduct, label, environment, serverHost, endpointValues, installPath, onCreateDeployment, onIssueToken, findLegacyFieldValue]);
+  }, [selectedAppCode, productCode, label, environment, serverHost, primaryDomain, adminDomain, wsDomain, installPath, onCreateDeployment, onIssueToken]);
 
   const handleReset = useCallback(() => {
     setStep(1);
-    setSelectedProductCode('');
+    setSelectedAppCode('');
+    setProductCode('');
     setLabel('');
     setEnvironment('production');
+    setPrimaryDomain('');
     setServerHost('');
-    setEndpointValues({});
+    setAdminDomain('');
+    setWsDomain('');
     setInstallPath('/opt/fd-headless-wp-system');
     setAdvancedOpen(false);
     setTokenResult(null);
@@ -140,13 +131,13 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     });
   }, []);
 
-  const stepLabels = ['选择产品', '填写部署信息', '安装命令'];
+  const stepLabels = ['选择应用', '填写部署信息', '安装命令'];
 
   return (
     <Card className="border-slate-200/80 bg-white/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
-        <CardDescription>通过三步向导完成部署配置：选择产品、填写信息、获取安装命令。</CardDescription>
+        <CardDescription>通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。</CardDescription>
         <div className="flex items-center gap-2 pt-2">
           {stepLabels.map((sLabel, idx) => {
             const stepNum = (idx + 1) as WizardStep;
@@ -177,15 +168,15 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
       <CardContent className="space-y-4">
         {step === 1 && (
           <>
-            <p className="text-sm text-muted-foreground">选择一个已购且可部署的产品来创建部署记录。</p>
+            <p className="text-sm text-muted-foreground">选择一个已购的系统应用来创建部署记录。</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {options.map((product) => {
-                const isSelected = selectedProductCode === product.productCode;
+              {options.map((app) => {
+                const isSelected = selectedAppCode === app.appCode;
                 return (
                   <button
-                    key={`${product.productCode}:${product.appCode}`}
+                    key={app.appCode}
                     type="button"
-                    onClick={() => handleSelectProduct(product.productCode)}
+                    onClick={() => handleSelectApp(app.appCode)}
                     className={cn(
                       'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:shadow-sm',
                       isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-white hover:border-slate-300'
@@ -197,15 +188,14 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                         isSelected ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-600'
                       )}
                     >
-                      {getInitials(product.productName)}
+                      {getInitials(app.appName)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900">{product.productName}</p>
+                      <p className="truncate text-sm font-bold text-slate-900">{app.appName}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px]">{product.productType}</Badge>
-                        <span className="text-xs text-muted-foreground">{product.featureCount} 个有效能力</span>
+                        <Badge variant="secondary" className="text-[10px]">{app.appType}</Badge>
+                        <span className="text-xs text-muted-foreground">{app.products.length} 个产品</span>
                       </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">交付档案：{product.profileName}</p>
                     </div>
                     {isSelected && (
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -217,7 +207,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
               })}
             </div>
             <div className="flex justify-end pt-2">
-              <Button disabled={!selectedProductCode} onClick={() => setStep(2)}>
+              <Button disabled={!selectedAppCode} onClick={() => setStep(2)}>
                 下一步
               </Button>
             </div>
@@ -247,42 +237,31 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
               </div>
             </div>
 
-            {domainSlots.length > 0 ? (
-              <div className="space-y-3 md:col-span-2">
-                <Label>域名槽位</Label>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {domainSlots.map((slot) => (
-                    <div key={slot.key} className="space-y-2">
-                      <Label htmlFor={`wizard-domain-${slot.key}`}>
-                        {slot.label}
-                        {slot.required ? ' *' : ''}
-                      </Label>
-                      <Input
-                        id={`wizard-domain-${slot.key}`}
-                        value={endpointValues[slot.key] ?? ''}
-                        onChange={(e) =>
-                          setEndpointValues((current) => ({ ...current, [slot.key]: e.target.value }))
-                        }
-                        placeholder={slot.placeholder || `${slot.key}.example.com`}
-                      />
-                      {slot.description ? (
-                        <p className="text-xs text-muted-foreground">{slot.description}</p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
+            <div className="space-y-2">
+              <Label htmlFor="wizard-primary-domain">前台域名</Label>
+              <Input
+                id="wizard-primary-domain"
+                value={primaryDomain}
+                onChange={(e) => setPrimaryDomain(e.target.value)}
+                placeholder="www.futuredecade.com"
+              />
+            </div>
+
+            {selectedApp && selectedApp.products.length > 1 && (
               <div className="space-y-2">
-                <Label htmlFor="wizard-primary-domain">主域名</Label>
-                <Input
-                  id="wizard-primary-domain"
-                  value={endpointValues.frontend ?? ''}
-                  onChange={(e) =>
-                    setEndpointValues((current) => ({ ...current, frontend: e.target.value }))
-                  }
-                  placeholder="www.futuredecade.com"
-                />
+                <Label htmlFor="wizard-product">授权产品</Label>
+                <select
+                  id="wizard-product"
+                  value={productCode}
+                  onChange={(e) => setProductCode(e.target.value)}
+                  className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {selectedApp.products.map((product) => (
+                    <option key={product.code} value={product.code}>
+                      {product.name} ({product.featureCount} abilities)
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
@@ -307,32 +286,24 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                         placeholder="144.48.8.218"
                       />
                     </div>
-                    {domainSlots.length === 0 ? (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="wizard-admin-domain">后台域名</Label>
-                          <Input
-                            id="wizard-admin-domain"
-                            value={endpointValues.admin ?? ''}
-                            onChange={(e) =>
-                              setEndpointValues((current) => ({ ...current, admin: e.target.value }))
-                            }
-                            placeholder="admin.futuredecade.com"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="wizard-ws-domain">WS 域名</Label>
-                          <Input
-                            id="wizard-ws-domain"
-                            value={endpointValues.ws ?? ''}
-                            onChange={(e) =>
-                              setEndpointValues((current) => ({ ...current, ws: e.target.value }))
-                            }
-                            placeholder="ws.futuredecade.com"
-                          />
-                        </div>
-                      </>
-                    ) : null}
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-admin-domain">后台域名</Label>
+                      <Input
+                        id="wizard-admin-domain"
+                        value={adminDomain}
+                        onChange={(e) => setAdminDomain(e.target.value)}
+                        placeholder="admin.futuredecade.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-ws-domain">WS 域名</Label>
+                      <Input
+                        id="wizard-ws-domain"
+                        value={wsDomain}
+                        onChange={(e) => setWsDomain(e.target.value)}
+                        placeholder="ws.futuredecade.com"
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="wizard-install-path">安装路径</Label>
                       <Input
@@ -352,7 +323,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                 上一步
               </Button>
               <Button
-                disabled={!selectedProductCode || !label.trim() || creating || issuing}
+                disabled={!selectedAppCode || !label.trim() || creating || issuing}
                 onClick={handleCreate}
               >
                 {creating || issuing ? '创建中...' : '创建部署'}

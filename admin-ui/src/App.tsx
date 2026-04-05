@@ -5,25 +5,23 @@ import { Toaster } from 'sonner';
 import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { ApplicationDetailPage } from '@/pages/ApplicationDetailPage';
-import { ApplicationsPage } from '@/pages/ApplicationsPage';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
-import { AuthorizationTemplatesPage } from '@/pages/AuthorizationTemplatesPage';
+import { AppEditPage } from '@/pages/AppEditPage';
+import { AppsPage } from '@/pages/AppsPage';
+import { CatalogPage } from '@/pages/CatalogPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { DeliveryPage } from '@/pages/DeliveryPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
-import { EventsPage } from '@/pages/EventsPage';
 import { HomePage } from '@/pages/HomePage';
 import { InstallsPage } from '@/pages/InstallsPage';
 import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
-import { LogsPage } from '@/pages/LogsPage';
 import { MyAccessPage } from '@/pages/MyAccessPage';
 import { MyOrdersPage } from '@/pages/MyOrdersPage';
+import { ObservabilityPage } from '@/pages/ObservabilityPage';
+import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
-import { PricingPage } from '@/pages/PricingPage';
-import { ProductDetailPage } from '@/pages/ProductDetailPage';
-import { ProductsPage } from '@/pages/ProductsPage';
-import { TransactionsPage } from '@/pages/TransactionsPage';
+import { SecretsPage } from '@/pages/SecretsPage';
 import { UserAuthPage } from '@/pages/UserAuthPage';
 import { UsersPage } from '@/pages/UsersPage';
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
@@ -77,21 +75,18 @@ function AppRoutes() {
       <Route element={<ProtectedAdminRoute />}>
         <Route element={<Shell />}>
           <Route path="/admin" element={<DashboardPage />} />
-          <Route path="/admin/applications" element={<ApplicationsPage />} />
-          <Route path="/admin/applications/new" element={<ApplicationDetailPage />} />
-          <Route path="/admin/applications/:appCode" element={<ApplicationDetailPage />} />
-          <Route path="/admin/products" element={<ProductsPage />} />
-          <Route path="/admin/products/new" element={<ProductDetailPage />} />
-          <Route path="/admin/products/:productCode" element={<ProductDetailPage />} />
-          <Route path="/admin/pricing" element={<PricingPage />} />
-          <Route path="/admin/authorization-templates" element={<AuthorizationTemplatesPage />} />
-          <Route path="/admin/transactions" element={<TransactionsPage />} />
+          <Route path="/admin/catalog" element={<CatalogPage />} />
+          <Route path="/admin/apps" element={<AppsPage />} />
+          <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
+          <Route path="/admin/secrets" element={<SecretsPage />} />
+          <Route path="/admin/orders" element={<OrdersPage />} />
+          <Route path="/admin/payments" element={<PaymentsPage />} />
+          <Route path="/admin/licenses" element={<LicensesPage />} />
           <Route path="/admin/users" element={<UsersPage />} />
-          <Route path="/admin/authorizations" element={<LicensesPage />} />
-          <Route path="/admin/instances" element={<InstallsPage />} />
-          <Route path="/admin/events" element={<EventsPage />} />
-          <Route path="/admin/logs" element={<LogsPage />} />
-          <Route path="/admin/settings/payments" element={<PaymentsPage />} />
+          <Route path="/admin/installs" element={<InstallsPage />} />
+          <Route path="/admin/delivery" element={<DeliveryPage />} />
+          <Route path="/admin/observability" element={<ObservabilityPage />} />
+          <Route path="/admin/operations" element={<Navigate to="/admin/orders" replace />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

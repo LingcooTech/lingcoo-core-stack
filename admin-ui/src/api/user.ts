@@ -1,12 +1,5 @@
 import { apiClient } from './client';
-import type {
-  AuthorizationGrantsResponse,
-  CheckoutSessionCreated,
-  DeploymentSummary,
-  DeploymentsResponse,
-  IssueDeploymentTokenResult,
-  OrdersResponse
-} from './types';
+import type { CheckoutSessionCreated, DeploymentsResponse, EntitlementsResponse, IssueDeploymentTokenResult, OrdersResponse, DeploymentSummary } from './types';
 
 export async function listMyOrders(): Promise<OrdersResponse> {
   return apiClient<OrdersResponse>('/v1/billing/orders/me');
@@ -18,13 +11,13 @@ export async function syncMyOrder(orderNo: string) {
   });
 }
 
-export async function listMyAuthorizations(): Promise<AuthorizationGrantsResponse> {
-  return apiClient<AuthorizationGrantsResponse>('/v1/authorizations/me');
+export async function listMyEntitlements(): Promise<EntitlementsResponse> {
+  return apiClient<EntitlementsResponse>('/v1/entitlements/me');
 }
 
 export async function createCheckoutSession(payload: {
   appCode: string;
-  priceCode?: string;
+  planCode: string;
   offerCode?: string;
   providerPreference?: 'wechat_pay' | 'alipay';
   successUrl?: string;
@@ -49,7 +42,6 @@ export async function createDeployment(payload: {
   primaryDomain?: string;
   adminDomain?: string;
   wsDomain?: string;
-  endpoints?: Record<string, string>;
   installPath?: string;
 }): Promise<DeploymentSummary> {
   return apiClient<DeploymentSummary>('/v1/deployments', {

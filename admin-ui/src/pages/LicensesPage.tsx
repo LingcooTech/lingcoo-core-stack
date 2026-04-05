@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { grantAuthorization, listAuthorizationGrants, revokeAuthorization } from '@/api/admin';
-import type { HydratedAuthorizationGrant } from '@/api/types';
+import { grantEntitlement, listEntitlements, revokeEntitlement } from '@/api/admin';
+import type { HydratedEntitlement } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { formatTime } from '@/lib/utils';
 
 const grantSchema = z.object({
   userEmail: z.string().email('请输入有效邮箱'),
-  authorizationTemplateCode: z.string().min(1, '请输入授权档位'),
+  planCode: z.string().min(1, '请选择套餐'),
   reason: z.string().optional()
 });
 type GrantValues = z.infer<typeof grantSchema>;
@@ -25,36 +25,40 @@ export function LicensesPage() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['authorization-grants', 100],
-    queryFn: () => listAuthorizationGrants(100)
+    queryKey: ['entitlements', 100],
+    queryFn: () => listEntitlements(100)
   });
-  const authorizationGrants = data?.items ?? [];
+  const entitlements = data?.items ?? [];
 
   const grantForm = useForm<GrantValues>({
     resolver: zodResolver(grantSchema),
-    defaultValues: { userEmail: '', authorizationTemplateCode: '', reason: '' }
+    defaultValues: { userEmail: '', planCode: '', reason: '' }
   });
 
   const grantMutation = useMutation({
-    mutationFn: grantAuthorization,
+    mutationFn: grantEntitlement,
     onSuccess: (result) => {
-      toast.success(`授权已发放给 ${result.user.email}，授权档位 ${result.authorizationTemplate.code}，共 ${result.grantCount} 条`);
+      if (result.granted) {
+        toast.success(`授权已发放给 ${result.user.email}，套餐 ${result.plan.code}，共 ${result.entitlementCount} 条`);
+      } else {
+        toast.info(`未重复发放：${result.user.email} 已拥有该 one_time 权益`);
+      }
       grantForm.reset();
-      void qc.invalidateQueries({ queryKey: ['authorization-grants'] });
+      void qc.invalidateQueries({ queryKey: ['entitlements'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '授权失败')
   });
 
   const revokeMutation = useMutation({
-    mutationFn: revokeAuthorization,
+    mutationFn: revokeEntitlement,
     onSuccess: (result) => {
       toast.success(`已撤销 ${result.revokedCount} 条授权`);
-      void qc.invalidateQueries({ queryKey: ['authorization-grants'] });
+      void qc.invalidateQueries({ queryKey: ['entitlements'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '撤销失败')
   });
 
-  const columns: Column<HydratedAuthorizationGrant>[] = [
+  const columns: Column<HydratedEntitlement>[] = [
     {
       key: 'user',
       header: '用户',
@@ -68,13 +72,11 @@ export function LicensesPage() {
     },
     {
       key: 'product',
-      header: '产品 / 授权档位',
+      header: '产品/功能',
       cell: (row) => (
         <div>
           <p className="text-xs font-bold font-mono">{row.product?.code ?? row.productId}</p>
-          {row.authorizationTemplate && (
-            <p className="text-xs text-muted-foreground">{row.authorizationTemplate.code}</p>
-          )}
+          {row.feature && <p className="text-xs text-muted-foreground">{row.feature.code}</p>}
         </div>
       )
     },
@@ -139,7 +141,7 @@ export function LicensesPage() {
 
   return (
     <div>
-      <SectionHeader sectionKey="authorizations" />
+      <SectionHeader sectionKey="licenses" />
       <div className="p-6 space-y-6">
         {/* Grant Form */}
         <div className="max-w-lg rounded-2xl border border-border bg-white p-5">
@@ -154,10 +156,10 @@ export function LicensesPage() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={grantForm.control} name="authorizationTemplateCode" render={({ field }) => (
+                <FormField control={grantForm.control} name="planCode" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>授权档位 Code</FormLabel>
-                    <FormControl><Input placeholder="pro_access" {...field} /></FormControl>
+                    <FormLabel>套餐 Code</FormLabel>
+                    <FormControl><Input placeholder="pro_monthly" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -180,13 +182,13 @@ export function LicensesPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-black text-muted-foreground uppercase tracking-wider">
-              授权明细 ({authorizationGrants.length})
+              授权明细 ({entitlements.length})
             </h3>
           </div>
           <div className="rounded-2xl border border-border bg-white overflow-hidden">
             <DataTable
               columns={columns}
-              data={authorizationGrants}
+              data={entitlements}
               isLoading={isLoading}
               emptyMessage="暂无授权记录"
               getRowKey={(row) => row.id}

@@ -6,7 +6,6 @@ import {
   appSecretParamsSchema,
   createAppSecretSchema,
   createAppSessionSchema,
-  syncDeliveryManifestSchema,
   upsertAppSchema
 } from './schemas';
 import { AppService } from './service';
@@ -56,35 +55,26 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get(
-    '/v1/apps/:appCode/authorizations/me',
-    {
-      preHandler: [app.authenticateApp, app.authenticate],
-      config: {
-        rateLimit: {
-          hook: 'preHandler',
-          max: 120,
-          timeWindow: '1 minute',
-          keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
-            buildAppCodeUserRateLimitKey(request, 'app-authorizations-me')
-        }
+  app.get('/v1/apps/:appCode/entitlements/me', {
+    preHandler: [app.authenticateApp, app.authenticate],
+    config: {
+      rateLimit: {
+        hook: 'preHandler',
+        max: 120,
+        timeWindow: '1 minute',
+        keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
+          buildAppCodeUserRateLimitKey(request, 'app-entitlements-me')
       }
-    },
-    async (request) => {
-      const params = appCodeParamsSchema.parse(request.params);
-      return new AppService(app.db).listUserAuthorizationsForApp(params.appCode, request.user.sub);
     }
-  );
+  }, async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
+  });
 
   app.get('/v1/admin/apps', { preHandler: app.requireAdmin }, async () => {
     return {
       items: await new AppService(app.db).listManagedApps()
     };
-  });
-
-  app.get('/v1/admin/apps/:appCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).getManagedApp(params.appCode);
   });
 
   app.put('/v1/admin/apps/:appCode', { preHandler: app.requireAdmin }, async (request) => {
@@ -105,11 +95,5 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/admin/apps/:appCode/secrets/:secretId/revoke', { preHandler: app.requireAdmin }, async (request) => {
     const params = appSecretParamsSchema.parse(request.params);
     return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
-  });
-
-  app.post('/v1/admin/apps/:appCode/delivery-manifest/sync', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    const payload = syncDeliveryManifestSchema.parse(request.body);
-    return new AppService(app.db).syncDeliveryManifest(params.appCode, payload, request.user.sub);
   });
 };
