@@ -84,6 +84,7 @@ const router = createBrowserRouter(
           <Route path="/admin" element={<DashboardPage />} />
           <Route path="/admin/catalog" element={<Navigate to="/admin/apps" replace />} />
           <Route path="/admin/apps" element={<AppsPage />} />
+          <Route path="/admin/apps/new" element={<AppEditPage />} />
           <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
           <Route path="/admin/secrets" element={<SecretsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />

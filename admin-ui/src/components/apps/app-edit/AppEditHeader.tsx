@@ -1,7 +1,6 @@
 import { ArrowLeft, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import type { AppWithDetails } from '@/api/types';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,9 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { APP_EDIT_TABS, type AppEditTabKey } from './model';
 
 interface AppEditHeaderProps {
-  app: AppWithDetails;
+  title: string;
+  appCode: string;
+  isCreateMode: boolean;
   formStatus: string;
   hasUnsavedChanges: boolean;
   activeTab: AppEditTabKey;
@@ -24,7 +25,9 @@ interface AppEditHeaderProps {
 }
 
 export function AppEditHeader({
-  app,
+  title,
+  appCode,
+  isCreateMode,
   formStatus,
   hasUnsavedChanges,
   activeTab,
@@ -51,14 +54,19 @@ export function AppEditHeader({
             <Separator orientation="vertical" className="hidden h-8 lg:block" />
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-lg font-black">{app.name}</p>
+                <p className="text-lg font-black">{title}</p>
+                {isCreateMode ? (
+                  <Badge variant="outline">New App</Badge>
+                ) : null}
                 <StatusPill tone={statusToTone(formStatus)} label={formStatus} />
                 <StatusPill
                   tone={hasUnsavedChanges ? 'warn' : 'ok'}
                   label={hasUnsavedChanges ? '有未保存变更' : '已保存'}
                 />
               </div>
-              <p className="text-xs font-mono text-muted-foreground">{app.code}</p>
+              <p className="text-xs font-mono text-muted-foreground">
+                {appCode || '请先填写 App Code'}
+              </p>
               <p className="text-xs text-muted-foreground">{activeTabMeta.description}</p>
             </div>
           </div>

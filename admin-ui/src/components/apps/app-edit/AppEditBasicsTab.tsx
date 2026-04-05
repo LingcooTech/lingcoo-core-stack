@@ -10,6 +10,7 @@ import type { AppEditFieldSetter, FormState } from './model';
 interface AppEditBasicsTabProps {
   form: FormState;
   setField: AppEditFieldSetter;
+  isCreateMode: boolean;
   isSaving: boolean;
   saveDisabled: boolean;
   onSave: () => void;
@@ -18,6 +19,7 @@ interface AppEditBasicsTabProps {
 export function AppEditBasicsTab({
   form,
   setField,
+  isCreateMode,
   isSaving,
   saveDisabled,
   onSave,
@@ -27,9 +29,24 @@ export function AppEditBasicsTab({
       <Card>
         <CardHeader>
           <CardTitle>基本信息</CardTitle>
-          <CardDescription>控制应用名称、分类、运行类型和核心视觉资产。</CardDescription>
+          <CardDescription>控制应用名称、App Code、分类、运行类型和核心视觉资产。</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label>App Code *</Label>
+            <Input
+              value={form.appCode}
+              onChange={(event) => setField('appCode', event.target.value)}
+              placeholder="例如: my_app"
+              disabled={!isCreateMode}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isCreateMode
+                ? '只支持英文、数字和下划线。这个字段会进入 URL、接口 path 和系统内部标识。'
+                : '应用创建后不再修改 App Code，避免影响 URL、回调和安装接入。'}
+            </p>
+          </div>
+
           <div>
             <Label>名称 *</Label>
             <Input
@@ -81,7 +98,7 @@ export function AppEditBasicsTab({
             </div>
             <div>
               <Label>状态</Label>
-              <Select value={form.status} onValueChange={(value) => setField('status', value)}>
+              <Select value={form.status} onValueChange={(value) => setField('status', value as FormState['status'])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -139,8 +156,12 @@ export function AppEditBasicsTab({
       </Card>
 
       <AppEditSaveBar
-        title="保存基本信息"
-        description="保存后会同步名称、分类、状态以及封面素材。"
+        title={isCreateMode ? '创建应用' : '保存基本信息'}
+        description={
+          isCreateMode
+            ? '先创建应用基础记录，后续功能、套餐、Offer 会一起保存。'
+            : '保存后会同步名称、分类、状态以及封面素材。'
+        }
         isSaving={isSaving}
         disabled={saveDisabled}
         onSave={onSave}

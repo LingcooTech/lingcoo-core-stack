@@ -452,9 +452,9 @@ export class AppService {
         meta: input.meta ?? {}
       });
 
-      // Upsert features
-      if (input.features && input.features.length > 0) {
-        const featureMap = new Map<string, { id: string; code: string }>();
+      const featureMap = new Map<string, { id: string; code: string }>();
+
+      if (input.features !== undefined) {
         for (const f of input.features) {
           const feature = await licenseRepository.upsertFeature({
             appId: app.id,
@@ -468,37 +468,41 @@ export class AppService {
 
         await licenseRepository.deactivateFeaturesByAppExceptCodes(
           app.id,
-          input.features.map((f) => f.code.trim())
+          input.features.map((f) => f.code.trim()).filter(Boolean)
         );
-
-        // Upsert plans
-        if (input.plans && input.plans.length > 0) {
-          for (const p of input.plans) {
-            const plan = await licenseRepository.upsertPlan({
-              appId: app.id,
-              code: p.code.trim(),
-              name: p.name.trim(),
-              billingProvider: p.billingProvider.trim() || 'self_hosted',
-              billingPriceId: p.billingPriceId?.trim() || null,
-              priceAmount: p.priceAmount,
-              currency: p.currency.trim().toUpperCase() || 'CNY',
-              interval: p.interval,
-              meta: p.meta ?? {},
-              status: p.status
-            });
-
-            const featureIds = p.featureCodes
-              .map((code) => featureMap.get(code.trim())?.id ?? null)
-              .filter((id): id is string => Boolean(id));
-
-            await licenseRepository.replacePlanFeatureMappings(plan.id, featureIds);
-          }
-
-          await licenseRepository.deactivatePlansByAppExceptCodes(
-            app.id,
-            input.plans.map((p) => p.code.trim())
-          );
+      } else if (input.plans !== undefined) {
+        const existingFeatures = await licenseRepository.listFeaturesByAppId(app.id);
+        for (const feature of existingFeatures) {
+          featureMap.set(feature.code, feature);
         }
+      }
+
+      if (input.plans !== undefined) {
+        for (const p of input.plans) {
+          const plan = await licenseRepository.upsertPlan({
+            appId: app.id,
+            code: p.code.trim(),
+            name: p.name.trim(),
+            billingProvider: p.billingProvider.trim() || 'self_hosted',
+            billingPriceId: p.billingPriceId?.trim() || null,
+            priceAmount: p.priceAmount,
+            currency: p.currency.trim().toUpperCase() || 'CNY',
+            interval: p.interval,
+            meta: p.meta ?? {},
+            status: p.status
+          });
+
+          const featureIds = p.featureCodes
+            .map((code) => featureMap.get(code.trim())?.id ?? null)
+            .filter((id): id is string => Boolean(id));
+
+          await licenseRepository.replacePlanFeatureMappings(plan.id, featureIds);
+        }
+
+        await licenseRepository.deactivatePlansByAppExceptCodes(
+          app.id,
+          input.plans.map((p) => p.code.trim()).filter(Boolean)
+        );
       }
 
       // Replace offers

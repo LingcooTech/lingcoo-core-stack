@@ -1,10 +1,12 @@
 import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { flushSync } from 'react-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
+import type { AppWithDetails } from '@/api/types';
 import { AppEditBasicsTab } from '@/components/apps/app-edit/AppEditBasicsTab';
 import { AppEditContentTab } from '@/components/apps/app-edit/AppEditContentTab';
 import { AppEditDeliveryTab } from '@/components/apps/app-edit/AppEditDeliveryTab';
@@ -14,14 +16,20 @@ import { AppEditPlansTab } from '@/components/apps/app-edit/AppEditPlansTab';
 import {
   EMPTY_FORM_STATE,
   buildSaveRequest,
+  createDraftId,
+  createEditableFeatures,
   createEditableOffers,
+  createEditablePlans,
   createFormState,
-  createOfferId,
   formatPriceYuan,
   serializeDraft,
   slugify,
+  toPlanSummary,
+  validateDraft,
   type AppEditTabKey,
+  type EditableFeature,
   type EditableOffer,
+  type EditablePlan,
   type FormState,
   type SaveRequest,
 } from '@/components/apps/app-edit/model';
@@ -30,59 +38,127 @@ import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { useUnsavedChangesPrompt } from '@/hooks/useUnsavedChangesPrompt';
 
+function ensureDefaultOffer(offers: EditableOffer[]) {
+  if (offers.length === 0) {
+    return offers;
+  }
+
+  const defaultCount = offers.filter((offer) => offer.isDefault).length;
+  if (defaultCount === 1) {
+    return offers;
+  }
+
+  return offers.map((offer, index) => ({ ...offer, isDefault: index === 0 }));
+}
+
+function replaceAppInList(current: { items: AppWithDetails[] } | undefined, next: AppWithDetails) {
+  const items = current?.items ?? [];
+  const existingIndex = items.findIndex((item) => item.id === next.id || item.code === next.code);
+
+  if (existingIndex === -1) {
+    return { items: [next, ...items] };
+  }
+
+  return {
+    items: items.map((item, index) => (index === existingIndex ? next : item)),
+  };
+}
+
 export function AppEditPage() {
   const { appCode } = useParams<{ appCode: string }>();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const isCreateMode = !appCode;
 
   const [activeTab, setActiveTab] = useState<AppEditTabKey>('basics');
   const [form, setForm] = useState<FormState>(EMPTY_FORM_STATE);
+  const [editableFeatures, setEditableFeatures] = useState<EditableFeature[]>([]);
+  const [editablePlans, setEditablePlans] = useState<EditablePlan[]>([]);
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [allowNavigation, setAllowNavigation] = useState(false);
 
   const { data: appsData, isLoading: isAppsLoading } = useQuery({
     queryKey: ['apps'],
     queryFn: listAppsAdmin,
   });
 
-  const { data: catalogData } = useQuery({
+  const { data: catalogData, isFetched: isCatalogFetched } = useQuery({
     queryKey: ['catalog'],
     queryFn: listCatalogSnapshot,
   });
 
   const app = useMemo(
-    () => (appsData?.items ?? []).find((item) => item.code === appCode) ?? null,
-    [appsData, appCode],
+    () => (isCreateMode ? null : (appsData?.items ?? []).find((item) => item.code === appCode) ?? null),
+    [appsData, appCode, isCreateMode],
   );
 
-  const allPlans = useMemo(() => catalogData?.plans ?? [], [catalogData?.plans]);
+  const appPlanFeatures = useMemo(() => {
+    if (!app) {
+      return [];
+    }
+
+    const planIds = new Set((app.plans ?? []).map((plan) => plan.id));
+    const featureIds = new Set((app.features ?? []).map((feature) => feature.id));
+
+    return (catalogData?.planFeatures ?? []).filter(
+      (mapping) => planIds.has(mapping.planId) && featureIds.has(mapping.featureId),
+    );
+  }, [app, catalogData?.planFeatures]);
+
+  const existingAppCodes = useMemo(
+    () => new Set((appsData?.items ?? []).map((item) => item.code)),
+    [appsData?.items],
+  );
 
   useEffect(() => {
     setActiveTab('basics');
-    setForm(EMPTY_FORM_STATE);
-    setEditableOffers([]);
-    setInitialized(false);
-    setSavedSnapshot('');
-  }, [appCode]);
+    setAllowNavigation(false);
 
-  useEffect(() => {
-    if (!app || initialized) {
+    if (isCreateMode) {
+      const emptySnapshot = serializeDraft(EMPTY_FORM_STATE, [], [], []);
+      setForm(EMPTY_FORM_STATE);
+      setEditableFeatures([]);
+      setEditablePlans([]);
+      setEditableOffers([]);
+      setSavedSnapshot(emptySnapshot);
+      setInitialized(true);
       return;
     }
+
+    setForm(EMPTY_FORM_STATE);
+    setEditableFeatures([]);
+    setEditablePlans([]);
+    setEditableOffers([]);
+    setSavedSnapshot('');
+    setInitialized(false);
+  }, [appCode, isCreateMode]);
+
+  useEffect(() => {
+    if (isCreateMode || !app || initialized || !isCatalogFetched) {
+      return;
+    }
+
     const nextForm = createFormState(app);
+    const nextFeatures = createEditableFeatures(app);
+    const nextPlans = createEditablePlans(app, appPlanFeatures);
     const nextOffers = createEditableOffers(app);
+
     setForm(nextForm);
+    setEditableFeatures(nextFeatures);
+    setEditablePlans(nextPlans);
     setEditableOffers(nextOffers);
-    setSavedSnapshot(serializeDraft(nextForm, nextOffers));
+    setSavedSnapshot(serializeDraft(nextForm, nextFeatures, nextPlans, nextOffers));
     setInitialized(true);
-  }, [app, initialized]);
+  }, [app, appPlanFeatures, initialized, isCatalogFetched, isCreateMode]);
 
   const availablePlans = useMemo(
     () =>
-      allPlans
-        .filter((plan) => app && plan.appId === app.id)
-        .sort((a, b) => a.code.localeCompare(b.code)),
-    [allPlans, app],
+      editablePlans
+        .map((plan) => toPlanSummary(plan, app?.id))
+        .sort((left, right) => left.code.localeCompare(right.code)),
+    [app?.id, editablePlans],
   );
 
   const availablePlanMap = useMemo(
@@ -91,81 +167,214 @@ export function AppEditPage() {
   );
 
   const currentSnapshot = useMemo(
-    () => serializeDraft(form, editableOffers),
-    [form, editableOffers],
+    () => serializeDraft(form, editableFeatures, editablePlans, editableOffers),
+    [editableFeatures, editableOffers, editablePlans, form],
   );
-  const hasUnsavedChanges = initialized && currentSnapshot !== savedSnapshot;
+
+  const hasUnsavedChanges =
+    initialized && !allowNavigation && currentSnapshot !== savedSnapshot;
+
   const { isDialogOpen, confirmNavigation, stayOnPage } = useUnsavedChangesPrompt(hasUnsavedChanges);
 
-  const currentFeatures = app?.features ?? [];
-  const currentPlans = app?.plans ?? [];
-  const deliveryEligible = app?.type === 'service' || app?.type === 'web_app';
+  const deliveryEligible = form.type === 'service' || form.type === 'web_app';
 
   const upsertMutation = useMutation({
-    mutationFn: (request: SaveRequest) => {
-      if (!appCode) {
-        throw new Error('缺少 appCode');
-      }
-      return upsertApp(appCode, request.payload);
-    },
-    onSuccess: (_result, request) => {
-      setSavedSnapshot(request.snapshot);
-      toast.success('应用配置已保存');
+    mutationFn: (request: SaveRequest) => upsertApp(request.appCode, request.payload),
+    onSuccess: (result, request) => {
+      flushSync(() => {
+        setSavedSnapshot(request.snapshot);
+        if (isCreateMode) {
+          setAllowNavigation(true);
+        }
+      });
+
+      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
+        replaceAppInList(current, result),
+      );
+
       void qc.invalidateQueries({ queryKey: ['apps'] });
+      void qc.invalidateQueries({ queryKey: ['catalog'] });
+
+      toast.success(isCreateMode ? '应用已创建' : '应用配置已保存');
+
+      if (isCreateMode) {
+        navigate(`/admin/apps/${result.code}/edit`, { replace: true });
+      }
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '保存失败');
     },
   });
 
-  const saveDraft = () => {
-    if (!app || !form.name.trim()) {
-      return;
-    }
-    upsertMutation.mutate(buildSaveRequest(form, editableOffers, app.meta));
-  };
-
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const updateOffer = (offerId: string, updater: (offer: EditableOffer) => EditableOffer) => {
-    setEditableOffers((prev) => prev.map((offer) => (offer.id === offerId ? updater(offer) : offer)));
+  const updateFeature = (
+    featureId: string,
+    updater: (feature: EditableFeature) => EditableFeature,
+  ) => {
+    setEditableFeatures((prev) => {
+      let previousCode = '';
+      let nextCode = '';
+
+      const next = prev.map((feature) => {
+        if (feature.id !== featureId) {
+          return feature;
+        }
+
+        previousCode = feature.code;
+        const updated = updater(feature);
+        nextCode = updated.code;
+        return updated;
+      });
+
+      if (previousCode !== nextCode) {
+        setEditablePlans((plans) =>
+          plans.map((plan) => ({
+            ...plan,
+            featureCodes: plan.featureCodes.map((code) =>
+              code === previousCode ? nextCode : code,
+            ),
+          })),
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const addFeature = () => {
+    setEditableFeatures((prev) => [
+      ...prev,
+      {
+        id: createDraftId('feature'),
+        code: `feature_${prev.length + 1}`,
+        name: '',
+        kind: 'boolean',
+        status: 'active',
+      },
+    ]);
+  };
+
+  const removeFeature = (featureId: string) => {
+    setEditableFeatures((prev) => {
+      const removed = prev.find((feature) => feature.id === featureId);
+      const next = prev.filter((feature) => feature.id !== featureId);
+
+      if (removed) {
+        setEditablePlans((plans) =>
+          plans.map((plan) => ({
+            ...plan,
+            featureCodes: plan.featureCodes.filter((code) => code !== removed.code),
+          })),
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const updatePlan = (planId: string, updater: (plan: EditablePlan) => EditablePlan) => {
+    setEditablePlans((prev) => {
+      let previousCode = '';
+      let nextCode = '';
+
+      const next = prev.map((plan) => {
+        if (plan.id !== planId) {
+          return plan;
+        }
+
+        previousCode = plan.code;
+        const updated = updater(plan);
+        nextCode = updated.code;
+        return updated;
+      });
+
+      if (previousCode !== nextCode) {
+        setEditableOffers((offers) =>
+          offers.map((offer) =>
+            offer.planCode === previousCode ? { ...offer, planCode: nextCode } : offer,
+          ),
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const addPlan = () => {
+    const firstFeatureCode = editableFeatures[0]?.code ?? '';
+    setEditablePlans((prev) => [
+      ...prev,
+      {
+        id: createDraftId('plan'),
+        code: `plan_${prev.length + 1}`,
+        name: '',
+        billingProvider: 'self_hosted',
+        billingPriceId: '',
+        priceYuan: '0.00',
+        currency: 'CNY',
+        interval: 'month',
+        status: 'active',
+        featureCodes: firstFeatureCode ? [firstFeatureCode] : [],
+      },
+    ]);
+  };
+
+  const removePlan = (planId: string) => {
+    setEditablePlans((prev) => {
+      const removed = prev.find((plan) => plan.id === planId);
+      const next = prev.filter((plan) => plan.id !== planId);
+
+      if (removed) {
+        setEditableOffers((offers) =>
+          ensureDefaultOffer(offers.filter((offer) => offer.planCode !== removed.code)),
+        );
+      }
+
+      return next;
+    });
+  };
+
+  const updateOffer = (
+    offerId: string,
+    updater: (offer: EditableOffer) => EditableOffer,
+  ) => {
+    setEditableOffers((prev) =>
+      ensureDefaultOffer(
+        prev.map((offer) => (offer.id === offerId ? updater(offer) : offer)),
+      ),
+    );
   };
 
   const addOffer = () => {
     const seed = availablePlans[0];
-    setEditableOffers((prev) => {
-      const next = [
+    if (!seed) {
+      return;
+    }
+
+    setEditableOffers((prev) =>
+      ensureDefaultOffer([
         ...prev,
         {
-          id: createOfferId(),
-          code: slugify(seed?.code || `offer_${Date.now().toString(36)}`),
-          planCode: seed?.code || '',
-          title: seed?.name || '',
+          id: createDraftId('offer'),
+          code: slugify(seed.code || `offer_${Date.now().toString(36)}`),
+          planCode: seed.code,
+          title: seed.name || '',
           description: '',
           badge: '',
-          priceYuan: formatPriceYuan(seed?.priceAmount),
-          currency: seed?.currency || 'CNY',
-          status: seed?.status || 'active',
+          priceYuan: formatPriceYuan(seed.priceAmount),
+          currency: seed.currency || 'CNY',
+          status: (seed.status as EditableOffer['status']) || 'active',
           isDefault: false,
         },
-      ];
-      if (next.length === 1) {
-        next[0] = { ...next[0], isDefault: true };
-      }
-      return next;
-    });
+      ]),
+    );
   };
 
   const removeOffer = (offerId: string) => {
-    setEditableOffers((prev) => {
-      const next = prev.filter((offer) => offer.id !== offerId);
-      if (next.length > 0 && !next.some((offer) => offer.isDefault)) {
-        next[0] = { ...next[0], isDefault: true };
-      }
-      return next;
-    });
+    setEditableOffers((prev) => ensureDefaultOffer(prev.filter((offer) => offer.id !== offerId)));
   };
 
   const markDefaultOffer = (offerId: string) => {
@@ -174,7 +383,36 @@ export function AppEditPage() {
     );
   };
 
-  if (isAppsLoading) {
+  const saveDraft = () => {
+    if (isCreateMode && isAppsLoading) {
+      toast.error('正在校验 App Code，请稍后再保存。');
+      return;
+    }
+
+    const issue = validateDraft(form, editableFeatures, editablePlans, editableOffers);
+    if (issue) {
+      setActiveTab(issue.tab);
+      toast.error(issue.message);
+      return;
+    }
+
+    const normalizedAppCode = slugify(form.appCode);
+    if (isCreateMode && existingAppCodes.has(normalizedAppCode)) {
+      setActiveTab('basics');
+      toast.error(`App Code 已存在：${normalizedAppCode}`);
+      return;
+    }
+
+    upsertMutation.mutate(
+      buildSaveRequest(form, editableFeatures, editablePlans, editableOffers, app?.meta),
+    );
+  };
+
+  const pageTitle = form.name.trim() || (isCreateMode ? '新建应用' : app?.name ?? '应用详情');
+  const isWaitingForCreateInit = isCreateMode && !initialized;
+  const isWaitingForEditInit = !isCreateMode && !!app && !initialized;
+
+  if ((!isCreateMode && isAppsLoading) || isWaitingForCreateInit || isWaitingForEditInit) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-sm text-muted-foreground">加载中...</p>
@@ -182,7 +420,7 @@ export function AppEditPage() {
     );
   }
 
-  if (!app) {
+  if (!isCreateMode && !isAppsLoading && !app) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <p className="text-sm text-muted-foreground">未找到应用 {appCode}</p>
@@ -204,15 +442,17 @@ export function AppEditPage() {
         className="min-h-screen"
       >
         <AppEditHeader
-          app={app}
+          title={pageTitle}
+          appCode={form.appCode}
+          isCreateMode={isCreateMode}
           formStatus={form.status}
           hasUnsavedChanges={hasUnsavedChanges}
           activeTab={activeTab}
           offersCount={editableOffers.length}
-          plansCount={currentPlans.length}
-          featuresCount={currentFeatures.length}
+          plansCount={editablePlans.length}
+          featuresCount={editableFeatures.length}
           isSaving={upsertMutation.isPending}
-          saveDisabled={upsertMutation.isPending || !form.name.trim()}
+          saveDisabled={upsertMutation.isPending}
           onSave={saveDraft}
         />
 
@@ -220,29 +460,42 @@ export function AppEditPage() {
           <AppEditBasicsTab
             form={form}
             setField={setField}
+            isCreateMode={isCreateMode}
             isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending || !form.name.trim()}
+            saveDisabled={upsertMutation.isPending}
             onSave={saveDraft}
           />
           <AppEditContentTab
             form={form}
             setField={setField}
             isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending || !form.name.trim()}
+            saveDisabled={upsertMutation.isPending}
             onSave={saveDraft}
           />
-          <AppEditPlansTab features={currentFeatures} plans={currentPlans} />
+          <AppEditPlansTab
+            features={editableFeatures}
+            plans={editablePlans}
+            updateFeature={updateFeature}
+            addFeature={addFeature}
+            removeFeature={removeFeature}
+            updatePlan={updatePlan}
+            addPlan={addPlan}
+            removePlan={removePlan}
+            isSaving={upsertMutation.isPending}
+            saveDisabled={upsertMutation.isPending}
+            onSave={saveDraft}
+          />
           <AppEditOffersTab
             availablePlans={availablePlans}
             availablePlanMap={availablePlanMap}
-            allPlans={allPlans}
+            allPlans={availablePlans}
             editableOffers={editableOffers}
             updateOffer={updateOffer}
             addOffer={addOffer}
             removeOffer={removeOffer}
             markDefaultOffer={markDefaultOffer}
             isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending || !form.name.trim()}
+            saveDisabled={upsertMutation.isPending}
             onSave={saveDraft}
           />
           <AppEditDeliveryTab deliveryEligible={deliveryEligible} formType={form.type} />

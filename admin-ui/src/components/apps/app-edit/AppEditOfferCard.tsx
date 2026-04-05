@@ -91,7 +91,7 @@ export function AppEditOfferCard({
                   ...current,
                   planCode: value,
                   currency: nextPlan?.currency || current.currency,
-                  status: nextPlan?.status || current.status,
+                  status: (nextPlan?.status as EditableOffer['status']) || current.status,
                   title: current.title || nextPlan?.name || '',
                   priceYuan: current.priceYuan || formatPriceYuan(nextPlan?.priceAmount),
                 };
@@ -192,7 +192,10 @@ export function AppEditOfferCard({
           <Select
             value={offer.status}
             onValueChange={(value) =>
-              updateOffer(offer.id, (current) => ({ ...current, status: value }))
+              updateOffer(offer.id, (current) => ({
+                ...current,
+                status: value as EditableOffer['status'],
+              }))
             }
           >
             <SelectTrigger>
