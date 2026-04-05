@@ -11,6 +11,7 @@ interface AppEditBasicsTabProps {
   form: FormState;
   setField: AppEditFieldSetter;
   isCreateMode: boolean;
+  supportsOneClickDelivery: boolean;
   isSaving: boolean;
   saveDisabled: boolean;
   onSave: () => void;
@@ -20,6 +21,7 @@ export function AppEditBasicsTab({
   form,
   setField,
   isCreateMode,
+  supportsOneClickDelivery,
   isSaving,
   saveDisabled,
   onSave,
@@ -82,7 +84,7 @@ export function AppEditBasicsTab({
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label>类型</Label>
               <Select value={form.type} onValueChange={(value) => setField('type', value)}>
@@ -95,6 +97,28 @@ export function AppEditBasicsTab({
                   <SelectItem value="service">Service</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>交付方式</Label>
+              <Select
+                value={form.deliveryMode}
+                onValueChange={(value) => setField('deliveryMode', value as FormState['deliveryMode'])}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">免部署</SelectItem>
+                  <SelectItem value="one_click" disabled={!supportsOneClickDelivery}>
+                    一键部署
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {supportsOneClickDelivery
+                  ? '免部署不会出现在部署流程中；一键部署会显示交付配置 Tab。'
+                  : '当前应用类型不支持一键部署，只能选择免部署。'}
+              </p>
             </div>
             <div>
               <Label>状态</Label>

@@ -13,6 +13,7 @@ interface AppEditHeaderProps {
   title: string;
   appCode: string;
   isCreateMode: boolean;
+  visibleTabKeys: AppEditTabKey[];
   formStatus: string;
   hasUnsavedChanges: boolean;
   activeTab: AppEditTabKey;
@@ -28,6 +29,7 @@ export function AppEditHeader({
   title,
   appCode,
   isCreateMode,
+  visibleTabKeys,
   formStatus,
   hasUnsavedChanges,
   activeTab,
@@ -38,7 +40,8 @@ export function AppEditHeader({
   saveDisabled,
   onSave,
 }: AppEditHeaderProps) {
-  const activeTabMeta = APP_EDIT_TABS.find((tab) => tab.key === activeTab) ?? APP_EDIT_TABS[0];
+  const visibleTabs = APP_EDIT_TABS.filter((tab) => visibleTabKeys.includes(tab.key));
+  const activeTabMeta = visibleTabs.find((tab) => tab.key === activeTab) ?? visibleTabs[0] ?? APP_EDIT_TABS[0];
 
   return (
     <div className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
@@ -83,7 +86,7 @@ export function AppEditHeader({
 
         <div className="overflow-x-auto pb-1">
           <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-2xl bg-muted/70 p-1">
-            {APP_EDIT_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <TabsTrigger key={tab.key} value={tab.key} className="min-w-[108px] rounded-xl">
                 {tab.label}
               </TabsTrigger>

@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAppDeliveryMode, supportsOneClickDelivery } from '@/lib/app-delivery';
 
 const deliverySchema = z.object({
   repoUrl: z.string().min(1),
@@ -46,7 +47,10 @@ export function DeliveryPage() {
   const qc = useQueryClient();
   const appsQuery = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const deployableApps = useMemo(
-    () => (appsQuery.data?.items ?? []).filter((app) => app.type === 'service' || app.type === 'web_app'),
+    () =>
+      (appsQuery.data?.items ?? []).filter(
+        (app) => supportsOneClickDelivery(app.type) && getAppDeliveryMode(app) === 'one_click',
+      ),
     [appsQuery.data?.items]
   );
   const [selectedAppCode, setSelectedAppCode] = useState('');

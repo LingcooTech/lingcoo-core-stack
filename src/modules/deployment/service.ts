@@ -25,7 +25,7 @@ export class DeploymentService {
   }) {
     const app = await new AppService(this.db).getPublicApp(input.appCode);
 
-    if (app.type !== 'service' && app.type !== 'web_app') {
+    if (this.readDeliveryMode(app) !== 'one_click') {
       throw httpError(422, 'This app is not configured as a deployable system product');
     }
 
@@ -92,6 +92,17 @@ export class DeploymentService {
 
   private normalizeMeta(meta: unknown) {
     return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+  }
+
+  private readDeliveryMode(app: DeploymentAppRecord) {
+    const meta = this.normalizeMeta(app.meta);
+    const rawMode = meta.deliveryMode;
+
+    if (rawMode === 'none' || rawMode === 'one_click') {
+      return rawMode;
+    }
+
+    return app.type === 'service' || app.type === 'web_app' ? 'one_click' : 'none';
   }
 
   private readDeploymentDefaults(app: DeploymentAppRecord) {

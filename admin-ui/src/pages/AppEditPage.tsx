@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
+import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import type { AppWithDetails } from '@/api/types';
 import { AppEditBasicsTab } from '@/components/apps/app-edit/AppEditBasicsTab';
 import { AppEditContentTab } from '@/components/apps/app-edit/AppEditContentTab';
@@ -37,6 +38,22 @@ import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { useUnsavedChangesPrompt } from '@/hooks/useUnsavedChangesPrompt';
+import {
+  buildDeliverySettingsPayload,
+  createDeliverySecretState,
+  createDeliverySettingsDraft,
+  EMPTY_DELIVERY_SECRET_STATE,
+  serializeDeliverySettingsDraft,
+  supportsOneClickDelivery,
+  type DeliverySecretState,
+  type DeliverySettingsDraft,
+} from '@/lib/app-delivery';
+
+interface SaveMutationRequest {
+  appRequest: SaveRequest;
+  saveDeliverySettings: boolean;
+  deliveryDraft: DeliverySettingsDraft;
+}
 
 function ensureDefaultOffer(offers: EditableOffer[]) {
   if (offers.length === 0) {
@@ -75,6 +92,12 @@ export function AppEditPage() {
   const [editableFeatures, setEditableFeatures] = useState<EditableFeature[]>([]);
   const [editablePlans, setEditablePlans] = useState<EditablePlan[]>([]);
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettingsDraft>(
+    createDeliverySettingsDraft(),
+  );
+  const [deliverySecrets, setDeliverySecrets] = useState<DeliverySecretState>(
+    EMPTY_DELIVERY_SECRET_STATE,
+  );
   const [initialized, setInitialized] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState('');
   const [allowNavigation, setAllowNavigation] = useState(false);
@@ -87,6 +110,12 @@ export function AppEditPage() {
   const { data: catalogData, isFetched: isCatalogFetched } = useQuery({
     queryKey: ['catalog'],
     queryFn: listCatalogSnapshot,
+  });
+
+  const deliverySettingsQuery = useQuery({
+    queryKey: ['delivery-settings', appCode],
+    queryFn: () => getDeliverySettings(appCode!),
+    enabled: Boolean(appCode),
   });
 
   const app = useMemo(
@@ -112,16 +141,24 @@ export function AppEditPage() {
     [appsData?.items],
   );
 
+  const supportsDeliveryMode = supportsOneClickDelivery(form.type);
+  const showDeliveryTab = supportsDeliveryMode && form.deliveryMode === 'one_click';
+  const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
+    ? ['basics', 'content', 'plans', 'offers', 'delivery']
+    : ['basics', 'content', 'plans', 'offers'];
+
   useEffect(() => {
     setActiveTab('basics');
     setAllowNavigation(false);
 
     if (isCreateMode) {
-      const emptySnapshot = serializeDraft(EMPTY_FORM_STATE, [], [], []);
+      const emptySnapshot = serializeDraft(EMPTY_FORM_STATE, [], [], [], null);
       setForm(EMPTY_FORM_STATE);
       setEditableFeatures([]);
       setEditablePlans([]);
       setEditableOffers([]);
+      setDeliverySettings(createDeliverySettingsDraft());
+      setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
       setSavedSnapshot(emptySnapshot);
       setInitialized(true);
       return;
@@ -131,12 +168,14 @@ export function AppEditPage() {
     setEditableFeatures([]);
     setEditablePlans([]);
     setEditableOffers([]);
+    setDeliverySettings(createDeliverySettingsDraft());
+    setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
     setSavedSnapshot('');
     setInitialized(false);
   }, [appCode, isCreateMode]);
 
   useEffect(() => {
-    if (isCreateMode || !app || initialized || !isCatalogFetched) {
+    if (isCreateMode || !app || initialized || !isCatalogFetched || !deliverySettingsQuery.isFetched) {
       return;
     }
 
@@ -144,14 +183,46 @@ export function AppEditPage() {
     const nextFeatures = createEditableFeatures(app);
     const nextPlans = createEditablePlans(app, appPlanFeatures);
     const nextOffers = createEditableOffers(app);
+    const nextDeliverySettings = createDeliverySettingsDraft(deliverySettingsQuery.data);
+    const nextDeliverySecrets = createDeliverySecretState(deliverySettingsQuery.data);
 
     setForm(nextForm);
     setEditableFeatures(nextFeatures);
     setEditablePlans(nextPlans);
     setEditableOffers(nextOffers);
-    setSavedSnapshot(serializeDraft(nextForm, nextFeatures, nextPlans, nextOffers));
+    setDeliverySettings(nextDeliverySettings);
+    setDeliverySecrets(nextDeliverySecrets);
+    setSavedSnapshot(
+      serializeDraft(
+        nextForm,
+        nextFeatures,
+        nextPlans,
+        nextOffers,
+        serializeDeliverySettingsDraft(nextForm.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+      ),
+    );
     setInitialized(true);
-  }, [app, appPlanFeatures, initialized, isCatalogFetched, isCreateMode]);
+  }, [
+    app,
+    appPlanFeatures,
+    deliverySettingsQuery.data,
+    deliverySettingsQuery.isFetched,
+    initialized,
+    isCatalogFetched,
+    isCreateMode,
+  ]);
+
+  useEffect(() => {
+    if (!supportsDeliveryMode && form.deliveryMode !== 'none') {
+      setForm((prev) => ({ ...prev, deliveryMode: 'none' }));
+    }
+  }, [form.deliveryMode, supportsDeliveryMode]);
+
+  useEffect(() => {
+    if (!showDeliveryTab && activeTab === 'delivery') {
+      setActiveTab('basics');
+    }
+  }, [activeTab, showDeliveryTab]);
 
   const availablePlans = useMemo(
     () =>
@@ -167,22 +238,50 @@ export function AppEditPage() {
   );
 
   const currentSnapshot = useMemo(
-    () => serializeDraft(form, editableFeatures, editablePlans, editableOffers),
-    [editableFeatures, editableOffers, editablePlans, form],
+    () =>
+      serializeDraft(
+        form,
+        editableFeatures,
+        editablePlans,
+        editableOffers,
+        serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+      ),
+    [deliverySecrets, deliverySettings, editableFeatures, editableOffers, editablePlans, form],
   );
 
-  const hasUnsavedChanges =
-    initialized && !allowNavigation && currentSnapshot !== savedSnapshot;
-
+  const hasUnsavedChanges = initialized && !allowNavigation && currentSnapshot !== savedSnapshot;
   const { isDialogOpen, confirmNavigation, stayOnPage } = useUnsavedChangesPrompt(hasUnsavedChanges);
 
-  const deliveryEligible = form.type === 'service' || form.type === 'web_app';
+  const saveMutation = useMutation({
+    mutationFn: async ({ appRequest, saveDeliverySettings, deliveryDraft }: SaveMutationRequest) => {
+      const appResult = await upsertApp(appRequest.appCode, appRequest.payload);
+      const deliveryOverview = saveDeliverySettings
+        ? await upsertDeliverySettings(appResult.code, buildDeliverySettingsPayload(deliveryDraft))
+        : null;
 
-  const upsertMutation = useMutation({
-    mutationFn: (request: SaveRequest) => upsertApp(request.appCode, request.payload),
-    onSuccess: (result, request) => {
+      return { app: appResult, deliveryOverview };
+    },
+    onSuccess: ({ app: result, deliveryOverview }) => {
+      const nextDeliverySettings = deliveryOverview
+        ? createDeliverySettingsDraft(deliveryOverview)
+        : deliverySettings;
+      const nextDeliverySecrets = deliveryOverview
+        ? createDeliverySecretState(deliveryOverview)
+        : deliverySecrets;
+      const nextSnapshot = serializeDraft(
+        form,
+        editableFeatures,
+        editablePlans,
+        editableOffers,
+        serializeDeliverySettingsDraft(form.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+      );
+
       flushSync(() => {
-        setSavedSnapshot(request.snapshot);
+        setSavedSnapshot(nextSnapshot);
+        if (deliveryOverview) {
+          setDeliverySettings(nextDeliverySettings);
+          setDeliverySecrets(nextDeliverySecrets);
+        }
         if (isCreateMode) {
           setAllowNavigation(true);
         }
@@ -194,6 +293,11 @@ export function AppEditPage() {
 
       void qc.invalidateQueries({ queryKey: ['apps'] });
       void qc.invalidateQueries({ queryKey: ['catalog'] });
+      if (deliveryOverview) {
+        qc.setQueryData(['delivery-settings', result.code], deliveryOverview);
+      } else if (!isCreateMode && appCode) {
+        void qc.invalidateQueries({ queryKey: ['delivery-settings', appCode] });
+      }
 
       toast.success(isCreateMode ? '应用已创建' : '应用配置已保存');
 
@@ -206,8 +310,44 @@ export function AppEditPage() {
     },
   });
 
+  const clearDeliveryMutation = useMutation({
+    mutationFn: async (targetAppCode: string) => {
+      await clearDeliverySettings(targetAppCode);
+      return targetAppCode;
+    },
+    onSuccess: (targetAppCode) => {
+      const nextDeliverySettings = createDeliverySettingsDraft();
+      const nextDeliverySecrets = EMPTY_DELIVERY_SECRET_STATE;
+
+      setDeliverySettings(nextDeliverySettings);
+      setDeliverySecrets(nextDeliverySecrets);
+      setSavedSnapshot(
+        serializeDraft(
+          form,
+          editableFeatures,
+          editablePlans,
+          editableOffers,
+          serializeDeliverySettingsDraft(form.deliveryMode, nextDeliverySettings, nextDeliverySecrets),
+        ),
+      );
+
+      void qc.invalidateQueries({ queryKey: ['delivery-settings', targetAppCode] });
+      toast.success('交付配置已清空');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '清空交付配置失败');
+    },
+  });
+
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setDeliveryField = <K extends keyof DeliverySettingsDraft>(
+    key: K,
+    value: DeliverySettingsDraft[K],
+  ) => {
+    setDeliverySettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const updateFeature = (
@@ -403,14 +543,48 @@ export function AppEditPage() {
       return;
     }
 
-    upsertMutation.mutate(
-      buildSaveRequest(form, editableFeatures, editablePlans, editableOffers, app?.meta),
+    const appRequest = buildSaveRequest(
+      form,
+      editableFeatures,
+      editablePlans,
+      editableOffers,
+      app?.meta,
     );
+
+    saveMutation.mutate({
+      appRequest: {
+        ...appRequest,
+        snapshot: serializeDraft(
+          form,
+          editableFeatures,
+          editablePlans,
+          editableOffers,
+          serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+        ),
+      },
+      saveDeliverySettings: showDeliveryTab,
+      deliveryDraft: deliverySettings,
+    });
+  };
+
+  const handleClearDelivery = () => {
+    if (isCreateMode) {
+      setDeliverySettings(createDeliverySettingsDraft());
+      setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
+      return;
+    }
+
+    if (!form.appCode.trim()) {
+      return;
+    }
+
+    clearDeliveryMutation.mutate(form.appCode.trim());
   };
 
   const pageTitle = form.name.trim() || (isCreateMode ? '新建应用' : app?.name ?? '应用详情');
   const isWaitingForCreateInit = isCreateMode && !initialized;
-  const isWaitingForEditInit = !isCreateMode && !!app && !initialized;
+  const isWaitingForEditInit =
+    !isCreateMode && !!app && (!initialized || !deliverySettingsQuery.isFetched);
 
   if ((!isCreateMode && isAppsLoading) || isWaitingForCreateInit || isWaitingForEditInit) {
     return (
@@ -445,14 +619,15 @@ export function AppEditPage() {
           title={pageTitle}
           appCode={form.appCode}
           isCreateMode={isCreateMode}
+          visibleTabKeys={visibleTabKeys}
           formStatus={form.status}
           hasUnsavedChanges={hasUnsavedChanges}
           activeTab={activeTab}
           offersCount={editableOffers.length}
           plansCount={editablePlans.length}
           featuresCount={editableFeatures.length}
-          isSaving={upsertMutation.isPending}
-          saveDisabled={upsertMutation.isPending}
+          isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+          saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
           onSave={saveDraft}
         />
 
@@ -461,15 +636,16 @@ export function AppEditPage() {
             form={form}
             setField={setField}
             isCreateMode={isCreateMode}
-            isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending}
+            supportsOneClickDelivery={supportsDeliveryMode}
+            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
             onSave={saveDraft}
           />
           <AppEditContentTab
             form={form}
             setField={setField}
-            isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending}
+            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
             onSave={saveDraft}
           />
           <AppEditPlansTab
@@ -481,8 +657,8 @@ export function AppEditPage() {
             updatePlan={updatePlan}
             addPlan={addPlan}
             removePlan={removePlan}
-            isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending}
+            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
             onSave={saveDraft}
           />
           <AppEditOffersTab
@@ -494,11 +670,25 @@ export function AppEditPage() {
             addOffer={addOffer}
             removeOffer={removeOffer}
             markDefaultOffer={markDefaultOffer}
-            isSaving={upsertMutation.isPending}
-            saveDisabled={upsertMutation.isPending}
+            isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+            saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
             onSave={saveDraft}
           />
-          <AppEditDeliveryTab deliveryEligible={deliveryEligible} formType={form.type} />
+          {showDeliveryTab ? (
+            <AppEditDeliveryTab
+              appCode={form.appCode}
+              isCreateMode={isCreateMode}
+              deliverySettings={deliverySettings}
+              acrPasswordConfigured={deliverySecrets.acrPasswordConfigured}
+              githubTokenConfigured={deliverySecrets.githubTokenConfigured}
+              updateField={setDeliveryField}
+              onClear={handleClearDelivery}
+              clearDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+              isSaving={saveMutation.isPending || clearDeliveryMutation.isPending}
+              saveDisabled={saveMutation.isPending || clearDeliveryMutation.isPending}
+              onSave={saveDraft}
+            />
+          ) : null}
         </div>
       </Tabs>
 

@@ -8,6 +8,7 @@ import type {
   PlanFeatureSummary,
   PlanSummary,
 } from '@/api/types';
+import { getAppDeliveryMode, type DeliveryMode } from '@/lib/app-delivery';
 
 export type AppEditTabKey = 'basics' | 'content' | 'plans' | 'offers' | 'delivery';
 export type EditableRecordStatus = 'active' | 'inactive' | 'cancelled' | 'expired';
@@ -22,7 +23,7 @@ export const APP_EDIT_TABS: Array<{
   { key: 'content', label: '展示内容', description: '详情正文、亮点、截图、FAQ 和外链' },
   { key: 'plans', label: '功能与套餐', description: '创建并维护当前应用的 features 和 plans' },
   { key: 'offers', label: 'Offers', description: '管理应用售卖层的定价呈现' },
-  { key: 'delivery', label: '交付配置', description: '跳转到交付设置页管理部署参数' },
+  { key: 'delivery', label: '交付配置', description: '直接维护该应用的一键部署参数和密钥状态' },
 ];
 
 export interface EditableFeature {
@@ -65,6 +66,7 @@ export interface FormState {
   tagline: string;
   category: string;
   type: string;
+  deliveryMode: DeliveryMode;
   status: EditableRecordStatus;
   iconUrl: string;
   coverUrl: string;
@@ -106,6 +108,7 @@ export const EMPTY_FORM_STATE: FormState = {
   tagline: '',
   category: '',
   type: 'web_app',
+  deliveryMode: 'none',
   status: 'active',
   iconUrl: '',
   coverUrl: '',
@@ -158,6 +161,7 @@ export function createFormState(app: AppWithDetails): FormState {
     tagline: app.tagline ?? '',
     category: app.category ?? '',
     type: app.type,
+    deliveryMode: getAppDeliveryMode(app),
     status: (app.status as EditableRecordStatus) ?? 'active',
     iconUrl: app.iconUrl ?? '',
     coverUrl: app.coverUrl ?? '',
@@ -231,12 +235,14 @@ export function serializeDraft(
   editableFeatures: EditableFeature[],
   editablePlans: EditablePlan[],
   editableOffers: EditableOffer[],
+  deliveryDraft?: unknown,
 ) {
   return JSON.stringify({
     form,
     editableFeatures,
     editablePlans,
     editableOffers,
+    deliveryDraft: deliveryDraft ?? null,
   });
 }
 
@@ -443,6 +449,7 @@ export function buildSaveRequest(
   delete meta.checkoutPlanCode;
   delete meta.checkoutOffers;
   delete meta.checkoutDefaultOfferCode;
+  meta.deliveryMode = form.deliveryMode;
 
   return {
     appCode: normalizedAppCode,

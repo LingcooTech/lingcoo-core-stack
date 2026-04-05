@@ -10,6 +10,7 @@ import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
+import { getAppDeliveryMode, supportsOneClickDelivery } from '@/lib/app-delivery';
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
@@ -25,7 +26,10 @@ export function DeploymentsPage() {
   const deployableApps = useMemo<DeployableAppOption[]>(
     () =>
       apps.filter((app) => {
-        if (app.type !== 'service' && app.type !== 'web_app') {
+        if (!supportsOneClickDelivery(app.type)) {
+          return false;
+        }
+        if (getAppDeliveryMode(app) !== 'one_click') {
           return false;
         }
         return summaryMap.has(app.code);
