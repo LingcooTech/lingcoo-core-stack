@@ -29,7 +29,9 @@ export const smtpSettingsSchema = z.object({
 });
 
 export const smtpTestEmailSchema = smtpSettingsSchema.extend({
-  to: z.string().trim().email()
+  to: z.string().trim().email(),
+  subject: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(10_000)
 });
 
 export const adminListQuerySchema = z.object({

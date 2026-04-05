@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const smtpSchema = z.object({
   host: z.string().optional(),
@@ -24,6 +25,8 @@ const smtpSchema = z.object({
 });
 
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
+const testSubjectSchema = z.string().trim().min(1, '请输入测试邮件主题').max(200, '主题不能超过 200 个字符');
+const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').max(10_000, '正文不能超过 10000 个字符');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 
@@ -43,6 +46,10 @@ export function SettingsPage() {
   const qc = useQueryClient();
   const [clearOpen, setClearOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
+  const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
+  const [testBody, setTestBody] = useState(
+    ['这是一封来自 fd-core-stack 的测试邮件。', '', '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。'].join('\n')
+  );
   const { data, isLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
     queryFn: getSmtpSettings
@@ -111,15 +118,29 @@ export function SettingsPage() {
   });
 
   const handleSendTestEmail = form.handleSubmit((values) => {
-    const parsed = testEmailSchema.safeParse(testTo);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? '请输入有效的测试收件邮箱');
+    const parsedTo = testEmailSchema.safeParse(testTo);
+    if (!parsedTo.success) {
+      toast.error(parsedTo.error.issues[0]?.message ?? '请输入有效的测试收件邮箱');
+      return;
+    }
+
+    const parsedSubject = testSubjectSchema.safeParse(testSubject);
+    if (!parsedSubject.success) {
+      toast.error(parsedSubject.error.issues[0]?.message ?? '请输入测试邮件主题');
+      return;
+    }
+
+    const parsedBody = testBodySchema.safeParse(testBody);
+    if (!parsedBody.success) {
+      toast.error(parsedBody.error.issues[0]?.message ?? '请输入测试邮件正文');
       return;
     }
 
     testMutation.mutate({
       ...values,
-      to: parsed.data
+      to: parsedTo.data,
+      subject: parsedSubject.data,
+      text: parsedBody.data
     });
   });
 
@@ -273,6 +294,23 @@ export function SettingsPage() {
                       onChange={(event) => setTestTo(event.target.value)}
                       placeholder="test@example.com"
                     />
+                  </div>
+                  <div className="mt-3">
+                    <Input
+                      value={testSubject}
+                      onChange={(event) => setTestSubject(event.target.value)}
+                      placeholder="测试邮件主题"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <Textarea
+                      value={testBody}
+                      onChange={(event) => setTestBody(event.target.value)}
+                      placeholder="测试邮件正文"
+                      className="min-h-[140px]"
+                    />
+                  </div>
+                  <div className="mt-3 flex justify-end">
                     <Button type="button" variant="secondary" disabled={testMutation.isPending} onClick={handleSendTestEmail}>
                       {testMutation.isPending ? '发送中...' : '发送测试邮件'}
                     </Button>

@@ -92,6 +92,15 @@ function hasSecret(value: string | undefined) {
   return Boolean(value?.trim());
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 export class SmtpSettingsService {
   constructor(
     private readonly db: DbClient,
@@ -268,6 +277,8 @@ export class SmtpSettingsService {
 
   async sendTestEmail(input: {
     to: string;
+    subject: string;
+    text: string;
     host?: string;
     port?: number;
     secure?: boolean;
@@ -276,6 +287,8 @@ export class SmtpSettingsService {
     from?: string;
   }) {
     const to = normalizeString(input.to);
+    const subject = normalizeString(input.subject);
+    const text = typeof input.text === 'string' ? input.text.trim() : '';
     const draft = await this.resolveDraftSettings(input);
     const mailer = new Mailer(
       draft.host && draft.user && draft.password
@@ -296,15 +309,16 @@ export class SmtpSettingsService {
 
     await mailer.send({
       to,
-      subject: `[${normalizeString(this.env.APP_NAME) || 'fd-core-stack'}] SMTP Test Email`,
-      text: `This is a test email from fd-core-stack.\n\nSent at: ${new Date().toISOString()}\nFrom: ${draft.from}\nHost: ${draft.host}:${draft.port}`,
-      html: `<p>This is a test email from <strong>fd-core-stack</strong>.</p><p>Sent at: <code>${new Date().toISOString()}</code></p><p>From: <code>${draft.from}</code></p><p>Host: <code>${draft.host}:${draft.port}</code></p>`
+      subject,
+      text,
+      html: `<div style="font-family:Arial,sans-serif;line-height:1.7;white-space:pre-wrap;">${escapeHtml(text)}</div>`
     });
 
     return {
       sent: true,
       to,
-      from: draft.from
+      from: draft.from,
+      subject
     };
   }
 

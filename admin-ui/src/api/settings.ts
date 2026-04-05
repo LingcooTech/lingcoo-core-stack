@@ -12,6 +12,8 @@ export interface SmtpSettingsInput {
 
 export interface SmtpTestEmailInput extends SmtpSettingsInput {
   to: string;
+  subject: string;
+  text: string;
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {

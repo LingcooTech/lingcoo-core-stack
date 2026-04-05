@@ -159,6 +159,7 @@ export interface SmtpTestEmailResult {
   sent: boolean;
   to: string;
   from: string;
+  subject: string;
 }
 
 export interface DeliverySettingsOverview {
