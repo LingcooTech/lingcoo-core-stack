@@ -4,7 +4,6 @@ import type { DbClient } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { AppService } from '../app/service';
 import { EventService } from '../event/service';
-import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
 import { InstallRepository } from './repository';
 
@@ -13,40 +12,14 @@ type InstallRecord = NonNullable<Awaited<ReturnType<InstallRepository['findInsta
 export class InstallService {
   constructor(private readonly db: DbClient) {}
 
-  private async resolveAppProduct(appCode: string, productCode?: string) {
-    const appService = new AppService(this.db);
-    const app = await appService.getPublicApp(appCode);
-    const activeProducts = app.products.filter((product) => product.status === 'active');
-
-    if (activeProducts.length === 0) {
-      throw httpError(422, 'This app has no active product binding');
-    }
-
-    if (productCode) {
-      const matched = activeProducts.find((product) => product.code === productCode);
-      if (!matched) {
-        throw httpError(404, 'Product is not bound to this app');
-      }
-
-      return {
-        app,
-        product: matched
-      };
-    }
-
-    if (activeProducts.length > 1) {
-      throw httpError(422, 'productCode is required because this app is bound to multiple products');
-    }
-
-    return {
-      app,
-      product: activeProducts[0]
-    };
+  private async resolveApp(appCode: string) {
+    const app = await new AppService(this.db).getPublicApp(appCode);
+    return { app };
   }
 
   private async loadInstallForApp(appCode: string, installId: string) {
-    const [app, install] = await Promise.all([
-      new AppService(this.db).getPublicApp(appCode),
+    const [appResult, install] = await Promise.all([
+      this.resolveApp(appCode),
       new InstallRepository(this.db).findInstallById(installId)
     ]);
 
@@ -54,24 +27,13 @@ export class InstallService {
       throw httpError(404, 'Install not found');
     }
 
-    if (install.appId && install.appId !== app.id) {
+    if (install.appId !== appResult.app.id) {
       throw httpError(404, 'Install does not belong to this app');
     }
 
-    const product = await new LicenseRepository(this.db).getProductById(install.productId);
-    if (!product) {
-      throw httpError(500, 'Install product not found');
-    }
-
-    const allowedProduct = app.products.some((item) => item.id === product.id);
-    if (!allowedProduct) {
-      throw httpError(403, 'Install product is not allowed for this app');
-    }
-
     return {
-      app,
-      install,
-      product
+      app: appResult.app,
+      install
     };
   }
 
@@ -83,12 +45,6 @@ export class InstallService {
       type: string;
     };
     install: InstallRecord;
-    product: {
-      id: string;
-      code: string;
-      name: string;
-      type: string;
-    };
   }) {
     return {
       app: {
@@ -107,36 +63,25 @@ export class InstallService {
         updatedAt: input.install.updatedAt,
         appVersion: input.install.appVersion,
         chromeProfileHint: input.install.chromeProfileHint
-      },
-      product: {
-        id: input.product.id,
-        code: input.product.code,
-        name: input.product.name,
-        type: input.product.type
       }
     };
   }
 
   async registerInstall(input: {
     appCode: string;
-    productCode?: string;
     extensionInstallId?: string;
     deviceFingerprint?: string;
     chromeProfileHint?: string;
     appVersion?: string;
   }) {
-    const { app, product } = await this.resolveAppProduct(input.appCode, input.productCode);
+    const { app } = await this.resolveApp(input.appCode);
     const repository = new InstallRepository(this.db);
     const extensionInstallId = input.extensionInstallId?.trim() || randomUUID();
     const existing = await repository.findInstallByExtensionInstallId(extensionInstallId);
 
     if (existing) {
-      if (existing.appId && existing.appId !== app.id) {
+      if (existing.appId !== app.id) {
         throw httpError(409, 'extensionInstallId is already used by another app');
-      }
-
-      if (existing.productId !== product.id) {
-        throw httpError(409, 'extensionInstallId is already bound to another product');
       }
 
       const updated = await repository.updateInstall(existing.id, {
@@ -152,16 +97,11 @@ export class InstallService {
         throw httpError(500, 'Failed to update install');
       }
 
-      return this.toInstallPublicPayload({
-        app,
-        install: updated,
-        product
-      });
+      return this.toInstallPublicPayload({ app, install: updated });
     }
 
     const install = await repository.createInstall({
       appId: app.id,
-      productId: product.id,
       extensionInstallId,
       deviceFingerprint: input.deviceFingerprint,
       chromeProfileHint: input.chromeProfileHint,
@@ -169,7 +109,7 @@ export class InstallService {
     });
 
     await new EventService(this.db).capture({
-      productId: product.id,
+      appId: app.id,
       installId: install.id,
       eventName: 'install.registered',
       properties: {
@@ -179,11 +119,7 @@ export class InstallService {
       }
     });
 
-    return this.toInstallPublicPayload({
-      app,
-      install,
-      product
-    });
+    return this.toInstallPublicPayload({ app, install });
   }
 
   async bindInstall(input: {
@@ -213,7 +149,7 @@ export class InstallService {
 
     await new EventService(this.db).capture({
       userId: input.userId,
-      productId: detail.product.id,
+      appId: detail.app.id,
       installId: install.id,
       eventName: 'install.bound',
       properties: {
@@ -223,11 +159,7 @@ export class InstallService {
     });
 
     return {
-      ...this.toInstallPublicPayload({
-        app: detail.app,
-        install,
-        product: detail.product
-      }),
+      ...this.toInstallPublicPayload({ app: detail.app, install }),
       binding: {
         userId: input.userId,
         bound: true
@@ -256,11 +188,7 @@ export class InstallService {
       throw httpError(500, 'Failed to update install heartbeat');
     }
 
-    return this.toInstallPublicPayload({
-      app: detail.app,
-      install,
-      product: detail.product
-    });
+    return this.toInstallPublicPayload({ app: detail.app, install });
   }
 
   async getInstallLicense(input: {
@@ -278,9 +206,7 @@ export class InstallService {
       throw httpError(403, 'Install belongs to another user');
     }
 
-    const entitlements = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
-    const filteredItems = entitlements.items.filter((item) => item.productId === detail.product.id);
-    const filteredSummary = entitlements.summary.filter((item) => item.productCode === detail.product.code);
+    const entitlements = await new LicenseService(this.db).listUserEntitlementsByAppId(detail.app.id, input.userId);
     const install = await new InstallRepository(this.db).updateInstall(detail.install.id, {
       lastSeenAt: new Date()
     });
@@ -290,15 +216,11 @@ export class InstallService {
     }
 
     return {
-      ...this.toInstallPublicPayload({
-        app: detail.app,
-        install,
-        product: detail.product
-      }),
+      ...this.toInstallPublicPayload({ app: detail.app, install }),
       license: {
-        active: filteredSummary.length > 0,
-        items: filteredItems,
-        summary: filteredSummary
+        active: entitlements.summary.length > 0,
+        items: entitlements.items,
+        summary: entitlements.summary
       }
     };
   }

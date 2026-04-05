@@ -23,9 +23,7 @@ export interface PlanSummary {
   priceAmount?: number;
   currency?: string;
   status?: string;
-  productId?: string;
-  productCode?: string;
-  productName?: string;
+  appId?: string;
 }
 
 export interface AppSummary {
@@ -40,7 +38,7 @@ export interface FeatureSummary {
   code: string;
   name: string;
   kind: string;
-  productId?: string;
+  appId?: string;
   status?: string;
   createdAt?: string;
 }
@@ -52,7 +50,6 @@ export interface PlanFeatureSummary {
 }
 
 export interface CatalogSnapshot {
-  products: ProductSummary[];
   plans: PlanSummary[];
   features: FeatureSummary[];
   planFeatures: PlanFeatureSummary[];
@@ -218,15 +215,15 @@ export interface App {
 }
 
 export interface AppWithDetails extends App {
-  products: ProductSummary[];
   plans: PlanSummary[];
+  features: FeatureSummary[];
   checkoutOffers: Array<{
     code: string;
     planCode: string;
     planId: string;
-    productId: string;
-    productCode: string;
-    productName: string;
+    appId: string;
+    appCode: string;
+    appName: string;
     title: string;
     description: string | null;
     badge: string | null;
@@ -248,9 +245,9 @@ export interface AppCatalog {
     code: string;
     planCode: string;
     planId: string;
-    productId: string;
-    productCode: string;
-    productName: string;
+    appId: string;
+    appCode: string;
+    appName: string;
     title: string;
     description: string | null;
     badge: string | null;
@@ -303,16 +300,15 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   userId: string;
-  productId: string;
+  appId: string;
   planId: string;
 }
 
 export interface HydratedOrder extends Order {
   user: UserSummary | null;
-  product: ProductSummary | null;
+  app: AppSummary | null;
   plan: PlanSummary | null;
   checkoutSession: CheckoutSessionSummary | null;
-  app: AppSummary | null;
 }
 
 export interface PaymentAttempt {
@@ -331,7 +327,7 @@ export interface EntitlementSummary {
   status: string;
   startsAt: string | null;
   expiresAt: string | null;
-  feature: FeatureSummary | null;
+  plan: PlanSummary | null;
 }
 
 export interface OrderEventSummary {
@@ -405,7 +401,6 @@ export interface Install {
 export interface HydratedInstall extends Install {
   user: UserSummary | null;
   app: AppSummary | null;
-  product: ProductSummary | null;
 }
 
 export interface InstallsResponse {
@@ -422,15 +417,15 @@ export interface Entitlement {
   startsAt: string | null;
   expiresAt: string | null;
   createdAt: string;
-  updatedAt: string;
   userId: string;
-  productId: string;
+  appId: string;
+  planId: string;
 }
 
 export interface HydratedEntitlement extends Entitlement {
   user: UserSummary | null;
-  product: ProductSummary | null;
-  feature: FeatureSummary | null;
+  app: AppSummary | null;
+  plan: PlanSummary | null;
   sourceOrder: { id: string; orderNo: string; status: string } | null;
 }
 
@@ -451,11 +446,10 @@ export interface GrantEntitlementInput {
 export interface GrantEntitlementResult {
   user: UserSummary;
   plan: PlanSummary;
-  product: ProductSummary;
+  app: AppSummary;
   granted: boolean;
   reason: string;
   sourceId: string;
-  entitlementCount: number;
 }
 
 export interface RevokeEntitlementResult {
@@ -464,7 +458,7 @@ export interface RevokeEntitlementResult {
   sourceId: string | null;
   revokedCount: number;
   userId: string;
-  productId: string;
+  appId: string;
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -478,14 +472,12 @@ export interface Event {
   userId: string | null;
   installId: string | null;
   appId: string | null;
-  productId: string | null;
 }
 
 export interface HydratedEvent extends Event {
   user: UserSummary | null;
   install: { id: string; extensionInstallId: string; status: string } | null;
   app: AppSummary | null;
-  product: ProductSummary | null;
 }
 
 export interface EventsResponse {
@@ -517,7 +509,7 @@ export interface Plan {
   code: string;
   name: string;
   interval: string | null;
-  productId: string;
+  appId: string;
 }
 
 export interface PlansResponse {
@@ -551,7 +543,6 @@ export interface DeploymentSummary {
   updatedAt: string;
   user: UserSummary | null;
   app: AppSummary | null;
-  product: ProductSummary | null;
   latestToken: DeploymentTokenSummary | null;
 }
 

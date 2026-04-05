@@ -9,7 +9,6 @@ export class DeploymentRepository {
   async createDeployment(input: {
     userId: string;
     appId: string;
-    productId: string;
     label: string;
     environment: string;
     serverHost?: string | null;
@@ -24,7 +23,6 @@ export class DeploymentRepository {
       .values({
         userId: input.userId,
         appId: input.appId,
-        productId: input.productId,
         label: input.label,
         environment: input.environment,
         serverHost: input.serverHost ?? null,

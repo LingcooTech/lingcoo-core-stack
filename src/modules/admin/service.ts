@@ -25,55 +25,32 @@ export class AdminService {
     orders: Array<Awaited<ReturnType<BillingRepository['listRecentOrders']>>[number]>
   ) {
     const userIds = [...new Set(orders.map((item) => item.userId))];
-    const productIds = [...new Set(orders.map((item) => item.productId))];
+    const appIds = [...new Set(orders.map((item) => item.appId))];
     const planIds = [...new Set(orders.map((item) => item.planId))];
     const sessions = await new CheckoutRepository(this.db).listSessionsByOrderIds(orders.map((item) => item.id));
-    const appIds = [...new Set(sessions.map((item) => item.appId))];
 
-    const [users, products, plans, apps] = await Promise.all([
+    const [users, plans, apps] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
-      new LicenseRepository(this.db).listProductsByIds(productIds),
       new LicenseRepository(this.db).listPlansByIds(planIds),
       new AppRepository(this.db).listAppsByIds(appIds)
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
-    const productMap = new Map(products.map((item) => [item.id, item]));
     const planMap = new Map(plans.map((item) => [item.id, item]));
     const appMap = new Map(apps.map((item) => [item.id, item]));
     const sessionMap = new Map(sessions.map((item) => [item.orderId, item]));
 
     return orders.map((order) => {
       const session = sessionMap.get(order.id) ?? null;
-      const app = session ? appMap.get(session.appId) ?? null : null;
+      const app = appMap.get(order.appId) ?? null;
       const user = userMap.get(order.userId) ?? null;
-      const product = productMap.get(order.productId) ?? null;
       const plan = planMap.get(order.planId) ?? null;
 
       return {
         ...order,
-        user: user
-          ? {
-              id: user.id,
-              email: user.email,
-              displayName: user.displayName
-            }
-          : null,
-        product: product
-          ? {
-              id: product.id,
-              code: product.code,
-              name: product.name
-            }
-          : null,
-        plan: plan
-          ? {
-              id: plan.id,
-              code: plan.code,
-              name: plan.name,
-              interval: plan.interval
-            }
-          : null,
+        user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+        app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
+        plan: plan ? { id: plan.id, code: plan.code, name: plan.name, interval: plan.interval } : null,
         checkoutSession: session
           ? {
               id: session.id,
@@ -89,31 +66,18 @@ export class AdminService {
               createdAt: session.createdAt,
               updatedAt: session.updatedAt
             }
-          : null,
-        app: app
-          ? {
-              id: app.id,
-              code: app.code,
-              name: app.name,
-              type: app.type
-            }
           : null
       };
     });
   }
 
   async listOrders(limit = 50) {
-    const repository = new BillingRepository(this.db);
-    const orders = await repository.listRecentOrders(limit);
-
-    return {
-      items: await this.hydrateOrderRows(orders)
-    };
+    const orders = await new BillingRepository(this.db).listRecentOrders(limit);
+    return { items: await this.hydrateOrderRows(orders) };
   }
 
   async getOrderDetail(orderNo: string) {
     const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
-
     if (!order) {
       throw httpError(404, 'Order not found');
     }
@@ -124,26 +88,20 @@ export class AdminService {
       new LicenseRepository(this.db).listEntitlementsBySource('order', order.id),
       new EventRepository(this.db).listRecentEventsByOrderNo(orderNo, 20)
     ]);
-    const featureIds = [...new Set(entitlements.map((item) => item.featureId))];
-    const features = await new LicenseRepository(this.db).listFeaturesByIds(featureIds);
-    const featureMap = new Map(features.map((item) => [item.id, item]));
+
+    // Derive plan info for entitlements
+    const planIds = [...new Set(entitlements.map((e) => e.planId))];
+    const plans = await new LicenseRepository(this.db).listPlansByIds(planIds);
+    const planMap = new Map(plans.map((p) => [p.id, p]));
 
     return {
       item: hydratedOrder,
       paymentAttempts: attempts,
       entitlements: entitlements.map((entitlement) => {
-        const feature = featureMap.get(entitlement.featureId) ?? null;
-
+        const plan = planMap.get(entitlement.planId) ?? null;
         return {
           ...entitlement,
-          feature: feature
-            ? {
-                id: feature.id,
-                code: feature.code,
-                name: feature.name,
-                kind: feature.kind
-              }
-            : null
+          plan: plan ? { id: plan.id, code: plan.code, name: plan.name, interval: plan.interval } : null
         };
       }),
       events
@@ -157,49 +115,24 @@ export class AdminService {
   async listInstalls(limit = 50) {
     const installs = await new InstallRepository(this.db).listRecentInstalls(limit);
     const userIds = [...new Set(installs.map((item) => item.userId).filter((item): item is string => Boolean(item)))];
-    const appIds = [...new Set(installs.map((item) => item.appId).filter((item): item is string => Boolean(item)))];
-    const productIds = [...new Set(installs.map((item) => item.productId))];
+    const appIds = [...new Set(installs.map((item) => item.appId))];
 
-    const [users, apps, products] = await Promise.all([
+    const [users, apps] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
-      new LicenseRepository(this.db).listProductsByIds(productIds)
+      new AppRepository(this.db).listAppsByIds(appIds)
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
     const appMap = new Map(apps.map((item) => [item.id, item]));
-    const productMap = new Map(products.map((item) => [item.id, item]));
 
     return {
       items: installs.map((install) => {
         const user = install.userId ? userMap.get(install.userId) ?? null : null;
-        const app = install.appId ? appMap.get(install.appId) ?? null : null;
-        const product = productMap.get(install.productId) ?? null;
-
+        const app = appMap.get(install.appId) ?? null;
         return {
           ...install,
-          user: user
-            ? {
-                id: user.id,
-                email: user.email,
-                displayName: user.displayName
-              }
-            : null,
-          app: app
-            ? {
-                id: app.id,
-                code: app.code,
-                name: app.name,
-                type: app.type
-              }
-            : null,
-          product: product
-            ? {
-                id: product.id,
-                code: product.code,
-                name: product.name
-              }
-            : null
+          user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+          app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null
         };
       })
     };
@@ -208,8 +141,8 @@ export class AdminService {
   async listEntitlements(limit = 50) {
     const entitlements = await new LicenseRepository(this.db).listRecentEntitlements(limit);
     const userIds = [...new Set(entitlements.map((item) => item.userId))];
-    const productIds = [...new Set(entitlements.map((item) => item.productId))];
-    const featureIds = [...new Set(entitlements.map((item) => item.featureId))];
+    const appIds = [...new Set(entitlements.map((item) => item.appId))];
+    const planIds = [...new Set(entitlements.map((item) => item.planId))];
     const orderIds = [
       ...new Set(
         entitlements
@@ -218,219 +151,36 @@ export class AdminService {
       )
     ];
 
-    const [users, products, features, orders] = await Promise.all([
+    const [users, apps, plans, orders] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
-      new LicenseRepository(this.db).listProductsByIds(productIds),
-      new LicenseRepository(this.db).listFeaturesByIds(featureIds),
+      new AppRepository(this.db).listAppsByIds(appIds),
+      new LicenseRepository(this.db).listPlansByIds(planIds),
       new BillingRepository(this.db).listOrdersByIds(orderIds)
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
-    const productMap = new Map(products.map((item) => [item.id, item]));
-    const featureMap = new Map(features.map((item) => [item.id, item]));
+    const appMap = new Map(apps.map((item) => [item.id, item]));
+    const planMap = new Map(plans.map((item) => [item.id, item]));
     const orderMap = new Map(orders.map((item) => [item.id, item]));
 
     return {
       items: entitlements.map((entitlement) => {
         const user = userMap.get(entitlement.userId) ?? null;
-        const product = productMap.get(entitlement.productId) ?? null;
-        const feature = featureMap.get(entitlement.featureId) ?? null;
+        const app = appMap.get(entitlement.appId) ?? null;
+        const plan = planMap.get(entitlement.planId) ?? null;
         const sourceOrder =
           entitlement.sourceType === 'order' && entitlement.sourceId
             ? orderMap.get(entitlement.sourceId) ?? null
             : null;
-
         return {
           ...entitlement,
-          user: user
-            ? {
-                id: user.id,
-                email: user.email,
-                displayName: user.displayName
-              }
-            : null,
-          product: product
-            ? {
-                id: product.id,
-                code: product.code,
-                name: product.name
-              }
-            : null,
-          feature: feature
-            ? {
-                id: feature.id,
-                code: feature.code,
-                name: feature.name,
-                kind: feature.kind
-              }
-            : null,
-          sourceOrder: sourceOrder
-            ? {
-                id: sourceOrder.id,
-                orderNo: sourceOrder.orderNo,
-                status: sourceOrder.status
-              }
-            : null
+          user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+          app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
+          plan: plan ? { id: plan.id, code: plan.code, name: plan.name, interval: plan.interval } : null,
+          sourceOrder: sourceOrder ? { id: sourceOrder.id, orderNo: sourceOrder.orderNo, status: sourceOrder.status } : null
         };
       })
     };
-  }
-
-  async upsertCatalogBundle(
-    productCode: string,
-    input: {
-      name: string;
-      type: 'chrome_extension' | 'web_app' | 'service';
-      status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      features: Array<{
-        code: string;
-        name: string;
-        kind: string;
-        status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      }>;
-      plans: Array<{
-        code: string;
-        name: string;
-        billingProvider: string;
-        billingPriceId?: string;
-        priceAmount: number;
-        currency: string;
-        interval: 'month' | 'year' | 'one_time';
-        status: 'active' | 'inactive' | 'cancelled' | 'expired';
-        featureCodes: string[];
-        meta?: Record<string, unknown>;
-      }>;
-    },
-    actorUserId: string
-  ) {
-    const normalizedFeatures = [
-      ...new Map(
-        input.features.map((feature) => [
-          feature.code.trim(),
-          {
-            code: feature.code.trim(),
-            name: feature.name.trim(),
-            kind: feature.kind.trim() || 'boolean',
-            status: feature.status
-          }
-        ])
-      ).values()
-    ].filter((feature) => feature.code && feature.name);
-
-    const normalizedPlans = [
-      ...new Map(
-        input.plans.map((plan) => [
-          plan.code.trim(),
-          {
-            code: plan.code.trim(),
-            name: plan.name.trim(),
-            billingProvider: plan.billingProvider.trim() || 'self_hosted',
-            billingPriceId: plan.billingPriceId?.trim() || null,
-            priceAmount: plan.priceAmount,
-            currency: plan.currency.trim().toUpperCase() || 'CNY',
-            interval: plan.interval,
-            status: plan.status,
-            featureCodes: [...new Set(plan.featureCodes.map((code) => code.trim()).filter(Boolean))],
-            meta: plan.meta ?? {}
-          }
-        ])
-      ).values()
-    ].filter((plan) => plan.code && plan.name);
-
-    if (normalizedFeatures.length === 0) {
-      throw httpError(422, 'At least one feature is required');
-    }
-
-    if (normalizedPlans.length === 0) {
-      throw httpError(422, 'At least one plan is required');
-    }
-
-    const declaredFeatureCodes = new Set(normalizedFeatures.map((feature) => feature.code));
-    const missingFeatureRefs = normalizedPlans.flatMap((plan) =>
-      plan.featureCodes.filter((featureCode) => !declaredFeatureCodes.has(featureCode)).map((featureCode) => `${plan.code}:${featureCode}`)
-    );
-
-    if (missingFeatureRefs.length > 0) {
-      throw httpError(422, `Unknown feature references: ${missingFeatureRefs.join(', ')}`);
-    }
-
-    const result = await this.db.transaction(async (tx) => {
-      const licenseRepository = new LicenseRepository(tx as DbClient);
-      const product = await licenseRepository.upsertProduct({
-        code: productCode,
-        name: input.name,
-        type: input.type,
-        status: input.status
-      });
-
-      const features = [];
-      for (const featureInput of normalizedFeatures) {
-        features.push(
-          await licenseRepository.upsertFeature({
-            productId: product.id,
-            code: featureInput.code,
-            name: featureInput.name,
-            kind: featureInput.kind,
-            status: featureInput.status
-          })
-        );
-      }
-
-      const featureMap = new Map(features.map((feature) => [feature.code, feature]));
-      const plans = [];
-      const planFeatureMappings = [];
-
-      for (const planInput of normalizedPlans) {
-        const plan = await licenseRepository.upsertPlan({
-          productId: product.id,
-          code: planInput.code,
-          name: planInput.name,
-          billingProvider: planInput.billingProvider,
-          billingPriceId: planInput.billingPriceId,
-          priceAmount: planInput.priceAmount,
-          currency: planInput.currency,
-          interval: planInput.interval,
-          meta: planInput.meta,
-          status: planInput.status
-        });
-        plans.push(plan);
-
-        const featureIds = planInput.featureCodes
-          .map((featureCode) => featureMap.get(featureCode)?.id ?? null)
-          .filter((featureId): featureId is string => Boolean(featureId));
-
-        const mappings = await licenseRepository.replacePlanFeatureMappings(plan.id, featureIds);
-        planFeatureMappings.push(...mappings);
-      }
-
-      await licenseRepository.deactivateFeaturesByProductExceptCodes(
-        product.id,
-        normalizedFeatures.map((feature) => feature.code)
-      );
-      await licenseRepository.deactivatePlansByProductExceptCodes(
-        product.id,
-        normalizedPlans.map((plan) => plan.code)
-      );
-
-      await new EventService(tx as DbClient).capture({
-        userId: actorUserId,
-        eventName: 'catalog.bundle_upserted',
-        properties: {
-          productCode,
-          featureCodes: normalizedFeatures.map((feature) => feature.code),
-          planCodes: normalizedPlans.map((plan) => plan.code)
-        }
-      });
-
-      return {
-        product,
-        features,
-        plans,
-        planFeatures: planFeatureMappings
-      };
-    });
-
-    return result;
   }
 
   async listEvents(limit = 50) {
@@ -438,82 +188,44 @@ export class AdminService {
     const userIds = [...new Set(events.map((item) => item.userId).filter((item): item is string => Boolean(item)))];
     const installIds = [...new Set(events.map((item) => item.installId).filter((item): item is string => Boolean(item)))];
     const installs = await new InstallRepository(this.db).listInstallsByIds(installIds);
-    const appIds = [...new Set(installs.map((item) => item.appId).filter((item): item is string => Boolean(item)))];
-    const productIds = [
+    const appIds = [
       ...new Set(
-        events
-          .map((item) => item.productId)
-          .concat(installs.map((item) => item.productId))
+        events.map((item) => item.appId)
+          .concat(installs.map((item) => item.appId))
           .filter((item): item is string => Boolean(item))
       )
     ];
 
-    const [users, apps, products] = await Promise.all([
+    const [users, apps] = await Promise.all([
       new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
-      new LicenseRepository(this.db).listProductsByIds(productIds)
+      new AppRepository(this.db).listAppsByIds(appIds)
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
     const installMap = new Map(installs.map((item) => [item.id, item]));
     const appMap = new Map(apps.map((item) => [item.id, item]));
-    const productMap = new Map(products.map((item) => [item.id, item]));
 
     return {
       items: events.map((event) => {
         const install = event.installId ? installMap.get(event.installId) ?? null : null;
-        const app = install?.appId ? appMap.get(install.appId) ?? null : null;
-        const product = productMap.get(event.productId ?? install?.productId ?? '') ?? null;
+        const app = appMap.get(event.appId ?? install?.appId ?? '') ?? null;
         const user = event.userId ? userMap.get(event.userId) ?? null : null;
-
         return {
           ...event,
-          user: user
-            ? {
-                id: user.id,
-                email: user.email,
-                displayName: user.displayName
-              }
-            : null,
-          install: install
-            ? {
-                id: install.id,
-                extensionInstallId: install.extensionInstallId,
-                status: install.status
-              }
-            : null,
-          app: app
-            ? {
-                id: app.id,
-                code: app.code,
-                name: app.name,
-                type: app.type
-              }
-            : null,
-          product: product
-            ? {
-                id: product.id,
-                code: product.code,
-                name: product.name
-              }
-            : null
+          user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+          install: install ? { id: install.id, extensionInstallId: install.extensionInstallId, status: install.status } : null,
+          app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null
         };
       })
     };
   }
 
   async listBillingWebhookEvents(limit = 50) {
-    return {
-      items: await new BillingRepository(this.db).listRecentWebhookEvents(limit)
-    };
+    return { items: await new BillingRepository(this.db).listRecentWebhookEvents(limit) };
   }
 
   async grantEntitlement(
-    input: {
-      userEmail: string;
-      planCode: string;
-      reason?: string;
-    },
+    input: { userEmail: string; planCode: string; reason?: string },
     actorUserId: string
   ) {
     const user = await new AuthRepository(this.db).findUserByEmail(input.userEmail);
@@ -534,7 +246,7 @@ export class AdminService {
 
       await new EventService(txDb).capture({
         userId: user.id,
-        productId: grant.product.id,
+        appId: grant.app.id,
         eventName: 'admin.entitlements_granted',
         properties: {
           actorUserId,
@@ -551,33 +263,18 @@ export class AdminService {
     });
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName
-      },
-      plan: {
-        id: result.plan.id,
-        code: result.plan.code,
-        name: result.plan.name,
-        interval: result.plan.interval
-      },
-      product: {
-        id: result.product.id,
-        code: result.product.code,
-        name: result.product.name
-      },
+      user: { id: user.id, email: user.email, displayName: user.displayName },
+      plan: { id: result.plan.id, code: result.plan.code, name: result.plan.name, interval: result.plan.interval },
+      app: { id: result.app.id, code: result.app.code, name: result.app.name },
       granted: result.granted,
       reason: result.reason,
-      sourceId,
-      entitlementCount: result.entitlements.length
+      sourceId
     };
   }
 
   async revokeEntitlement(entitlementId: string, actorUserId: string) {
     const repository = new LicenseRepository(this.db);
     const entitlement = await repository.findEntitlementById(entitlementId);
-
     if (!entitlement) {
       throw httpError(404, 'Entitlement not found');
     }
@@ -592,12 +289,11 @@ export class AdminService {
               const row = txRepository.cancelEntitlementById(entitlement.id);
               return row.then((item) => (item ? [item] : []));
             })();
-
       const items = await changed;
 
       await new EventService(txDb).capture({
         userId: entitlement.userId,
-        productId: entitlement.productId,
+        appId: entitlement.appId,
         eventName: 'admin.entitlements_revoked',
         properties: {
           actorUserId,
@@ -617,7 +313,7 @@ export class AdminService {
       sourceId: entitlement.sourceId,
       revokedCount: revoked.length,
       userId: entitlement.userId,
-      productId: entitlement.productId
+      appId: entitlement.appId
     };
   }
 
@@ -625,12 +321,7 @@ export class AdminService {
 
   async listUsers(query: { limit: number; offset: number; search?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }) {
     const result = await new AuthRepository(this.db).listUsers(query);
-    return {
-      items: result.items,
-      total: result.total,
-      limit: query.limit,
-      offset: query.offset
-    };
+    return { items: result.items, total: result.total, limit: query.limit, offset: query.offset };
   }
 
   async getUser(userId: string) {
@@ -639,15 +330,9 @@ export class AdminService {
       throw httpError(404, 'User not found');
     }
     return {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      role: user.role,
-      status: user.status,
-      emailVerified: user.emailVerified,
-      emailVerifiedAt: user.emailVerifiedAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+      id: user.id, email: user.email, displayName: user.displayName,
+      role: user.role, status: user.status, emailVerified: user.emailVerified,
+      emailVerifiedAt: user.emailVerifiedAt, createdAt: user.createdAt, updatedAt: user.updatedAt
     };
   }
 
@@ -656,12 +341,9 @@ export class AdminService {
     input: { displayName?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' },
     actorUserId: string
   ) {
-    // Prevent self-demotion
     if (userId === actorUserId && input.role && input.role !== 'admin') {
       throw httpError(400, 'Cannot demote your own admin role');
     }
-
-    // Prevent self-suspension
     if (userId === actorUserId && input.status === 'suspended') {
       throw httpError(400, 'Cannot suspend your own account');
     }
@@ -673,16 +355,11 @@ export class AdminService {
     }
 
     const updated = await repository.updateUser(userId, input);
-
     await new EventService(this.db).capture({
       userId: actorUserId,
       eventName: 'admin.user_updated',
-      properties: {
-        targetUserId: userId,
-        changes: input
-      }
+      properties: { targetUserId: userId, changes: input }
     });
-
     return updated;
   }
 
@@ -702,21 +379,14 @@ export class AdminService {
     }
 
     const temporaryPassword = randomBytes(9).toString('base64url').slice(0, 12);
-    const passwordHash = hashPassword(temporaryPassword);
-    await repository.updatePasswordCredential(userId, passwordHash);
+    await repository.updatePasswordCredential(userId, hashPassword(temporaryPassword));
 
     await new EventService(this.db).capture({
       userId: actorUserId,
       eventName: 'admin.user_password_reset',
-      properties: {
-        targetUserId: userId
-      }
+      properties: { targetUserId: userId }
     });
 
-    return {
-      userId: user.id,
-      email: user.email,
-      temporaryPassword
-    };
+    return { userId: user.id, email: user.email, temporaryPassword };
   }
 }

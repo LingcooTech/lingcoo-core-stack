@@ -42,7 +42,7 @@ export function OrdersPage() {
   // Client-side filter
   const filteredOrders = orders.filter((o) => {
     const q = searchQuery.toLowerCase();
-    const matchSearch = !q || [o.orderNo, o.user?.email ?? '', o.product?.code ?? '', o.plan?.code ?? ''].some((v) => v.toLowerCase().includes(q));
+    const matchSearch = !q || [o.orderNo, o.user?.email ?? '', o.app?.code ?? '', o.plan?.code ?? ''].some((v) => v.toLowerCase().includes(q));
     const matchStatus = statusFilter === '__all__' || o.status === statusFilter;
     const matchProvider = providerFilter === '__all__' || (o.provider ?? '') === providerFilter;
     return matchSearch && matchStatus && matchProvider;
@@ -59,7 +59,7 @@ export function OrdersPage() {
         <div>
           <p className="text-xs font-bold font-mono">{row.orderNo}</p>
           <p className="text-[10px] text-muted-foreground">{row.checkoutSession?.sessionCode ?? '—'}</p>
-          <p className="text-[10px] text-muted-foreground">{row.product?.name ?? row.productId}</p>
+          <p className="text-[10px] text-muted-foreground">{row.app?.name ?? row.appId}</p>
         </div>
       )
     },
@@ -204,7 +204,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <InfoBlock label="金额" value={formatAmount(item.amount, item.currency)} />
         <InfoBlock label="用户" value={item.user?.email ?? item.userId} />
         <InfoBlock label="应用" value={item.app?.code ?? '—'} mono />
-        <InfoBlock label="产品" value={item.product?.name ?? item.productId} />
+        <InfoBlock label="应用" value={item.app?.name ?? item.appId} />
         <InfoBlock label="套餐" value={item.plan?.name ?? item.planId} />
         <InfoBlock label="支付时间" value={formatTime(item.paidAt)} />
       </div>
@@ -255,7 +255,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
           <div className="flex flex-wrap gap-2">
             {entitlements.map((e) => (
               <div key={e.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 border border-border text-xs">
-                <span className="font-mono">{e.feature?.code ?? e.id}</span>
+                <span className="font-mono">{e.plan?.code ?? e.id}</span>
                 <StatusPill tone={statusToTone(e.status)} label={e.status} />
               </div>
             ))}

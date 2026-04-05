@@ -15,7 +15,6 @@ import {
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
-export const productTypeEnum = pgEnum('product_type', ['chrome_extension', 'web_app', 'service']);
 export const appTypeEnum = pgEnum('app_type', ['chrome_extension', 'web_app', 'service']);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
@@ -125,20 +124,11 @@ export const appSecrets = pgTable('app_secrets', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
-export const products = pgTable('products', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  code: varchar('code', { length: 64 }).notNull().unique(),
-  name: varchar('name', { length: 120 }).notNull(),
-  type: productTypeEnum('type').notNull().default('chrome_extension'),
-  status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
-});
-
 export const plans = pgTable('plans', {
   id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
+  appId: uuid('app_id')
     .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
+    .references(() => apps.id, { onDelete: 'cascade' }),
   code: varchar('code', { length: 64 }).notNull().unique(),
   name: varchar('name', { length: 120 }).notNull(),
   billingProvider: varchar('billing_provider', { length: 32 }).notNull(),
@@ -153,9 +143,9 @@ export const plans = pgTable('plans', {
 
 export const features = pgTable('features', {
   id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id')
+  appId: uuid('app_id')
     .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
+    .references(() => apps.id, { onDelete: 'cascade' }),
   code: varchar('code', { length: 64 }).notNull().unique(),
   name: varchar('name', { length: 120 }).notNull(),
   kind: varchar('kind', { length: 32 }).notNull().default('boolean'),
@@ -179,19 +169,30 @@ export const planFeatures = pgTable(
   })
 );
 
-export const appProducts = pgTable(
-  'app_products',
+export const appOffers = pgTable(
+  'app_offers',
   {
+    id: uuid('id').defaultRandom().primaryKey(),
     appId: uuid('app_id')
       .notNull()
       .references(() => apps.id, { onDelete: 'cascade' }),
-    productId: uuid('product_id')
+    planId: uuid('plan_id')
       .notNull()
-      .references(() => products.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+      .references(() => plans.id, { onDelete: 'cascade' }),
+    code: varchar('code', { length: 64 }).notNull(),
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description'),
+    badge: varchar('badge', { length: 64 }),
+    priceAmount: integer('price_amount').notNull().default(0),
+    currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
+    isDefault: boolean('is_default').notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: recordStatusEnum('status').notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.appId, table.productId] })
+    appCodeKey: uniqueIndex('app_offers_app_id_code_idx').on(table.appId, table.code)
   })
 );
 
@@ -227,9 +228,9 @@ export const orders = pgTable('orders', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  productId: uuid('product_id')
+  appId: uuid('app_id')
     .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
+    .references(() => apps.id, { onDelete: 'restrict' }),
   planId: uuid('plan_id')
     .notNull()
     .references(() => plans.id, { onDelete: 'restrict' }),
@@ -255,9 +256,6 @@ export const checkoutSessions = pgTable('checkout_sessions', {
   appId: uuid('app_id')
     .notNull()
     .references(() => apps.id, { onDelete: 'restrict' }),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
   planId: uuid('plan_id')
     .notNull()
     .references(() => plans.id, { onDelete: 'restrict' }),
@@ -311,12 +309,12 @@ export const entitlements = pgTable('entitlements', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  productId: uuid('product_id')
+  appId: uuid('app_id')
     .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  featureId: uuid('feature_id')
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  planId: uuid('plan_id')
     .notNull()
-    .references(() => features.id, { onDelete: 'cascade' }),
+    .references(() => plans.id, { onDelete: 'restrict' }),
   sourceType: sourceTypeEnum('source_type').notNull(),
   sourceId: uuid('source_id'),
   status: recordStatusEnum('status').notNull().default('active'),
@@ -329,10 +327,9 @@ export const entitlements = pgTable('entitlements', {
 export const installs = pgTable('installs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
-  productId: uuid('product_id')
+  appId: uuid('app_id')
     .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
+    .references(() => apps.id, { onDelete: 'cascade' }),
   extensionInstallId: varchar('extension_install_id', { length: 128 }).notNull().unique(),
   deviceFingerprint: varchar('device_fingerprint', { length: 255 }),
   chromeProfileHint: varchar('chrome_profile_hint', { length: 255 }),
@@ -351,9 +348,6 @@ export const deployments = pgTable('deployments', {
   appId: uuid('app_id')
     .notNull()
     .references(() => apps.id, { onDelete: 'restrict' }),
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'restrict' }),
   label: varchar('label', { length: 120 }).notNull(),
   environment: varchar('environment', { length: 32 }).notNull().default('production'),
   serverHost: varchar('server_host', { length: 255 }),
@@ -394,7 +388,7 @@ export const deploymentTokens = pgTable(
 export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-  productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
+  appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
   installId: uuid('install_id').references(() => installs.id, { onDelete: 'set null' }),
   eventName: varchar('event_name', { length: 120 }).notNull(),
   eventTime: timestamp('event_time', { withTimezone: true }).notNull().defaultNow(),

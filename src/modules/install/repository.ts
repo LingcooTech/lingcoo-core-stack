@@ -24,7 +24,6 @@ export class InstallRepository {
   async createInstall(input: {
     userId?: string | null;
     appId: string;
-    productId: string;
     extensionInstallId: string;
     deviceFingerprint?: string;
     chromeProfileHint?: string;
@@ -36,7 +35,6 @@ export class InstallRepository {
       .values({
         userId: input.userId ?? null,
         appId: input.appId,
-        productId: input.productId,
         extensionInstallId: input.extensionInstallId,
         deviceFingerprint: input.deviceFingerprint ?? null,
         chromeProfileHint: input.chromeProfileHint ?? null,
@@ -67,8 +65,7 @@ export class InstallRepository {
     installId: string,
     input: {
       userId?: string | null;
-      appId?: string | null;
-      productId?: string;
+      appId?: string;
       deviceFingerprint?: string | null;
       chromeProfileHint?: string | null;
       appVersion?: string | null;
@@ -81,7 +78,6 @@ export class InstallRepository {
       .set({
         userId: input.userId,
         appId: input.appId,
-        productId: input.productId,
         deviceFingerprint: input.deviceFingerprint,
         chromeProfileHint: input.chromeProfileHint,
         appVersion: input.appVersion,

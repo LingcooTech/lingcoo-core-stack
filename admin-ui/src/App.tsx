@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
-import { CatalogPage } from '@/pages/CatalogPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeliveryPage } from '@/pages/DeliveryPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
@@ -75,7 +74,7 @@ function AppRoutes() {
       <Route element={<ProtectedAdminRoute />}>
         <Route element={<Shell />}>
           <Route path="/admin" element={<DashboardPage />} />
-          <Route path="/admin/catalog" element={<CatalogPage />} />
+          <Route path="/admin/catalog" element={<Navigate to="/admin/apps" replace />} />
           <Route path="/admin/apps" element={<AppsPage />} />
           <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
           <Route path="/admin/secrets" element={<SecretsPage />} />

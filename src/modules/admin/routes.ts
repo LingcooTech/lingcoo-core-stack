@@ -10,7 +10,6 @@ import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
 import {
   adminAppCodeParamsSchema,
-  adminCatalogProductParamsSchema,
   adminEntitlementParamsSchema,
   adminGrantEntitlementSchema,
   adminListQuerySchema,
@@ -18,7 +17,6 @@ import {
   adminUpdateUserSchema,
   adminUserIdParamsSchema,
   adminUpsertDeliverySettingsSchema,
-  adminUpsertCatalogBundleSchema,
   adminOrderParamsSchema,
   alipayPaymentSettingsSchema,
   paymentProviderParamsSchema,
@@ -133,12 +131,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/admin/entitlements', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
     return new AdminService(app.db, app.appEnv).listEntitlements(query.limit);
-  });
-
-  app.put('/v1/admin/catalog/products/:productCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminCatalogProductParamsSchema.parse(request.params);
-    const payload = adminUpsertCatalogBundleSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).upsertCatalogBundle(params.productCode, payload, request.user.sub);
   });
 
   app.post('/v1/admin/entitlements/grant', { preHandler: app.requireAdmin }, async (request) => {

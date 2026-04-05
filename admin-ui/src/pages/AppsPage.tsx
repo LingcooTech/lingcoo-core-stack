@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import { listAppsAdmin, upsertApp } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -42,20 +41,19 @@ export function AppsPage() {
   const { data: appsData, isLoading: isAppsLoading } = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
   const apps = appsData?.items ?? [];
 
-  const { products, allPlans } = useCatalogData();
+  const { allPlans } = useCatalogData();
 
   const appForm = useForm<AppFormValues>({
     resolver: zodResolver(appSchema),
     defaultValues: { name: '', description: '', type: 'web_app', status: 'active', productCodes: [] }
   });
 
-  const selectedProductCodes = appForm.watch('productCodes');
   const availablePlans = useMemo(
     () =>
       allPlans
-        .filter((plan) => plan.productCode && selectedProductCodes.includes(plan.productCode))
-        .sort((left, right) => (left.productCode || '').localeCompare(right.productCode || '') || left.code.localeCompare(right.code)),
-    [allPlans, selectedProductCodes]
+        .filter((plan) => selectedApp && plan.appId === selectedApp.id)
+        .sort((left, right) => left.code.localeCompare(right.code)),
+    [allPlans, selectedApp]
   );
   const availablePlanMap = useMemo(() => new Map(availablePlans.map((plan) => [plan.code, plan])), [availablePlans]);
 
@@ -111,7 +109,7 @@ export function AppsPage() {
       description: app.description ?? '',
       type: app.type as AppFormValues['type'],
       status: app.status as AppFormValues['status'],
-      productCodes: app.products?.map((product) => product.code) ?? []
+      productCodes: []
     });
   };
 
@@ -180,13 +178,13 @@ export function AppsPage() {
     },
     {
       key: 'offers',
-      header: '产品 / 定价梯度',
+      header: '套餐 / 定价梯度',
       cell: (row) => (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1">
-            {row.products?.map((product) => (
-              <span key={product.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
-                {product.code}
+            {row.plans?.map((plan) => (
+              <span key={plan.code} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 rounded px-1.5 py-0.5 font-mono">
+                {plan.code}
               </span>
             ))}
           </div>
@@ -359,34 +357,18 @@ export function AppsPage() {
                 )}
               />
 
-              {products.length > 0 && (
-                <FormField
-                  control={appForm.control}
-                  name="productCodes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>绑定产品</FormLabel>
-                      <div className="space-y-2">
-                        {products.map((product) => (
-                          <label key={product.code} className="flex cursor-pointer items-center gap-2">
-                            <Checkbox
-                              checked={field.value.includes(product.code)}
-                              onCheckedChange={(checked) => {
-                                const next = checked
-                                  ? [...field.value, product.code]
-                                  : field.value.filter((code) => code !== product.code);
-                                field.onChange(next);
-                              }}
-                            />
-                            <span className="text-sm font-mono">{product.code}</span>
-                            <span className="text-xs text-muted-foreground">{product.name}</span>
-                          </label>
-                        ))}
+              {availablePlans.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold mb-2">关联套餐</p>
+                  <div className="space-y-1">
+                    {availablePlans.map((plan) => (
+                      <div key={plan.code} className="flex items-center gap-2">
+                        <span className="text-sm font-mono">{plan.code}</span>
+                        <span className="text-xs text-muted-foreground">{plan.name}</span>
                       </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    ))}
+                  </div>
+                </div>
               )}
 
               <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4">
@@ -404,7 +386,7 @@ export function AppsPage() {
                 </div>
 
                 {availablePlans.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">先选择产品，才能配置该应用的价格选项。</p>
+                  <p className="text-xs text-muted-foreground">该应用暂无关联套餐，无法配置价格选项。</p>
                 ) : editableOffers.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-border bg-white/70 p-4 text-xs text-muted-foreground">
                     当前还没有配置应用级 offer。保存后，前端会回退到基础 plan；如果你要自定义价格梯度，请先点"添加 Offer"。
@@ -496,7 +478,7 @@ export function AppsPage() {
                             <Input
                               value={offer.description}
                               onChange={(event) => updateOffer(offer.id, (current) => ({ ...current, description: event.target.value }))}
-                              placeholder={boundPlan ? `${formatPlanInterval(boundPlan.interval)} · 绑定 ${boundPlan.productCode}` : '用于前端展示的简短说明'}
+                              placeholder={boundPlan ? `${formatPlanInterval(boundPlan.interval)} · ${boundPlan.code}` : '用于前端展示的简短说明'}
                             />
                           </div>
 

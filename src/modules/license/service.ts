@@ -1,9 +1,8 @@
 import type { DbClient, DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { EventService } from '../event/service';
+import { AppRepository } from '../app/repository';
 import { LicenseRepository } from './repository';
-
-type EffectiveEntitlement = Awaited<ReturnType<LicenseRepository['listEffectiveEntitlementsByUserId']>>[number];
 
 function addInterval(base: Date, interval: 'month' | 'year' | 'one_time') {
   if (interval === 'one_time') {
@@ -23,64 +22,34 @@ function addInterval(base: Date, interval: 'month' | 'year' | 'one_time') {
 export class LicenseService {
   constructor(private readonly db: DbClient | DbExecutor) {}
 
-  private getPlanIdFromEntitlement(item: Pick<EffectiveEntitlement, 'meta'>) {
-    if (!item.meta || typeof item.meta !== 'object' || Array.isArray(item.meta)) {
-      return null;
-    }
-
-    const planId = (item.meta as Record<string, unknown>).planId;
-    return typeof planId === 'string' && planId.trim() ? planId.trim() : null;
-  }
-
-  async findActiveOneTimeOwnership(userId: string, productId: string) {
+  async findActiveOneTimeOwnership(userId: string, appId: string) {
     const repository = new LicenseRepository(this.db);
-    const items = await repository.listEffectiveEntitlementsByUserIdAndProductId(userId, productId);
+    const items = await repository.listEffectiveEntitlementsByUserIdAndAppId(userId, appId);
     if (items.length === 0) {
       return null;
     }
 
-    const planIds = [
-      ...new Set(
-        items
-          .map((item) => this.getPlanIdFromEntitlement(item))
-          .filter((planId): planId is string => Boolean(planId))
-      )
-    ];
-    if (planIds.length === 0) {
-      return null;
-    }
-
+    const planIds = [...new Set(items.map((item) => item.planId))];
     const plans = await repository.listPlansByIds(planIds);
     const oneTimePlanIds = new Set(plans.filter((plan) => plan.interval === 'one_time').map((plan) => plan.id));
-    const oneTimeItems = items.filter((item) => {
-      const planId = this.getPlanIdFromEntitlement(item);
-      return planId ? oneTimePlanIds.has(planId) : false;
-    });
+    const oneTimeItems = items.filter((item) => oneTimePlanIds.has(item.planId));
 
     if (oneTimeItems.length === 0) {
       return null;
     }
 
-    return {
-      items: oneTimeItems
-    };
+    return { items: oneTimeItems };
   }
 
   async getCatalogSnapshot() {
     const repository = new LicenseRepository(this.db);
-    const [products, plans, features, planFeatures] = await Promise.all([
-      repository.listProducts(),
+    const [plans, features, planFeatures] = await Promise.all([
       repository.listPlans(),
       repository.listFeatures(),
       repository.listPlanFeatureMappings()
     ]);
 
-    return {
-      products,
-      plans,
-      features,
-      planFeatures
-    };
+    return { plans, features, planFeatures };
   }
 
   async getPlanForCheckout(planCode: string) {
@@ -91,15 +60,12 @@ export class LicenseService {
       throw httpError(404, 'Plan not found or inactive');
     }
 
-    const product = await repository.getProductById(plan.productId);
-    if (!product || product.status !== 'active') {
-      throw httpError(404, 'Product not found or inactive');
+    const app = await new AppRepository(this.db).findAppById(plan.appId);
+    if (!app || app.status !== 'active') {
+      throw httpError(404, 'App not found or inactive');
     }
 
-    return {
-      plan,
-      product
-    };
+    return { plan, app };
   }
 
   async grantEntitlementsForPlan(input: {
@@ -116,23 +82,22 @@ export class LicenseService {
       throw httpError(404, 'Plan not found');
     }
 
-    const product = await repository.getProductById(plan.productId);
-    if (!product) {
-      throw httpError(404, 'Product not found');
+    const app = await new AppRepository(this.db).findAppById(plan.appId);
+    if (!app) {
+      throw httpError(404, 'App not found');
     }
 
+    // Validate plan has feature mappings (ensures it's a valid plan)
     const mappings = await repository.listPlanFeatureMappingsByPlanId(plan.id);
     if (mappings.length === 0) {
       throw httpError(422, 'Plan has no feature mappings');
     }
 
-    const features = await repository.listFeaturesByIds(mappings.map((item) => item.featureId));
-    const featureMap = new Map(features.map((feature) => [feature.id, feature]));
     const startsAt = input.startsAt ?? new Date();
     const expiresAt = addInterval(startsAt, plan.interval);
 
     if (plan.interval === 'one_time') {
-      const ownership = await this.findActiveOneTimeOwnership(input.userId, product.id);
+      const ownership = await this.findActiveOneTimeOwnership(input.userId, app.id);
       const conflictingItems =
         ownership?.items.filter(
           (item) => item.sourceType !== input.sourceType || (item.sourceId ?? null) !== (input.sourceId ?? null)
@@ -141,7 +106,7 @@ export class LicenseService {
       if (conflictingItems.length > 0) {
         await new EventService(this.db).capture({
           userId: input.userId,
-          productId: product.id,
+          appId: app.id,
           eventName: 'license.entitlements_skipped_already_owned',
           properties: {
             planId: plan.id,
@@ -154,8 +119,8 @@ export class LicenseService {
 
         return {
           plan,
-          product,
-          entitlements: conflictingItems,
+          app,
+          entitlement: conflictingItems[0],
           granted: false as const,
           reason: 'already_owned' as const
         };
@@ -166,42 +131,29 @@ export class LicenseService {
       await repository.deleteEntitlementsBySource(input.sourceType, input.sourceId);
     }
 
-    const created = await repository.createEntitlements(
-      mappings
-        .map((mapping) => {
-          const feature = featureMap.get(mapping.featureId);
-          if (!feature) {
-            return null;
-          }
-
-          return {
-            userId: input.userId,
-            productId: product.id,
-            featureId: feature.id,
-            sourceType: input.sourceType,
-            sourceId: input.sourceId ?? null,
-            status: 'active' as const,
-            startsAt,
-            expiresAt,
-            meta: {
-              planId: plan.id,
-              planCode: plan.code,
-              featureCode: feature.code,
-              featureValue: mapping.value
-            }
-          };
-        })
-        .filter((item): item is NonNullable<typeof item> => item !== null)
-    );
+    // Create a single entitlement record (per-plan granularity)
+    const entitlement = await repository.createEntitlement({
+      userId: input.userId,
+      appId: app.id,
+      planId: plan.id,
+      sourceType: input.sourceType,
+      sourceId: input.sourceId ?? null,
+      status: 'active',
+      startsAt,
+      expiresAt,
+      meta: {
+        planCode: plan.code,
+        appCode: app.code
+      }
+    });
 
     await new EventService(this.db).capture({
       userId: input.userId,
-      productId: product.id,
+      appId: app.id,
       eventName: 'license.entitlements_granted',
       properties: {
         planId: plan.id,
         planCode: plan.code,
-        featureCount: created.length,
         sourceType: input.sourceType,
         sourceId: input.sourceId ?? null
       }
@@ -209,8 +161,8 @@ export class LicenseService {
 
     return {
       plan,
-      product,
-      entitlements: created,
+      app,
+      entitlement,
       granted: true as const,
       reason: 'granted' as const
     };
@@ -219,37 +171,108 @@ export class LicenseService {
   async listUserEntitlements(userId: string) {
     const repository = new LicenseRepository(this.db);
     const items = await repository.listEffectiveEntitlementsByUserId(userId);
-    const features = await repository.listFeaturesByIds([...new Set(items.map((item) => item.featureId))]);
-    const products = await repository.listProductsByIds([...new Set(items.map((item) => item.productId))]);
 
-    const featureMap = new Map(features.map((feature) => [feature.id, feature]));
-    const productMap = new Map(products.map((product) => [product.id, product]));
-    const summary = new Map<string, Set<string>>();
+    const planIds = [...new Set(items.map((item) => item.planId))];
+    const appIds = [...new Set(items.map((item) => item.appId))];
+    const plans = await repository.listPlansByIds(planIds);
+    const apps = await new AppRepository(this.db).listAppsByIds(appIds);
+
+    // Derive feature codes from plan_features for each entitlement
+    const planFeatureMappings = new Map<string, string[]>();
+    for (const plan of plans) {
+      const mappings = await repository.listPlanFeatureMappingsByPlanId(plan.id);
+      const featureIds = mappings.map((m) => m.featureId);
+      if (featureIds.length > 0) {
+        const features = await repository.listFeaturesByIds(featureIds);
+        planFeatureMappings.set(plan.id, features.map((f) => f.code));
+      } else {
+        planFeatureMappings.set(plan.id, []);
+      }
+    }
+
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+    const appMap = new Map(apps.map((a) => [a.id, a]));
 
     const detailed = items.map((item) => {
-      const feature = featureMap.get(item.featureId) ?? null;
-      const product = productMap.get(item.productId) ?? null;
-
-      if (product && feature) {
-        if (!summary.has(product.code)) {
-          summary.set(product.code, new Set());
-        }
-        summary.get(product.code)?.add(feature.code);
-      }
+      const plan = planMap.get(item.planId) ?? null;
+      const app = appMap.get(item.appId) ?? null;
+      const featureCodes = planFeatureMappings.get(item.planId) ?? [];
 
       return {
         ...item,
-        feature,
-        product
+        plan,
+        app,
+        featureCodes
       };
     });
 
+    // Build summary grouped by app (backward compat: productCode = appCode)
+    const summaryMap = new Map<string, Set<string>>();
+    for (const item of detailed) {
+      if (item.app) {
+        if (!summaryMap.has(item.app.code)) {
+          summaryMap.set(item.app.code, new Set());
+        }
+        for (const fc of item.featureCodes) {
+          summaryMap.get(item.app.code)?.add(fc);
+        }
+      }
+    }
+
     return {
       items: detailed,
-      summary: Array.from(summary.entries()).map(([productCode, featureCodes]) => ({
-        productCode,
+      summary: Array.from(summaryMap.entries()).map(([appCode, featureCodes]) => ({
+        productCode: appCode, // backward compat for Chrome extension
+        appCode,
         featureCodes: Array.from(featureCodes).sort()
       }))
+    };
+  }
+
+  async listUserEntitlementsByAppId(appId: string, userId: string) {
+    const repository = new LicenseRepository(this.db);
+    const items = await repository.listEffectiveEntitlementsByUserIdAndAppId(userId, appId);
+    const app = await new AppRepository(this.db).findAppById(appId);
+
+    const planIds = [...new Set(items.map((item) => item.planId))];
+    const plans = await repository.listPlansByIds(planIds);
+
+    const planFeatureMappings = new Map<string, string[]>();
+    for (const plan of plans) {
+      const mappings = await repository.listPlanFeatureMappingsByPlanId(plan.id);
+      const featureIds = mappings.map((m) => m.featureId);
+      if (featureIds.length > 0) {
+        const features = await repository.listFeaturesByIds(featureIds);
+        planFeatureMappings.set(plan.id, features.map((f) => f.code));
+      } else {
+        planFeatureMappings.set(plan.id, []);
+      }
+    }
+
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+    const allFeatureCodes = new Set<string>();
+
+    const detailed = items.map((item) => {
+      const plan = planMap.get(item.planId) ?? null;
+      const featureCodes = planFeatureMappings.get(item.planId) ?? [];
+      for (const fc of featureCodes) {
+        allFeatureCodes.add(fc);
+      }
+
+      return { ...item, plan, app, featureCodes };
+    });
+
+    const appCode = app?.code ?? '';
+
+    return {
+      items: detailed,
+      summary: allFeatureCodes.size > 0
+        ? [{
+            productCode: appCode,
+            appCode,
+            featureCodes: Array.from(allFeatureCodes).sort()
+          }]
+        : []
     };
   }
 }

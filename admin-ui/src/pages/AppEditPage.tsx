@@ -9,7 +9,6 @@ import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
 import type { AppFaq, AppHighlight, AppLink, AppScreenshot } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -96,18 +95,11 @@ export function AppEditPage() {
     [appsData, appCode],
   );
 
-  const products = catalogData?.products ?? [];
   const allPlans = useMemo(() => {
-    const productMap = new Map(products.map((p) => [p.id, p]));
-    return (catalogData?.plans ?? []).map((plan) => {
-      const product = plan.productId ? productMap.get(plan.productId) : null;
-      return {
-        ...plan,
-        productCode: plan.productCode || product?.code,
-        productName: plan.productName || product?.name,
-      };
-    });
-  }, [catalogData?.plans, products]);
+    return (catalogData?.plans ?? []).map((plan) => ({
+      ...plan,
+    }));
+  }, [catalogData?.plans]);
 
   // ── Form state ────────────────────────────────────────────────────────────
 
@@ -145,7 +137,7 @@ export function AppEditPage() {
         screenshots: app.screenshots?.length ? app.screenshots.map((s) => ({ ...s })) : [],
         faq: app.faq?.length ? app.faq.map((f) => ({ ...f })) : [],
         links: app.links?.length ? app.links.map((l) => ({ ...l })) : [],
-        productCodes: app.products?.map((p) => p.code) ?? [],
+        productCodes: [],
       });
       setEditableOffers(
         (app.checkoutOffers ?? []).map((offer) => ({
@@ -170,13 +162,11 @@ export function AppEditPage() {
   const availablePlans = useMemo(
     () =>
       allPlans
-        .filter((plan) => plan.productCode && form.productCodes.includes(plan.productCode))
+        .filter((plan) => app && plan.appId === app.id)
         .sort(
-          (a, b) =>
-            (a.productCode || '').localeCompare(b.productCode || '') ||
-            a.code.localeCompare(b.code),
+          (a, b) => a.code.localeCompare(b.code),
         ),
-    [allPlans, form.productCodes],
+    [allPlans, app],
   );
 
   const availablePlanMap = useMemo(
@@ -804,36 +794,27 @@ export function AppEditPage() {
           </CardContent>
         </Card>
 
-        {/* ── Section 7: 产品绑定与定价 ───────────────────────────────────── */}
+        {/* ── Section 7: 定价配置 ───────────────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>产品绑定与定价</CardTitle>
+            <CardTitle>定价配置</CardTitle>
             <CardDescription>
-              选择关联产品，并配置该应用的自定义定价梯度（Checkout Offers）
+              配置该应用的自定义定价梯度（Checkout Offers）
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Product checkboxes */}
+            {/* Available plans info */}
             <div>
-              <Label className="mb-2 block">绑定产品</Label>
-              {products.length === 0 ? (
-                <p className="text-xs text-muted-foreground">暂无可用产品</p>
+              <Label className="mb-2 block">关联套餐</Label>
+              {availablePlans.length === 0 ? (
+                <p className="text-xs text-muted-foreground">暂无关联套餐</p>
               ) : (
                 <div className="space-y-2">
-                  {products.map((product) => (
-                    <label key={product.code} className="flex cursor-pointer items-center gap-2">
-                      <Checkbox
-                        checked={form.productCodes.includes(product.code)}
-                        onCheckedChange={(checked) => {
-                          const next = checked
-                            ? [...form.productCodes, product.code]
-                            : form.productCodes.filter((c) => c !== product.code);
-                          setField('productCodes', next);
-                        }}
-                      />
-                      <span className="text-sm font-mono">{product.code}</span>
-                      <span className="text-xs text-muted-foreground">{product.name}</span>
-                    </label>
+                  {availablePlans.map((plan) => (
+                    <div key={plan.code} className="flex items-center gap-2">
+                      <span className="text-sm font-mono">{plan.code}</span>
+                      <span className="text-xs text-muted-foreground">{plan.name}</span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -863,7 +844,7 @@ export function AppEditPage() {
               </div>
 
               {availablePlans.length === 0 && (
-                <p className="text-xs text-muted-foreground">先选择产品，才能配置定价选项</p>
+                <p className="text-xs text-muted-foreground">该应用暂无关联套餐，无法配置定价选项</p>
               )}
 
               {editableOffers.length === 0 && availablePlans.length > 0 && (
@@ -970,7 +951,7 @@ export function AppEditPage() {
                             }
                             placeholder={
                               boundPlan
-                                ? `${formatPlanInterval(boundPlan.interval)} - ${boundPlan.productCode}`
+                                ? `${formatPlanInterval(boundPlan.interval)} - ${boundPlan.code}`
                                 : '简短说明'
                             }
                           />

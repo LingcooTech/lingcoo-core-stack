@@ -1,6 +1,5 @@
 export type AdminSectionKey =
   | 'dashboard'
-  | 'catalog'
   | 'apps'
   | 'secrets'
   | 'orders'
@@ -14,7 +13,6 @@ export type AdminSectionKey =
 export type AdminSectionDataScope =
   | 'paymentSettings'
   | 'apps'
-  | 'products'
   | 'delivery'
   | 'plans'
   | 'entitlements'
@@ -84,49 +82,30 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
       { label: '资源总览', href: '/admin', tone: 'primary' },
       { label: 'API 文档', href: '/docs', tone: 'secondary', external: true, shortcut: 'docs' }
     ],
-    pageDataScopes: ['paymentSettings', 'apps', 'products', 'plans', 'operations', 'observability'],
+    pageDataScopes: ['paymentSettings', 'apps', 'plans', 'operations', 'observability'],
     commandAliases: ['dashboard', 'overview', '总览', '仪表盘', '控制台']
   },
-  catalog: {
-    groupLabel: '商品管理',
-    navTitle: '产品目录',
-    navNote: '产品、功能项与套餐定义',
-    icon: 'CT',
-    title: '产品目录',
-    lead: '定义可售卖的产品，配置功能项和套餐价格。',
-    href: '/admin/catalog',
-    contextCards: [
-      { label: '用途', value: '商品定义', note: '产品是授权和交易的基础单元。' },
-      { label: '关联', value: '应用绑定', note: '产品通过应用管理页绑定到具体应用。' }
-    ],
-    heroActions: [
-      { label: '产品目录', href: '/admin/catalog', tone: 'primary' },
-      { label: '应用管理', href: '/admin/apps', tone: 'secondary' }
-    ],
-    pageDataScopes: ['products', 'plans'],
-    commandAliases: ['catalog', 'products', '产品目录', '产品', '套餐']
-  },
   apps: {
-    groupLabel: '商品管理',
+    groupLabel: '应用管理',
     navTitle: '应用管理',
-    navNote: '应用注册与售卖方案配置',
+    navNote: '应用、功能、定价与上架配置',
     icon: 'AP',
     title: '应用管理',
-    lead: '管理应用注册信息、绑定产品和配置售卖方案。',
+    lead: '管理应用信息、功能定义、定价方案和上架配置。',
     href: '/admin/apps',
     contextCards: [
-      { label: '用途', value: '渠道配置', note: '应用是面向用户的入口，绑定产品后可售卖。' },
+      { label: '用途', value: '应用配置', note: '应用是授权和交易的核心单元。' },
       { label: '密钥', value: '应用密钥', note: '通过密钥管理页为应用签发 API 密钥。' }
     ],
     heroActions: [
       { label: '应用管理', href: '/admin/apps', tone: 'primary' },
       { label: '应用密钥', href: '/admin/secrets', tone: 'secondary' }
     ],
-    pageDataScopes: ['apps', 'products'],
-    commandAliases: ['apps', 'applications', '应用管理', '应用']
+    pageDataScopes: ['apps', 'plans'],
+    commandAliases: ['apps', 'applications', '应用管理', '应用', '产品', '套餐']
   },
   secrets: {
-    groupLabel: '商品管理',
+    groupLabel: '应用管理',
     navTitle: '应用密钥',
     navNote: '生成与管理 API 密钥',
     icon: 'SK',
@@ -281,7 +260,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
-  { label: '商品管理', items: ['catalog', 'apps'] },
+  { label: '应用管理', items: ['apps'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
   { label: '运维', items: ['delivery', 'observability'] }

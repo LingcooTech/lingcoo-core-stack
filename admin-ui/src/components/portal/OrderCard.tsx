@@ -20,7 +20,7 @@ export function OrderCard({
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>{order.app?.name ?? order.product?.name ?? '未命名产品'}</CardTitle>
+            <CardTitle>{order.app?.name ?? '未命名产品'}</CardTitle>
             <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>{order.status}</Badge>
           </div>
           <CardDescription>

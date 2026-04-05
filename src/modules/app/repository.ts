@@ -1,6 +1,6 @@
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 
-import { appProducts, apps, appSecrets } from '../../db/schema';
+import { appOffers, apps, appSecrets } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class AppRepository {
@@ -95,28 +95,74 @@ export class AppRepository {
     return app;
   }
 
-  async listProductMappingsByAppIds(appIds: string[]) {
+  async listOffersByAppId(appId: string) {
+    return this.db
+      .select()
+      .from(appOffers)
+      .where(eq(appOffers.appId, appId))
+      .orderBy(appOffers.sortOrder);
+  }
+
+  async listOffersByAppIds(appIds: string[]) {
     if (appIds.length === 0) {
       return [];
     }
 
-    return this.db.select().from(appProducts).where(inArray(appProducts.appId, appIds));
+    return this.db.select().from(appOffers).where(inArray(appOffers.appId, appIds));
   }
 
-  async replaceAppProducts(appId: string, productIds: string[]) {
-    await this.db.delete(appProducts).where(eq(appProducts.appId, appId));
+  async findOfferByAppIdAndCode(appId: string, code: string) {
+    const [offer] = await this.db
+      .select()
+      .from(appOffers)
+      .where(and(eq(appOffers.appId, appId), eq(appOffers.code, code)))
+      .limit(1);
 
-    if (productIds.length === 0) {
-      return;
+    return offer ?? null;
+  }
+
+  async replaceAppOffers(
+    appId: string,
+    offers: Array<{
+      planId: string;
+      code: string;
+      title: string;
+      description?: string | null;
+      badge?: string | null;
+      priceAmount: number;
+      currency: string;
+      isDefault: boolean;
+      sortOrder: number;
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    }>
+  ) {
+    await this.db.delete(appOffers).where(eq(appOffers.appId, appId));
+
+    if (offers.length === 0) {
+      return [];
     }
 
-    await this.db.insert(appProducts).values(
-      productIds.map((productId) => ({
-        appId,
-        productId,
-        createdAt: new Date()
-      }))
-    );
+    const now = new Date();
+    return this.db
+      .insert(appOffers)
+      .values(
+        offers.map((offer) => ({
+          appId,
+          planId: offer.planId,
+          code: offer.code,
+          title: offer.title,
+          description: offer.description ?? null,
+          badge: offer.badge ?? null,
+          priceAmount: offer.priceAmount,
+          currency: offer.currency,
+          isDefault: offer.isDefault,
+          sortOrder: offer.sortOrder,
+          status: offer.status,
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .returning();
   }
 
   async createAppSecret(input: {

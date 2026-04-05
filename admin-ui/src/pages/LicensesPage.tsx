@@ -39,7 +39,7 @@ export function LicensesPage() {
     mutationFn: grantEntitlement,
     onSuccess: (result) => {
       if (result.granted) {
-        toast.success(`授权已发放给 ${result.user.email}，套餐 ${result.plan.code}，共 ${result.entitlementCount} 条`);
+        toast.success(`授权已发放给 ${result.user.email}，套餐 ${result.plan.code}`);
       } else {
         toast.info(`未重复发放：${result.user.email} 已拥有该 one_time 权益`);
       }
@@ -71,12 +71,12 @@ export function LicensesPage() {
       )
     },
     {
-      key: 'product',
-      header: '产品/功能',
+      key: 'app',
+      header: '应用/套餐',
       cell: (row) => (
         <div>
-          <p className="text-xs font-bold font-mono">{row.product?.code ?? row.productId}</p>
-          {row.feature && <p className="text-xs text-muted-foreground">{row.feature.code}</p>}
+          <p className="text-xs font-bold font-mono">{row.app?.code ?? row.appId}</p>
+          {row.plan && <p className="text-xs text-muted-foreground">{row.plan.code}</p>}
         </div>
       )
     },

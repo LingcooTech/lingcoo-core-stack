@@ -5,7 +5,7 @@ import type { DbExecutor } from '../../db/types';
 
 export type EventRecordInput = {
   userId?: string;
-  productId?: string;
+  appId?: string;
   installId?: string;
   eventName: string;
   eventTime?: Date;
@@ -25,7 +25,7 @@ export class EventRepository {
       .values(
         items.map((item) => ({
           userId: item.userId ?? null,
-          productId: item.productId ?? null,
+          appId: item.appId ?? null,
           installId: item.installId ?? null,
           eventName: item.eventName,
           eventTime: item.eventTime ?? new Date(),

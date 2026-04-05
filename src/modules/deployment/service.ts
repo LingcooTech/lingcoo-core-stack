@@ -9,7 +9,6 @@ import { AppService } from '../app/service';
 import { AppRepository } from '../app/repository';
 import { AuthRepository } from '../auth/repository';
 import { EventService } from '../event/service';
-import { LicenseRepository } from '../license/repository';
 import { DeploymentRepository } from './repository';
 
 type DeploymentAppRecord = Awaited<ReturnType<AppService['getPublicApp']>>;
@@ -20,10 +19,9 @@ export class DeploymentService {
     private readonly env: AppEnv
   ) {}
 
-  private async resolveDeployableProduct(input: {
+  private async resolveDeployableApp(input: {
     userId: string;
     appCode: string;
-    productCode?: string;
   }) {
     const app = await new AppService(this.db).getPublicApp(input.appCode);
 
@@ -32,50 +30,27 @@ export class DeploymentService {
     }
 
     const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
-    const entitledProductCodes = new Set(entitlementView.summary.map((item) => item.productCode));
-    const deployableProducts = app.products.filter((product) => entitledProductCodes.has(product.code));
 
-    if (deployableProducts.length === 0) {
+    if (entitlementView.summary.length === 0) {
       throw httpError(403, 'You do not have an active deployment entitlement for this app');
-    }
-
-    if (input.productCode) {
-      const matched = deployableProducts.find((product) => product.code === input.productCode);
-      if (!matched) {
-        throw httpError(404, 'The selected product is not deployable for this account');
-      }
-
-      return {
-        app,
-        product: matched,
-        entitlementSummary: entitlementView.summary.filter((item) => item.productCode === matched.code)
-      };
-    }
-
-    if (deployableProducts.length > 1) {
-      throw httpError(422, 'productCode is required because this app has multiple deployable products');
     }
 
     return {
       app,
-      product: deployableProducts[0],
-      entitlementSummary: entitlementView.summary.filter((item) => item.productCode === deployableProducts[0].code)
+      entitlementSummary: entitlementView.summary
     };
   }
 
   private async hydrateDeployments(rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>) {
     const appIds = [...new Set(rows.map((item) => item.appId))];
-    const productIds = [...new Set(rows.map((item) => item.productId))];
     const userIds = [...new Set(rows.map((item) => item.userId))];
-    const [apps, products, users, tokens] = await Promise.all([
+    const [apps, users, tokens] = await Promise.all([
       new AppRepository(this.db).listAppsByIds(appIds),
-      new LicenseRepository(this.db).listProductsByIds(productIds),
       new AuthRepository(this.db).listUsersByIds(userIds),
       new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id))
     ]);
 
     const appMap = new Map(apps.map((item) => [item.id, item]));
-    const productMap = new Map(products.map((item) => [item.id, item]));
     const userMap = new Map(users.map((item) => [item.id, item]));
     const latestTokenMap = new Map<string, (typeof tokens)[number]>();
     for (const token of tokens) {
@@ -86,7 +61,6 @@ export class DeploymentService {
 
     return rows.map((row) => {
       const app = appMap.get(row.appId) ?? null;
-      const product = productMap.get(row.productId) ?? null;
       const user = userMap.get(row.userId) ?? null;
       const token = latestTokenMap.get(row.id) ?? null;
 
@@ -97,9 +71,6 @@ export class DeploymentService {
           : null,
         app: app
           ? { id: app.id, code: app.code, name: app.name, type: app.type }
-          : null,
-        product: product
-          ? { id: product.id, code: product.code, name: product.name, type: product.type }
           : null,
         latestToken: token
           ? {
@@ -285,7 +256,6 @@ export class DeploymentService {
   async createDeployment(input: {
     userId: string;
     appCode: string;
-    productCode?: string;
     label: string;
     environment: string;
     serverHost?: string;
@@ -294,16 +264,14 @@ export class DeploymentService {
     wsDomain?: string;
     installPath?: string;
   }) {
-    const selection = await this.resolveDeployableProduct({
+    const selection = await this.resolveDeployableApp({
       userId: input.userId,
-      appCode: input.appCode,
-      productCode: input.productCode
+      appCode: input.appCode
     });
 
     const deployment = await new DeploymentRepository(this.db).createDeployment({
       userId: input.userId,
       appId: selection.app.id,
-      productId: selection.product.id,
       label: input.label,
       environment: input.environment,
       serverHost: input.serverHost ?? null,
@@ -312,19 +280,17 @@ export class DeploymentService {
       wsDomain: input.wsDomain ?? null,
       installPath: input.installPath ?? '/opt/fd-headless-wp-system',
       meta: {
-        appCode: selection.app.code,
-        productCode: selection.product.code
+        appCode: selection.app.code
       }
     });
 
     await new EventService(this.db).capture({
       userId: input.userId,
-      productId: selection.product.id,
+      appId: selection.app.id,
       eventName: 'deployment.created',
       properties: {
         deploymentId: deployment.id,
         appCode: selection.app.code,
-        productCode: selection.product.code,
         environment: deployment.environment
       }
     });
@@ -365,7 +331,7 @@ export class DeploymentService {
 
     await new EventService(this.db).capture({
       userId: input.userId,
-      productId: deployment.productId,
+      appId: deployment.appId,
       eventName: 'deployment.token_issued',
       properties: {
         deploymentId: deployment.id,
@@ -416,7 +382,7 @@ export class DeploymentService {
 
     await new EventService(this.db).capture({
       userId: deployment.userId,
-      productId: deployment.productId,
+      appId: deployment.appId,
       eventName: 'deployment.token_exchanged',
       properties: {
         deploymentId: deployment.id,

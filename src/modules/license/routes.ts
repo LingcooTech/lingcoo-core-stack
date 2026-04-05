@@ -9,8 +9,8 @@ export const licenseRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/v1/products', async () => {
-    const { products } = await new LicenseService(app.db).getCatalogSnapshot();
-    return { items: products };
+    const snapshot = await new LicenseService(app.db).getCatalogSnapshot();
+    return { items: [] };
   });
 
   app.get('/v1/plans', async () => {

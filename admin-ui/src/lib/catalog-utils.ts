@@ -6,7 +6,7 @@ export const appSchema = z.object({
   description: z.string().optional(),
   type: z.enum(['chrome_extension', 'web_app', 'service']),
   status: z.enum(['active', 'inactive', 'cancelled', 'expired']),
-  productCodes: z.array(z.string()).min(1, '至少绑定一个产品')
+  productCodes: z.array(z.string())
 });
 export type AppFormValues = z.infer<typeof appSchema>;
 

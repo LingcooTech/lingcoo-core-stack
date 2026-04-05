@@ -45,32 +45,47 @@ export const upsertAppSchema = z.object({
   sortOrder: z.number().int().min(0).max(99999).optional(),
   type: z.enum(['chrome_extension', 'web_app', 'service']).default('chrome_extension'),
   status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
-  productCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(50),
-  checkoutOffers: z
+  features: z
+    .array(
+      z.object({
+        code: z.string().trim().min(1).max(64),
+        name: z.string().trim().min(1).max(120),
+        kind: z.string().trim().min(1).max(32).default('boolean'),
+        status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active')
+      })
+    )
+    .max(100)
+    .optional(),
+  plans: z
+    .array(
+      z.object({
+        code: z.string().trim().min(1).max(64),
+        name: z.string().trim().min(1).max(120),
+        billingProvider: z.string().trim().min(1).max(32).default('self_hosted'),
+        billingPriceId: z.string().trim().max(128).optional(),
+        priceAmount: z.number().int().min(0).max(999999999),
+        currency: z.string().trim().min(1).max(16).default('CNY'),
+        interval: z.enum(['month', 'year', 'one_time']),
+        status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
+        featureCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(100),
+        meta: z.record(z.string(), z.unknown()).optional()
+      })
+    )
+    .max(100)
+    .optional(),
+  offers: z
     .array(
       z.object({
         code: z.string().trim().min(1).max(64),
         planCode: z.string().trim().min(1).max(64),
-        title: z.string().trim().min(1).max(120),
-        description: z.string().trim().max(255).optional(),
+        title: z.string().trim().min(1).max(200),
+        description: z.string().trim().max(500).optional(),
         badge: z.string().trim().max(64).optional(),
         priceAmount: z.number().int().min(0).max(999999999),
         currency: z.string().trim().min(1).max(16).default('CNY'),
         status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
         isDefault: z.boolean().optional(),
         sortOrder: z.number().int().min(0).max(9999).optional()
-      })
-    )
-    .max(100)
-    .optional(),
-  checkoutDefaultOfferCode: z.string().trim().min(1).max(64).optional(),
-  planConfigs: z
-    .array(
-      z.object({
-        code: z.string().trim().min(1).max(64),
-        priceAmount: z.number().int().min(0).max(999999999),
-        currency: z.string().trim().min(1).max(16).default('CNY'),
-        status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active')
       })
     )
     .max(100)

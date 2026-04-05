@@ -10,7 +10,6 @@ export class CheckoutRepository {
     sessionCode: string;
     userId: string;
     appId: string;
-    productId: string;
     planId: string;
     orderId: string;
     provider: 'wechat_pay' | 'alipay';
@@ -30,7 +29,6 @@ export class CheckoutRepository {
         sessionCode: input.sessionCode,
         userId: input.userId,
         appId: input.appId,
-        productId: input.productId,
         planId: input.planId,
         orderId: input.orderId,
         provider: input.provider,

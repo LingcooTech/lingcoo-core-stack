@@ -10,21 +10,11 @@ export function useCatalogData() {
     queryFn: listCatalogSnapshot
   });
 
-  const products = catalogData?.products ?? [];
   const features = catalogData?.features ?? [];
   const planFeatures = catalogData?.planFeatures ?? [];
-  const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const allPlans = useMemo(
-    () =>
-      (catalogData?.plans ?? []).map((plan) => {
-        const product = plan.productId ? productMap.get(plan.productId) : null;
-        return {
-          ...plan,
-          productCode: plan.productCode || product?.code,
-          productName: plan.productName || product?.name
-        };
-      }),
-    [catalogData?.plans, productMap]
+    () => (catalogData?.plans ?? []).map((plan) => ({ ...plan })),
+    [catalogData?.plans]
   );
   const featureMap = useMemo(() => new Map(features.map((feature) => [feature.id, feature])), [features]);
   const planFeatureCodesByPlanId = useMemo(() => {
@@ -40,36 +30,48 @@ export function useCatalogData() {
     return grouped;
   }, [featureMap, planFeatures]);
   const catalogBundles = useMemo<CatalogBundleSummary[]>(() => {
-    const featuresByProduct = new Map<string, FeatureSummary[]>();
+    const featuresByApp = new Map<string, FeatureSummary[]>();
     for (const feature of features) {
-      if (!feature.productId) continue;
-      if (!featuresByProduct.has(feature.productId)) {
-        featuresByProduct.set(feature.productId, []);
+      if (!feature.appId) continue;
+      if (!featuresByApp.has(feature.appId)) {
+        featuresByApp.set(feature.appId, []);
       }
-      featuresByProduct.get(feature.productId)?.push(feature);
+      featuresByApp.get(feature.appId)?.push(feature);
     }
 
-    const plansByProduct = new Map<string, PlanSummary[]>();
+    const plansByApp = new Map<string, PlanSummary[]>();
     for (const plan of allPlans) {
-      if (!plan.productId) continue;
-      if (!plansByProduct.has(plan.productId)) {
-        plansByProduct.set(plan.productId, []);
+      if (!plan.appId) continue;
+      if (!plansByApp.has(plan.appId)) {
+        plansByApp.set(plan.appId, []);
       }
-      plansByProduct.get(plan.productId)?.push(plan);
+      plansByApp.get(plan.appId)?.push(plan);
     }
 
-    return products.map((product) => {
-      const productPlans = plansByProduct.get(product.id) ?? [];
+    // Collect unique appIds from plans and features
+    const appIds = new Set<string>();
+    for (const plan of allPlans) {
+      if (plan.appId) appIds.add(plan.appId);
+    }
+    for (const feature of features) {
+      if (feature.appId) appIds.add(feature.appId);
+    }
+
+    return [...appIds].map((appId) => {
+      const appPlans = plansByApp.get(appId) ?? [];
       return {
-        product,
-        features: featuresByProduct.get(product.id) ?? [],
-        plans: productPlans,
+        product: { id: appId, code: appId, name: appId },
+        features: featuresByApp.get(appId) ?? [],
+        plans: appPlans,
         planFeatureCodesByPlanCode: Object.fromEntries(
-          productPlans.map((plan) => [plan.code, planFeatureCodesByPlanId.get(plan.id) ?? []])
+          appPlans.map((plan) => [plan.code, planFeatureCodesByPlanId.get(plan.id) ?? []])
         )
       };
     });
-  }, [allPlans, features, planFeatureCodesByPlanId, products]);
+  }, [allPlans, features, planFeatureCodesByPlanId]);
+
+  // For backward compat: products is now empty since CatalogSnapshot no longer has products
+  const products: { id: string; code: string; name: string }[] = [];
 
   return { products, features, allPlans, featureMap, planFeatureCodesByPlanId, catalogBundles, isLoading };
 }

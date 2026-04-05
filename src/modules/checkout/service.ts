@@ -67,24 +67,17 @@ export class CheckoutService {
       throw httpError(404, 'Checkout session not found');
     }
 
-    const [order, app, product, plan] = await Promise.all([
+    const [order, app, plan] = await Promise.all([
       new BillingRepository(this.db).findOrderById(session.orderId),
       new AppRepository(this.db).findAppById(session.appId),
-      new LicenseRepository(this.db).getProductById(session.productId),
       new LicenseRepository(this.db).getPlanById(session.planId)
     ]);
 
-    if (!order || !app || !product || !plan) {
+    if (!order || !app || !plan) {
       throw httpError(500, 'Checkout session is missing related resources');
     }
 
-    return {
-      session,
-      order,
-      app,
-      product,
-      plan
-    };
+    return { session, order, app, plan };
   }
 
   private toCreatedSessionPayload(input: {
@@ -95,15 +88,7 @@ export class CheckoutService {
       expiresAt: Date | null;
       createdAt: Date;
     };
-    app: {
-      code: string;
-      name: string;
-      type: string;
-    };
-    product: {
-      code: string;
-      name: string;
-    };
+    app: { code: string; name: string; type: string };
     plan: {
       code: string;
       name: string;
@@ -123,15 +108,8 @@ export class CheckoutService {
       sessionId: input.session.id,
       sessionCode: input.session.sessionCode,
       status: input.session.status,
-      app: {
-        code: input.app.code,
-        name: input.app.name,
-        type: input.app.type
-      },
-      product: {
-        code: input.product.code,
-        name: input.product.name
-      },
+      app: { code: input.app.code, name: input.app.name, type: input.app.type },
+      product: { code: input.app.code, name: input.app.name },
       plan: {
         code: input.plan.code,
         name: input.plan.name,
@@ -171,10 +149,10 @@ export class CheckoutService {
       planCode: input.planCode,
       offerCode: input.offerCode
     });
-    const { app, plan, product, offer } = selection;
+    const { app, plan, offer } = selection;
 
     if (plan.interval === 'one_time') {
-      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, product.id);
+      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, app.id);
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
@@ -196,7 +174,7 @@ export class CheckoutService {
       if (existingOrder?.status === 'pending') {
         await new EventService(this.db).capture({
           userId: input.userId,
-          productId: product.id,
+          appId: app.id,
           eventName: 'checkout.session_reused',
           properties: {
             sessionCode: reusableSession.sessionCode,
@@ -209,7 +187,6 @@ export class CheckoutService {
         return this.toCreatedSessionPayload({
           session: reusableSession,
           app,
-          product,
           plan,
           order: existingOrder
         });
@@ -234,7 +211,6 @@ export class CheckoutService {
         sessionCode,
         userId: input.userId,
         appId: app.id,
-        productId: product.id,
         planId: plan.id,
         orderId: billingResult.order.id,
         provider,
@@ -274,7 +250,7 @@ export class CheckoutService {
 
       await new EventService(tx as DbClient).capture({
         userId: input.userId,
-        productId: product.id,
+        appId: app.id,
         eventName: 'checkout.session_created',
         properties: {
           sessionCode,
@@ -291,7 +267,6 @@ export class CheckoutService {
     return this.toCreatedSessionPayload({
       session,
       app,
-      product,
       plan,
       order: billingResult.order
     });
@@ -315,8 +290,8 @@ export class CheckoutService {
         type: detail.app.type
       },
       product: {
-        code: detail.product.code,
-        name: detail.product.name
+        code: detail.app.code,
+        name: detail.app.name
       },
       plan: {
         code: detail.plan.code,
@@ -386,8 +361,8 @@ export class CheckoutService {
         type: detail.app.type
       },
       product: {
-        code: detail.product.code,
-        name: detail.product.name
+        code: detail.app.code,
+        name: detail.app.name
       },
       plan: {
         code: detail.plan.code,

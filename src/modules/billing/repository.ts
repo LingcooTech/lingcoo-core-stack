@@ -8,7 +8,7 @@ export class BillingRepository {
 
   async createOrder(input: {
     userId: string;
-    productId: string;
+    appId: string;
     planId: string;
     orderNo: string;
     provider: 'wechat_pay' | 'alipay';

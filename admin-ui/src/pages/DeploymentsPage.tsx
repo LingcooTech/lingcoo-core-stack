@@ -28,18 +28,16 @@ export function DeploymentsPage() {
         if (app.type !== 'service' && app.type !== 'web_app') {
           return false;
         }
-        return (app.products ?? []).some((product) => summaryMap.has(product.code));
+        return summaryMap.has(app.code);
       }).map((app) => ({
         appCode: app.code,
         appName: app.name,
         appType: app.type,
-        products: (app.products ?? [])
-          .filter((product) => summaryMap.has(product.code))
-          .map((product) => ({
-            code: product.code,
-            name: product.name,
-            featureCount: summaryMap.get(product.code)?.length ?? 0
-          }))
+        products: [{
+          code: app.code,
+          name: app.name,
+          featureCount: summaryMap.get(app.code)?.length ?? 0
+        }]
       })),
     [apps, summaries]
   );

@@ -59,7 +59,7 @@ export function EntitlementProductCard({
           {items.map((item) => (
             <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-slate-800">{item.feature?.name ?? item.feature?.code ?? '未命名能力'}</span>
+                <span className="font-medium text-slate-800">{item.plan?.name ?? item.plan?.code ?? '未命名能力'}</span>
                 <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>{item.status}</Badge>
               </div>
               <p className="mt-1 text-xs">生效时间：{item.startsAt ? formatTime(item.startsAt) : '立即生效'}</p>

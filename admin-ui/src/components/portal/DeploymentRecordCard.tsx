@@ -22,7 +22,7 @@ export function DeploymentRecordCard({
           <div>
             <CardTitle>{deployment.label}</CardTitle>
             <CardDescription>
-              {deployment.app?.name ?? 'Unknown App'} · {deployment.product?.name ?? deployment.product?.code ?? 'Unknown Product'}
+              {deployment.app?.name ?? deployment.app?.code ?? 'Unknown App'}
             </CardDescription>
           </div>
           <Badge variant={deployment.status === 'active' ? 'default' : 'secondary'}>{deployment.status}</Badge>

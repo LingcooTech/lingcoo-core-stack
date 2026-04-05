@@ -112,7 +112,7 @@ export function DashboardPage() {
                   <div className="min-w-0">
                     <p className="text-xs font-bold font-mono text-foreground truncate">{order.orderNo}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {order.user?.email ?? order.userId} · {order.product?.name ?? order.productId}
+                      {order.user?.email ?? order.userId} · {order.app?.name ?? order.appId}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

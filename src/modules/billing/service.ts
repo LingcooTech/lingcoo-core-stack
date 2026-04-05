@@ -38,13 +38,13 @@ export class BillingService {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
-    const { plan, product, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
+    const { app, plan, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
       planCode: input.planCode,
       offerCode: input.offerCode
     });
 
     if (plan.interval === 'one_time') {
-      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, product.id);
+      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, app.id);
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
@@ -57,25 +57,24 @@ export class BillingService {
     const repository = new BillingRepository(this.db);
     const order = await repository.createOrder({
       userId: input.userId,
-      productId: product.id,
+      appId: app.id,
       planId: plan.id,
       orderNo: createOrderNo(),
       provider: input.provider,
-      subject: `${product.name} - ${offer.title}`,
+      subject: `${app.name} - ${offer.title}`,
       amount: offer.priceAmount,
       currency: offer.currency,
       meta: {
         appCode: input.appCode,
         offerCode: offer.code,
         offerTitle: offer.title,
-        planCode: plan.code,
-        productCode: product.code
+        planCode: plan.code
       }
     });
 
     await new EventService(this.db).capture({
       userId: input.userId,
-      productId: product.id,
+      appId: app.id,
       eventName: 'billing.order_created',
       properties: {
         orderNo: order.orderNo,
@@ -101,7 +100,7 @@ export class BillingService {
     return {
       order,
       plan,
-      product,
+      app,
       offer,
       payment
     };
@@ -373,7 +372,7 @@ export class BillingService {
 
     await new EventService(tx).capture({
       userId: input.order.userId,
-      productId: input.order.productId,
+      appId: input.order.appId,
       eventName: 'billing.order_paid',
       properties: {
         orderNo: input.order.orderNo,

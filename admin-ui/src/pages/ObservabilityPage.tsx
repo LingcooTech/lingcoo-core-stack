@@ -28,7 +28,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="text-xs font-bold font-mono">{row.eventName}</p>
-          {row.product && <p className="text-[10px] text-muted-foreground">{row.product.code}</p>}
+          {row.app && <p className="text-[10px] text-muted-foreground">{row.app.code}</p>}
           {row.install && <p className="text-[10px] text-muted-foreground font-mono">{row.install.extensionInstallId}</p>}
         </div>
       )

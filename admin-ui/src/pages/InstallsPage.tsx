@@ -23,11 +23,10 @@ export function InstallsPage() {
     },
     {
       key: 'app',
-      header: '应用/产品',
+      header: '应用',
       cell: (row) => (
         <div>
           <p className="text-xs font-mono">{row.app?.code ?? '—'}</p>
-          <p className="text-[10px] text-muted-foreground">{row.product?.code ?? '—'}</p>
           <StatusPill tone="neutral" label={row.app?.type ?? '—'} className="mt-1" />
         </div>
       )

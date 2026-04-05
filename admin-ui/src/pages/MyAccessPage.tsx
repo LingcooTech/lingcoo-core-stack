@@ -17,18 +17,16 @@ export function MyAccessPage() {
 
   const appsByProduct = new Map<string, string[]>();
   for (const app of apps) {
-    for (const product of app.products ?? []) {
-      if (!appsByProduct.has(product.code)) {
-        appsByProduct.set(product.code, []);
-      }
-      appsByProduct.get(product.code)?.push(app.name);
+    if (!appsByProduct.has(app.code)) {
+      appsByProduct.set(app.code, []);
     }
+    appsByProduct.get(app.code)?.push(app.name);
   }
 
   const featureNameMap = new Map<string, string>();
   for (const item of items) {
-    if (item.feature?.code && item.feature?.name) {
-      featureNameMap.set(item.feature.code, item.feature.name);
+    if (item.plan?.code && item.plan?.name) {
+      featureNameMap.set(item.plan.code, item.plan.name);
     }
   }
 
@@ -54,7 +52,7 @@ export function MyAccessPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {summary.map((entry) => {
-            const relatedItems = items.filter((item) => item.product?.code === entry.productCode);
+            const relatedItems = items.filter((item) => item.app?.code === entry.productCode);
             const relatedApps = appsByProduct.get(entry.productCode) ?? [];
             const featureNames = entry.featureCodes.map(
               (code) => featureNameMap.get(code) ?? code
@@ -63,7 +61,7 @@ export function MyAccessPage() {
             return (
               <EntitlementProductCard
                 key={entry.productCode}
-                productName={relatedItems[0]?.product?.name ?? entry.productCode}
+                productName={relatedItems[0]?.app?.name ?? entry.productCode}
                 featureNames={featureNames}
                 relatedApps={relatedApps}
                 items={relatedItems}

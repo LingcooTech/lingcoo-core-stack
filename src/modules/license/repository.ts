@@ -1,37 +1,33 @@
 import { and, desc, eq, gte, inArray, isNull, ne, notInArray, or } from 'drizzle-orm';
 
-import { entitlements, features, planFeatures, plans, products } from '../../db/schema';
+import { entitlements, features, planFeatures, plans } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class LicenseRepository {
   constructor(private readonly db: DbExecutor) {}
 
-  async listProducts() {
-    return this.db.select().from(products).orderBy(desc(products.createdAt));
-  }
-
   async listPlans() {
     return this.db.select().from(plans).orderBy(desc(plans.createdAt));
   }
 
-  async listPlansByProductIds(productIds: string[]) {
-    if (productIds.length === 0) {
+  async listPlansByAppIds(appIds: string[]) {
+    if (appIds.length === 0) {
       return [];
     }
 
-    return this.db.select().from(plans).where(inArray(plans.productId, productIds));
+    return this.db.select().from(plans).where(inArray(plans.appId, appIds));
   }
 
-  async listPlansByProductId(productId: string) {
-    return this.db.select().from(plans).where(eq(plans.productId, productId));
+  async listPlansByAppId(appId: string) {
+    return this.db.select().from(plans).where(eq(plans.appId, appId));
   }
 
   async listFeatures() {
     return this.db.select().from(features).orderBy(desc(features.createdAt));
   }
 
-  async listFeaturesByProductId(productId: string) {
-    return this.db.select().from(features).where(eq(features.productId, productId));
+  async listFeaturesByAppId(appId: string) {
+    return this.db.select().from(features).where(eq(features.appId, appId));
   }
 
   async listPlanFeatureMappings() {
@@ -61,11 +57,6 @@ export class LicenseRepository {
     return this.db.select().from(plans).where(inArray(plans.id, planIds));
   }
 
-  async getProductById(productId: string) {
-    const [product] = await this.db.select().from(products).where(eq(products.id, productId)).limit(1);
-    return product ?? null;
-  }
-
   async listPlanFeatureMappingsByPlanId(planId: string) {
     return this.db.select().from(planFeatures).where(eq(planFeatures.planId, planId));
   }
@@ -78,50 +69,6 @@ export class LicenseRepository {
     return this.db.select().from(features).where(inArray(features.id, featureIds));
   }
 
-  async listProductsByIds(productIds: string[]) {
-    if (productIds.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(products).where(inArray(products.id, productIds));
-  }
-
-  async listProductsByCodes(productCodes: string[]) {
-    if (productCodes.length === 0) {
-      return [];
-    }
-
-    return this.db.select().from(products).where(inArray(products.code, productCodes));
-  }
-
-  async upsertProduct(input: {
-    code: string;
-    name: string;
-    type: 'chrome_extension' | 'web_app' | 'service';
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-  }) {
-    const [product] = await this.db
-      .insert(products)
-      .values({
-        code: input.code,
-        name: input.name,
-        type: input.type,
-        status: input.status,
-        createdAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: products.code,
-        set: {
-          name: input.name,
-          type: input.type,
-          status: input.status
-        }
-      })
-      .returning();
-
-    return product;
-  }
-
   async listPlansByCodes(planCodes: string[]) {
     if (planCodes.length === 0) {
       return [];
@@ -131,7 +78,7 @@ export class LicenseRepository {
   }
 
   async upsertPlan(input: {
-    productId: string;
+    appId: string;
     code: string;
     name: string;
     billingProvider: string;
@@ -145,7 +92,7 @@ export class LicenseRepository {
     const [plan] = await this.db
       .insert(plans)
       .values({
-        productId: input.productId,
+        appId: input.appId,
         code: input.code,
         name: input.name,
         billingProvider: input.billingProvider,
@@ -160,7 +107,7 @@ export class LicenseRepository {
       .onConflictDoUpdate({
         target: plans.code,
         set: {
-          productId: input.productId,
+          appId: input.appId,
           name: input.name,
           billingProvider: input.billingProvider,
           billingPriceId: input.billingPriceId ?? null,
@@ -177,7 +124,7 @@ export class LicenseRepository {
   }
 
   async upsertFeature(input: {
-    productId: string;
+    appId: string;
     code: string;
     name: string;
     kind: string;
@@ -186,7 +133,7 @@ export class LicenseRepository {
     const [feature] = await this.db
       .insert(features)
       .values({
-        productId: input.productId,
+        appId: input.appId,
         code: input.code,
         name: input.name,
         kind: input.kind,
@@ -196,7 +143,7 @@ export class LicenseRepository {
       .onConflictDoUpdate({
         target: features.code,
         set: {
-          productId: input.productId,
+          appId: input.appId,
           name: input.name,
           kind: input.kind,
           status: input.status
@@ -230,26 +177,26 @@ export class LicenseRepository {
       .returning();
   }
 
-  async deactivatePlansByProductExceptCodes(productId: string, retainedCodes: string[]) {
+  async deactivatePlansByAppExceptCodes(appId: string, retainedCodes: string[]) {
     return this.db
       .update(plans)
       .set({ status: 'inactive' })
       .where(
         retainedCodes.length > 0
-          ? and(eq(plans.productId, productId), notInArray(plans.code, retainedCodes))
-          : eq(plans.productId, productId)
+          ? and(eq(plans.appId, appId), notInArray(plans.code, retainedCodes))
+          : eq(plans.appId, appId)
       )
       .returning();
   }
 
-  async deactivateFeaturesByProductExceptCodes(productId: string, retainedCodes: string[]) {
+  async deactivateFeaturesByAppExceptCodes(appId: string, retainedCodes: string[]) {
     return this.db
       .update(features)
       .set({ status: 'inactive' })
       .where(
         retainedCodes.length > 0
-          ? and(eq(features.productId, productId), notInArray(features.code, retainedCodes))
-          : eq(features.productId, productId)
+          ? and(eq(features.appId, appId), notInArray(features.code, retainedCodes))
+          : eq(features.appId, appId)
       )
       .returning();
   }
@@ -281,24 +228,23 @@ export class LicenseRepository {
       .where(and(eq(entitlements.sourceType, sourceType), eq(entitlements.sourceId, sourceId)));
   }
 
-  async createEntitlements(
-    values: Array<{
-      userId: string;
-      productId: string;
-      featureId: string;
-      sourceType: 'order' | 'subscription' | 'grant' | 'trial';
-      sourceId?: string | null;
-      status: 'active' | 'inactive' | 'cancelled' | 'expired';
-      startsAt?: Date | null;
-      expiresAt?: Date | null;
-      meta?: Record<string, unknown>;
-    }>
-  ) {
-    if (values.length === 0) {
-      return [];
-    }
+  async createEntitlement(input: {
+    userId: string;
+    appId: string;
+    planId: string;
+    sourceType: 'order' | 'subscription' | 'grant' | 'trial';
+    sourceId?: string | null;
+    status: 'active' | 'inactive' | 'cancelled' | 'expired';
+    startsAt?: Date | null;
+    expiresAt?: Date | null;
+    meta?: Record<string, unknown>;
+  }) {
+    const [entitlement] = await this.db
+      .insert(entitlements)
+      .values(input)
+      .returning();
 
-    return this.db.insert(entitlements).values(values).returning();
+    return entitlement;
   }
 
   async listEffectiveEntitlementsByUserId(userId: string, now = new Date()) {
@@ -315,14 +261,14 @@ export class LicenseRepository {
       .orderBy(desc(entitlements.createdAt));
   }
 
-  async listEffectiveEntitlementsByUserIdAndProductId(userId: string, productId: string, now = new Date()) {
+  async listEffectiveEntitlementsByUserIdAndAppId(userId: string, appId: string, now = new Date()) {
     return this.db
       .select()
       .from(entitlements)
       .where(
         and(
           eq(entitlements.userId, userId),
-          eq(entitlements.productId, productId),
+          eq(entitlements.appId, appId),
           eq(entitlements.status, 'active'),
           or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
         )
