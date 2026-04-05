@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { clearSmtpSettings, getSmtpSettings, upsertSmtpSettings } from '@/api/settings';
+import { clearSmtpSettings, getSmtpSettings, sendSmtpTestEmail, upsertSmtpSettings } from '@/api/settings';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
@@ -22,6 +22,8 @@ const smtpSchema = z.object({
   password: z.string().optional(),
   from: z.string().email('请输入有效邮箱').or(z.literal(''))
 });
+
+const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 
@@ -40,6 +42,7 @@ function sourceLabel(source: 'database' | 'env' | 'none') {
 export function SettingsPage() {
   const qc = useQueryClient();
   const [clearOpen, setClearOpen] = useState(false);
+  const [testTo, setTestTo] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
     queryFn: getSmtpSettings
@@ -97,6 +100,27 @@ export function SettingsPage() {
       await qc.invalidateQueries({ queryKey: ['system-settings', 'smtp'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+  });
+
+  const testMutation = useMutation({
+    mutationFn: sendSmtpTestEmail,
+    onSuccess: (result) => {
+      toast.success(`测试邮件已发送到 ${result.to}`);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败')
+  });
+
+  const handleSendTestEmail = form.handleSubmit((values) => {
+    const parsed = testEmailSchema.safeParse(testTo);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? '请输入有效的测试收件邮箱');
+      return;
+    }
+
+    testMutation.mutate({
+      ...values,
+      to: parsed.data
+    });
   });
 
   return (
@@ -233,6 +257,26 @@ export function SettingsPage() {
                   <Button type="button" variant="outline" disabled={clearMutation.isPending} onClick={() => setClearOpen(true)}>
                     清空数据库配置
                   </Button>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-foreground">发送测试邮件</h3>
+                    <p className="text-sm text-muted-foreground">
+                      使用当前表单中的 SMTP 参数发送一封测试邮件，不会自动保存本页改动。
+                    </p>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                    <Input
+                      type="email"
+                      value={testTo}
+                      onChange={(event) => setTestTo(event.target.value)}
+                      placeholder="test@example.com"
+                    />
+                    <Button type="button" variant="secondary" disabled={testMutation.isPending} onClick={handleSendTestEmail}>
+                      {testMutation.isPending ? '发送中...' : '发送测试邮件'}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>

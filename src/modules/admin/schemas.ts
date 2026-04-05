@@ -28,6 +28,10 @@ export const smtpSettingsSchema = z.object({
   from: z.string().trim().email().optional()
 });
 
+export const smtpTestEmailSchema = smtpSettingsSchema.extend({
+  to: z.string().trim().email()
+});
+
 export const adminListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),

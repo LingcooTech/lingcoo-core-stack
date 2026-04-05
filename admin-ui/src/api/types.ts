@@ -155,6 +155,12 @@ export interface SmtpSettingsOverview {
   };
 }
 
+export interface SmtpTestEmailResult {
+  sent: boolean;
+  to: string;
+  from: string;
+}
+
 export interface DeliverySettingsOverview {
   appCode: string;
   configured: boolean;

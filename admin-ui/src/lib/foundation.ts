@@ -260,7 +260,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
-  { label: '应用管理', items: ['apps', 'secrets'] },
+  { label: '应用管理', items: ['apps'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
   { label: '运维', items: ['settings', 'observability'] }

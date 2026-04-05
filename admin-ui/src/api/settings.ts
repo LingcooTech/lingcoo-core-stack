@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { SmtpSettingsOverview } from './types';
+import type { SmtpSettingsOverview, SmtpTestEmailResult } from './types';
 
 export interface SmtpSettingsInput {
   host?: string;
@@ -8,6 +8,10 @@ export interface SmtpSettingsInput {
   user?: string;
   password?: string;
   from?: string;
+}
+
+export interface SmtpTestEmailInput extends SmtpSettingsInput {
+  to: string;
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {
@@ -23,4 +27,11 @@ export async function upsertSmtpSettings(payload: SmtpSettingsInput): Promise<Sm
 
 export async function clearSmtpSettings(): Promise<void> {
   await apiClient('/v1/admin/system-settings/smtp', { method: 'DELETE' });
+}
+
+export async function sendSmtpTestEmail(payload: SmtpTestEmailInput): Promise<SmtpTestEmailResult> {
+  return apiClient<SmtpTestEmailResult>('/v1/admin/system-settings/smtp/test', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }

@@ -23,6 +23,7 @@ import {
   alipayPaymentSettingsSchema,
   paymentProviderParamsSchema,
   smtpSettingsSchema,
+  smtpTestEmailSchema,
   wechatPaymentSettingsSchema
 } from './schemas';
 
@@ -187,6 +188,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.put('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async (request) => {
     const payload = smtpSettingsSchema.parse(request.body);
     return new SmtpSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  });
+
+  app.post('/v1/admin/system-settings/smtp/test', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = smtpTestEmailSchema.parse(request.body);
+    return new SmtpSettingsService(app.db, app.appEnv).sendTestEmail(payload);
   });
 
   app.delete('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {

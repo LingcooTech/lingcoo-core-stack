@@ -3,6 +3,8 @@ import { eq } from 'drizzle-orm';
 import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
+import { httpError } from './errors';
+import { Mailer } from './mailer';
 import { decryptJson, encryptJson } from './settings-crypto';
 
 export type SmtpSettingsSource = 'database' | 'env' | 'none';
@@ -177,6 +179,31 @@ export class SmtpSettingsService {
     return (await this.getDatabaseSettings()) ?? this.getEnvSettings();
   }
 
+  async resolveDraftSettings(
+    input: {
+      host?: string;
+      port?: number;
+      secure?: boolean;
+      user?: string;
+      password?: string;
+      from?: string;
+    } = {}
+  ): Promise<SmtpSettings> {
+    const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
+
+    return {
+      host: normalizeString(input.host) || existing?.host || '',
+      port: normalizePort(input.port, existing?.port ?? 465),
+      secure:
+        typeof input.secure === 'boolean'
+          ? input.secure
+          : existing?.secure ?? normalizePort(input.port, 465) === 465,
+      user: normalizeString(input.user) || existing?.user || '',
+      password: normalizeString(input.password) || existing?.password || '',
+      from: normalizeString(input.from) || existing?.from || this.getDefaultFrom()
+    };
+  }
+
   async getOverview(): Promise<SmtpSettingsOverview> {
     const databaseSettings = await this.getDatabaseSettings();
     const envSettings = this.getEnvSettings();
@@ -212,18 +239,7 @@ export class SmtpSettingsService {
     },
     updatedByUserId: string
   ) {
-    const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
-    const next: SmtpSettings = {
-      host: normalizeString(input.host) || existing?.host || '',
-      port: normalizePort(input.port, existing?.port ?? 465),
-      secure:
-        typeof input.secure === 'boolean'
-          ? input.secure
-          : existing?.secure ?? normalizePort(input.port, 465) === 465,
-      user: normalizeString(input.user) || existing?.user || '',
-      password: normalizeString(input.password) || existing?.password || '',
-      from: normalizeString(input.from) || existing?.from || this.getDefaultFrom()
-    };
+    const next = await this.resolveDraftSettings(input);
 
     const now = new Date();
 
@@ -248,6 +264,48 @@ export class SmtpSettingsService {
       });
 
     return this.getOverview();
+  }
+
+  async sendTestEmail(input: {
+    to: string;
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    password?: string;
+    from?: string;
+  }) {
+    const to = normalizeString(input.to);
+    const draft = await this.resolveDraftSettings(input);
+    const mailer = new Mailer(
+      draft.host && draft.user && draft.password
+        ? {
+            host: draft.host,
+            port: draft.port,
+            secure: draft.secure,
+            user: draft.user,
+            password: draft.password,
+            from: draft.from
+          }
+        : null
+    );
+
+    if (!mailer.isConfigured) {
+      throw httpError(422, 'SMTP 配置不完整，无法发送测试邮件');
+    }
+
+    await mailer.send({
+      to,
+      subject: `[${normalizeString(this.env.APP_NAME) || 'fd-core-stack'}] SMTP Test Email`,
+      text: `This is a test email from fd-core-stack.\n\nSent at: ${new Date().toISOString()}\nFrom: ${draft.from}\nHost: ${draft.host}:${draft.port}`,
+      html: `<p>This is a test email from <strong>fd-core-stack</strong>.</p><p>Sent at: <code>${new Date().toISOString()}</code></p><p>From: <code>${draft.from}</code></p><p>Host: <code>${draft.host}:${draft.port}</code></p>`
+    });
+
+    return {
+      sent: true,
+      to,
+      from: draft.from
+    };
   }
 
   async clearSettings() {
