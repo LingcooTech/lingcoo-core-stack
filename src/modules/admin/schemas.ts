@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+const optionalTrimmedString = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .transform((value) => (value ? value : undefined));
+
+const optionalEmailString = z
+  .union([z.string().trim().email(), z.literal('')])
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 export const paymentProviderParamsSchema = z.object({
   provider: z.enum(['wechat_pay', 'alipay'])
 });
@@ -20,12 +33,12 @@ export const alipayPaymentSettingsSchema = z.object({
 });
 
 export const smtpSettingsSchema = z.object({
-  host: z.string().trim().min(1).max(255).optional(),
+  host: optionalTrimmedString(255),
   port: z.coerce.number().int().min(1).max(65535).optional(),
   secure: z.boolean().optional(),
-  user: z.string().trim().min(1).max(255).optional(),
-  password: z.string().trim().min(1).max(255).optional(),
-  from: z.string().trim().email().optional()
+  user: optionalTrimmedString(255),
+  password: optionalTrimmedString(255),
+  from: optionalEmailString
 });
 
 export const smtpTestEmailSchema = smtpSettingsSchema.extend({

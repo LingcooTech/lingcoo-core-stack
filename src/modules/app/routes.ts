@@ -6,6 +6,7 @@ import {
   appSecretParamsSchema,
   createAppSecretSchema,
   createAppSessionSchema,
+  purgeAppConfigurationSchema,
   syncDeliveryManifestSchema,
   upsertAppSchema
 } from './schemas';
@@ -83,6 +84,22 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     const payload = upsertAppSchema.parse(request.body);
 
     return new AppService(app.db).upsertApp(params.appCode, payload, request.user.sub);
+  });
+
+  app.post('/v1/admin/apps/:appCode/archive', { preHandler: app.requireAdmin }, async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    return new AppService(app.db).archiveApp(params.appCode, request.user.sub);
+  });
+
+  app.post('/v1/admin/apps/:appCode/purge-config', { preHandler: app.requireAdmin }, async (request) => {
+    const params = appCodeParamsSchema.parse(request.params);
+    const payload = purgeAppConfigurationSchema.parse(request.body);
+
+    return new AppService(app.db).purgeAppConfiguration(
+      params.appCode,
+      payload.confirmAppCode,
+      request.user.sub
+    );
   });
 
   app.post('/v1/admin/apps/:appCode/delivery-manifest/sync', { preHandler: app.requireAdmin }, async (request) => {

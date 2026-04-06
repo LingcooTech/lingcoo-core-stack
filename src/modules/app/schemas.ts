@@ -8,6 +8,10 @@ export const appSecretParamsSchema = appCodeParamsSchema.extend({
   secretId: z.string().uuid()
 });
 
+export const purgeAppConfigurationSchema = z.object({
+  confirmAppCode: z.string().trim().min(1).max(64)
+});
+
 const screenshotSchema = z.object({
   url: z.string().trim().min(1).max(2048),
   caption: z.string().trim().max(200).optional()

@@ -133,6 +133,17 @@ export const appSecrets = pgTable('app_secrets', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const appDeliverySettings = pgTable('app_delivery_settings', {
+  appId: uuid('app_id')
+    .primaryKey()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  value: jsonb('value').notNull().default(sql`'{}'::jsonb`),
+  isEncrypted: boolean('is_encrypted').notNull().default(false),
+  updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export const plans = pgTable('plans', {
   id: uuid('id').defaultRandom().primaryKey(),
   appId: uuid('app_id')

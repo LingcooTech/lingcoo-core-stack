@@ -1,5 +1,8 @@
 import { randomBytes } from 'node:crypto';
 
+import { eq } from 'drizzle-orm';
+
+import { appDeliverySettings, systemSettings } from '../../db/schema';
 import type { DbClient } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -70,7 +73,7 @@ export class AppService {
             interval: plan.interval,
             priceAmount: o.priceAmount,
             currency: o.currency,
-            status: o.status,
+            status: plan.status === 'active' ? o.status : 'inactive',
             isDefault: o.isDefault,
             sortOrder: o.sortOrder
           } satisfies CheckoutOffer;
@@ -360,6 +363,10 @@ export class AppService {
       throw httpError(500, 'Checkout offer is missing related plan');
     }
 
+    if (plan.status !== 'active') {
+      throw httpError(422, `Checkout plan is not available for this app: ${plan.code}`);
+    }
+
     return {
       app: catalog.app,
       plan,
@@ -449,7 +456,7 @@ export class AppService {
         sortOrder: input.sortOrder,
         type: input.type,
         status: input.status,
-        meta: input.meta ?? {}
+        meta: this.buildEditableMeta(input.meta, input.status)
       });
 
       const featureMap = new Map<string, { id: string; code: string }>();
@@ -543,6 +550,81 @@ export class AppService {
     return this.getManagedApp(appCode);
   }
 
+  async archiveApp(appCode: string, actorUserId: string) {
+    const repository = new AppRepository(this.db);
+    const app = await repository.findAppByCode(appCode);
+    if (!app) {
+      throw httpError(404, 'App not found');
+    }
+
+    await repository.updateAppById(app.id, {
+      status: 'inactive',
+      meta: this.buildArchivedMeta(app.meta)
+    });
+
+    await new EventService(this.db).capture({
+      userId: actorUserId,
+      appId: app.id,
+      eventName: 'app.archived',
+      properties: {
+        appCode: app.code,
+        previousStatus: app.status
+      }
+    });
+
+    return this.getManagedApp(appCode);
+  }
+
+  async purgeAppConfiguration(appCode: string, confirmAppCode: string, actorUserId: string) {
+    if (confirmAppCode.trim() !== appCode) {
+      throw httpError(422, 'Confirmation app code does not match');
+    }
+
+    await this.db.transaction(async (tx) => {
+      const repository = new AppRepository(tx as DbClient);
+      const licenseRepository = new LicenseRepository(tx as DbClient);
+      const app = await repository.findAppByCode(appCode);
+
+      if (!app) {
+        throw httpError(404, 'App not found');
+      }
+
+      await repository.deleteAppOffersByAppId(app.id);
+      await repository.deleteAppSecretsByAppId(app.id);
+      await licenseRepository.deleteFeaturesByAppId(app.id);
+      await licenseRepository.deactivatePlansByAppId(app.id);
+      await (tx as DbClient).delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
+      await (tx as DbClient).delete(systemSettings).where(eq(systemSettings.key, `deployment.delivery.${app.code}`));
+      await repository.updateAppById(app.id, {
+        tagline: null,
+        description: null,
+        content: null,
+        iconUrl: null,
+        coverUrl: null,
+        screenshots: [],
+        highlights: [],
+        faq: [],
+        links: [],
+        category: null,
+        sortOrder: 0,
+        status: 'inactive',
+        meta: this.buildPurgedMeta(app.meta)
+      });
+
+      await new EventService(tx as DbClient).capture({
+        userId: actorUserId,
+        appId: app.id,
+        eventName: 'app.configuration_purged',
+        properties: {
+          appCode: app.code,
+          previousStatus: app.status
+        }
+      });
+    });
+
+    return this.getManagedApp(appCode);
+  }
+
   async issueSecret(
     appCode: string,
     input: { name?: string; expiresAt?: string },
@@ -622,6 +704,43 @@ export class AppService {
 
   private normalizeMeta(meta: unknown) {
     return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+  }
+
+  private buildArchivedMeta(meta: unknown, archivedAt = new Date().toISOString()) {
+    const nextMeta = this.normalizeMeta(meta);
+
+    if (typeof nextMeta.archivedAt !== 'string' || !nextMeta.archivedAt.trim()) {
+      nextMeta.archivedAt = archivedAt;
+    }
+
+    return nextMeta;
+  }
+
+  private buildPurgedMeta(meta: unknown, deletedAt = new Date().toISOString()) {
+    const nextMeta = this.buildArchivedMeta(meta, deletedAt);
+
+    delete nextMeta.deliveryManifest;
+    delete nextMeta.deliveryManifestSource;
+    nextMeta.deliveryMode = 'none';
+    nextMeta.deletedAt = deletedAt;
+    nextMeta.deletionMode = 'config_purged';
+
+    return nextMeta;
+  }
+
+  private buildEditableMeta(
+    meta: unknown,
+    status: 'active' | 'inactive' | 'cancelled' | 'expired'
+  ) {
+    const nextMeta = this.normalizeMeta(meta);
+
+    if (status === 'active') {
+      delete nextMeta.archivedAt;
+      delete nextMeta.deletedAt;
+      delete nextMeta.deletionMode;
+    }
+
+    return nextMeta;
   }
 
   private normalizeDeliveryManifestSource(value: unknown) {

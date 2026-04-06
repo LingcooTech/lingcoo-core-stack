@@ -105,6 +105,38 @@ export class AppRepository {
     return app ?? null;
   }
 
+  async updateAppById(
+    appId: string,
+    input: Partial<{
+      name: string;
+      tagline: string | null;
+      description: string | null;
+      content: string | null;
+      iconUrl: string | null;
+      coverUrl: string | null;
+      screenshots: unknown[];
+      highlights: unknown[];
+      faq: unknown[];
+      links: unknown[];
+      category: string | null;
+      sortOrder: number;
+      type: string;
+      status: 'active' | 'inactive' | 'cancelled' | 'expired';
+      meta: Record<string, unknown>;
+    }>
+  ) {
+    const [app] = await this.db
+      .update(apps)
+      .set({
+        ...input,
+        updatedAt: new Date()
+      })
+      .where(eq(apps.id, appId))
+      .returning();
+
+    return app ?? null;
+  }
+
   async listOffersByAppId(appId: string) {
     return this.db
       .select()
@@ -175,6 +207,10 @@ export class AppRepository {
       .returning();
   }
 
+  async deleteAppOffersByAppId(appId: string) {
+    return this.db.delete(appOffers).where(eq(appOffers.appId, appId)).returning();
+  }
+
   async createAppSecret(input: {
     appId: string;
     name: string;
@@ -232,5 +268,9 @@ export class AppRepository {
       .returning();
 
     return secret ?? null;
+  }
+
+  async deleteAppSecretsByAppId(appId: string) {
+    return this.db.delete(appSecrets).where(eq(appSecrets.appId, appId)).returning();
   }
 }

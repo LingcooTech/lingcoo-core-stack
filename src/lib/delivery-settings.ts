@@ -1,8 +1,10 @@
 import { eq } from 'drizzle-orm';
 
-import { systemSettings } from '../db/schema';
+import { appDeliverySettings, systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
+import { AppRepository } from '../modules/app/repository';
 import type { AppEnv } from './env';
+import { httpError } from './errors';
 import { decryptJson, encryptJson } from './settings-crypto';
 
 type SecretStatus = {
@@ -115,7 +117,17 @@ export class DeliverySettingsService {
     return `deployment.delivery.${appCode}`;
   }
 
-  private async findSettingRow(appCode: string) {
+  private async findCurrentSettingRow(appId: string) {
+    const [row] = await this.db
+      .select()
+      .from(appDeliverySettings)
+      .where(eq(appDeliverySettings.appId, appId))
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  private async findLegacySettingRow(appCode: string) {
     const [row] = await this.db
       .select()
       .from(systemSettings)
@@ -125,7 +137,7 @@ export class DeliverySettingsService {
     return row ?? null;
   }
 
-  private decodeSetting(row: NonNullable<Awaited<ReturnType<DeliverySettingsService['findSettingRow']>>>) {
+  private decodeSetting(row: { value: unknown; isEncrypted: boolean }) {
     if (row.isEncrypted) {
       return decryptJson<unknown>(row.value, this.getEncryptionSecret());
     }
@@ -162,12 +174,17 @@ export class DeliverySettingsService {
   }
 
   private async saveEncryptedSetting(appCode: string, value: StoredDeliverySettings, updatedByUserId: string) {
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    if (!app) {
+      throw httpError(404, 'App not found');
+    }
+
     const now = new Date();
 
     await this.db
-      .insert(systemSettings)
+      .insert(appDeliverySettings)
       .values({
-        key: this.getSettingKey(appCode),
+        appId: app.id,
         value: encryptJson(value, this.getEncryptionSecret()),
         isEncrypted: true,
         updatedByUserId,
@@ -175,7 +192,7 @@ export class DeliverySettingsService {
         updatedAt: now
       })
       .onConflictDoUpdate({
-        target: systemSettings.key,
+        target: appDeliverySettings.appId,
         set: {
           value: encryptJson(value, this.getEncryptionSecret()),
           isEncrypted: true,
@@ -183,19 +200,34 @@ export class DeliverySettingsService {
           updatedAt: now
         }
       });
+
+    await this.db.delete(systemSettings).where(eq(systemSettings.key, this.getSettingKey(appCode)));
   }
 
   async deleteSettings(appCode: string) {
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    if (app) {
+      await this.db.delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
+    }
+
     await this.db.delete(systemSettings).where(eq(systemSettings.key, this.getSettingKey(appCode)));
   }
 
   async getStoredSettings(appCode: string) {
-    const row = await this.findSettingRow(appCode);
-    if (!row) {
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    if (app) {
+      const currentRow = await this.findCurrentSettingRow(app.id);
+      if (currentRow) {
+        return this.normalizeStoredSettings(this.decodeSetting(currentRow));
+      }
+    }
+
+    const legacyRow = await this.findLegacySettingRow(appCode);
+    if (!legacyRow) {
       return null;
     }
 
-    return this.normalizeStoredSettings(this.decodeSetting(row));
+    return this.normalizeStoredSettings(this.decodeSetting(legacyRow));
   }
 
   async getOverview(appCode: string): Promise<DeliverySettingsOverview> {

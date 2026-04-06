@@ -1,21 +1,138 @@
-import { useQuery } from '@tanstack/react-query';
-import { FileEdit, Plus } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Archive, FileEdit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { listAppsAdmin } from '@/api/apps';
+import { archiveApp, listAppsAdmin, purgeAppConfiguration } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
 import { formatPlanInterval, formatPriceYuan } from '@/components/apps/app-edit/model';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+function normalizeMeta(meta: unknown) {
+  return meta && typeof meta === 'object' && !Array.isArray(meta)
+    ? (meta as Record<string, unknown>)
+    : {};
+}
+
+function replaceAppInList(current: { items: AppWithDetails[] } | undefined, next: AppWithDetails) {
+  const items = current?.items ?? [];
+  const existingIndex = items.findIndex((item) => item.id === next.id || item.code === next.code);
+
+  if (existingIndex === -1) {
+    return { items: [next, ...items] };
+  }
+
+  return {
+    items: items.map((item, index) => (index === existingIndex ? next : item)),
+  };
+}
+
+function getLifecycleState(app: AppWithDetails) {
+  const meta = normalizeMeta(app.meta);
+  const deletedAt = typeof meta.deletedAt === 'string' ? meta.deletedAt.trim() : '';
+  const archivedAt = typeof meta.archivedAt === 'string' ? meta.archivedAt.trim() : '';
+
+  if (deletedAt) {
+    return { label: '配置已删除', tone: 'danger' as const };
+  }
+
+  if (archivedAt || app.status === 'inactive') {
+    return { label: '已归档', tone: 'warn' as const };
+  }
+
+  return null;
+}
+
+type PendingDangerAction =
+  | { kind: 'archive'; app: AppWithDetails }
+  | { kind: 'purge'; app: AppWithDetails }
+  | null;
 
 export function AppsPage() {
+  const qc = useQueryClient();
+  const [pendingDangerAction, setPendingDangerAction] = useState<PendingDangerAction>(null);
+  const [confirmAppCode, setConfirmAppCode] = useState('');
+
   const { data: appsData, isLoading: isAppsLoading } = useQuery({
     queryKey: ['apps'],
     queryFn: listAppsAdmin,
   });
 
   const apps = appsData?.items ?? [];
+  const lifecycleAppCode = pendingDangerAction?.app.code ?? '';
+  const purgeConfirmMatched =
+    pendingDangerAction?.kind !== 'purge' || confirmAppCode.trim() === lifecycleAppCode;
+
+  const archiveMutation = useMutation({
+    mutationFn: (appCode: string) => archiveApp(appCode),
+    onSuccess: (result) => {
+      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
+        replaceAppInList(current, result),
+      );
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+      setPendingDangerAction(null);
+      toast.success('应用已停用归档');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '停用应用失败');
+    },
+  });
+
+  const purgeMutation = useMutation({
+    mutationFn: ({ appCode, confirmedCode }: { appCode: string; confirmedCode: string }) =>
+      purgeAppConfiguration(appCode, confirmedCode),
+    onSuccess: (result) => {
+      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
+        replaceAppInList(current, result),
+      );
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+      void qc.invalidateQueries({ queryKey: ['catalog'] });
+      setPendingDangerAction(null);
+      setConfirmAppCode('');
+      toast.success('应用配置已清空，经营历史已保留');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '清空应用配置失败');
+    },
+  });
+
+  const isDangerPending = archiveMutation.isPending || purgeMutation.isPending;
+  const dangerDialogTitle = useMemo(() => {
+    if (!pendingDangerAction) {
+      return '';
+    }
+
+    if (pendingDangerAction.kind === 'archive') {
+      return `停用应用 ${pendingDangerAction.app.name}？`;
+    }
+
+    return `永久删除 ${pendingDangerAction.app.name} 的配置？`;
+  }, [pendingDangerAction]);
+
+  const dangerDialogDescription = useMemo(() => {
+    if (!pendingDangerAction) {
+      return '';
+    }
+
+    if (pendingDangerAction.kind === 'archive') {
+      return '应用会从用户侧下架，历史订单、订阅、部署、事件和用户数据会继续保留。';
+    }
+
+    return '会停用应用，并清空展示内容、功能映射、Offers、密钥和交付配置。订单、结账、订阅、部署、事件和用户数据不会删除。';
+  }, [pendingDangerAction]);
 
   const appColumns: Column<AppWithDetails>[] = [
     {
@@ -36,12 +153,19 @@ export function AppsPage() {
     {
       key: 'status',
       header: '类型/状态',
-      cell: (row) => (
-        <div className="flex flex-col gap-1.5">
-          <StatusPill tone="neutral" label={row.type} />
-          <StatusPill tone={statusToTone(row.status)} label={row.status} />
-        </div>
-      ),
+      cell: (row) => {
+        const lifecycleState = getLifecycleState(row);
+
+        return (
+          <div className="flex flex-col gap-1.5">
+            <StatusPill tone="neutral" label={row.type} />
+            <StatusPill tone={statusToTone(row.status)} label={row.status} />
+            {lifecycleState ? (
+              <StatusPill tone={lifecycleState.tone} label={lifecycleState.label} />
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: 'catalog',
@@ -88,12 +212,45 @@ export function AppsPage() {
       key: 'actions',
       header: '操作',
       cell: (row) => (
-        <Button size="sm" variant="outline" asChild>
-          <Link to={`/admin/apps/${row.code}/edit`}>
-            <FileEdit className="mr-1 h-3.5 w-3.5" />
-            编辑详情
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link to={`/admin/apps/${row.code}/edit`}>
+              <FileEdit className="mr-1 h-3.5 w-3.5" />
+              编辑详情
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setPendingDangerAction({ kind: 'archive', app: row });
+                  setConfirmAppCode('');
+                }}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                停用归档
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setPendingDangerAction({ kind: 'purge', app: row });
+                  setConfirmAppCode('');
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                永久删除配置
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     },
   ];
@@ -127,6 +284,60 @@ export function AppsPage() {
           />
         </div>
       </div>
+
+      <ConfirmActionDialog
+        open={Boolean(pendingDangerAction)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDangerAction(null);
+            setConfirmAppCode('');
+          }
+        }}
+        onCancel={() => {
+          setPendingDangerAction(null);
+          setConfirmAppCode('');
+        }}
+        title={dangerDialogTitle}
+        description={dangerDialogDescription}
+        confirmText={pendingDangerAction?.kind === 'archive' ? '确认停用' : '确认删除配置'}
+        confirmVariant="destructive"
+        confirmDisabled={!purgeConfirmMatched}
+        isConfirming={isDangerPending}
+        onConfirm={() => {
+          if (!pendingDangerAction) {
+            return;
+          }
+
+          if (pendingDangerAction.kind === 'archive') {
+            archiveMutation.mutate(pendingDangerAction.app.code);
+            return;
+          }
+
+          purgeMutation.mutate({
+            appCode: pendingDangerAction.app.code,
+            confirmedCode: confirmAppCode.trim(),
+          });
+        }}
+      >
+        {pendingDangerAction?.kind === 'purge' ? (
+          <div className="space-y-4 rounded-xl border border-red-200 bg-red-50 p-4">
+            <div className="space-y-1 text-sm text-red-700">
+              <p>会清空：展示内容、Features、Offers、Secrets、Delivery Settings。</p>
+              <p>会保留但停用：应用主体、Plans、订单、结账、订阅、部署、事件、用户数据。</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="purge-app-confirm-code">输入 App Code 继续</Label>
+              <Input
+                id="purge-app-confirm-code"
+                value={confirmAppCode}
+                onChange={(event) => setConfirmAppCode(event.target.value)}
+                placeholder={pendingDangerAction.app.code}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+        ) : null}
+      </ConfirmActionDialog>
     </div>
   );
 }

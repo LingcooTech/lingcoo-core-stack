@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import {
   AlertDialog,
@@ -21,6 +21,8 @@ interface ConfirmActionDialogProps {
   cancelText?: string;
   confirmVariant?: 'default' | 'destructive';
   isConfirming?: boolean;
+  confirmDisabled?: boolean;
+  children?: ReactNode;
   onCancel?: () => void;
   onConfirm: () => void;
 }
@@ -34,6 +36,8 @@ export function ConfirmActionDialog({
   cancelText = '取消',
   confirmVariant = 'destructive',
   isConfirming = false,
+  confirmDisabled = false,
+  children,
   onCancel,
   onConfirm,
 }: ConfirmActionDialogProps) {
@@ -57,6 +61,7 @@ export function ConfirmActionDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
+        {children}
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
             <Button variant="outline" disabled={isConfirming}>
@@ -66,7 +71,7 @@ export function ConfirmActionDialog({
           <AlertDialogAction asChild>
             <Button
               variant={confirmVariant}
-              disabled={isConfirming}
+              disabled={isConfirming || confirmDisabled}
               onClick={() => {
                 confirmTriggeredRef.current = true;
                 onConfirm();

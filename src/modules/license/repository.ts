@@ -189,6 +189,14 @@ export class LicenseRepository {
       .returning();
   }
 
+  async deactivatePlansByAppId(appId: string) {
+    return this.db
+      .update(plans)
+      .set({ status: 'inactive' })
+      .where(eq(plans.appId, appId))
+      .returning();
+  }
+
   async deactivateFeaturesByAppExceptCodes(appId: string, retainedCodes: string[]) {
     return this.db
       .update(features)
@@ -199,6 +207,10 @@ export class LicenseRepository {
           : eq(features.appId, appId)
       )
       .returning();
+  }
+
+  async deleteFeaturesByAppId(appId: string) {
+    return this.db.delete(features).where(eq(features.appId, appId)).returning();
   }
 
   async updatePlanById(

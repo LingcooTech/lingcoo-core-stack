@@ -30,6 +30,22 @@ const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').m
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 
+function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
+  const host = values.host?.trim();
+  const user = values.user?.trim();
+  const password = values.password?.trim();
+  const from = values.from?.trim();
+
+  return {
+    ...(host ? { host } : {}),
+    port: values.port,
+    secure: Boolean(values.secure),
+    ...(user ? { user } : {}),
+    ...(options.includePassword && password ? { password } : {}),
+    ...(from ? { from } : {})
+  };
+}
+
 function sourceLabel(source: 'database' | 'env' | 'none') {
   if (source === 'database') {
     return '数据库';
@@ -137,7 +153,7 @@ export function SettingsPage() {
     }
 
     testMutation.mutate({
-      ...values,
+      ...buildSmtpPayload(values, { includePassword: Boolean(form.formState.dirtyFields.password) }),
       to: parsedTo.data,
       subject: parsedSubject.data,
       text: parsedBody.data
@@ -173,7 +189,12 @@ export function SettingsPage() {
             </div>
           ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))} className="space-y-5">
+              <form
+                onSubmit={form.handleSubmit((values) =>
+                  saveMutation.mutate(buildSmtpPayload(values, { includePassword: Boolean(form.formState.dirtyFields.password) }))
+                )}
+                className="space-y-5"
+              >
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -245,6 +266,7 @@ export function SettingsPage() {
                       <FormControl>
                         <Input
                           type="password"
+                          autoComplete="new-password"
                           placeholder={data?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
                           {...field}
                         />

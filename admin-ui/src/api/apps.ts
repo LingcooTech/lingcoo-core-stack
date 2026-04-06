@@ -80,6 +80,22 @@ export async function upsertApp(appCode: string, payload: UpsertAppInput): Promi
   });
 }
 
+export async function archiveApp(appCode: string): Promise<AppWithDetails> {
+  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/archive`, {
+    method: 'POST'
+  });
+}
+
+export async function purgeAppConfiguration(
+  appCode: string,
+  confirmAppCode: string
+): Promise<AppWithDetails> {
+  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/purge-config`, {
+    method: 'POST',
+    body: JSON.stringify({ confirmAppCode })
+  });
+}
+
 export async function createAppSecret(appCode: string, expiresAt?: string): Promise<AppSecretCreated> {
   return apiClient<AppSecretCreated>(`/v1/admin/apps/${encodeURIComponent(appCode)}/secrets`, {
     method: 'POST',
