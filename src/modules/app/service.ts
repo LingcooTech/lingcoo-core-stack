@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { appDeliverySettings, systemSettings } from '../../db/schema';
 import type { DbClient } from '../../db/types';
+import { hasPublicTable } from '../../lib/db-compat';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { EventService } from '../event/service';
@@ -580,6 +581,8 @@ export class AppService {
       throw httpError(422, 'Confirmation app code does not match');
     }
 
+    const hasAppDeliverySettingsTable = await hasPublicTable(this.db, 'app_delivery_settings');
+
     await this.db.transaction(async (tx) => {
       const repository = new AppRepository(tx as DbClient);
       const licenseRepository = new LicenseRepository(tx as DbClient);
@@ -593,7 +596,9 @@ export class AppService {
       await repository.deleteAppSecretsByAppId(app.id);
       await licenseRepository.deleteFeaturesByAppId(app.id);
       await licenseRepository.deactivatePlansByAppId(app.id);
-      await (tx as DbClient).delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
+      if (hasAppDeliverySettingsTable) {
+        await (tx as DbClient).delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
+      }
       await (tx as DbClient).delete(systemSettings).where(eq(systemSettings.key, `deployment.delivery.${app.code}`));
       await repository.updateAppById(app.id, {
         tagline: null,
