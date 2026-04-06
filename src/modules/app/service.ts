@@ -38,6 +38,11 @@ export type CheckoutOffer = {
 export class AppService {
   constructor(private readonly db: DbClient) {}
 
+  private isDeletedApp(app: { meta: unknown }) {
+    const meta = this.normalizeMeta(app.meta);
+    return typeof meta.deletedAt === 'string' && meta.deletedAt.trim().length > 0;
+  }
+
   private isSecretUsable(secret: AppSecretRecord, now = new Date()) {
     return (
       secret.status === 'active' &&
@@ -226,7 +231,7 @@ export class AppService {
 
   async listManagedApps() {
     const apps = await new AppRepository(this.db).listApps();
-    return this.hydrateApps(apps, true);
+    return this.hydrateApps(apps.filter((app) => !this.isDeletedApp(app)), true);
   }
 
   async getPublicApp(appCode: string) {

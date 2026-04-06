@@ -28,8 +28,19 @@ function normalizeMeta(meta: unknown) {
 }
 
 function replaceAppInList(current: { items: AppWithDetails[] } | undefined, next: AppWithDetails) {
-  const items = current?.items ?? [];
+  const items = (current?.items ?? []).filter((item) => {
+    const meta = normalizeMeta(item.meta);
+    return !(typeof meta.deletedAt === 'string' && meta.deletedAt.trim());
+  });
   const existingIndex = items.findIndex((item) => item.id === next.id || item.code === next.code);
+  const nextMeta = normalizeMeta(next.meta);
+  const nextDeleted = typeof nextMeta.deletedAt === 'string' && nextMeta.deletedAt.trim();
+
+  if (nextDeleted) {
+    return {
+      items: items.filter((item) => item.id !== next.id && item.code !== next.code),
+    };
+  }
 
   if (existingIndex === -1) {
     return { items: [next, ...items] };
@@ -71,7 +82,14 @@ export function AppsPage() {
     queryFn: listAppsAdmin,
   });
 
-  const apps = appsData?.items ?? [];
+  const apps = useMemo(
+    () =>
+      (appsData?.items ?? []).filter((app) => {
+        const meta = normalizeMeta(app.meta);
+        return !(typeof meta.deletedAt === 'string' && meta.deletedAt.trim());
+      }),
+    [appsData?.items],
+  );
   const lifecycleAppCode = pendingDangerAction?.app.code ?? '';
   const purgeConfirmMatched =
     pendingDangerAction?.kind !== 'purge' || confirmAppCode.trim() === lifecycleAppCode;
