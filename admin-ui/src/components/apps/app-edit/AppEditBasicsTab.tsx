@@ -3,9 +3,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
+import { QiniuImageField } from '@/components/shared/QiniuImageField';
 
 import { AppEditSaveBar } from './AppEditSaveBar';
-import type { AppEditFieldSetter, FormState } from './model';
+import { slugify, type AppEditFieldSetter, type FormState } from './model';
 
 interface AppEditBasicsTabProps {
   form: FormState;
@@ -24,6 +25,8 @@ export function AppEditBasicsTab({
   saveDisabled,
   onSave,
 }: AppEditBasicsTabProps) {
+  const appAssetPrefix = slugify(form.appCode || 'draft');
+
   return (
     <TabsContent value="basics" className="space-y-6">
       <Card>
@@ -130,43 +133,28 @@ export function AppEditBasicsTab({
 
           <div>
             <Label>图标 URL</Label>
-            <div className="flex items-center gap-3">
-              <Input
-                className="flex-1"
-                value={form.iconUrl}
-                onChange={(event) => setField('iconUrl', event.target.value)}
-                placeholder="https://..."
-              />
-              {form.iconUrl ? (
-                <img
-                  src={form.iconUrl}
-                  alt="icon"
-                  className="h-10 w-10 shrink-0 rounded-lg border object-cover"
-                  onError={(event) => {
-                    (event.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : null}
-            </div>
+            <QiniuImageField
+              value={form.iconUrl}
+              onChange={(value) => setField('iconUrl', value)}
+              defaultPrefix={`${appAssetPrefix}/icon`}
+              previewAlt="icon"
+              previewClassName="h-16 w-16 rounded-xl border object-cover"
+              dialogTitle="选择应用图标"
+              dialogDescription="支持从七牛云已有图片中选择，或直接上传新的图标素材。"
+            />
           </div>
 
           <div>
             <Label>封面图 URL</Label>
-            <Input
+            <QiniuImageField
               value={form.coverUrl}
-              onChange={(event) => setField('coverUrl', event.target.value)}
-              placeholder="https://..."
+              onChange={(value) => setField('coverUrl', value)}
+              defaultPrefix={`${appAssetPrefix}/cover`}
+              previewAlt="cover"
+              previewClassName="h-32 w-full rounded-xl border object-cover"
+              dialogTitle="选择应用封面图"
+              dialogDescription="封面图会展示在应用详情页头部，建议使用横向大图。"
             />
-            {form.coverUrl ? (
-              <img
-                src={form.coverUrl}
-                alt="cover"
-                className="mt-2 h-32 w-full rounded-xl border object-cover"
-                onError={(event) => {
-                  (event.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : null}
           </div>
         </CardContent>
       </Card>

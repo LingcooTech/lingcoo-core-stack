@@ -5,7 +5,16 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-import { clearSmtpSettings, getSmtpSettings, sendSmtpTestEmail, upsertSmtpSettings } from '@/api/settings';
+import {
+  clearQiniuSettings,
+  clearSmtpSettings,
+  getQiniuSettings,
+  getSmtpSettings,
+  sendSmtpTestEmail,
+  testQiniuSettings,
+  upsertQiniuSettings,
+  upsertSmtpSettings
+} from '@/api/settings';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
@@ -24,11 +33,21 @@ const smtpSchema = z.object({
   from: z.string().email('请输入有效邮箱').or(z.literal(''))
 });
 
+const qiniuSchema = z.object({
+  accessKey: z.string().optional(),
+  secretKey: z.string().optional(),
+  bucketName: z.string().optional(),
+  publicBaseUrl: z.string().url('请输入有效链接').or(z.literal('')),
+  uploadHost: z.string().url('请输入有效链接').or(z.literal('')),
+  defaultPrefix: z.string().optional()
+});
+
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
 const testSubjectSchema = z.string().trim().min(1, '请输入测试邮件主题').max(200, '主题不能超过 200 个字符');
 const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').max(10_000, '正文不能超过 10000 个字符');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
+type QiniuValues = z.infer<typeof qiniuSchema>;
 
 function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
   const host = values.host?.trim();
@@ -46,6 +65,24 @@ function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolea
   };
 }
 
+function buildQiniuPayload(values: QiniuValues, options: { includeSecretKey: boolean }) {
+  const accessKey = values.accessKey?.trim();
+  const secretKey = values.secretKey?.trim();
+  const bucketName = values.bucketName?.trim();
+  const publicBaseUrl = values.publicBaseUrl?.trim();
+  const uploadHost = values.uploadHost?.trim();
+  const defaultPrefix = values.defaultPrefix?.trim();
+
+  return {
+    ...(accessKey ? { accessKey } : {}),
+    ...(options.includeSecretKey && secretKey ? { secretKey } : {}),
+    ...(bucketName ? { bucketName } : {}),
+    ...(publicBaseUrl ? { publicBaseUrl } : {}),
+    ...(uploadHost ? { uploadHost } : {}),
+    ...(defaultPrefix ? { defaultPrefix } : {})
+  };
+}
+
 function sourceLabel(source: 'database' | 'env' | 'none') {
   if (source === 'database') {
     return '数据库';
@@ -60,18 +97,25 @@ function sourceLabel(source: 'database' | 'env' | 'none') {
 
 export function SettingsPage() {
   const qc = useQueryClient();
-  const [clearOpen, setClearOpen] = useState(false);
+  const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
+  const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
   const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
   const [testBody, setTestBody] = useState(
     ['这是一封来自 fd-core-stack 的测试邮件。', '', '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。'].join('\n')
   );
-  const { data, isLoading } = useQuery({
+
+  const { data: smtpData, isLoading: smtpLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
     queryFn: getSmtpSettings
   });
 
-  const form = useForm<SmtpValues>({
+  const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
+    queryKey: ['system-settings', 'qiniu'],
+    queryFn: getQiniuSettings
+  });
+
+  const smtpForm = useForm<SmtpValues>({
     resolver: zodResolver(smtpSchema),
     defaultValues: {
       host: '',
@@ -83,27 +127,54 @@ export function SettingsPage() {
     }
   });
 
+  const qiniuForm = useForm<QiniuValues>({
+    resolver: zodResolver(qiniuSchema),
+    defaultValues: {
+      accessKey: '',
+      secretKey: '',
+      bucketName: '',
+      publicBaseUrl: '',
+      uploadHost: 'https://upload.qiniup.com',
+      defaultPrefix: ''
+    }
+  });
+
   useEffect(() => {
-    if (!data) {
+    if (!smtpData) {
       return;
     }
 
-    form.reset({
-      host: data.values.host,
-      port: data.values.port,
-      secure: data.values.secure,
-      user: data.values.user,
+    smtpForm.reset({
+      host: smtpData.values.host,
+      port: smtpData.values.port,
+      secure: smtpData.values.secure,
+      user: smtpData.values.user,
       password: '',
-      from: data.values.from
+      from: smtpData.values.from
     });
-  }, [data, form]);
+  }, [smtpData, smtpForm]);
 
-  const saveMutation = useMutation({
+  useEffect(() => {
+    if (!qiniuData) {
+      return;
+    }
+
+    qiniuForm.reset({
+      accessKey: qiniuData.values.accessKey,
+      secretKey: '',
+      bucketName: qiniuData.values.bucketName,
+      publicBaseUrl: qiniuData.values.publicBaseUrl,
+      uploadHost: qiniuData.values.uploadHost,
+      defaultPrefix: qiniuData.values.defaultPrefix
+    });
+  }, [qiniuData, qiniuForm]);
+
+  const saveSmtpMutation = useMutation({
     mutationFn: upsertSmtpSettings,
     onSuccess: (result) => {
       toast.success('SMTP 配置已保存');
       qc.setQueryData(['system-settings', 'smtp'], result);
-      form.reset({
+      smtpForm.reset({
         host: result.values.host,
         port: result.values.port,
         secure: result.values.secure,
@@ -115,17 +186,17 @@ export function SettingsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
 
-  const clearMutation = useMutation({
+  const clearSmtpMutation = useMutation({
     mutationFn: clearSmtpSettings,
     onSuccess: async () => {
       toast.success('数据库中的 SMTP 配置已清空');
-      setClearOpen(false);
+      setClearSmtpOpen(false);
       await qc.invalidateQueries({ queryKey: ['system-settings', 'smtp'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
   });
 
-  const testMutation = useMutation({
+  const testSmtpMutation = useMutation({
     mutationFn: sendSmtpTestEmail,
     onSuccess: (result) => {
       toast.success(`测试邮件已发送到 ${result.to}`);
@@ -133,7 +204,42 @@ export function SettingsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败')
   });
 
-  const handleSendTestEmail = form.handleSubmit((values) => {
+  const saveQiniuMutation = useMutation({
+    mutationFn: upsertQiniuSettings,
+    onSuccess: (result) => {
+      toast.success('七牛云配置已保存');
+      qc.setQueryData(['system-settings', 'qiniu'], result);
+      qiniuForm.reset({
+        accessKey: result.values.accessKey,
+        secretKey: '',
+        bucketName: result.values.bucketName,
+        publicBaseUrl: result.values.publicBaseUrl,
+        uploadHost: result.values.uploadHost,
+        defaultPrefix: result.values.defaultPrefix
+      });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+  });
+
+  const clearQiniuMutation = useMutation({
+    mutationFn: clearQiniuSettings,
+    onSuccess: async () => {
+      toast.success('数据库中的七牛云配置已清空');
+      setClearQiniuOpen(false);
+      await qc.invalidateQueries({ queryKey: ['system-settings', 'qiniu'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+  });
+
+  const testQiniuMutation = useMutation({
+    mutationFn: testQiniuSettings,
+    onSuccess: (result) => {
+      toast.success(`七牛云连接成功，Bucket: ${result.bucketName}`);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+  });
+
+  const handleSendTestEmail = smtpForm.handleSubmit((values) => {
     const parsedTo = testEmailSchema.safeParse(testTo);
     if (!parsedTo.success) {
       toast.error(parsedTo.error.issues[0]?.message ?? '请输入有效的测试收件邮箱');
@@ -152,25 +258,31 @@ export function SettingsPage() {
       return;
     }
 
-    testMutation.mutate({
-      ...buildSmtpPayload(values, { includePassword: Boolean(form.formState.dirtyFields.password) }),
+    testSmtpMutation.mutate({
+      ...buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) }),
       to: parsedTo.data,
       subject: parsedSubject.data,
       text: parsedBody.data
     });
   });
 
+  const handleTestQiniu = qiniuForm.handleSubmit((values) => {
+    testQiniuMutation.mutate(
+      buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
+    );
+  });
+
   return (
     <div>
       <SectionHeader sectionKey="settings" />
-      <div className="p-6">
+      <div className="space-y-6 p-6">
         <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
-              <StatusPill tone={data?.configured ? 'ok' : 'neutral'} label={data?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
+              <StatusPill tone={smtpData?.configured ? 'ok' : 'neutral'} label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
               <StatusPill
-                tone={data?.source === 'database' ? 'ok' : data?.source === 'env' ? 'warn' : 'neutral'}
-                label={`来源: ${sourceLabel(data?.source ?? 'none')}`}
+                tone={smtpData?.source === 'database' ? 'ok' : smtpData?.source === 'env' ? 'warn' : 'neutral'}
+                label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
               />
             </div>
             <div>
@@ -181,23 +293,25 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {smtpLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, index) => (
                 <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
               ))}
             </div>
           ) : (
-            <Form {...form}>
+            <Form {...smtpForm}>
               <form
-                onSubmit={form.handleSubmit((values) =>
-                  saveMutation.mutate(buildSmtpPayload(values, { includePassword: Boolean(form.formState.dirtyFields.password) }))
+                onSubmit={smtpForm.handleSubmit((values) =>
+                  saveSmtpMutation.mutate(
+                    buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) })
+                  )
                 )}
                 className="space-y-5"
               >
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
-                    control={form.control}
+                    control={smtpForm.control}
                     name="host"
                     render={({ field }) => (
                       <FormItem>
@@ -210,7 +324,7 @@ export function SettingsPage() {
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={smtpForm.control}
                     name="port"
                     render={({ field }) => (
                       <FormItem>
@@ -229,7 +343,7 @@ export function SettingsPage() {
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={smtpForm.control}
                     name="user"
                     render={({ field }) => (
                       <FormItem>
@@ -242,7 +356,7 @@ export function SettingsPage() {
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={smtpForm.control}
                     name="from"
                     render={({ field }) => (
                       <FormItem>
@@ -258,7 +372,7 @@ export function SettingsPage() {
                 </div>
 
                 <FormField
-                  control={form.control}
+                  control={smtpForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
@@ -267,7 +381,7 @@ export function SettingsPage() {
                         <Input
                           type="password"
                           autoComplete="new-password"
-                          placeholder={data?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
+                          placeholder={smtpData?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
                           {...field}
                         />
                       </FormControl>
@@ -278,7 +392,7 @@ export function SettingsPage() {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={smtpForm.control}
                   name="secure"
                   render={({ field }) => (
                     <FormItem className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3">
@@ -294,10 +408,10 @@ export function SettingsPage() {
                 />
 
                 <div className="flex gap-2">
-                  <Button type="submit" disabled={saveMutation.isPending}>
-                    {saveMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
+                  <Button type="submit" disabled={saveSmtpMutation.isPending}>
+                    {saveSmtpMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
                   </Button>
-                  <Button type="button" variant="outline" disabled={clearMutation.isPending} onClick={() => setClearOpen(true)}>
+                  <Button type="button" variant="outline" disabled={clearSmtpMutation.isPending} onClick={() => setClearSmtpOpen(true)}>
                     清空数据库配置
                   </Button>
                 </div>
@@ -333,10 +447,151 @@ export function SettingsPage() {
                     />
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <Button type="button" variant="secondary" disabled={testMutation.isPending} onClick={handleSendTestEmail}>
-                      {testMutation.isPending ? '发送中...' : '发送测试邮件'}
+                    <Button type="button" variant="secondary" disabled={testSmtpMutation.isPending} onClick={handleSendTestEmail}>
+                      {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
                     </Button>
                   </div>
+                </div>
+              </form>
+            </Form>
+          )}
+        </div>
+
+        <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+              <StatusPill tone={qiniuData?.configured ? 'ok' : 'neutral'} label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'} />
+              <StatusPill
+                tone={qiniuData?.source === 'database' ? 'ok' : qiniuData?.source === 'env' ? 'warn' : 'neutral'}
+                label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
+              />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-foreground">七牛云存储</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                用于应用图标、封面和截图的直接上传与图片选择。保存后，应用编辑页会出现云存储上传/选择入口。
+              </p>
+            </div>
+          </div>
+
+          {qiniuLoading ? (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+              ))}
+            </div>
+          ) : (
+            <Form {...qiniuForm}>
+              <form
+                onSubmit={qiniuForm.handleSubmit((values) =>
+                  saveQiniuMutation.mutate(
+                    buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
+                  )
+                )}
+                className="space-y-5"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={qiniuForm.control}
+                    name="accessKey"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Access Key</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Qiniu Access Key" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={qiniuForm.control}
+                    name="bucketName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bucket</FormLabel>
+                        <FormControl>
+                          <Input placeholder="bucket-name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={qiniuForm.control}
+                    name="publicBaseUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>公共访问域名</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://cdn.example.com" {...field} />
+                        </FormControl>
+                        <FormDescription>用于图片预览和把已选图片 URL 回填到应用表单。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={qiniuForm.control}
+                    name="uploadHost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>上传域名</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://upload.qiniup.com" {...field} />
+                        </FormControl>
+                        <FormDescription>大多数标准 Bucket 维持默认值即可。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={qiniuForm.control}
+                  name="defaultPrefix"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>默认目录前缀</FormLabel>
+                      <FormControl>
+                        <Input placeholder="apps" {...field} />
+                      </FormControl>
+                      <FormDescription>例如填 `apps`，上传文件时会自动落到 `apps/...` 目录下。</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={qiniuForm.control}
+                  name="secretKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Secret Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={qiniuData?.secrets.secretKey.configured ? '已保存，留空保持不变' : '请输入 Secret Key'}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Secret Key 会加密存储在数据库中。</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={saveQiniuMutation.isPending}>
+                    {saveQiniuMutation.isPending ? '保存中...' : '保存七牛云配置'}
+                  </Button>
+                  <Button type="button" variant="secondary" disabled={testQiniuMutation.isPending} onClick={handleTestQiniu}>
+                    {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={clearQiniuMutation.isPending} onClick={() => setClearQiniuOpen(true)}>
+                    清空数据库配置
+                  </Button>
                 </div>
               </form>
             </Form>
@@ -345,14 +600,25 @@ export function SettingsPage() {
       </div>
 
       <ConfirmActionDialog
-        open={clearOpen}
-        onOpenChange={setClearOpen}
+        open={clearSmtpOpen}
+        onOpenChange={setClearSmtpOpen}
         title="清空 SMTP 数据库配置？"
         description="这会删除数据库中的 SMTP 设置。清空后系统将回退到环境变量配置；如果环境变量也没有配置，注册验证和找回密码邮件会失效。"
-        confirmText={clearMutation.isPending ? '清空中...' : '确认清空'}
+        confirmText={clearSmtpMutation.isPending ? '清空中...' : '确认清空'}
         confirmVariant="destructive"
-        isConfirming={clearMutation.isPending}
-        onConfirm={() => clearMutation.mutate()}
+        isConfirming={clearSmtpMutation.isPending}
+        onConfirm={() => clearSmtpMutation.mutate()}
+      />
+
+      <ConfirmActionDialog
+        open={clearQiniuOpen}
+        onOpenChange={setClearQiniuOpen}
+        title="清空七牛云数据库配置？"
+        description="这会删除数据库中的七牛云设置。清空后应用编辑页里的云存储上传和图片选择会失效，并回退到手动 URL 方式。"
+        confirmText={clearQiniuMutation.isPending ? '清空中...' : '确认清空'}
+        confirmVariant="destructive"
+        isConfirming={clearQiniuMutation.isPending}
+        onConfirm={() => clearQiniuMutation.mutate()}
       />
     </div>
   );

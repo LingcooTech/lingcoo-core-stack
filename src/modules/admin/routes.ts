@@ -6,6 +6,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { DeliverySettingsService } from '../../lib/delivery-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
+import { QiniuSettingsService } from '../../lib/qiniu-settings';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
 import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
@@ -22,6 +23,10 @@ import {
   adminOrderParamsSchema,
   alipayPaymentSettingsSchema,
   paymentProviderParamsSchema,
+  qiniuListImagesQuerySchema,
+  qiniuSettingsSchema,
+  qiniuTestConnectionSchema,
+  qiniuUploadTokenSchema,
   smtpSettingsSchema,
   smtpTestEmailSchema,
   wechatPaymentSettingsSchema
@@ -42,8 +47,8 @@ const SPA_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "connect-src 'self'"
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https:"
 ].join('; ');
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
@@ -105,6 +110,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {
     return new SmtpSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async () => {
+    return new QiniuSettingsService(app.db, app.appEnv).getOverview();
   });
 
   app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
@@ -198,6 +207,31 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.delete('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {
     await new SmtpSettingsService(app.db, app.appEnv).clearSettings();
     return { ok: true };
+  });
+
+  app.put('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = qiniuSettingsSchema.parse(request.body);
+    return new QiniuSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  });
+
+  app.post('/v1/admin/system-settings/qiniu/test', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = qiniuTestConnectionSchema.parse(request.body);
+    return new QiniuSettingsService(app.db, app.appEnv).testConnection(payload);
+  });
+
+  app.delete('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async () => {
+    await new QiniuSettingsService(app.db, app.appEnv).clearSettings();
+    return { ok: true };
+  });
+
+  app.get('/v1/admin/media/qiniu/images', { preHandler: app.requireAdmin }, async (request) => {
+    const query = qiniuListImagesQuerySchema.parse(request.query);
+    return new QiniuSettingsService(app.db, app.appEnv).listImages(query);
+  });
+
+  app.post('/v1/admin/media/qiniu/upload-token', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = qiniuUploadTokenSchema.parse(request.body);
+    return new QiniuSettingsService(app.db, app.appEnv).createUploadToken(payload);
   });
 
   // ─── User Management ────────────────────────────────────────────────────

@@ -13,6 +13,11 @@ const optionalEmailString = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
+const optionalUrlString = z
+  .union([z.string().trim().url(), z.literal('')])
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 export const paymentProviderParamsSchema = z.object({
   provider: z.enum(['wechat_pay', 'alipay'])
 });
@@ -45,6 +50,28 @@ export const smtpTestEmailSchema = smtpSettingsSchema.extend({
   to: z.string().trim().email(),
   subject: z.string().trim().min(1).max(200),
   text: z.string().trim().min(1).max(10_000)
+});
+
+export const qiniuSettingsSchema = z.object({
+  accessKey: optionalTrimmedString(255),
+  secretKey: optionalTrimmedString(255),
+  bucketName: optionalTrimmedString(255),
+  publicBaseUrl: optionalUrlString,
+  uploadHost: optionalUrlString,
+  defaultPrefix: optionalTrimmedString(255)
+});
+
+export const qiniuTestConnectionSchema = qiniuSettingsSchema;
+
+export const qiniuListImagesQuerySchema = z.object({
+  prefix: optionalTrimmedString(255),
+  marker: optionalTrimmedString(255),
+  limit: z.coerce.number().int().min(1).max(200).default(60)
+});
+
+export const qiniuUploadTokenSchema = z.object({
+  filename: z.string().trim().min(1).max(255),
+  prefix: optionalTrimmedString(255)
 });
 
 export const adminListQuerySchema = z.object({

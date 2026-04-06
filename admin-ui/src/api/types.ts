@@ -162,6 +162,52 @@ export interface SmtpTestEmailResult {
   subject: string;
 }
 
+export interface QiniuSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'env' | 'none';
+  values: {
+    accessKey: string;
+    bucketName: string;
+    publicBaseUrl: string;
+    uploadHost: string;
+    defaultPrefix: string;
+  };
+  secrets: {
+    secretKey: PaymentProviderSecretStatus;
+  };
+}
+
+export interface QiniuTestConnectionResult {
+  ok: boolean;
+  bucketName: string;
+  publicBaseUrl: string;
+  sampleCount: number;
+}
+
+export interface QiniuImageItem {
+  key: string;
+  url: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: string | null;
+}
+
+export interface QiniuImageListResult {
+  items: QiniuImageItem[];
+  marker: string | null;
+  hasMore: boolean;
+  prefix: string;
+  limit: number;
+}
+
+export interface QiniuUploadTokenResult {
+  uploadToken: string;
+  key: string;
+  uploadHost: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
 export interface DeliverySettingsOverview {
   appCode: string;
   configured: boolean;

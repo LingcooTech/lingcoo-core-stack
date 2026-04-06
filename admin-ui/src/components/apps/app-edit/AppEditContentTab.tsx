@@ -8,7 +8,7 @@ import { AppEditHighlightsCard } from './AppEditHighlightsCard';
 import { AppEditLinksCard } from './AppEditLinksCard';
 import { AppEditSaveBar } from './AppEditSaveBar';
 import { AppEditScreenshotsCard } from './AppEditScreenshotsCard';
-import type { AppEditFieldSetter, FormState } from './model';
+import { slugify, type AppEditFieldSetter, type FormState } from './model';
 
 interface AppEditContentTabProps {
   form: FormState;
@@ -25,6 +25,8 @@ export function AppEditContentTab({
   saveDisabled,
   onSave,
 }: AppEditContentTabProps) {
+  const appAssetPrefix = slugify(form.appCode || 'draft');
+
   return (
     <TabsContent value="content" className="space-y-6">
       <Card>
@@ -50,6 +52,7 @@ export function AppEditContentTab({
       />
 
       <AppEditScreenshotsCard
+        appCode={appAssetPrefix}
         screenshots={form.screenshots}
         onChange={(value) => setField('screenshots', value)}
       />

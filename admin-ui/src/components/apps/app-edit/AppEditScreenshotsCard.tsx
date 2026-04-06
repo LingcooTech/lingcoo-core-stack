@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 
+import { QiniuImageField } from '@/components/shared/QiniuImageField';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import type { FormState } from './model';
 
 interface AppEditScreenshotsCardProps {
+  appCode: string;
   screenshots: FormState['screenshots'];
   onChange: (value: FormState['screenshots']) => void;
 }
 
 export function AppEditScreenshotsCard({
+  appCode,
   screenshots,
   onChange,
 }: AppEditScreenshotsCardProps) {
@@ -50,21 +53,16 @@ export function AppEditScreenshotsCard({
         ) : null}
         {screenshots.map((item, index) => (
           <div key={index} className="flex items-start gap-3 rounded-xl border p-3">
-            {item.url ? (
-              <img
-                src={item.url}
-                alt={item.caption || `截图 ${index + 1}`}
-                className="h-16 w-24 shrink-0 rounded-lg border object-cover"
-                onError={(event) => {
-                  (event.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : null}
             <div className="flex-1 space-y-2">
-              <Input
+              <QiniuImageField
                 value={item.url}
-                onChange={(event) => updateScreenshot(index, { url: event.target.value })}
+                onChange={(value) => updateScreenshot(index, { url: value })}
                 placeholder="图片 URL"
+                defaultPrefix={`${appCode}/screenshots`}
+                previewAlt={item.caption || `截图 ${index + 1}`}
+                previewClassName="h-40 w-full rounded-xl border object-cover"
+                dialogTitle="选择应用截图"
+                dialogDescription="截图会展示在用户侧应用详情页，建议统一尺寸比例。"
               />
               <Input
                 value={item.caption ?? ''}
