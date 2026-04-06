@@ -29,6 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
 const smtpSchema = z.object({
@@ -402,516 +403,544 @@ export function SettingsPage() {
     <div>
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
-        <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
-              <StatusPill
-                tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
-                label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
-              />
-              <StatusPill
-                tone={openrouterData?.configured ? 'ok' : 'neutral'}
-                label={openrouterData?.configured ? 'OpenRouter 已配置' : 'OpenRouter 未配置'}
-              />
-              <StatusPill
-                tone={openrouterData?.source === 'database' ? 'ok' : openrouterData?.source === 'env' ? 'warn' : 'neutral'}
-                label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
-              />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-foreground">AI API Hub</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                先接入 OpenRouter 作为第一个模型 Provider。后续新增其他服务商时，继续沿用同一套 Hub 结构和接口。
-              </p>
+        <Tabs defaultValue="smtp" className="max-w-3xl space-y-5">
+          <div className="rounded-3xl border border-border bg-white p-6 shadow-sm">
+            <div className="space-y-3">
+              <div>
+                <h2 className="text-lg font-black text-foreground">系统设置</h2>
+                <p className="mt-1 text-sm text-muted-foreground">把系统能力按 SMTP、云存储和 AI Hub 分组管理，减少长页面滚动。</p>
+              </div>
+              <TabsList className="h-auto w-full justify-start gap-1 rounded-2xl bg-muted/70 p-1">
+                <TabsTrigger value="smtp" className="min-w-[108px] rounded-xl">
+                  SMTP
+                </TabsTrigger>
+                <TabsTrigger value="qiniu" className="min-w-[108px] rounded-xl">
+                  七牛云
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="min-w-[108px] rounded-xl">
+                  AI Hub
+                </TabsTrigger>
+              </TabsList>
             </div>
           </div>
 
-          {openrouterLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, index) => (
-                <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
-              ))}
-            </div>
-          ) : (
-            <Form {...openrouterForm}>
-              <form
-                onSubmit={openrouterForm.handleSubmit((values) =>
-                  saveOpenRouterMutation.mutate(
-                    buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
-                  )
-                )}
-                className="space-y-5"
-              >
-                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
-                    <p className="text-sm text-muted-foreground">
-                      用于中台统一代理多模型调用。当前先接入 OpenRouter，后续可继续扩展 OpenAI、Anthropic、DeepSeek 等 Provider。
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={openrouterForm.control}
-                    name="baseUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>API Base URL</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://openrouter.ai/api/v1" {...field} />
-                        </FormControl>
-                        <FormDescription>默认保持 OpenRouter 官方地址即可。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={openrouterForm.control}
-                    name="defaultModel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>默认模型</FormLabel>
-                        <FormControl>
-                          <Input placeholder="google/gemini-2.0-flash-001" {...field} />
-                        </FormControl>
-                        <FormDescription>统一 Hub 接口未显式传模型时，会回退到这里。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={openrouterForm.control}
-                    name="siteUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Site URL / HTTP-Referer</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://stack.futuredecade.com" {...field} />
-                        </FormControl>
-                        <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={openrouterForm.control}
-                    name="siteName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Site Name / X-Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="fd-core-stack" {...field} />
-                        </FormControl>
-                        <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+          <TabsContent value="smtp" className="mt-0">
+            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                  <StatusPill tone={smtpData?.configured ? 'ok' : 'neutral'} label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
+                  <StatusPill
+                    tone={smtpData?.source === 'database' ? 'ok' : smtpData?.source === 'env' ? 'warn' : 'neutral'}
+                    label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
                   />
                 </div>
+                <div>
+                  <h2 className="text-lg font-black text-foreground">SMTP 配置</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    用于注册验证码、邮箱验证和找回密码邮件。数据库配置会优先生效，并覆盖环境变量读取结果。
+                  </p>
+                </div>
+              </div>
 
-                <FormField
-                  control={openrouterForm.control}
-                  name="apiKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>OpenRouter API Key</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder={openrouterData?.secrets.apiKey.configured ? '已保存，留空保持不变' : '请输入 OpenRouter API Key'}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>API Key 会加密存储在数据库中，由中台统一代理模型调用。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={saveOpenRouterMutation.isPending}>
-                    {saveOpenRouterMutation.isPending ? '保存中...' : '保存 OpenRouter 配置'}
-                  </Button>
-                  <Button type="button" variant="secondary" disabled={testOpenRouterMutation.isPending} onClick={handleTestOpenRouter}>
-                    {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
-                  </Button>
-                  <Button type="button" variant="outline" disabled={openrouterModelsLoading} onClick={() => void refetchOpenRouterModels()}>
-                    {openrouterModelsLoading ? '刷新中...' : '拉取模型列表'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={clearOpenRouterMutation.isPending}
-                    onClick={() => setClearOpenRouterOpen(true)}
+              {smtpLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, index) => (
+                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...smtpForm}>
+                  <form
+                    onSubmit={smtpForm.handleSubmit((values) =>
+                      saveSmtpMutation.mutate(
+                        buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) })
+                      )
+                    )}
+                    className="space-y-5"
                   >
-                    清空数据库配置
-                  </Button>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-black text-foreground">模型列表预览</h3>
-                      <p className="text-sm text-muted-foreground">
-                        这里显示当前有效配置从 OpenRouter 拉取到的模型列表。保存配置后可直接刷新。
-                      </p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={smtpForm.control}
+                        name="host"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>SMTP Host</FormLabel>
+                            <FormControl>
+                              <Input placeholder="smtp.example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={smtpForm.control}
+                        name="port"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>端口</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={65535}
+                                value={field.value}
+                                onChange={(event) => field.onChange(event.target.value)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={smtpForm.control}
+                        name="user"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>用户名</FormLabel>
+                            <FormControl>
+                              <Input placeholder="mailer@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={smtpForm.control}
+                        name="from"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>发件人邮箱</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="noreply@example.com" {...field} />
+                            </FormControl>
+                            <FormDescription>留空时会回退到环境变量或默认值。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    {openrouterModelsData ? (
-                      <StatusPill tone="info" label={`${openrouterModelsData.items.length} 个模型`} />
-                    ) : null}
-                  </div>
-                  {openrouterModelsData?.items.length ? (
-                    <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
-                      <div className="space-y-2 p-3">
-                        {openrouterModelsData.items.map((model) => (
-                          <div key={model.id} className="rounded-xl border border-border bg-slate-50 px-3 py-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-bold text-foreground">{model.name}</p>
-                              <p className="text-[11px] font-mono text-muted-foreground">{model.id}</p>
-                            </div>
-                            <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                              <span>Context: {model.contextLength ?? '—'}</span>
-                              <span>Max Output: {model.maxCompletionTokens ?? '—'}</span>
-                              <span>Modality: {model.modality ?? '—'}</span>
-                            </div>
+
+                    <FormField
+                      control={smtpForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SMTP Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              autoComplete="new-password"
+                              placeholder={smtpData?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>密码会加密存储在数据库中。</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={smtpForm.control}
+                      name="secure"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3">
+                          <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                          <div>
+                            <FormLabel className="cursor-pointer">启用 SSL/TLS</FormLabel>
+                            <FormDescription>465 端口通常启用，587 端口通常关闭并由服务器升级连接。</FormDescription>
                           </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
-                      暂未拉取模型列表。保存配置后点击“拉取模型列表”即可检查当前 Provider 返回的模型清单。
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={saveSmtpMutation.isPending}>
+                        {saveSmtpMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={clearSmtpMutation.isPending} onClick={() => setClearSmtpOpen(true)}>
+                        清空数据库配置
+                      </Button>
                     </div>
-                  )}
-                </div>
-              </form>
-            </Form>
-          )}
-        </div>
 
-        <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
-              <StatusPill tone={smtpData?.configured ? 'ok' : 'neutral'} label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
-              <StatusPill
-                tone={smtpData?.source === 'database' ? 'ok' : smtpData?.source === 'env' ? 'warn' : 'neutral'}
-                label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
-              />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-foreground">SMTP 配置</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                用于注册验证码、邮箱验证和找回密码邮件。数据库配置会优先生效，并覆盖环境变量读取结果。
-              </p>
-            </div>
-          </div>
-
-          {smtpLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, index) => (
-                <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
-              ))}
-            </div>
-          ) : (
-            <Form {...smtpForm}>
-              <form
-                onSubmit={smtpForm.handleSubmit((values) =>
-                  saveSmtpMutation.mutate(
-                    buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) })
-                  )
-                )}
-                className="space-y-5"
-              >
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={smtpForm.control}
-                    name="host"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SMTP Host</FormLabel>
-                        <FormControl>
-                          <Input placeholder="smtp.example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={smtpForm.control}
-                    name="port"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>端口</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={65535}
-                            value={field.value}
-                            onChange={(event) => field.onChange(event.target.value)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={smtpForm.control}
-                    name="user"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>用户名</FormLabel>
-                        <FormControl>
-                          <Input placeholder="mailer@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={smtpForm.control}
-                    name="from"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>发件人邮箱</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="noreply@example.com" {...field} />
-                        </FormControl>
-                        <FormDescription>留空时会回退到环境变量或默认值。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={smtpForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SMTP Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder={smtpData?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>密码会加密存储在数据库中。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={smtpForm.control}
-                  name="secure"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <div>
-                        <FormLabel className="cursor-pointer">启用 SSL/TLS</FormLabel>
-                        <FormDescription>465 端口通常启用，587 端口通常关闭并由服务器升级连接。</FormDescription>
+                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-black text-foreground">发送测试邮件</h3>
+                        <p className="text-sm text-muted-foreground">
+                          使用当前表单中的 SMTP 参数发送一封测试邮件，不会自动保存本页改动。
+                        </p>
                       </div>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saveSmtpMutation.isPending}>
-                    {saveSmtpMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
-                  </Button>
-                  <Button type="button" variant="outline" disabled={clearSmtpMutation.isPending} onClick={() => setClearSmtpOpen(true)}>
-                    清空数据库配置
-                  </Button>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-foreground">发送测试邮件</h3>
-                    <p className="text-sm text-muted-foreground">
-                      使用当前表单中的 SMTP 参数发送一封测试邮件，不会自动保存本页改动。
-                    </p>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                    <Input
-                      type="email"
-                      value={testTo}
-                      onChange={(event) => setTestTo(event.target.value)}
-                      placeholder="test@example.com"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <Input
-                      value={testSubject}
-                      onChange={(event) => setTestSubject(event.target.value)}
-                      placeholder="测试邮件主题"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <Textarea
-                      value={testBody}
-                      onChange={(event) => setTestBody(event.target.value)}
-                      placeholder="测试邮件正文"
-                      className="min-h-[140px]"
-                    />
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <Button type="button" variant="secondary" disabled={testSmtpMutation.isPending} onClick={handleSendTestEmail}>
-                      {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </Form>
-          )}
-        </div>
-
-        <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
-              <StatusPill tone={qiniuData?.configured ? 'ok' : 'neutral'} label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'} />
-              <StatusPill
-                tone={qiniuData?.source === 'database' ? 'ok' : qiniuData?.source === 'env' ? 'warn' : 'neutral'}
-                label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
-              />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-foreground">七牛云存储</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                用于应用图标、封面和截图的直接上传与图片选择。保存后，应用编辑页会出现云存储上传/选择入口。
-              </p>
-            </div>
-          </div>
-
-          {qiniuLoading ? (
-            <div className="space-y-3">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
-              ))}
-            </div>
-          ) : (
-            <Form {...qiniuForm}>
-              <form
-                onSubmit={qiniuForm.handleSubmit((values) =>
-                  saveQiniuMutation.mutate(
-                    buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
-                  )
-                )}
-                className="space-y-5"
-              >
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={qiniuForm.control}
-                    name="accessKey"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Access Key</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Qiniu Access Key" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={qiniuForm.control}
-                    name="bucketName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bucket</FormLabel>
-                        <FormControl>
-                          <Input placeholder="bucket-name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={qiniuForm.control}
-                    name="publicBaseUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>公共访问域名</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://cdn.example.com" {...field} />
-                        </FormControl>
-                        <FormDescription>用于图片预览和把已选图片 URL 回填到应用表单。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={qiniuForm.control}
-                    name="uploadHost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>上传域名</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://upload.qiniup.com" {...field} />
-                        </FormControl>
-                        <FormDescription>大多数标准 Bucket 维持默认值即可。</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={qiniuForm.control}
-                  name="defaultPrefix"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>默认目录前缀</FormLabel>
-                      <FormControl>
-                        <Input placeholder="apps" {...field} />
-                      </FormControl>
-                      <FormDescription>例如填 `apps`，上传文件时会自动落到 `apps/...` 目录下。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={qiniuForm.control}
-                  name="secretKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Secret Key</FormLabel>
-                      <FormControl>
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <Input
-                          type="password"
-                          autoComplete="new-password"
-                          placeholder={qiniuData?.secrets.secretKey.configured ? '已保存，留空保持不变' : '请输入 Secret Key'}
-                          {...field}
+                          type="email"
+                          value={testTo}
+                          onChange={(event) => setTestTo(event.target.value)}
+                          placeholder="test@example.com"
                         />
-                      </FormControl>
-                      <FormDescription>Secret Key 会加密存储在数据库中。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      </div>
+                      <div className="mt-3">
+                        <Input
+                          value={testSubject}
+                          onChange={(event) => setTestSubject(event.target.value)}
+                          placeholder="测试邮件主题"
+                        />
+                      </div>
+                      <div className="mt-3">
+                        <Textarea
+                          value={testBody}
+                          onChange={(event) => setTestBody(event.target.value)}
+                          placeholder="测试邮件正文"
+                          className="min-h-[140px]"
+                        />
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <Button type="button" variant="secondary" disabled={testSmtpMutation.isPending} onClick={handleSendTestEmail}>
+                          {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={saveQiniuMutation.isPending}>
-                    {saveQiniuMutation.isPending ? '保存中...' : '保存七牛云配置'}
-                  </Button>
-                  <Button type="button" variant="secondary" disabled={testQiniuMutation.isPending} onClick={handleTestQiniu}>
-                    {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
-                  </Button>
-                  <Button type="button" variant="outline" disabled={clearQiniuMutation.isPending} onClick={() => setClearQiniuOpen(true)}>
-                    清空数据库配置
-                  </Button>
+          <TabsContent value="qiniu" className="mt-0">
+            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                  <StatusPill tone={qiniuData?.configured ? 'ok' : 'neutral'} label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'} />
+                  <StatusPill
+                    tone={qiniuData?.source === 'database' ? 'ok' : qiniuData?.source === 'env' ? 'warn' : 'neutral'}
+                    label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
+                  />
                 </div>
-              </form>
-            </Form>
-          )}
-        </div>
+                <div>
+                  <h2 className="text-lg font-black text-foreground">七牛云存储</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    用于应用图标、封面和截图的直接上传与图片选择。保存后，应用编辑页会出现云存储上传/选择入口。
+                  </p>
+                </div>
+              </div>
+
+              {qiniuLoading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, index) => (
+                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...qiniuForm}>
+                  <form
+                    onSubmit={qiniuForm.handleSubmit((values) =>
+                      saveQiniuMutation.mutate(
+                        buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
+                      )
+                    )}
+                    className="space-y-5"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={qiniuForm.control}
+                        name="accessKey"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Access Key</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Qiniu Access Key" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={qiniuForm.control}
+                        name="bucketName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bucket</FormLabel>
+                            <FormControl>
+                              <Input placeholder="bucket-name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={qiniuForm.control}
+                        name="publicBaseUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>公共访问域名</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://cdn.example.com" {...field} />
+                            </FormControl>
+                            <FormDescription>用于图片预览和把已选图片 URL 回填到应用表单。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={qiniuForm.control}
+                        name="uploadHost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>上传域名</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://upload.qiniup.com" {...field} />
+                            </FormControl>
+                            <FormDescription>大多数标准 Bucket 维持默认值即可。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={qiniuForm.control}
+                      name="defaultPrefix"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>默认目录前缀</FormLabel>
+                          <FormControl>
+                            <Input placeholder="apps" {...field} />
+                          </FormControl>
+                          <FormDescription>例如填 `apps`，上传文件时会自动落到 `apps/...` 目录下。</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={qiniuForm.control}
+                      name="secretKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Secret Key</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              autoComplete="new-password"
+                              placeholder={qiniuData?.secrets.secretKey.configured ? '已保存，留空保持不变' : '请输入 Secret Key'}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>Secret Key 会加密存储在数据库中。</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" disabled={saveQiniuMutation.isPending}>
+                        {saveQiniuMutation.isPending ? '保存中...' : '保存七牛云配置'}
+                      </Button>
+                      <Button type="button" variant="secondary" disabled={testQiniuMutation.isPending} onClick={handleTestQiniu}>
+                        {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={clearQiniuMutation.isPending} onClick={() => setClearQiniuOpen(true)}>
+                        清空数据库配置
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-0">
+            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                  <StatusPill
+                    tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
+                    label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
+                  />
+                  <StatusPill
+                    tone={openrouterData?.configured ? 'ok' : 'neutral'}
+                    label={openrouterData?.configured ? 'OpenRouter 已配置' : 'OpenRouter 未配置'}
+                  />
+                  <StatusPill
+                    tone={openrouterData?.source === 'database' ? 'ok' : openrouterData?.source === 'env' ? 'warn' : 'neutral'}
+                    label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
+                  />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-foreground">AI API Hub</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    先接入 OpenRouter 作为第一个模型 Provider。后续新增其他服务商时，继续沿用同一套 Hub 结构和接口。
+                  </p>
+                </div>
+              </div>
+
+              {openrouterLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, index) => (
+                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...openrouterForm}>
+                  <form
+                    onSubmit={openrouterForm.handleSubmit((values) =>
+                      saveOpenRouterMutation.mutate(
+                        buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
+                      )
+                    )}
+                    className="space-y-5"
+                  >
+                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
+                        <p className="text-sm text-muted-foreground">
+                          用于中台统一代理多模型调用。当前先接入 OpenRouter，后续可继续扩展 OpenAI、Anthropic、DeepSeek 等 Provider。
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={openrouterForm.control}
+                        name="baseUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>API Base URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://openrouter.ai/api/v1" {...field} />
+                            </FormControl>
+                            <FormDescription>默认保持 OpenRouter 官方地址即可。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={openrouterForm.control}
+                        name="defaultModel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>默认模型</FormLabel>
+                            <FormControl>
+                              <Input placeholder="google/gemini-2.0-flash-001" {...field} />
+                            </FormControl>
+                            <FormDescription>统一 Hub 接口未显式传模型时，会回退到这里。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={openrouterForm.control}
+                        name="siteUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Site URL / HTTP-Referer</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://stack.futuredecade.com" {...field} />
+                            </FormControl>
+                            <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={openrouterForm.control}
+                        name="siteName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Site Name / X-Title</FormLabel>
+                            <FormControl>
+                              <Input placeholder="fd-core-stack" {...field} />
+                            </FormControl>
+                            <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={openrouterForm.control}
+                      name="apiKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>OpenRouter API Key</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              autoComplete="new-password"
+                              placeholder={openrouterData?.secrets.apiKey.configured ? '已保存，留空保持不变' : '请输入 OpenRouter API Key'}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>API Key 会加密存储在数据库中，由中台统一代理模型调用。</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" disabled={saveOpenRouterMutation.isPending}>
+                        {saveOpenRouterMutation.isPending ? '保存中...' : '保存 OpenRouter 配置'}
+                      </Button>
+                      <Button type="button" variant="secondary" disabled={testOpenRouterMutation.isPending} onClick={handleTestOpenRouter}>
+                        {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={openrouterModelsLoading} onClick={() => void refetchOpenRouterModels()}>
+                        {openrouterModelsLoading ? '刷新中...' : '拉取模型列表'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearOpenRouterMutation.isPending}
+                        onClick={() => setClearOpenRouterOpen(true)}
+                      >
+                        清空数据库配置
+                      </Button>
+                    </div>
+
+                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-black text-foreground">模型列表预览</h3>
+                          <p className="text-sm text-muted-foreground">
+                            这里显示当前有效配置从 OpenRouter 拉取到的模型列表。保存配置后可直接刷新。
+                          </p>
+                        </div>
+                        {openrouterModelsData ? (
+                          <StatusPill tone="info" label={`${openrouterModelsData.items.length} 个模型`} />
+                        ) : null}
+                      </div>
+                      {openrouterModelsData?.items.length ? (
+                        <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
+                          <div className="space-y-2 p-3">
+                            {openrouterModelsData.items.map((model) => (
+                              <div key={model.id} className="rounded-xl border border-border bg-slate-50 px-3 py-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-sm font-bold text-foreground">{model.name}</p>
+                                  <p className="text-[11px] font-mono text-muted-foreground">{model.id}</p>
+                                </div>
+                                <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                                  <span>Context: {model.contextLength ?? '—'}</span>
+                                  <span>Max Output: {model.maxCompletionTokens ?? '—'}</span>
+                                  <span>Modality: {model.modality ?? '—'}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      ) : (
+                        <div className="mt-4 rounded-2xl border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
+                          暂未拉取模型列表。保存配置后点击“拉取模型列表”即可检查当前 Provider 返回的模型清单。
+                        </div>
+                      )}
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ConfirmActionDialog
