@@ -78,7 +78,12 @@ const envSchema = z.object({
   QINIU_BUCKET_NAME: z.string().optional(),
   QINIU_PUBLIC_BASE_URL: z.string().optional(),
   QINIU_UPLOAD_HOST: z.string().optional(),
-  QINIU_DEFAULT_PREFIX: z.string().optional()
+  QINIU_DEFAULT_PREFIX: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_BASE_URL: z.string().optional(),
+  OPENROUTER_SITE_URL: z.string().optional(),
+  OPENROUTER_SITE_NAME: z.string().optional(),
+  OPENROUTER_DEFAULT_MODEL: z.string().optional()
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

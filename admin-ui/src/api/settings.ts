@@ -1,7 +1,11 @@
 import { apiClient } from './client';
 import type {
+  AiProviderListResponse,
+  AiProviderModelsResponse,
   QiniuSettingsOverview,
   QiniuTestConnectionResult,
+  OpenRouterSettingsOverview,
+  OpenRouterTestConnectionResult,
   SmtpSettingsOverview,
   SmtpTestEmailResult
 } from './types';
@@ -28,6 +32,14 @@ export interface QiniuSettingsInput {
   publicBaseUrl?: string;
   uploadHost?: string;
   defaultPrefix?: string;
+}
+
+export interface OpenRouterSettingsInput {
+  apiKey?: string;
+  baseUrl?: string;
+  siteUrl?: string;
+  siteName?: string;
+  defaultModel?: string;
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {
@@ -72,4 +84,34 @@ export async function testQiniuSettings(payload: QiniuSettingsInput): Promise<Qi
     method: 'POST',
     body: JSON.stringify(payload)
   });
+}
+
+export async function getAiProviders(): Promise<AiProviderListResponse> {
+  return apiClient<AiProviderListResponse>('/v1/admin/ai/providers');
+}
+
+export async function listAiProviderModels(provider: 'openrouter'): Promise<AiProviderModelsResponse> {
+  return apiClient<AiProviderModelsResponse>(`/v1/admin/ai/providers/${provider}/models`);
+}
+
+export async function getOpenRouterSettings(): Promise<OpenRouterSettingsOverview> {
+  return apiClient<OpenRouterSettingsOverview>('/v1/admin/system-settings/ai/providers/openrouter');
+}
+
+export async function upsertOpenRouterSettings(payload: OpenRouterSettingsInput): Promise<OpenRouterSettingsOverview> {
+  return apiClient<OpenRouterSettingsOverview>('/v1/admin/system-settings/ai/providers/openrouter', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function testOpenRouterSettings(payload: OpenRouterSettingsInput): Promise<OpenRouterTestConnectionResult> {
+  return apiClient<OpenRouterTestConnectionResult>('/v1/admin/system-settings/ai/providers/openrouter/test', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function clearOpenRouterSettings(): Promise<void> {
+  await apiClient('/v1/admin/system-settings/ai/providers/openrouter', { method: 'DELETE' });
 }

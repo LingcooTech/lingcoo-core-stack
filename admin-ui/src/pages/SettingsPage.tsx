@@ -6,12 +6,18 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import {
+  clearOpenRouterSettings,
   clearQiniuSettings,
   clearSmtpSettings,
+  getAiProviders,
+  getOpenRouterSettings,
   getQiniuSettings,
   getSmtpSettings,
+  listAiProviderModels,
   sendSmtpTestEmail,
+  testOpenRouterSettings,
   testQiniuSettings,
+  upsertOpenRouterSettings,
   upsertQiniuSettings,
   upsertSmtpSettings
 } from '@/api/settings';
@@ -22,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 
 const smtpSchema = z.object({
@@ -42,12 +49,21 @@ const qiniuSchema = z.object({
   defaultPrefix: z.string().optional()
 });
 
+const openrouterSchema = z.object({
+  apiKey: z.string().optional(),
+  baseUrl: z.string().url('请输入有效链接').or(z.literal('')),
+  siteUrl: z.string().url('请输入有效链接').or(z.literal('')),
+  siteName: z.string().optional(),
+  defaultModel: z.string().optional()
+});
+
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
 const testSubjectSchema = z.string().trim().min(1, '请输入测试邮件主题').max(200, '主题不能超过 200 个字符');
 const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').max(10_000, '正文不能超过 10000 个字符');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 type QiniuValues = z.infer<typeof qiniuSchema>;
+type OpenRouterValues = z.infer<typeof openrouterSchema>;
 
 function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
   const host = values.host?.trim();
@@ -83,6 +99,22 @@ function buildQiniuPayload(values: QiniuValues, options: { includeSecretKey: boo
   };
 }
 
+function buildOpenRouterPayload(values: OpenRouterValues, options: { includeApiKey: boolean }) {
+  const apiKey = values.apiKey?.trim();
+  const baseUrl = values.baseUrl?.trim();
+  const siteUrl = values.siteUrl?.trim();
+  const siteName = values.siteName?.trim();
+  const defaultModel = values.defaultModel?.trim();
+
+  return {
+    ...(options.includeApiKey && apiKey ? { apiKey } : {}),
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(siteUrl ? { siteUrl } : {}),
+    ...(siteName ? { siteName } : {}),
+    ...(defaultModel ? { defaultModel } : {})
+  };
+}
+
 function sourceLabel(source: 'database' | 'env' | 'none') {
   if (source === 'database') {
     return '数据库';
@@ -99,11 +131,17 @@ export function SettingsPage() {
   const qc = useQueryClient();
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
   const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
+  const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
   const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
   const [testBody, setTestBody] = useState(
     ['这是一封来自 fd-core-stack 的测试邮件。', '', '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。'].join('\n')
   );
+
+  const { data: aiProvidersData } = useQuery({
+    queryKey: ['admin-ai-providers'],
+    queryFn: getAiProviders
+  });
 
   const { data: smtpData, isLoading: smtpLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
@@ -113,6 +151,21 @@ export function SettingsPage() {
   const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
     queryKey: ['system-settings', 'qiniu'],
     queryFn: getQiniuSettings
+  });
+
+  const { data: openrouterData, isLoading: openrouterLoading } = useQuery({
+    queryKey: ['system-settings', 'ai', 'openrouter'],
+    queryFn: getOpenRouterSettings
+  });
+
+  const {
+    data: openrouterModelsData,
+    isFetching: openrouterModelsLoading,
+    refetch: refetchOpenRouterModels
+  } = useQuery({
+    queryKey: ['admin-ai-provider-models', 'openrouter'],
+    queryFn: () => listAiProviderModels('openrouter'),
+    enabled: false
   });
 
   const smtpForm = useForm<SmtpValues>({
@@ -136,6 +189,17 @@ export function SettingsPage() {
       publicBaseUrl: '',
       uploadHost: 'https://upload.qiniup.com',
       defaultPrefix: ''
+    }
+  });
+
+  const openrouterForm = useForm<OpenRouterValues>({
+    resolver: zodResolver(openrouterSchema),
+    defaultValues: {
+      apiKey: '',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      siteUrl: '',
+      siteName: 'fd-core-stack',
+      defaultModel: ''
     }
   });
 
@@ -168,6 +232,20 @@ export function SettingsPage() {
       defaultPrefix: qiniuData.values.defaultPrefix
     });
   }, [qiniuData, qiniuForm]);
+
+  useEffect(() => {
+    if (!openrouterData) {
+      return;
+    }
+
+    openrouterForm.reset({
+      apiKey: '',
+      baseUrl: openrouterData.values.baseUrl,
+      siteUrl: openrouterData.values.siteUrl,
+      siteName: openrouterData.values.siteName,
+      defaultModel: openrouterData.values.defaultModel
+    });
+  }, [openrouterData, openrouterForm]);
 
   const saveSmtpMutation = useMutation({
     mutationFn: upsertSmtpSettings,
@@ -239,6 +317,45 @@ export function SettingsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
   });
 
+  const saveOpenRouterMutation = useMutation({
+    mutationFn: upsertOpenRouterSettings,
+    onSuccess: async (result) => {
+      toast.success('OpenRouter 配置已保存');
+      qc.setQueryData(['system-settings', 'ai', 'openrouter'], result);
+      openrouterForm.reset({
+        apiKey: '',
+        baseUrl: result.values.baseUrl,
+        siteUrl: result.values.siteUrl,
+        siteName: result.values.siteName,
+        defaultModel: result.values.defaultModel
+      });
+      await qc.invalidateQueries({ queryKey: ['admin-ai-providers'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+  });
+
+  const clearOpenRouterMutation = useMutation({
+    mutationFn: clearOpenRouterSettings,
+    onSuccess: async () => {
+      toast.success('数据库中的 OpenRouter 配置已清空');
+      setClearOpenRouterOpen(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['system-settings', 'ai', 'openrouter'] }),
+        qc.invalidateQueries({ queryKey: ['admin-ai-providers'] }),
+        qc.invalidateQueries({ queryKey: ['admin-ai-provider-models', 'openrouter'] })
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+  });
+
+  const testOpenRouterMutation = useMutation({
+    mutationFn: testOpenRouterSettings,
+    onSuccess: (result) => {
+      toast.success(`OpenRouter 连接成功，共发现 ${result.modelCount} 个模型`);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+  });
+
   const handleSendTestEmail = smtpForm.handleSubmit((values) => {
     const parsedTo = testEmailSchema.safeParse(testTo);
     if (!parsedTo.success) {
@@ -272,10 +389,208 @@ export function SettingsPage() {
     );
   });
 
+  const handleTestOpenRouter = openrouterForm.handleSubmit((values) => {
+    testOpenRouterMutation.mutate(
+      buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
+    );
+  });
+
+  const configuredAiProviders = aiProvidersData?.items.filter((item) => item.configured).length ?? (openrouterData?.configured ? 1 : 0);
+  const totalAiProviders = aiProvidersData?.items.length ?? 1;
+
   return (
     <div>
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
+        <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+              <StatusPill
+                tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
+                label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
+              />
+              <StatusPill
+                tone={openrouterData?.configured ? 'ok' : 'neutral'}
+                label={openrouterData?.configured ? 'OpenRouter 已配置' : 'OpenRouter 未配置'}
+              />
+              <StatusPill
+                tone={openrouterData?.source === 'database' ? 'ok' : openrouterData?.source === 'env' ? 'warn' : 'neutral'}
+                label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
+              />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-foreground">AI API Hub</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                先接入 OpenRouter 作为第一个模型 Provider。后续新增其他服务商时，继续沿用同一套 Hub 结构和接口。
+              </p>
+            </div>
+          </div>
+
+          {openrouterLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, index) => (
+                <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+              ))}
+            </div>
+          ) : (
+            <Form {...openrouterForm}>
+              <form
+                onSubmit={openrouterForm.handleSubmit((values) =>
+                  saveOpenRouterMutation.mutate(
+                    buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
+                  )
+                )}
+                className="space-y-5"
+              >
+                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
+                    <p className="text-sm text-muted-foreground">
+                      用于中台统一代理多模型调用。当前先接入 OpenRouter，后续可继续扩展 OpenAI、Anthropic、DeepSeek 等 Provider。
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={openrouterForm.control}
+                    name="baseUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>API Base URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://openrouter.ai/api/v1" {...field} />
+                        </FormControl>
+                        <FormDescription>默认保持 OpenRouter 官方地址即可。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={openrouterForm.control}
+                    name="defaultModel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>默认模型</FormLabel>
+                        <FormControl>
+                          <Input placeholder="google/gemini-2.0-flash-001" {...field} />
+                        </FormControl>
+                        <FormDescription>统一 Hub 接口未显式传模型时，会回退到这里。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={openrouterForm.control}
+                    name="siteUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Site URL / HTTP-Referer</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://stack.futuredecade.com" {...field} />
+                        </FormControl>
+                        <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={openrouterForm.control}
+                    name="siteName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Site Name / X-Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="fd-core-stack" {...field} />
+                        </FormControl>
+                        <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={openrouterForm.control}
+                  name="apiKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>OpenRouter API Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder={openrouterData?.secrets.apiKey.configured ? '已保存，留空保持不变' : '请输入 OpenRouter API Key'}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>API Key 会加密存储在数据库中，由中台统一代理模型调用。</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={saveOpenRouterMutation.isPending}>
+                    {saveOpenRouterMutation.isPending ? '保存中...' : '保存 OpenRouter 配置'}
+                  </Button>
+                  <Button type="button" variant="secondary" disabled={testOpenRouterMutation.isPending} onClick={handleTestOpenRouter}>
+                    {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={openrouterModelsLoading} onClick={() => void refetchOpenRouterModels()}>
+                    {openrouterModelsLoading ? '刷新中...' : '拉取模型列表'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={clearOpenRouterMutation.isPending}
+                    onClick={() => setClearOpenRouterOpen(true)}
+                  >
+                    清空数据库配置
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-foreground">模型列表预览</h3>
+                      <p className="text-sm text-muted-foreground">
+                        这里显示当前有效配置从 OpenRouter 拉取到的模型列表。保存配置后可直接刷新。
+                      </p>
+                    </div>
+                    {openrouterModelsData ? (
+                      <StatusPill tone="info" label={`${openrouterModelsData.items.length} 个模型`} />
+                    ) : null}
+                  </div>
+                  {openrouterModelsData?.items.length ? (
+                    <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
+                      <div className="space-y-2 p-3">
+                        {openrouterModelsData.items.map((model) => (
+                          <div key={model.id} className="rounded-xl border border-border bg-slate-50 px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-foreground">{model.name}</p>
+                              <p className="text-[11px] font-mono text-muted-foreground">{model.id}</p>
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                              <span>Context: {model.contextLength ?? '—'}</span>
+                              <span>Max Output: {model.maxCompletionTokens ?? '—'}</span>
+                              <span>Modality: {model.modality ?? '—'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
+                      暂未拉取模型列表。保存配置后点击“拉取模型列表”即可检查当前 Provider 返回的模型清单。
+                    </div>
+                  )}
+                </div>
+              </form>
+            </Form>
+          )}
+        </div>
+
         <div className="max-w-3xl space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
@@ -619,6 +934,17 @@ export function SettingsPage() {
         confirmVariant="destructive"
         isConfirming={clearQiniuMutation.isPending}
         onConfirm={() => clearQiniuMutation.mutate()}
+      />
+
+      <ConfirmActionDialog
+        open={clearOpenRouterOpen}
+        onOpenChange={setClearOpenRouterOpen}
+        title="清空 OpenRouter 数据库配置？"
+        description="这会删除数据库中的 OpenRouter 设置。清空后 AI API Hub 会回退到环境变量；如果环境变量也没有配置，中台将无法继续代理 OpenRouter 模型请求。"
+        confirmText={clearOpenRouterMutation.isPending ? '清空中...' : '确认清空'}
+        confirmVariant="destructive"
+        isConfirming={clearOpenRouterMutation.isPending}
+        onConfirm={() => clearOpenRouterMutation.mutate()}
       />
     </div>
   );

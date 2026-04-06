@@ -208,6 +208,54 @@ export interface QiniuUploadTokenResult {
   expiresIn: number;
 }
 
+export interface AiProviderStatus {
+  code: string;
+  label: string;
+  configured: boolean;
+  source: 'database' | 'env' | 'none';
+}
+
+export interface AiProviderListResponse {
+  items: AiProviderStatus[];
+}
+
+export interface OpenRouterSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'env' | 'none';
+  values: {
+    baseUrl: string;
+    siteUrl: string;
+    siteName: string;
+    defaultModel: string;
+  };
+  secrets: {
+    apiKey: PaymentProviderSecretStatus;
+  };
+}
+
+export interface OpenRouterTestConnectionResult {
+  ok: boolean;
+  provider: string;
+  modelCount: number;
+  defaultModel: string;
+  sampleModels: string[];
+}
+
+export interface AiModelSummary {
+  id: string;
+  name: string;
+  contextLength: number | null;
+  maxCompletionTokens: number | null;
+  promptPricing: string | null;
+  completionPricing: string | null;
+  modality: string | null;
+}
+
+export interface AiProviderModelsResponse {
+  provider: string;
+  items: AiModelSummary[];
+}
+
 export interface DeliverySettingsOverview {
   appCode: string;
   configured: boolean;

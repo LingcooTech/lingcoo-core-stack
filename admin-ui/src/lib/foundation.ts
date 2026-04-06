@@ -164,13 +164,13 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   settings: {
     groupLabel: '运维',
     navTitle: '系统设置',
-    navNote: 'SMTP 与系统基础配置',
+    navNote: 'SMTP、云存储与 AI Hub',
     icon: 'ST',
     title: '系统设置',
-    lead: '维护邮件发送与其他系统级配置，支撑注册验证、找回密码和平台通知。',
+    lead: '维护邮件发送、云存储和 AI API Hub 等系统级配置，支撑认证邮件、媒体上传与模型服务接入。',
     href: '/admin/settings',
     contextCards: [
-      { label: '用途', value: '平台基础能力', note: '认证邮件和全局配置都在这里统一维护。' },
+      { label: '用途', value: '平台基础能力', note: '认证邮件、媒体存储和 AI Provider 都在这里统一维护。' },
       { label: '安全', value: '加密存储', note: '敏感凭证以加密形式存入数据库。' }
     ],
     heroActions: [
@@ -178,7 +178,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
       { label: '支付配置', href: '/admin/payments', tone: 'secondary' }
     ],
     pageDataScopes: ['systemSettings'],
-    commandAliases: ['settings', 'system', 'smtp', '邮件配置', '系统设置']
+    commandAliases: ['settings', 'system', 'smtp', 'qiniu', 'openrouter', 'ai hub', '邮件配置', '系统设置']
   },
   users: {
     groupLabel: '客户管理',

@@ -50,6 +50,55 @@
       "when": 1775013000000,
       "tag": "0006_deployment_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775056620000,
+      "tag": "0007_app_content_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775133120000,
+      "tag": "0008_email_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775308200000,
+      "tag": "0009_domain_model_refactor",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775338740000,
+      "tag": "0010_app_type_free_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775344740000,
+      "tag": "0011_password_reset_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775423520000,
+      "tag": "0012_app_delivery_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775453400000,
+      "tag": "0013_ai_usage_events",
+      "breakpoints": true
     }
   ]
 }

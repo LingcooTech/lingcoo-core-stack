@@ -1,4 +1,5 @@
 import { adminModule } from './admin';
+import { aiModule } from './ai';
 import { appModule } from './app';
 import { authModule } from './auth';
 import { billingModule } from './billing';
@@ -15,6 +16,7 @@ export const appModules: AppModule[] = [
   systemModule,
   authModule,
   adminModule,
+  aiModule,
   appModule,
   installModule,
   deploymentModule,
