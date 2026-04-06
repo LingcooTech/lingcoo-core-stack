@@ -44,19 +44,24 @@ const smtpSchema = z.object({
   from: z.string().email('请输入有效邮箱').or(z.literal(''))
 });
 
+const optionalUrlField = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() : value),
+  z.union([z.string().url('请输入有效链接'), z.literal('')])
+);
+
 const qiniuSchema = z.object({
   accessKey: z.string().optional(),
   secretKey: z.string().optional(),
   bucketName: z.string().optional(),
-  publicBaseUrl: z.string().url('请输入有效链接').or(z.literal('')),
-  uploadHost: z.string().url('请输入有效链接').or(z.literal('')),
+  publicBaseUrl: optionalUrlField,
+  uploadHost: optionalUrlField,
   defaultPrefix: z.string().optional()
 });
 
 const openrouterSchema = z.object({
   apiKey: z.string().optional(),
-  baseUrl: z.string().url('请输入有效链接').or(z.literal('')),
-  siteUrl: z.string().url('请输入有效链接').or(z.literal('')),
+  baseUrl: optionalUrlField,
+  siteUrl: optionalUrlField,
   siteName: z.string().optional(),
   defaultModel: z.string().optional()
 });
