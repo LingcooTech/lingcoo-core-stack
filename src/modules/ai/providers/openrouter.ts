@@ -15,11 +15,14 @@ function mapModel(item: OpenRouterModelSummary): AiModelSummary {
   return {
     id: item.id,
     name: item.name,
+    description: item.description,
     contextLength: item.contextLength,
     maxCompletionTokens: item.maxCompletionTokens,
     promptPricing: item.promptPricing,
     completionPricing: item.completionPricing,
-    modality: item.modality
+    modality: item.modality,
+    inputModalities: item.inputModalities,
+    outputModalities: item.outputModalities
   };
 }
 

@@ -13,7 +13,8 @@ import {
   getOpenRouterSettings,
   getQiniuSettings,
   getSmtpSettings,
-  listAiProviderModels,
+  previewOpenRouterChatCompletion,
+  previewOpenRouterModels,
   sendSmtpTestEmail,
   testOpenRouterSettings,
   testQiniuSettings,
@@ -21,6 +22,7 @@ import {
   upsertQiniuSettings,
   upsertSmtpSettings
 } from '@/api/settings';
+import type { AiChatCompletionResult, AiModelSummary, OpenRouterTestConnectionResult } from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
@@ -29,6 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -128,6 +131,38 @@ function sourceLabel(source: 'database' | 'env' | 'none') {
   return '未配置';
 }
 
+function formatCompactNumber(value: number | null) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return '—';
+  }
+
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
+function formatPricePerMillion(value: string | null) {
+  if (!value) {
+    return '—';
+  }
+
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) {
+    return value;
+  }
+
+  return `$${(parsed * 1_000_000).toFixed(2)} / 1M`;
+}
+
+function formatModelOptionLabel(model: AiModelSummary) {
+  const name = model.name || model.id;
+  const context = formatCompactNumber(model.contextLength);
+  const promptPrice = formatPricePerMillion(model.promptPricing);
+  return `${name} [${context}] ${promptPrice}`;
+}
+
+function formatModalities(values: string[]) {
+  return values.length ? values.join(', ') : '—';
+}
+
 export function SettingsPage() {
   const qc = useQueryClient();
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
@@ -138,6 +173,11 @@ export function SettingsPage() {
   const [testBody, setTestBody] = useState(
     ['这是一封来自 fd-core-stack 的测试邮件。', '', '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。'].join('\n')
   );
+  const [openrouterModels, setOpenrouterModels] = useState<AiModelSummary[]>([]);
+  const [openrouterModelsLoaded, setOpenrouterModelsLoaded] = useState(false);
+  const [openrouterConnectionResult, setOpenrouterConnectionResult] = useState<OpenRouterTestConnectionResult | null>(null);
+  const [openrouterTestMessage, setOpenrouterTestMessage] = useState('Hello, translate this to Chinese.');
+  const [openrouterChatResult, setOpenrouterChatResult] = useState<AiChatCompletionResult | null>(null);
 
   const { data: aiProvidersData } = useQuery({
     queryKey: ['admin-ai-providers'],
@@ -157,16 +197,6 @@ export function SettingsPage() {
   const { data: openrouterData, isLoading: openrouterLoading } = useQuery({
     queryKey: ['system-settings', 'ai', 'openrouter'],
     queryFn: getOpenRouterSettings
-  });
-
-  const {
-    data: openrouterModelsData,
-    isFetching: openrouterModelsLoading,
-    refetch: refetchOpenRouterModels
-  } = useQuery({
-    queryKey: ['admin-ai-provider-models', 'openrouter'],
-    queryFn: () => listAiProviderModels('openrouter'),
-    enabled: false
   });
 
   const smtpForm = useForm<SmtpValues>({
@@ -247,6 +277,16 @@ export function SettingsPage() {
       defaultModel: openrouterData.values.defaultModel
     });
   }, [openrouterData, openrouterForm]);
+
+  const buildCurrentOpenRouterPayload = () =>
+    buildOpenRouterPayload(openrouterForm.getValues(), {
+      includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey)
+    });
+
+  const selectedOpenRouterModelId = openrouterForm.watch('defaultModel');
+  const selectedOpenRouterModel = openrouterModels.find((item) => item.id === selectedOpenRouterModelId) ?? null;
+  const hasSelectedOpenRouterModelOption =
+    !selectedOpenRouterModelId || openrouterModels.some((item) => item.id === selectedOpenRouterModelId);
 
   const saveSmtpMutation = useMutation({
     mutationFn: upsertSmtpSettings,
@@ -330,7 +370,14 @@ export function SettingsPage() {
         siteName: result.values.siteName,
         defaultModel: result.values.defaultModel
       });
+      setOpenrouterModelsLoaded(false);
       await qc.invalidateQueries({ queryKey: ['admin-ai-providers'] });
+      previewOpenRouterModelsMutation.mutate({
+        baseUrl: result.values.baseUrl,
+        siteUrl: result.values.siteUrl,
+        siteName: result.values.siteName,
+        defaultModel: result.values.defaultModel
+      });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -340,22 +387,79 @@ export function SettingsPage() {
     onSuccess: async () => {
       toast.success('数据库中的 OpenRouter 配置已清空');
       setClearOpenRouterOpen(false);
+      setOpenrouterModels([]);
+      setOpenrouterModelsLoaded(false);
+      setOpenrouterConnectionResult(null);
+      setOpenrouterChatResult(null);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['system-settings', 'ai', 'openrouter'] }),
-        qc.invalidateQueries({ queryKey: ['admin-ai-providers'] }),
-        qc.invalidateQueries({ queryKey: ['admin-ai-provider-models', 'openrouter'] })
+        qc.invalidateQueries({ queryKey: ['admin-ai-providers'] })
       ]);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
   });
 
+  const previewOpenRouterModelsMutation = useMutation({
+    mutationFn: previewOpenRouterModels,
+    onMutate: () => {
+      setOpenrouterChatResult(null);
+    },
+    onSuccess: (result) => {
+      setOpenrouterModels(result.items);
+      setOpenrouterModelsLoaded(true);
+      if (!result.items.length) {
+        toast.warning('当前配置下没有拉取到可用模型');
+      }
+    },
+    onError: (err) => {
+      setOpenrouterModelsLoaded(true);
+      setOpenrouterModels([]);
+      toast.error(err instanceof Error ? err.message : '拉取模型列表失败');
+    }
+  });
+
   const testOpenRouterMutation = useMutation({
     mutationFn: testOpenRouterSettings,
     onSuccess: (result) => {
+      setOpenrouterConnectionResult(result);
       toast.success(`OpenRouter 连接成功，共发现 ${result.modelCount} 个模型`);
+      previewOpenRouterModelsMutation.mutate(buildCurrentOpenRouterPayload());
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
   });
+
+  const previewOpenRouterChatMutation = useMutation({
+    mutationFn: previewOpenRouterChatCompletion,
+    onMutate: () => {
+      setOpenrouterChatResult(null);
+    },
+    onSuccess: (result) => {
+      setOpenrouterChatResult(result);
+    },
+    onError: (err) => {
+      setOpenrouterChatResult(null);
+      toast.error(err instanceof Error ? err.message : '对话测试失败');
+    }
+  });
+
+  useEffect(() => {
+    if (!openrouterData?.configured || previewOpenRouterModelsMutation.isPending || openrouterModelsLoaded) {
+      return;
+    }
+
+    previewOpenRouterModelsMutation.mutate(
+      buildOpenRouterPayload(
+        {
+          apiKey: '',
+          baseUrl: openrouterData.values.baseUrl,
+          siteUrl: openrouterData.values.siteUrl,
+          siteName: openrouterData.values.siteName,
+          defaultModel: openrouterData.values.defaultModel
+        },
+        { includeApiKey: false }
+      )
+    );
+  }, [openrouterData, openrouterModelsLoaded, previewOpenRouterModelsMutation]);
 
   const handleSendTestEmail = smtpForm.handleSubmit((values) => {
     const parsedTo = testEmailSchema.safeParse(testTo);
@@ -394,6 +498,38 @@ export function SettingsPage() {
     testOpenRouterMutation.mutate(
       buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
     );
+  });
+
+  const handleLoadOpenRouterModels = openrouterForm.handleSubmit((values) => {
+    previewOpenRouterModelsMutation.mutate(
+      buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
+    );
+  });
+
+  const handleRunOpenRouterChatTest = openrouterForm.handleSubmit((values) => {
+    const message = openrouterTestMessage.trim();
+    if (!message) {
+      toast.error('请输入测试消息');
+      return;
+    }
+
+    const model = values.defaultModel?.trim();
+    if (!model) {
+      toast.error('请先拉取模型列表并选择默认模型');
+      return;
+    }
+
+    previewOpenRouterChatMutation.mutate({
+      ...buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) }),
+      model,
+      messages: [
+        {
+          role: 'user',
+          content: message
+        }
+      ],
+      maxTokens: 400
+    });
   });
 
   const configuredAiProviders = aiProvidersData?.items.filter((item) => item.configured).length ?? (openrouterData?.configured ? 1 : 0);
@@ -795,68 +931,9 @@ export function SettingsPage() {
                       <div className="space-y-1">
                         <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
                         <p className="text-sm text-muted-foreground">
-                          用于中台统一代理多模型调用。当前先接入 OpenRouter，后续可继续扩展 OpenAI、Anthropic、DeepSeek 等 Provider。
+                          先保存或测试 API Key，再拉取模型列表，最后从下拉框里选择默认模型。这样不需要手填 model id。
                         </p>
                       </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={openrouterForm.control}
-                        name="baseUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>API Base URL</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://openrouter.ai/api/v1" {...field} />
-                            </FormControl>
-                            <FormDescription>默认保持 OpenRouter 官方地址即可。</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={openrouterForm.control}
-                        name="defaultModel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>默认模型</FormLabel>
-                            <FormControl>
-                              <Input placeholder="google/gemini-2.0-flash-001" {...field} />
-                            </FormControl>
-                            <FormDescription>统一 Hub 接口未显式传模型时，会回退到这里。</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={openrouterForm.control}
-                        name="siteUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Site URL / HTTP-Referer</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://stack.futuredecade.com" {...field} />
-                            </FormControl>
-                            <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={openrouterForm.control}
-                        name="siteName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Site Name / X-Title</FormLabel>
-                            <FormControl>
-                              <Input placeholder="fd-core-stack" {...field} />
-                            </FormControl>
-                            <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
 
                     <FormField
@@ -886,8 +963,13 @@ export function SettingsPage() {
                       <Button type="button" variant="secondary" disabled={testOpenRouterMutation.isPending} onClick={handleTestOpenRouter}>
                         {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
                       </Button>
-                      <Button type="button" variant="outline" disabled={openrouterModelsLoading} onClick={() => void refetchOpenRouterModels()}>
-                        {openrouterModelsLoading ? '刷新中...' : '拉取模型列表'}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={previewOpenRouterModelsMutation.isPending}
+                        onClick={handleLoadOpenRouterModels}
+                      >
+                        {previewOpenRouterModelsMutation.isPending ? '拉取中...' : '拉取模型列表'}
                       </Button>
                       <Button
                         type="button"
@@ -899,41 +981,221 @@ export function SettingsPage() {
                       </Button>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-black text-foreground">模型列表预览</h3>
-                          <p className="text-sm text-muted-foreground">
-                            这里显示当前有效配置从 OpenRouter 拉取到的模型列表。保存配置后可直接刷新。
-                          </p>
+                    {openrouterConnectionResult ? (
+                      <div className="rounded-2xl border border-border bg-white p-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <StatusPill tone="ok" label="连接成功" />
+                          <StatusPill tone="info" label={`${openrouterConnectionResult.modelCount} 个模型`} />
+                          <StatusPill
+                            tone={openrouterConnectionResult.defaultModel ? 'info' : 'neutral'}
+                            label={openrouterConnectionResult.defaultModel ? `当前默认模型: ${openrouterConnectionResult.defaultModel}` : '当前未设置默认模型'}
+                          />
                         </div>
-                        {openrouterModelsData ? (
-                          <StatusPill tone="info" label={`${openrouterModelsData.items.length} 个模型`} />
+                        {openrouterConnectionResult.sampleModels.length ? (
+                          <div className="mt-3">
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Sample Models</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {openrouterConnectionResult.sampleModels.map((item) => (
+                                <span key={item} className="rounded-full border border-border bg-slate-50 px-3 py-1 text-xs text-muted-foreground">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         ) : null}
                       </div>
-                      {openrouterModelsData?.items.length ? (
-                        <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
-                          <div className="space-y-2 p-3">
-                            {openrouterModelsData.items.map((model) => (
-                              <div key={model.id} className="rounded-xl border border-border bg-slate-50 px-3 py-2">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p className="text-sm font-bold text-foreground">{model.name}</p>
-                                  <p className="text-[11px] font-mono text-muted-foreground">{model.id}</p>
-                                </div>
-                                <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-                                  <span>Context: {model.contextLength ?? '—'}</span>
-                                  <span>Max Output: {model.maxCompletionTokens ?? '—'}</span>
-                                  <span>Modality: {model.modality ?? '—'}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
-                          暂未拉取模型列表。保存配置后点击“拉取模型列表”即可检查当前 Provider 返回的模型清单。
+                    ) : null}
+
+                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-black text-foreground">默认模型</h3>
+                          <p className="text-sm text-muted-foreground">
+                            拉取到模型列表后，在这里选择 OpenRouter 的默认模型。
+                          </p>
                         </div>
-                      )}
+                        {openrouterModelsLoaded ? (
+                          <StatusPill tone={openrouterModels.length ? 'info' : 'neutral'} label={`${openrouterModels.length} 个模型`} />
+                        ) : null}
+                      </div>
+
+                      <FormField
+                        control={openrouterForm.control}
+                        name="defaultModel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>默认模型</FormLabel>
+                            <Select value={field.value || '__unset__'} onValueChange={(value) => field.onChange(value === '__unset__' ? '' : value)}>
+                              <FormControl>
+                                <SelectTrigger disabled={previewOpenRouterModelsMutation.isPending || (!openrouterModels.length && !field.value)}>
+                                  <SelectValue placeholder={openrouterModels.length ? '选择默认模型' : '请先保存 API Key 或拉取模型列表'} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="__unset__">暂不设置默认模型</SelectItem>
+                                {!hasSelectedOpenRouterModelOption && field.value ? (
+                                  <SelectItem value={field.value}>当前已保存模型（当前列表中未返回）</SelectItem>
+                                ) : null}
+                                {openrouterModels.map((model) => (
+                                  <SelectItem key={model.id} value={model.id}>
+                                    {formatModelOptionLabel(model)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              {openrouterModels.length
+                                ? '选择后点击“保存 OpenRouter 配置”即可持久化到中台。'
+                                : '当前还没有可选模型。先点击“测试连接”或“拉取模型列表”。'}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {selectedOpenRouterModel ? (
+                        <div className="rounded-2xl border border-border bg-slate-50/70 p-4 text-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="font-black text-foreground">{selectedOpenRouterModel.name || selectedOpenRouterModel.id}</p>
+                              <p className="text-xs font-mono text-muted-foreground">{selectedOpenRouterModel.id}</p>
+                            </div>
+                            <StatusPill tone="info" label={selectedOpenRouterModel.modality || 'text'} />
+                          </div>
+                          {selectedOpenRouterModel.description ? (
+                            <p className="mt-3 text-sm text-muted-foreground">{selectedOpenRouterModel.description}</p>
+                          ) : null}
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Max Output</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)} tokens</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Prompt Pricing</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.promptPricing)}</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Completion Pricing</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.completionPricing)}</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Input Modalities</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.inputModalities)}</p>
+                            </div>
+                            <div className="rounded-xl border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Output Modalities</p>
+                              <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.outputModalities)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : openrouterModelsLoaded ? (
+                        <div className="rounded-2xl border border-dashed border-border bg-slate-50/50 px-4 py-5 text-sm text-muted-foreground">
+                          {openrouterModels.length
+                            ? '模型列表已加载，但你还没有选择默认模型。'
+                            : '当前配置下没有拉取到模型列表，请检查 API Key 或 Base URL。'}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                      <div>
+                        <h3 className="text-sm font-black text-foreground">模型对话测试</h3>
+                        <p className="text-sm text-muted-foreground">
+                          使用当前表单中的 OpenRouter 配置直接发一条测试消息，确认模型调用链和默认模型是否正常。
+                        </p>
+                      </div>
+                      <Textarea
+                        value={openrouterTestMessage}
+                        onChange={(event) => setOpenrouterTestMessage(event.target.value)}
+                        placeholder="输入测试消息，例如：Hello, translate this to Chinese."
+                        className="min-h-[120px]"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={previewOpenRouterChatMutation.isPending || !selectedOpenRouterModelId}
+                          onClick={handleRunOpenRouterChatTest}
+                        >
+                          {previewOpenRouterChatMutation.isPending ? '发送中...' : '发送测试'}
+                        </Button>
+                      </div>
+                      {openrouterChatResult ? (
+                        <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <StatusPill tone="ok" label={openrouterChatResult.model} />
+                            <StatusPill
+                              tone="info"
+                              label={`Prompt ${openrouterChatResult.usage.promptTokens ?? 0} / Completion ${openrouterChatResult.usage.completionTokens ?? 0}`}
+                            />
+                          </div>
+                          <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
+                            <div className="space-y-3 p-4 text-sm">
+                              <p className="whitespace-pre-wrap leading-6 text-foreground">{openrouterChatResult.content}</p>
+                              {openrouterChatResult.finishReason ? (
+                                <p className="text-xs text-muted-foreground">Finish reason: {openrouterChatResult.finishReason}</p>
+                              ) : null}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                      <div>
+                        <h3 className="text-sm font-black text-foreground">高级设置</h3>
+                        <p className="text-sm text-muted-foreground">
+                          大多数场景保持默认即可。只有需要自定义请求头或切换代理地址时，再修改这里。
+                        </p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField
+                          control={openrouterForm.control}
+                          name="baseUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>API Base URL</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://openrouter.ai/api/v1" {...field} />
+                              </FormControl>
+                              <FormDescription>默认保持 OpenRouter 官方 API 地址即可。</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={openrouterForm.control}
+                          name="siteUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Site URL / HTTP-Referer</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://stack.futuredecade.com" {...field} />
+                              </FormControl>
+                              <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={openrouterForm.control}
+                          name="siteName"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>Site Name / X-Title</FormLabel>
+                              <FormControl>
+                                <Input placeholder="fd-core-stack" {...field} />
+                              </FormControl>
+                              <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                   </form>
                 </Form>

@@ -9,6 +9,7 @@ import {
   aiChatCompletionSchema,
   aiProviderParamsSchema,
   aiProxyChatCompletionSchema,
+  openrouterPreviewChatSchema,
   openrouterSettingsSchema
 } from './schemas';
 
@@ -113,6 +114,34 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/admin/system-settings/ai/providers/openrouter/test', { preHandler: app.requireAdmin }, async (request) => {
     const payload = openrouterSettingsSchema.parse(request.body);
     return new OpenRouterSettingsService(app.db, app.appEnv).testConnection(payload);
+  });
+
+  app.post('/v1/admin/system-settings/ai/providers/openrouter/models', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = openrouterSettingsSchema.parse(request.body);
+    const items = await new OpenRouterSettingsService(app.db, app.appEnv).listModels(payload);
+    return {
+      provider: 'openrouter' as const,
+      items
+    };
+  });
+
+  app.post('/v1/admin/system-settings/ai/providers/openrouter/chat/completions', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = openrouterPreviewChatSchema.parse(request.body);
+    return new OpenRouterSettingsService(app.db, app.appEnv).createChatCompletion(
+      {
+        model: payload.model,
+        messages: payload.messages,
+        temperature: payload.temperature,
+        maxTokens: payload.maxTokens
+      },
+      {
+        apiKey: payload.apiKey,
+        baseUrl: payload.baseUrl,
+        siteUrl: payload.siteUrl,
+        siteName: payload.siteName,
+        defaultModel: payload.defaultModel
+      }
+    );
   });
 
   app.delete('/v1/admin/system-settings/ai/providers/openrouter', { preHandler: app.requireAdmin }, async () => {

@@ -244,16 +244,35 @@ export interface OpenRouterTestConnectionResult {
 export interface AiModelSummary {
   id: string;
   name: string;
+  description: string | null;
   contextLength: number | null;
   maxCompletionTokens: number | null;
   promptPricing: string | null;
   completionPricing: string | null;
   modality: string | null;
+  inputModalities: string[];
+  outputModalities: string[];
 }
 
 export interface AiProviderModelsResponse {
   provider: string;
   items: AiModelSummary[];
+}
+
+export interface AiChatCompletionResult {
+  provider: string;
+  model: string;
+  content: string;
+  finishReason: string | null;
+  usage: {
+    promptTokens: number | null;
+    completionTokens: number | null;
+    totalTokens: number | null;
+  };
+  meta: {
+    id: string | null;
+    created: number | null;
+  };
 }
 
 export interface DeliverySettingsOverview {

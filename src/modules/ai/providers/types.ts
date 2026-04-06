@@ -13,11 +13,14 @@ export type AiProviderStatus = {
 export type AiModelSummary = {
   id: string;
   name: string;
+  description: string | null;
   contextLength: number | null;
   maxCompletionTokens: number | null;
   promptPricing: string | null;
   completionPricing: string | null;
   modality: string | null;
+  inputModalities: string[];
+  outputModalities: string[];
 };
 
 export type AiChatCompletionInput = {

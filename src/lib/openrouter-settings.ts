@@ -35,11 +35,14 @@ export type OpenRouterSettingsOverview = {
 export type OpenRouterModelSummary = {
   id: string;
   name: string;
+  description: string | null;
   contextLength: number | null;
   maxCompletionTokens: number | null;
   promptPricing: string | null;
   completionPricing: string | null;
   modality: string | null;
+  inputModalities: string[];
+  outputModalities: string[];
 };
 
 export type OpenRouterChatCompletionResult = {
@@ -81,6 +84,30 @@ function normalizeUrl(value: unknown, fallback = '') {
 
   try {
     const url = new URL(raw);
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeStringArray(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => normalizeString(item))
+    .filter(Boolean);
+}
+
+function normalizeOpenRouterBaseUrl(value: unknown, fallback = DEFAULT_BASE_URL) {
+  const normalized = normalizeUrl(value, fallback) || fallback;
+
+  try {
+    const url = new URL(normalized);
+    if (url.hostname === 'openrouter.ai' && (!url.pathname || url.pathname === '/')) {
+      return DEFAULT_BASE_URL;
+    }
     return url.toString().replace(/\/+$/, '');
   } catch {
     return fallback;
@@ -145,7 +172,7 @@ export class OpenRouterSettingsService {
   private normalizeSettings(value: unknown): OpenRouterSettings | null {
     const raw = normalizeObject(value);
     const apiKey = normalizeString(raw.apiKey);
-    const baseUrl = normalizeUrl(raw.baseUrl, DEFAULT_BASE_URL) || DEFAULT_BASE_URL;
+    const baseUrl = normalizeOpenRouterBaseUrl(raw.baseUrl, DEFAULT_BASE_URL) || DEFAULT_BASE_URL;
     const siteUrl = normalizeUrl(raw.siteUrl, this.getDefaultSiteUrl());
     const siteName = normalizeString(raw.siteName) || this.getDefaultSiteName();
     const defaultModel = normalizeString(raw.defaultModel);
@@ -170,7 +197,7 @@ export class OpenRouterSettingsService {
 
   getEnvSettings(): OpenRouterSettings | null {
     const apiKey = normalizeString(this.env.OPENROUTER_API_KEY);
-    const baseUrl = normalizeUrl(this.env.OPENROUTER_BASE_URL, DEFAULT_BASE_URL) || DEFAULT_BASE_URL;
+    const baseUrl = normalizeOpenRouterBaseUrl(this.env.OPENROUTER_BASE_URL, DEFAULT_BASE_URL) || DEFAULT_BASE_URL;
     const siteUrl = normalizeUrl(this.env.OPENROUTER_SITE_URL, this.getDefaultSiteUrl());
     const siteName = normalizeString(this.env.OPENROUTER_SITE_NAME) || this.getDefaultSiteName();
     const defaultModel = normalizeString(this.env.OPENROUTER_DEFAULT_MODEL);
@@ -205,7 +232,7 @@ export class OpenRouterSettingsService {
 
     return {
       apiKey: normalizeString(input.apiKey) || existing?.apiKey || '',
-      baseUrl: normalizeUrl(input.baseUrl, existing?.baseUrl ?? DEFAULT_BASE_URL) || DEFAULT_BASE_URL,
+      baseUrl: normalizeOpenRouterBaseUrl(input.baseUrl, existing?.baseUrl ?? DEFAULT_BASE_URL) || DEFAULT_BASE_URL,
       siteUrl: normalizeUrl(input.siteUrl, existing?.siteUrl ?? this.getDefaultSiteUrl()),
       siteName: normalizeString(input.siteName) || existing?.siteName || this.getDefaultSiteName(),
       defaultModel: normalizeString(input.defaultModel) || existing?.defaultModel || ''
@@ -313,7 +340,7 @@ export class OpenRouterSettingsService {
     if (!response.ok) {
       let message = `OpenRouter 请求失败 (${response.status})`;
       try {
-        const payload = (await response.json()) as { error?: { message?: string } };
+        const payload = (await response.clone().json()) as { error?: { message?: string } };
         message = payload.error?.message ?? message;
       } catch {
         const detail = (await response.text()).trim();
@@ -322,6 +349,13 @@ export class OpenRouterSettingsService {
         }
       }
       throw httpError(502, message);
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('json')) {
+      const detail = (await response.text()).trim();
+      const hint = 'OpenRouter 返回了非 JSON 响应，请确认 Base URL 使用 API 地址，例如 https://openrouter.ai/api/v1';
+      throw httpError(502, detail && !detail.startsWith('<!DOCTYPE') ? `${hint}。${detail}` : hint);
     }
 
     return response.json() as Promise<T>;
@@ -341,8 +375,13 @@ export class OpenRouterSettingsService {
       data?: Array<{
         id?: string;
         name?: string;
+        description?: string;
         context_length?: number;
-        architecture?: { modality?: string };
+        architecture?: {
+          modality?: string;
+          input_modalities?: string[];
+          output_modalities?: string[];
+        };
         top_provider?: { max_completion_tokens?: number };
         pricing?: { prompt?: string; completion?: string };
       }>;
@@ -358,11 +397,14 @@ export class OpenRouterSettingsService {
         return {
           id,
           name: normalizeString(item.name) || id,
+          description: normalizeString(item.description) || null,
           contextLength: normalizeInteger(item.context_length),
           maxCompletionTokens: normalizeInteger(item.top_provider?.max_completion_tokens),
           promptPricing: normalizeString(item.pricing?.prompt) || null,
           completionPricing: normalizeString(item.pricing?.completion) || null,
-          modality: normalizeString(item.architecture?.modality) || null
+          modality: normalizeString(item.architecture?.modality) || null,
+          inputModalities: normalizeStringArray(item.architecture?.input_modalities),
+          outputModalities: normalizeStringArray(item.architecture?.output_modalities)
         };
       })
       .filter((item): item is OpenRouterModelSummary => Boolean(item))
@@ -390,16 +432,25 @@ export class OpenRouterSettingsService {
     };
   }
 
-  async createChatCompletion(input: {
-    model?: string;
-    messages: Array<{
-      role: 'system' | 'user' | 'assistant' | 'tool';
-      content: string;
-    }>;
-    temperature?: number;
-    maxTokens?: number;
-  }): Promise<OpenRouterChatCompletionResult> {
-    const settings = await this.resolveRequiredSettings();
+  async createChatCompletion(
+    input: {
+      model?: string;
+      messages: Array<{
+        role: 'system' | 'user' | 'assistant' | 'tool';
+        content: string;
+      }>;
+      temperature?: number;
+      maxTokens?: number;
+    },
+    settingsInput?: {
+      apiKey?: string;
+      baseUrl?: string;
+      siteUrl?: string;
+      siteName?: string;
+      defaultModel?: string;
+    }
+  ): Promise<OpenRouterChatCompletionResult> {
+    const settings = await this.resolveRequiredSettings(settingsInput);
     const model = normalizeString(input.model) || settings.defaultModel;
 
     if (!model) {

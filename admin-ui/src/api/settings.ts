@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  AiChatCompletionResult,
   AiProviderListResponse,
   AiProviderModelsResponse,
   QiniuSettingsOverview,
@@ -40,6 +41,16 @@ export interface OpenRouterSettingsInput {
   siteUrl?: string;
   siteName?: string;
   defaultModel?: string;
+}
+
+export interface OpenRouterChatPreviewInput extends OpenRouterSettingsInput {
+  model?: string;
+  messages: Array<{
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string;
+  }>;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {
@@ -94,6 +105,13 @@ export async function listAiProviderModels(provider: 'openrouter'): Promise<AiPr
   return apiClient<AiProviderModelsResponse>(`/v1/admin/ai/providers/${provider}/models`);
 }
 
+export async function previewOpenRouterModels(payload: OpenRouterSettingsInput): Promise<AiProviderModelsResponse> {
+  return apiClient<AiProviderModelsResponse>('/v1/admin/system-settings/ai/providers/openrouter/models', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getOpenRouterSettings(): Promise<OpenRouterSettingsOverview> {
   return apiClient<OpenRouterSettingsOverview>('/v1/admin/system-settings/ai/providers/openrouter');
 }
@@ -107,6 +125,13 @@ export async function upsertOpenRouterSettings(payload: OpenRouterSettingsInput)
 
 export async function testOpenRouterSettings(payload: OpenRouterSettingsInput): Promise<OpenRouterTestConnectionResult> {
   return apiClient<OpenRouterTestConnectionResult>('/v1/admin/system-settings/ai/providers/openrouter/test', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function previewOpenRouterChatCompletion(payload: OpenRouterChatPreviewInput): Promise<AiChatCompletionResult> {
+  return apiClient<AiChatCompletionResult>('/v1/admin/system-settings/ai/providers/openrouter/chat/completions', {
     method: 'POST',
     body: JSON.stringify(payload)
   });

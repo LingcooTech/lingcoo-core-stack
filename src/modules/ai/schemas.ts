@@ -51,6 +51,8 @@ export const aiChatCompletionSchema = z.object({
   maxTokens: z.coerce.number().int().min(1).max(32_000).optional()
 });
 
+export const openrouterPreviewChatSchema = openrouterSettingsSchema.merge(aiChatCompletionSchema);
+
 export const aiProxyChatCompletionSchema = aiChatCompletionSchema.extend({
   operation: z.enum(['chat', 'translation', 'proofreading']).optional()
 });
