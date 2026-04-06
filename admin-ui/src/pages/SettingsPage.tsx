@@ -168,6 +168,8 @@ function formatModalities(values: string[]) {
   return values.length ? values.join(', ') : '—';
 }
 
+const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
+
 export function SettingsPage() {
   const qc = useQueryClient();
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
@@ -232,7 +234,7 @@ export function SettingsPage() {
     resolver: zodResolver(openrouterSchema),
     defaultValues: {
       apiKey: '',
-      baseUrl: 'https://openrouter.ai/api/v1',
+      baseUrl: OPENROUTER_DEFAULT_BASE_URL,
       siteUrl: '',
       siteName: 'fd-core-stack',
       defaultModel: ''
@@ -276,17 +278,25 @@ export function SettingsPage() {
 
     openrouterForm.reset({
       apiKey: '',
-      baseUrl: openrouterData.values.baseUrl,
+      baseUrl: OPENROUTER_DEFAULT_BASE_URL,
       siteUrl: openrouterData.values.siteUrl,
       siteName: openrouterData.values.siteName,
       defaultModel: openrouterData.values.defaultModel
     });
   }, [openrouterData, openrouterForm]);
 
-  const buildCurrentOpenRouterPayload = () =>
-    buildOpenRouterPayload(openrouterForm.getValues(), {
-      includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey)
-    });
+  const buildManagedOpenRouterPayload = (values: OpenRouterValues) =>
+    buildOpenRouterPayload(
+      {
+        ...values,
+        baseUrl: OPENROUTER_DEFAULT_BASE_URL
+      },
+      {
+        includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey)
+      }
+    );
+
+  const buildCurrentOpenRouterPayload = () => buildManagedOpenRouterPayload(openrouterForm.getValues());
 
   const selectedOpenRouterModelId = openrouterForm.watch('defaultModel');
   const selectedOpenRouterModel = openrouterModels.find((item) => item.id === selectedOpenRouterModelId) ?? null;
@@ -370,19 +380,22 @@ export function SettingsPage() {
       qc.setQueryData(['system-settings', 'ai', 'openrouter'], result);
       openrouterForm.reset({
         apiKey: '',
-        baseUrl: result.values.baseUrl,
+        baseUrl: OPENROUTER_DEFAULT_BASE_URL,
         siteUrl: result.values.siteUrl,
         siteName: result.values.siteName,
         defaultModel: result.values.defaultModel
       });
       setOpenrouterModelsLoaded(false);
       await qc.invalidateQueries({ queryKey: ['admin-ai-providers'] });
-      previewOpenRouterModelsMutation.mutate({
-        baseUrl: result.values.baseUrl,
-        siteUrl: result.values.siteUrl,
-        siteName: result.values.siteName,
-        defaultModel: result.values.defaultModel
-      });
+      previewOpenRouterModelsMutation.mutate(
+        buildManagedOpenRouterPayload({
+          apiKey: '',
+          baseUrl: OPENROUTER_DEFAULT_BASE_URL,
+          siteUrl: result.values.siteUrl,
+          siteName: result.values.siteName,
+          defaultModel: result.values.defaultModel
+        })
+      );
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -453,15 +466,14 @@ export function SettingsPage() {
     }
 
     previewOpenRouterModelsMutation.mutate(
-      buildOpenRouterPayload(
+      buildManagedOpenRouterPayload(
         {
           apiKey: '',
-          baseUrl: openrouterData.values.baseUrl,
+          baseUrl: OPENROUTER_DEFAULT_BASE_URL,
           siteUrl: openrouterData.values.siteUrl,
           siteName: openrouterData.values.siteName,
           defaultModel: openrouterData.values.defaultModel
-        },
-        { includeApiKey: false }
+        }
       )
     );
   }, [openrouterData, openrouterModelsLoaded, previewOpenRouterModelsMutation]);
@@ -500,15 +512,11 @@ export function SettingsPage() {
   });
 
   const handleTestOpenRouter = openrouterForm.handleSubmit((values) => {
-    testOpenRouterMutation.mutate(
-      buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
-    );
+    testOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values));
   });
 
   const handleLoadOpenRouterModels = openrouterForm.handleSubmit((values) => {
-    previewOpenRouterModelsMutation.mutate(
-      buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
-    );
+    previewOpenRouterModelsMutation.mutate(buildManagedOpenRouterPayload(values));
   });
 
   const handleRunOpenRouterChatTest = openrouterForm.handleSubmit((values) => {
@@ -525,7 +533,7 @@ export function SettingsPage() {
     }
 
     previewOpenRouterChatMutation.mutate({
-      ...buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) }),
+      ...buildManagedOpenRouterPayload(values),
       model,
       messages: [
         {
@@ -926,9 +934,7 @@ export function SettingsPage() {
                 <Form {...openrouterForm}>
                   <form
                     onSubmit={openrouterForm.handleSubmit((values) =>
-                      saveOpenRouterMutation.mutate(
-                        buildOpenRouterPayload(values, { includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey) })
-                      )
+                      saveOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values))
                     )}
                     className="space-y-5"
                   >
@@ -936,7 +942,7 @@ export function SettingsPage() {
                       <div className="space-y-1">
                         <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
                         <p className="text-sm text-muted-foreground">
-                          先保存或测试 API Key，再拉取模型列表，最后从下拉框里选择默认模型。这样不需要手填 model id。
+                          管理员这里只需要填写 API Key。API 地址、Referer 和标题由系统自动管理；先测试连接，再拉取模型列表并选择默认模型即可。
                         </p>
                       </div>
                     </div>
@@ -1101,7 +1107,7 @@ export function SettingsPage() {
                         <div className="rounded-2xl border border-dashed border-border bg-slate-50/50 px-4 py-5 text-sm text-muted-foreground">
                           {openrouterModels.length
                             ? '模型列表已加载，但你还没有选择默认模型。'
-                            : '当前配置下没有拉取到模型列表，请检查 API Key 或 Base URL。'}
+                            : '当前配置下没有拉取到模型列表，请检查 API Key。'}
                         </div>
                       ) : null}
                     </div>
@@ -1150,57 +1156,9 @@ export function SettingsPage() {
                       ) : null}
                     </div>
 
-                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
-                      <div>
-                        <h3 className="text-sm font-black text-foreground">高级设置</h3>
-                        <p className="text-sm text-muted-foreground">
-                          大多数场景保持默认即可。只有需要自定义请求头或切换代理地址时，再修改这里。
-                        </p>
-                      </div>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                          control={openrouterForm.control}
-                          name="baseUrl"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>API Base URL</FormLabel>
-                              <FormControl>
-                                <Input placeholder="https://openrouter.ai/api/v1" {...field} />
-                              </FormControl>
-                              <FormDescription>默认保持 OpenRouter 官方 API 地址即可。</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={openrouterForm.control}
-                          name="siteUrl"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Site URL / HTTP-Referer</FormLabel>
-                              <FormControl>
-                                <Input placeholder="https://stack.futuredecade.com" {...field} />
-                              </FormControl>
-                              <FormDescription>作为 OpenRouter 请求头中的 `HTTP-Referer`。</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={openrouterForm.control}
-                          name="siteName"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>Site Name / X-Title</FormLabel>
-                              <FormControl>
-                                <Input placeholder="fd-core-stack" {...field} />
-                              </FormControl>
-                              <FormDescription>作为 OpenRouter 请求头中的 `X-Title`。</FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                    <div className="rounded-2xl border border-dashed border-border bg-slate-50/60 p-4 text-sm text-muted-foreground">
+                      OpenRouter 官方 API 地址已固定为 <span className="font-mono text-foreground">{OPENROUTER_DEFAULT_BASE_URL}</span>。
+                      `HTTP-Referer` 和 `X-Title` 会由系统自动补齐，管理员不需要手动填写高级设置。
                     </div>
                   </form>
                 </Form>

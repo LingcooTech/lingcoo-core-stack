@@ -105,8 +105,15 @@ function normalizeOpenRouterBaseUrl(value: unknown, fallback = DEFAULT_BASE_URL)
 
   try {
     const url = new URL(normalized);
-    if (url.hostname === 'openrouter.ai' && (!url.pathname || url.pathname === '/')) {
-      return DEFAULT_BASE_URL;
+    if (url.hostname === 'openrouter.ai') {
+      const pathname = url.pathname.replace(/\/+$/, '') || '/';
+      if (
+        pathname === '/' ||
+        pathname === '/api' ||
+        !pathname.startsWith('/api/')
+      ) {
+        return DEFAULT_BASE_URL;
+      }
     }
     return url.toString().replace(/\/+$/, '');
   } catch {
