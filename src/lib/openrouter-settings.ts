@@ -332,7 +332,8 @@ export class OpenRouterSettingsService {
     path: string,
     init: RequestInit = {}
   ): Promise<T> {
-    const response = await fetch(new URL(path, `${settings.baseUrl.replace(/\/+$/, '')}/`), {
+    const normalizedPath = path.replace(/^\/+/, '');
+    const response = await fetch(new URL(normalizedPath, `${settings.baseUrl.replace(/\/+$/, '')}/`), {
       ...init,
       headers: {
         Authorization: `Bearer ${settings.apiKey}`,
