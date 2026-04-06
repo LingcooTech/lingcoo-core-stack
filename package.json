@@ -13,7 +13,7 @@
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/run-migrations.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:mvp": "node scripts/run-seed-mvp.cjs"
