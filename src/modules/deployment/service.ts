@@ -1,23 +1,136 @@
 import { randomBytes } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
-import { DeliverySettingsService } from '../../lib/delivery-settings';
+import {
+  findDeliveryManifestField,
+  listDeliveryManifestFields,
+  normalizeDeliveryManifest,
+  type DeliveryManifest,
+  type DeliveryManifestDomainSourceField,
+  type DeliveryManifestField
+} from '../../lib/delivery-manifest';
+import {
+  DeliverySettingsService,
+  type DeliverySettingSecrets,
+  type DeliverySettingValues
+} from '../../lib/delivery-settings';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
-import { AppService } from '../app/service';
+import { decryptJson, encryptJson } from '../../lib/settings-crypto';
 import { AppRepository } from '../app/repository';
+import { AppService } from '../app/service';
 import { AuthRepository } from '../auth/repository';
 import { EventService } from '../event/service';
 import { DeploymentRepository } from './repository';
 
 type DeploymentAppRecord = Awaited<ReturnType<AppService['getPublicApp']>>;
 
+const DEFAULT_INSTALLER = {
+  repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
+  repoBranch: 'main',
+  remoteInstallScriptUrl:
+    'https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh',
+  installPath: '/opt/fd-headless-wp-system'
+};
+
+const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<string, { envKey: string; kind: 'string' | 'boolean' }> = {
+  frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
+  websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
+  letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
+  acrUsername: { envKey: 'ACR_USERNAME', kind: 'string' },
+  wordpressFetchReleaseAssets: { envKey: 'WORDPRESS_FETCH_RELEASE_ASSETS', kind: 'boolean' },
+  wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
+  wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
+  fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
+  fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
+  fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
+  fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
+  fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
+  fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
+  fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
+  wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
+  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
+};
+
+function normalizeObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function normalizeString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeBoolean(value: unknown) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeValueRecord(value: unknown) {
+  const raw = normalizeObject(value);
+  const result: DeliverySettingValues = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    if (typeof entry === 'boolean') {
+      result[key] = entry;
+      continue;
+    }
+
+    const booleanValue = normalizeBoolean(entry);
+    const stringValue = normalizeString(entry);
+    if (typeof booleanValue === 'boolean' && typeof entry === 'string' && stringValue.length > 0) {
+      result[key] = booleanValue;
+      continue;
+    }
+
+    if (stringValue.length > 0) {
+      result[key] = stringValue;
+    }
+  }
+
+  return result;
+}
+
+function normalizeSecretRecord(value: unknown) {
+  const raw = normalizeObject(value);
+  const result: DeliverySettingSecrets = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    const normalized = normalizeString(entry);
+    if (normalized.length > 0) {
+      result[key] = normalized;
+    }
+  }
+
+  return result;
+}
+
 export class DeploymentService {
   constructor(
     private readonly db: DbClient,
     private readonly env: AppEnv
   ) {}
+
+  private getEncryptionSecret() {
+    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+  }
 
   private async resolveDeployableApp(input: {
     userId: string;
@@ -29,7 +142,10 @@ export class DeploymentService {
       throw httpError(422, 'This app is not configured for one-click delivery');
     }
 
-    const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(input.appCode, input.userId);
+    const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(
+      input.appCode,
+      input.userId
+    );
 
     if (entitlementView.summary.length === 0) {
       throw httpError(403, 'You do not have an active deployment entitlement for this app');
@@ -41,7 +157,9 @@ export class DeploymentService {
     };
   }
 
-  private async hydrateDeployments(rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>) {
+  private async hydrateDeployments(
+    rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>
+  ) {
     const appIds = [...new Set(rows.map((item) => item.appId))];
     const userIds = [...new Set(rows.map((item) => item.userId))];
     const [apps, users, tokens] = await Promise.all([
@@ -91,7 +209,9 @@ export class DeploymentService {
   }
 
   private normalizeMeta(meta: unknown) {
-    return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+    return meta && typeof meta === 'object' && !Array.isArray(meta)
+      ? { ...(meta as Record<string, unknown>) }
+      : {};
   }
 
   private readDeliveryMode(app: DeploymentAppRecord) {
@@ -105,36 +225,68 @@ export class DeploymentService {
     return 'none';
   }
 
-  private readDeploymentDefaults(app: DeploymentAppRecord) {
+  private readManifest(app: DeploymentAppRecord) {
+    const meta = this.normalizeMeta(app.meta);
+    return normalizeDeliveryManifest(meta.deliveryManifest);
+  }
+
+  private readLegacyDeploymentDefaults(app: DeploymentAppRecord) {
     const meta = this.normalizeMeta(app.meta);
     const raw = this.normalizeMeta(meta.deploymentDefaults);
-    const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
-    const bool = (value: unknown) => (typeof value === 'boolean' ? value : undefined);
+    const values: DeliverySettingValues = {};
+
+    for (const [legacyKey, config] of Object.entries(LEGACY_APP_DEFAULT_VALUE_KEYS)) {
+      const entry = raw[legacyKey];
+      if (config.kind === 'boolean') {
+        const normalized = normalizeBoolean(entry);
+        if (typeof normalized === 'boolean') {
+          values[config.envKey] = normalized;
+        }
+        continue;
+      }
+
+      const normalized = normalizeString(entry);
+      if (normalized.length > 0) {
+        values[config.envKey] = normalized;
+      }
+    }
 
     return {
-      repoUrl: text(raw.repoUrl),
-      repoBranch: text(raw.repoBranch),
-      frontendImage: text(raw.frontendImage),
-      websocketImage: text(raw.websocketImage),
-      letsencryptEmail: text(raw.letsencryptEmail),
-      wordpressFetchReleaseAssets: bool(raw.wordpressFetchReleaseAssets),
-      wordpressRunInit: bool(raw.wordpressRunInit),
-      wordpressReleaseOwner: text(raw.wordpressReleaseOwner),
-      fdThemeReleaseTag: text(raw.fdThemeReleaseTag),
-      fdAdminUiReleaseTag: text(raw.fdAdminUiReleaseTag),
-      fdMemberReleaseTag: text(raw.fdMemberReleaseTag),
-      fdPaymentReleaseTag: text(raw.fdPaymentReleaseTag),
-      fdCommerceReleaseTag: text(raw.fdCommerceReleaseTag),
-      fdContentTypesReleaseTag: text(raw.fdContentTypesReleaseTag),
-      fdWebsocketPushReleaseTag: text(raw.fdWebsocketPushReleaseTag),
-      wpgraphqlJwtAuthReleaseTag: text(raw.wpgraphqlJwtAuthReleaseTag),
-      wpgraphqlTaxQueryRef: text(raw.wpgraphqlTaxQueryRef)
+      values,
+      installer: {
+        repoUrl: normalizeString(raw.repoUrl) || undefined,
+        repoBranch: normalizeString(raw.repoBranch) || undefined
+      }
     };
+  }
+
+  private readDeploymentInputValues(deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>) {
+    const meta = this.normalizeMeta(deployment?.meta);
+    const inputs = this.normalizeMeta(meta.deliveryInputs);
+    return normalizeValueRecord(inputs.values);
+  }
+
+  private readDeploymentInputSecrets(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+  ) {
+    const meta = this.normalizeMeta(deployment?.meta);
+    const inputs = this.normalizeMeta(meta.deliveryInputs);
+    const secretEnvelope = inputs.secrets;
+    if (!secretEnvelope) {
+      return {} as DeliverySettingSecrets;
+    }
+
+    try {
+      return normalizeSecretRecord(decryptJson<unknown>(secretEnvelope, this.getEncryptionSecret()));
+    } catch {
+      return {};
+    }
   }
 
   private buildRemoteInstallCommand(input: {
     token: string;
     exchangeUrl: string;
+    remoteInstallScriptUrl?: string;
     installPath?: string | null;
     repoUrl?: string;
     repoBranch?: string;
@@ -157,10 +309,118 @@ export class DeploymentService {
     }
 
     commandParts.push(
-      "bash <(curl -fsSL https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh)"
+      `bash <(curl -fsSL '${input.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl}')`
     );
 
     return commandParts.join(' ');
+  }
+
+  private getSourceFieldValue(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    sourceField: DeliveryManifestDomainSourceField
+  ) {
+    switch (sourceField) {
+      case 'adminDomain':
+        return deployment?.adminDomain ?? undefined;
+      case 'wsDomain':
+        return deployment?.wsDomain ?? undefined;
+      case 'primaryDomain':
+      default:
+        return deployment?.primaryDomain ?? undefined;
+    }
+  }
+
+  private resolveManifestFieldValue(input: {
+    field: DeliveryManifestField;
+    appValues: DeliverySettingValues;
+    deploymentValues: DeliverySettingValues;
+    appSecrets: DeliverySettingSecrets;
+    deploymentSecrets: DeliverySettingSecrets;
+  }) {
+    if (input.field.type === 'secret') {
+      const candidate =
+        input.field.scope === 'user_input'
+          ? input.deploymentSecrets[input.field.key] || input.appSecrets[input.field.key]
+          : input.appSecrets[input.field.key];
+
+      return candidate || undefined;
+    }
+
+    const candidate =
+      input.field.scope === 'user_input'
+        ? input.deploymentValues[input.field.key] ?? input.appValues[input.field.key]
+        : input.appValues[input.field.key];
+
+    if (typeof candidate === 'boolean') {
+      return candidate;
+    }
+
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+
+    return input.field.defaultValue;
+  }
+
+  private validateDeploymentInputs(input: {
+    manifest: DeliveryManifest | null;
+    values: DeliverySettingValues;
+    secrets: DeliverySettingSecrets;
+    primaryDomain?: string;
+    adminDomain?: string;
+    wsDomain?: string;
+  }) {
+    if (!input.manifest) {
+      return;
+    }
+
+    const domainValueBySource: Record<DeliveryManifestDomainSourceField, string | undefined> = {
+      primaryDomain: normalizeString(input.primaryDomain) || undefined,
+      adminDomain: normalizeString(input.adminDomain) || undefined,
+      wsDomain: normalizeString(input.wsDomain) || undefined
+    };
+
+    for (const slot of input.manifest.domainSlots) {
+      if (slot.required && !domainValueBySource[slot.sourceField]) {
+        throw httpError(422, `${slot.label} is required`);
+      }
+    }
+
+    for (const key of Object.keys(input.values)) {
+      const field = findDeliveryManifestField(input.manifest, key);
+      if (!field || field.scope !== 'user_input' || field.type === 'secret') {
+        throw httpError(422, `Unexpected deployment input field: ${key}`);
+      }
+    }
+
+    for (const key of Object.keys(input.secrets)) {
+      const field = findDeliveryManifestField(input.manifest, key);
+      if (!field || field.scope !== 'user_input' || field.type !== 'secret') {
+        throw httpError(422, `Unexpected deployment secret field: ${key}`);
+      }
+    }
+
+    for (const field of listDeliveryManifestFields(input.manifest, { scope: 'user_input' })) {
+      if (!field.required) {
+        continue;
+      }
+
+      if (field.type === 'secret') {
+        if (!input.secrets[field.key]) {
+          throw httpError(422, `${field.label} is required`);
+        }
+        continue;
+      }
+
+      const value = input.values[field.key];
+      if (typeof value === 'boolean') {
+        continue;
+      }
+
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        throw httpError(422, `${field.label} is required`);
+      }
+    }
   }
 
   private async buildBootstrapPayload(input: {
@@ -168,87 +428,116 @@ export class DeploymentService {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     token?: string;
   }) {
-    const appDefaults = this.readDeploymentDefaults(input.app);
-    const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(input.app.code);
-    const defaults = {
-      repoUrl: appDefaults.repoUrl || deliverySettings?.repoUrl,
-      repoBranch: appDefaults.repoBranch || deliverySettings?.repoBranch,
-      frontendImage: appDefaults.frontendImage || deliverySettings?.frontendImage,
-      websocketImage: appDefaults.websocketImage || deliverySettings?.websocketImage,
-      letsencryptEmail: appDefaults.letsencryptEmail || deliverySettings?.letsencryptEmail,
-      wordpressFetchReleaseAssets:
-        typeof appDefaults.wordpressFetchReleaseAssets === 'boolean'
-          ? appDefaults.wordpressFetchReleaseAssets
-          : deliverySettings?.wordpressFetchReleaseAssets,
-      wordpressRunInit:
-        typeof appDefaults.wordpressRunInit === 'boolean'
-          ? appDefaults.wordpressRunInit
-          : deliverySettings?.wordpressRunInit,
-      wordpressReleaseOwner: appDefaults.wordpressReleaseOwner || deliverySettings?.wordpressReleaseOwner,
-      fdThemeReleaseTag: appDefaults.fdThemeReleaseTag || deliverySettings?.fdThemeReleaseTag,
-      fdAdminUiReleaseTag: appDefaults.fdAdminUiReleaseTag || deliverySettings?.fdAdminUiReleaseTag,
-      fdMemberReleaseTag: appDefaults.fdMemberReleaseTag || deliverySettings?.fdMemberReleaseTag,
-      fdPaymentReleaseTag: appDefaults.fdPaymentReleaseTag || deliverySettings?.fdPaymentReleaseTag,
-      fdCommerceReleaseTag: appDefaults.fdCommerceReleaseTag || deliverySettings?.fdCommerceReleaseTag,
-      fdContentTypesReleaseTag: appDefaults.fdContentTypesReleaseTag || deliverySettings?.fdContentTypesReleaseTag,
-      fdWebsocketPushReleaseTag: appDefaults.fdWebsocketPushReleaseTag || deliverySettings?.fdWebsocketPushReleaseTag,
-      wpgraphqlJwtAuthReleaseTag:
-        appDefaults.wpgraphqlJwtAuthReleaseTag || deliverySettings?.wpgraphqlJwtAuthReleaseTag,
-      wpgraphqlTaxQueryRef: appDefaults.wpgraphqlTaxQueryRef || deliverySettings?.wpgraphqlTaxQueryRef,
-      acrUsername: deliverySettings?.acrUsername,
-      acrPassword: deliverySettings?.acrPassword,
-      githubToken: deliverySettings?.githubToken
+    const manifest = this.readManifest(input.app);
+    const appDefaults = this.readLegacyDeploymentDefaults(input.app);
+    const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
+      input.app.code
+    );
+    const deploymentValues = this.readDeploymentInputValues(input.deployment);
+    const deploymentSecrets = this.readDeploymentInputSecrets(input.deployment);
+
+    const appValues: DeliverySettingValues = {
+      ...appDefaults.values,
+      ...(deliverySettings?.values ?? {})
     };
-    const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
-    const envDefaults = Object.fromEntries(
-      Object.entries({
+    const appSecrets: DeliverySettingSecrets = {
+      ...(deliverySettings?.secrets ?? {})
+    };
+    const installer = {
+      repoUrl:
+        manifest?.installer.repoUrl ||
+        appDefaults.installer.repoUrl ||
+        deliverySettings?.installer.repoUrl ||
+        DEFAULT_INSTALLER.repoUrl,
+      repoBranch:
+        manifest?.installer.repoBranch ||
+        appDefaults.installer.repoBranch ||
+        deliverySettings?.installer.repoBranch ||
+        DEFAULT_INSTALLER.repoBranch,
+      remoteInstallScriptUrl:
+        manifest?.installer.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl,
+      installPath:
+        input.deployment?.installPath ||
+        manifest?.installer.installPath ||
+        DEFAULT_INSTALLER.installPath
+    };
+
+    const envDefaults: Record<string, string> = {};
+
+    if (manifest) {
+      for (const slot of manifest.domainSlots) {
+        const value = this.getSourceFieldValue(input.deployment, slot.sourceField);
+        if (value) {
+          envDefaults[slot.envKey] = value;
+        }
+      }
+
+      for (const field of [...manifest.envFields, ...manifest.secretFields]) {
+        const resolved = this.resolveManifestFieldValue({
+          field,
+          appValues,
+          deploymentValues,
+          appSecrets,
+          deploymentSecrets
+        });
+
+        if (typeof resolved === 'boolean') {
+          envDefaults[field.key] = String(resolved);
+          continue;
+        }
+
+        if (typeof resolved === 'string' && resolved.length > 0) {
+          envDefaults[field.key] = resolved;
+          if (field.key === 'GH_TOKEN' && !envDefaults.GITHUB_TOKEN) {
+            envDefaults.GITHUB_TOKEN = resolved;
+          }
+        }
+      }
+    } else {
+      const fallbackEntries = Object.entries({
         FRONTEND_DOMAIN: input.deployment?.primaryDomain ?? undefined,
         ADMIN_DOMAIN: input.deployment?.adminDomain ?? undefined,
         WS_DOMAIN: input.deployment?.wsDomain ?? undefined,
-        FRONTEND_IMAGE: defaults.frontendImage,
-        WEBSOCKET_IMAGE: defaults.websocketImage,
-        LETSENCRYPT_EMAIL: defaults.letsencryptEmail,
-        WORDPRESS_FETCH_RELEASE_ASSETS:
-          typeof defaults.wordpressFetchReleaseAssets === 'boolean' ? String(defaults.wordpressFetchReleaseAssets) : undefined,
-        WORDPRESS_RUN_INIT:
-          typeof defaults.wordpressRunInit === 'boolean' ? String(defaults.wordpressRunInit) : undefined,
-        WORDPRESS_RELEASE_OWNER: defaults.wordpressReleaseOwner,
-        FD_THEME_RELEASE_TAG: defaults.fdThemeReleaseTag,
-        FD_ADMIN_UI_RELEASE_TAG: defaults.fdAdminUiReleaseTag,
-        FD_MEMBER_RELEASE_TAG: defaults.fdMemberReleaseTag,
-        FD_PAYMENT_RELEASE_TAG: defaults.fdPaymentReleaseTag,
-        FD_COMMERCE_RELEASE_TAG: defaults.fdCommerceReleaseTag,
-        FD_CONTENT_TYPES_RELEASE_TAG: defaults.fdContentTypesReleaseTag,
-        FD_WEBSOCKET_PUSH_RELEASE_TAG: defaults.fdWebsocketPushReleaseTag,
-        WPGRAPHQL_JWT_AUTH_RELEASE_TAG: defaults.wpgraphqlJwtAuthReleaseTag,
-        WPGRAPHQL_TAX_QUERY_REF: defaults.wpgraphqlTaxQueryRef,
-        ACR_USERNAME: defaults.acrUsername,
-        ACR_PASSWORD: defaults.acrPassword,
-        GH_TOKEN: defaults.githubToken,
-        GITHUB_TOKEN: defaults.githubToken
-      }).filter(([, value]) => typeof value === 'string' && value.length > 0)
-    );
+        ...Object.fromEntries(
+          Object.entries(appValues).map(([key, value]) => [key, typeof value === 'boolean' ? String(value) : value])
+        ),
+        ...appSecrets
+      }).filter(([, value]) => typeof value === 'string' && value.length > 0);
+
+      for (const [key, value] of fallbackEntries) {
+        if (typeof value === 'string') {
+          envDefaults[key] = value;
+        }
+      }
+
+      if (envDefaults.GH_TOKEN && !envDefaults.GITHUB_TOKEN) {
+        envDefaults.GITHUB_TOKEN = envDefaults.GH_TOKEN;
+      }
+    }
+
+    const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
 
     return {
-      installPath: input.deployment?.installPath ?? '/opt/fd-headless-wp-system',
+      installPath: installer.installPath,
       exchangeUrl,
       repository: {
-        url: defaults.repoUrl ?? 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-        branch: defaults.repoBranch ?? 'main'
+        url: installer.repoUrl,
+        branch: installer.repoBranch
       },
       envDefaults,
       remoteInstallCommand: input.token
         ? this.buildRemoteInstallCommand({
             token: input.token,
             exchangeUrl,
-            installPath: input.deployment?.installPath,
-            repoUrl: defaults.repoUrl,
-            repoBranch: defaults.repoBranch
+            installPath: installer.installPath,
+            repoUrl: installer.repoUrl,
+            repoBranch: installer.repoBranch,
+            remoteInstallScriptUrl: installer.remoteInstallScriptUrl
           })
         : null,
       notes: [
-        'Installer bootstrap now preloads deployment domains and any app-level deployment defaults into the existing install flow.',
-        'If an env key is not present here, the installer will fall back to its current interactive prompt.'
+        'Installer bootstrap now follows the synced deliveryManifest and any saved app-level preset overrides.',
+        'User-input deployment values override app defaults for the current deployment.'
       ]
     };
   }
@@ -274,11 +563,40 @@ export class DeploymentService {
     adminDomain?: string;
     wsDomain?: string;
     installPath?: string;
+    values?: DeliverySettingValues;
+    secrets?: DeliverySettingSecrets;
   }) {
     const selection = await this.resolveDeployableApp({
       userId: input.userId,
       appCode: input.appCode
     });
+
+    const manifest = this.readManifest(selection.app);
+    const deploymentValues = normalizeValueRecord(input.values);
+    const deploymentSecrets = normalizeSecretRecord(input.secrets);
+
+    this.validateDeploymentInputs({
+      manifest,
+      values: deploymentValues,
+      secrets: deploymentSecrets,
+      primaryDomain: input.primaryDomain,
+      adminDomain: input.adminDomain,
+      wsDomain: input.wsDomain
+    });
+
+    const deploymentMeta: Record<string, unknown> = {
+      appCode: selection.app.code
+    };
+
+    if (Object.keys(deploymentValues).length > 0 || Object.keys(deploymentSecrets).length > 0) {
+      deploymentMeta.deliveryInputs = {
+        values: deploymentValues,
+        secrets:
+          Object.keys(deploymentSecrets).length > 0
+            ? encryptJson(deploymentSecrets, this.getEncryptionSecret())
+            : undefined
+      };
+    }
 
     const deployment = await new DeploymentRepository(this.db).createDeployment({
       userId: input.userId,
@@ -289,10 +607,8 @@ export class DeploymentService {
       primaryDomain: input.primaryDomain ?? null,
       adminDomain: input.adminDomain ?? null,
       wsDomain: input.wsDomain ?? null,
-      installPath: input.installPath ?? '/opt/fd-headless-wp-system',
-      meta: {
-        appCode: selection.app.code
-      }
+      installPath: input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath,
+      meta: deploymentMeta
     });
 
     await new EventService(this.db).capture({
@@ -351,7 +667,9 @@ export class DeploymentService {
       }
     });
 
-    const app = await new AppService(this.db).getPublicApp((await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? '');
+    const app = await new AppService(this.db).getPublicApp(
+      (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? ''
+    );
     const bootstrap = await this.buildBootstrapPayload({
       app,
       deployment,

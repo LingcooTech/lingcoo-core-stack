@@ -42,6 +42,8 @@ export async function createDeployment(payload: {
   adminDomain?: string;
   wsDomain?: string;
   installPath?: string;
+  values?: Record<string, string | boolean>;
+  secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {
   return apiClient<DeploymentSummary>('/v1/deployments', {
     method: 'POST',

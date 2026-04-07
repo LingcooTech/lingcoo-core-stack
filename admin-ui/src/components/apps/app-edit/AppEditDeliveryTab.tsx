@@ -10,21 +10,24 @@ import { Label } from '@/components/ui/label';
 import { TabsContent } from '@/components/ui/tabs';
 import {
   computeDeliveryConfigured,
+  getManifestFieldGroups,
+  getManifestFields,
+  type DeliveryManifest,
+  type DeliveryManifestField,
   type DeliveryManifestSourceDraft,
+  type DeliverySecretState,
   type DeliverySettingsDraft,
 } from '@/lib/app-delivery';
 
 interface AppEditDeliveryTabProps {
   appCode: string;
   isCreateMode: boolean;
+  manifest: DeliveryManifest | null;
   deliverySettings: DeliverySettingsDraft;
+  deliverySecrets: DeliverySecretState;
   manifestSource: DeliveryManifestSourceDraft;
-  acrPasswordConfigured: boolean;
-  githubTokenConfigured: boolean;
-  updateField: <K extends keyof DeliverySettingsDraft>(
-    key: K,
-    value: DeliverySettingsDraft[K],
-  ) => void;
+  updateValueField: (key: string, value: string | boolean) => void;
+  updateSecretField: (key: string, value: string) => void;
   updateManifestField: <K extends keyof DeliveryManifestSourceDraft>(
     key: K,
     value: DeliveryManifestSourceDraft[K],
@@ -39,14 +42,103 @@ interface AppEditDeliveryTabProps {
   onSave: () => void;
 }
 
+function hasOwnValue(record: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function getTextFieldValue(draft: DeliverySettingsDraft, field: DeliveryManifestField) {
+  if (hasOwnValue(draft.values, field.key)) {
+    const current = draft.values[field.key];
+    return typeof current === 'string' ? current : '';
+  }
+
+  return typeof field.defaultValue === 'string' ? field.defaultValue : '';
+}
+
+function getBooleanFieldValue(draft: DeliverySettingsDraft, field: DeliveryManifestField) {
+  if (hasOwnValue(draft.values, field.key)) {
+    return Boolean(draft.values[field.key]);
+  }
+
+  return typeof field.defaultValue === 'boolean' ? field.defaultValue : false;
+}
+
+function renderPresetField(input: {
+  field: DeliveryManifestField;
+  deliverySettings: DeliverySettingsDraft;
+  deliverySecrets: DeliverySecretState;
+  updateValueField: (key: string, value: string | boolean) => void;
+  updateSecretField: (key: string, value: string) => void;
+}) {
+  const { field, deliverySettings, deliverySecrets, updateValueField, updateSecretField } = input;
+
+  if (field.type === 'boolean') {
+    return (
+      <label
+        key={field.key}
+        className="flex items-center gap-3 rounded-xl border border-border p-3"
+      >
+        <Checkbox
+          checked={getBooleanFieldValue(deliverySettings, field)}
+          disabled={!field.editable}
+          onCheckedChange={(checked) => updateValueField(field.key, Boolean(checked))}
+        />
+        <span className="space-y-1">
+          <span className="block text-sm font-medium">{field.label}</span>
+          {field.description ? (
+            <span className="block text-xs text-muted-foreground">{field.description}</span>
+          ) : null}
+        </span>
+      </label>
+    );
+  }
+
+  if (field.type === 'secret') {
+    return (
+      <div key={field.key} className="space-y-2">
+        <Label>{field.label}</Label>
+        <Input
+          type="password"
+          value={deliverySettings.secrets[field.key] ?? ''}
+          disabled={!field.editable}
+          onChange={(event) => updateSecretField(field.key, event.target.value)}
+          placeholder={
+            deliverySecrets[field.key] ? '已保存，留空保持不变' : field.placeholder ?? '当前未保存'
+          }
+        />
+        {field.description ? (
+          <p className="text-xs text-muted-foreground">{field.description}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div key={field.key} className="space-y-2">
+      <Label>{field.label}</Label>
+      <Input
+        type={field.type === 'email' ? 'email' : 'text'}
+        value={getTextFieldValue(deliverySettings, field)}
+        disabled={!field.editable}
+        onChange={(event) => updateValueField(field.key, event.target.value)}
+        placeholder={field.placeholder}
+      />
+      {field.description ? (
+        <p className="text-xs text-muted-foreground">{field.description}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function AppEditDeliveryTab({
   appCode,
   isCreateMode,
+  manifest,
   deliverySettings,
+  deliverySecrets,
   manifestSource,
-  acrPasswordConfigured,
-  githubTokenConfigured,
-  updateField,
+  updateValueField,
+  updateSecretField,
   updateManifestField,
   hasSyncedManifest,
   isSyncingManifest,
@@ -57,10 +149,12 @@ export function AppEditDeliveryTab({
   saveDisabled,
   onSave,
 }: AppEditDeliveryTabProps) {
-  const configured = computeDeliveryConfigured(deliverySettings, {
-    acrPasswordConfigured,
-    githubTokenConfigured,
-  });
+  const configured = computeDeliveryConfigured(manifest, deliverySettings, deliverySecrets);
+  const presetGroups = getManifestFieldGroups(manifest, 'preset');
+  const userInputGroups = getManifestFieldGroups(manifest, 'user_input');
+  const presetSecretFields = getManifestFields(manifest, 'preset').filter(
+    (field) => field.type === 'secret',
+  );
 
   return (
     <TabsContent value="delivery" className="space-y-6">
@@ -68,20 +162,22 @@ export function AppEditDeliveryTab({
         <CardHeader>
           <CardTitle>交付配置</CardTitle>
           <CardDescription>
-            直接维护当前应用的一键部署参数。敏感凭据仍通过加密设置存储，不会写进应用表。
+            应用后台只维护 manifest 中声明为 `preset` 的字段。`user_input` 字段会在终端用户创建部署时填写。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone={configured ? 'ok' : 'neutral'} label={configured ? '交付配置完整' : '配置未完成'} />
             <StatusPill
-              tone={acrPasswordConfigured ? 'ok' : 'neutral'}
-              label={`ACR 密码: ${acrPasswordConfigured ? '已保存' : '未保存'}`}
+              tone={configured ? 'ok' : 'neutral'}
+              label={configured ? '交付配置完整' : '配置未完成'}
             />
-            <StatusPill
-              tone={githubTokenConfigured ? 'ok' : 'neutral'}
-              label={`GitHub Token: ${githubTokenConfigured ? '已保存' : '未保存'}`}
-            />
+            {presetSecretFields.map((field) => (
+              <StatusPill
+                key={field.key}
+                tone={deliverySecrets[field.key] ? 'ok' : 'neutral'}
+                label={`${field.label}: ${deliverySecrets[field.key] ? '已保存' : '未保存'}`}
+              />
+            ))}
           </div>
 
           <div className="rounded-2xl border bg-muted/30 p-4">
@@ -104,7 +200,7 @@ export function AppEditDeliveryTab({
                 <div>
                   <CardTitle className="text-base">交付 Manifest</CardTitle>
                   <CardDescription>
-                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，用于保留当前应用的交付声明。
+                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，作为当前应用的一键部署契约。
                   </CardDescription>
                 </div>
                 <Button
@@ -168,202 +264,138 @@ export function AppEditDeliveryTab({
             </CardContent>
           </Card>
 
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-base">仓库与镜像</CardTitle>
-              <CardDescription>这些值会进入远程安装 bootstrap 结果，供一键部署脚本直接使用。</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label>交付仓库 URL</Label>
-                <Input
-                  value={deliverySettings.repoUrl}
-                  onChange={(event) => updateField('repoUrl', event.target.value)}
-                  placeholder="https://github.com/..."
-                />
-              </div>
-              <div>
-                <Label>交付仓库分支</Label>
-                <Input
-                  value={deliverySettings.repoBranch}
-                  onChange={(event) => updateField('repoBranch', event.target.value)}
-                  placeholder="main"
-                />
-              </div>
-              <div>
-                <Label>Frontend Image</Label>
-                <Input
-                  value={deliverySettings.frontendImage}
-                  onChange={(event) => updateField('frontendImage', event.target.value)}
-                  placeholder="registry.example.com/frontend:tag"
-                />
-              </div>
-              <div>
-                <Label>WebSocket Image</Label>
-                <Input
-                  value={deliverySettings.websocketImage}
-                  onChange={(event) => updateField('websocketImage', event.target.value)}
-                  placeholder="registry.example.com/websocket:tag"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {manifest ? (
+            <>
+              <Card className="border-dashed">
+                <CardHeader>
+                  <CardTitle className="text-base">安装器信息</CardTitle>
+                  <CardDescription>这些值直接来自 manifest 的 installer 段，不在后台单独硬编码。</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>仓库 URL</Label>
+                    <Input value={manifest.installer.repoUrl} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>仓库分支</Label>
+                    <Input value={manifest.installer.repoBranch} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>安装路径</Label>
+                    <Input value={manifest.installer.installPath} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>远程安装脚本</Label>
+                    <Input value={manifest.installer.remoteInstallScriptUrl} disabled />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-base">凭据与证书</CardTitle>
-              <CardDescription>这些值不会暴露给用户，只会注入部署 bootstrap 和安装器。</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label>ACR 用户名</Label>
-                <Input
-                  value={deliverySettings.acrUsername}
-                  onChange={(event) => updateField('acrUsername', event.target.value)}
-                  placeholder="futuredecade"
-                />
-              </div>
-              <div>
-                <Label>证书通知邮箱</Label>
-                <Input
-                  value={deliverySettings.letsencryptEmail}
-                  onChange={(event) => updateField('letsencryptEmail', event.target.value)}
-                  placeholder="ops@example.com"
-                />
-              </div>
-              <div>
-                <Label>ACR 密码</Label>
-                <Input
-                  type="password"
-                  value={deliverySettings.acrPassword}
-                  onChange={(event) => updateField('acrPassword', event.target.value)}
-                  placeholder={acrPasswordConfigured ? '已保存，留空保持不变' : '当前未保存'}
-                />
-              </div>
-              <div>
-                <Label>GitHub Token</Label>
-                <Input
-                  type="password"
-                  value={deliverySettings.githubToken}
-                  onChange={(event) => updateField('githubToken', event.target.value)}
-                  placeholder={githubTokenConfigured ? '已保存，留空保持不变' : '当前未保存'}
-                />
-              </div>
-            </CardContent>
-          </Card>
+              {presetGroups.length > 0 ? (
+                presetGroups.map((group) => (
+                  <Card key={group.key} className="border-dashed">
+                    <CardHeader>
+                      <CardTitle className="text-base">{group.label}</CardTitle>
+                      <CardDescription>
+                        {group.description ?? '这些字段会作为预设值注入 bootstrap。'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 md:grid-cols-2">
+                      {group.fields.map((field) =>
+                        renderPresetField({
+                          field,
+                          deliverySettings,
+                          deliverySecrets,
+                          updateValueField,
+                          updateSecretField,
+                        }),
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-base">预设字段</CardTitle>
+                    <CardDescription>
+                      当前 manifest 没有声明任何 `preset` 字段，后台无需维护额外交付值。
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
 
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-base">版本与初始化</CardTitle>
-              <CardDescription>定义远程安装时的默认 release 版本和首次安装行为。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>Release Owner</Label>
-                  <Input
-                    value={deliverySettings.wordpressReleaseOwner}
-                    onChange={(event) => updateField('wordpressReleaseOwner', event.target.value)}
-                    placeholder="FutureDecade"
-                  />
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex items-center gap-3 rounded-xl border border-border p-3">
-                    <Checkbox
-                      checked={deliverySettings.wordpressFetchReleaseAssets}
-                      onCheckedChange={(checked) =>
-                        updateField('wordpressFetchReleaseAssets', Boolean(checked))
-                      }
-                    />
-                    <span className="text-sm font-medium">自动拉取 WordPress 资产</span>
-                  </label>
-                  <label className="flex items-center gap-3 rounded-xl border border-border p-3">
-                    <Checkbox
-                      checked={deliverySettings.wordpressRunInit}
-                      onCheckedChange={(checked) =>
-                        updateField('wordpressRunInit', Boolean(checked))
-                      }
-                    />
-                    <span className="text-sm font-medium">自动完成首次安装</span>
-                  </label>
-                </div>
-              </div>
+              <Card className="border-dashed">
+                <CardHeader>
+                  <CardTitle className="text-base">终端用户部署输入</CardTitle>
+                  <CardDescription>
+                    下面这些字段不会在后台这里填写，用户在购买后创建部署记录时自行输入。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {manifest.domainSlots.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {manifest.domainSlots.map((slot) => (
+                        <div key={slot.key} className="rounded-xl border bg-muted/30 p-3">
+                          <p className="text-sm font-bold">{slot.label}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{slot.envKey}</p>
+                          {slot.description ? (
+                            <p className="mt-2 text-xs text-muted-foreground">{slot.description}</p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label>fd-theme</Label>
-                  <Input
-                    value={deliverySettings.fdThemeReleaseTag}
-                    onChange={(event) => updateField('fdThemeReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-admin-ui</Label>
-                  <Input
-                    value={deliverySettings.fdAdminUiReleaseTag}
-                    onChange={(event) => updateField('fdAdminUiReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-member</Label>
-                  <Input
-                    value={deliverySettings.fdMemberReleaseTag}
-                    onChange={(event) => updateField('fdMemberReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-payment</Label>
-                  <Input
-                    value={deliverySettings.fdPaymentReleaseTag}
-                    onChange={(event) => updateField('fdPaymentReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-commerce</Label>
-                  <Input
-                    value={deliverySettings.fdCommerceReleaseTag}
-                    onChange={(event) => updateField('fdCommerceReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-content-types</Label>
-                  <Input
-                    value={deliverySettings.fdContentTypesReleaseTag}
-                    onChange={(event) => updateField('fdContentTypesReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>fd-websocket-push</Label>
-                  <Input
-                    value={deliverySettings.fdWebsocketPushReleaseTag}
-                    onChange={(event) => updateField('fdWebsocketPushReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>wp-graphql-jwt-auth</Label>
-                  <Input
-                    value={deliverySettings.wpgraphqlJwtAuthReleaseTag}
-                    onChange={(event) => updateField('wpgraphqlJwtAuthReleaseTag', event.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>wp-graphql-tax-query</Label>
-                  <Input
-                    value={deliverySettings.wpgraphqlTaxQueryRef}
-                    onChange={(event) => updateField('wpgraphqlTaxQueryRef', event.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  {userInputGroups.length > 0 ? (
+                    userInputGroups.map((group) => (
+                      <div key={group.key} className="space-y-2 rounded-xl border bg-muted/20 p-4">
+                        <div>
+                          <p className="text-sm font-bold">{group.label}</p>
+                          {group.description ? (
+                            <p className="text-xs text-muted-foreground">{group.description}</p>
+                          ) : null}
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {group.fields.map((field) => (
+                            <div key={field.key} className="rounded-lg border bg-background p-3">
+                              <p className="text-sm font-medium">{field.label}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{field.key}</p>
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {field.type === 'secret'
+                                  ? '密钥字段'
+                                  : field.type === 'boolean'
+                                    ? '布尔开关'
+                                    : field.type === 'email'
+                                      ? '邮箱字段'
+                                      : '文本字段'}
+                                {field.required ? ' · 必填' : ' · 可选'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      当前 manifest 没有额外的 `user_input` 字段。
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle className="text-base">Manifest 未同步</CardTitle>
+                <CardDescription>
+                  当前应用还没有 `deliveryManifest`。同步之后，后台和用户部署页才会按 manifest 自动渲染。
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
 
           <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClear}
-              disabled={clearDisabled}
-            >
+            <Button type="button" variant="outline" onClick={onClear} disabled={clearDisabled}>
               <Trash2 className="h-4 w-4" />
               清空交付配置
             </Button>

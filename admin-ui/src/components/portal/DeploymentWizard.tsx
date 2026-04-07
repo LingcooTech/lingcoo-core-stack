@@ -6,15 +6,26 @@ import type { IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn, getInitials, formatTime } from '@/lib/utils';
+import {
+  buildManifestInputPayload,
+  createDeploymentInputDraft,
+  createDeploymentSecretDraft,
+  getManifestFieldGroups,
+  type DeliveryManifest,
+  type DeliveryManifestField,
+} from '@/lib/app-delivery';
+import { cn, formatTime, getInitials } from '@/lib/utils';
 
 export interface DeployableAppOption {
   appCode: string;
   appName: string;
   appType: string;
   featureCount: number;
+  manifest: DeliveryManifest | null;
+  defaultInstallPath: string;
 }
 
 export interface CreateDeploymentPayload {
@@ -26,19 +37,63 @@ export interface CreateDeploymentPayload {
   adminDomain?: string;
   wsDomain?: string;
   installPath?: string;
+  values?: Record<string, string | boolean>;
+  secrets?: Record<string, string>;
 }
 
 export interface DeploymentWizardProps {
   options: DeployableAppOption[];
   onCreateDeployment: (payload: CreateDeploymentPayload) => Promise<{ id: string }>;
-  onIssueToken: (params: { deploymentId: string; expiresInHours: number }) => Promise<IssueDeploymentTokenResult>;
+  onIssueToken: (params: {
+    deploymentId: string;
+    expiresInHours: number;
+  }) => Promise<IssueDeploymentTokenResult>;
   creating: boolean;
   issuing: boolean;
 }
 
 type WizardStep = 1 | 2 | 3;
 
-export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, creating, issuing }: DeploymentWizardProps) {
+type DeploymentDraft = {
+  values: Record<string, string | boolean>;
+  secrets: Record<string, string>;
+};
+
+function createWizardDraft(manifest: DeliveryManifest | null): DeploymentDraft {
+  return {
+    values: createDeploymentInputDraft(manifest).values,
+    secrets: createDeploymentSecretDraft(manifest),
+  };
+}
+
+function hasOwnValue(record: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
+function getTextFieldValue(draft: DeploymentDraft, field: DeliveryManifestField) {
+  if (hasOwnValue(draft.values, field.key)) {
+    const current = draft.values[field.key];
+    return typeof current === 'string' ? current : '';
+  }
+
+  return typeof field.defaultValue === 'string' ? field.defaultValue : '';
+}
+
+function getBooleanFieldValue(draft: DeploymentDraft, field: DeliveryManifestField) {
+  if (hasOwnValue(draft.values, field.key)) {
+    return Boolean(draft.values[field.key]);
+  }
+
+  return typeof field.defaultValue === 'boolean' ? field.defaultValue : false;
+}
+
+export function DeploymentWizard({
+  options,
+  onCreateDeployment,
+  onIssueToken,
+  creating,
+  issuing,
+}: DeploymentWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedAppCode, setSelectedAppCode] = useState('');
   const [label, setLabel] = useState('');
@@ -48,11 +103,42 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
   const [adminDomain, setAdminDomain] = useState('');
   const [wsDomain, setWsDomain] = useState('');
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
+    createWizardDraft(null),
+  );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenResult, setTokenResult] = useState<IssueDeploymentTokenResult | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const selectedApp = useMemo(() => options.find((o) => o.appCode === selectedAppCode) ?? null, [options, selectedAppCode]);
+  const selectedApp = useMemo(
+    () => options.find((option) => option.appCode === selectedAppCode) ?? null,
+    [options, selectedAppCode],
+  );
+  const manifest = selectedApp?.manifest ?? null;
+  const userInputGroups = useMemo(
+    () => getManifestFieldGroups(manifest, 'user_input'),
+    [manifest],
+  );
+  const visibleUserInputGroups = useMemo(
+    () =>
+      userInputGroups
+        .map((group) => ({
+          ...group,
+          fields: group.fields.filter((field) => !field.advanced),
+        }))
+        .filter((group) => group.fields.length > 0),
+    [userInputGroups],
+  );
+  const advancedUserInputGroups = useMemo(
+    () =>
+      userInputGroups
+        .map((group) => ({
+          ...group,
+          fields: group.fields.filter((field) => field.advanced),
+        }))
+        .filter((group) => group.fields.length > 0),
+    [userInputGroups],
+  );
 
   useEffect(() => {
     if (selectedApp && !label) {
@@ -60,22 +146,121 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     }
   }, [selectedApp, label]);
 
+  useEffect(() => {
+    setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
+    setPrimaryDomain('');
+    setAdminDomain('');
+    setWsDomain('');
+    setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
+    setAdvancedOpen(false);
+  }, [selectedAppCode, selectedApp]);
+
   const handleSelectApp = useCallback((appCode: string) => {
     setSelectedAppCode(appCode);
     setLabel('');
   }, []);
 
+  const setDraftValue = useCallback((key: string, value: string | boolean) => {
+    setDeploymentDraft((prev) => ({
+      ...prev,
+      values: {
+        ...prev.values,
+        [key]: value,
+      },
+    }));
+  }, []);
+
+  const setDraftSecret = useCallback((key: string, value: string) => {
+    setDeploymentDraft((prev) => ({
+      ...prev,
+      secrets: {
+        ...prev.secrets,
+        [key]: value,
+      },
+    }));
+  }, []);
+
+  const validateManifestInputs = useCallback(() => {
+    if (!manifest) {
+      toast.error('当前应用尚未同步交付 Manifest，暂时不能创建部署记录。');
+      return false;
+    }
+
+    for (const slot of manifest.domainSlots) {
+      const value =
+        slot.sourceField === 'primaryDomain'
+          ? primaryDomain
+          : slot.sourceField === 'adminDomain'
+            ? adminDomain
+            : wsDomain;
+      if (slot.required && !value.trim()) {
+        toast.error(`${slot.label}不能为空`);
+        return false;
+      }
+    }
+
+    for (const group of userInputGroups) {
+      for (const field of group.fields) {
+        if (!field.required) {
+          continue;
+        }
+
+        if (field.type === 'secret') {
+          if (!(deploymentDraft.secrets[field.key] ?? '').trim()) {
+            toast.error(`${field.label}不能为空`);
+            return false;
+          }
+          continue;
+        }
+
+        if (field.type === 'boolean') {
+          if (!hasOwnValue(deploymentDraft.values, field.key) && typeof field.defaultValue !== 'boolean') {
+            toast.error(`${field.label}不能为空`);
+            return false;
+          }
+          continue;
+        }
+
+        if (!getTextFieldValue(deploymentDraft, field).trim()) {
+          toast.error(`${field.label}不能为空`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }, [adminDomain, deploymentDraft, manifest, primaryDomain, userInputGroups, wsDomain]);
+
   const handleCreate = useCallback(async () => {
+    if (!selectedAppCode || !label.trim()) {
+      return;
+    }
+
+    if (!validateManifestInputs()) {
+      return;
+    }
+
+    const manifestPayload = buildManifestInputPayload(deploymentDraft);
     const payload: CreateDeploymentPayload = {
       appCode: selectedAppCode,
       label,
       environment,
       serverHost: serverHost || undefined,
-      primaryDomain: primaryDomain || undefined,
-      adminDomain: adminDomain || undefined,
-      wsDomain: wsDomain || undefined,
-      installPath: installPath || undefined
+      installPath: installPath || undefined,
+      values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
+      secrets:
+        Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined,
     };
+
+    if (primaryDomain.trim()) {
+      payload.primaryDomain = primaryDomain.trim();
+    }
+    if (adminDomain.trim()) {
+      payload.adminDomain = adminDomain.trim();
+    }
+    if (wsDomain.trim()) {
+      payload.wsDomain = wsDomain.trim();
+    }
 
     try {
       const result = await onCreateDeployment(payload);
@@ -89,7 +274,20 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     } catch {
       /* error handled by parent via toast */
     }
-  }, [selectedAppCode, label, environment, serverHost, primaryDomain, adminDomain, wsDomain, installPath, onCreateDeployment, onIssueToken]);
+  }, [
+    adminDomain,
+    deploymentDraft,
+    environment,
+    installPath,
+    label,
+    onCreateDeployment,
+    onIssueToken,
+    primaryDomain,
+    selectedAppCode,
+    serverHost,
+    validateManifestInputs,
+    wsDomain,
+  ]);
 
   const handleReset = useCallback(() => {
     setStep(1);
@@ -101,6 +299,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
     setAdminDomain('');
     setWsDomain('');
     setInstallPath('/opt/fd-headless-wp-system');
+    setDeploymentDraft(createWizardDraft(null));
     setAdvancedOpen(false);
     setTokenResult(null);
     setCopied(false);
@@ -115,6 +314,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
   }, []);
 
   const stepLabels = ['选择应用', '填写部署信息', '安装命令'];
+  const hasAdvancedSection = advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
 
   return (
     <Card className="border-slate-200/80 bg-white/95">
@@ -134,7 +334,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                     'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
                     isActive && 'bg-primary text-primary-foreground',
                     isDone && 'bg-green-50 text-green-700',
-                    !isActive && !isDone && 'bg-muted text-muted-foreground'
+                    !isActive && !isDone && 'bg-muted text-muted-foreground',
                   )}
                 >
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-black">
@@ -162,22 +362,29 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                     onClick={() => handleSelectApp(app.appCode)}
                     className={cn(
                       'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:shadow-sm',
-                      isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-white hover:border-slate-300'
+                      isSelected
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border bg-white hover:border-slate-300',
                     )}
                   >
                     <div
                       className={cn(
                         'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-600'
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-600',
                       )}
                     >
                       {getInitials(app.appName)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-slate-900">{app.appName}</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px]">{app.appType}</Badge>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {app.appType}
+                        </Badge>
                         <span className="text-xs text-muted-foreground">{app.featureCount} 项能力</span>
+                        <span className="text-xs text-muted-foreground">
+                          {app.manifest ? 'Manifest 已同步' : 'Manifest 未同步'}
+                        </span>
                       </div>
                     </div>
                     {isSelected && (
@@ -199,13 +406,22 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
 
         {step === 2 && (
           <>
+            {!manifest ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-bold text-amber-900">当前应用还没有同步交付 Manifest</p>
+                <p className="mt-1 text-sm text-amber-800">
+                  请先在后台应用编辑页同步 `fd-delivery.manifest.json`，然后再创建部署记录。
+                </p>
+              </div>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="wizard-label">部署名称 *</Label>
                 <Input
                   id="wizard-label"
                   value={label}
-                  onChange={(e) => setLabel(e.target.value)}
+                  onChange={(event) => setLabel(event.target.value)}
                   placeholder="FutureDecade Production"
                 />
               </div>
@@ -214,21 +430,129 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                 <Input
                   id="wizard-env"
                   value={environment}
-                  onChange={(e) => setEnvironment(e.target.value)}
+                  onChange={(event) => setEnvironment(event.target.value)}
                   placeholder="production"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="wizard-primary-domain">前台域名</Label>
-              <Input
-                id="wizard-primary-domain"
-                value={primaryDomain}
-                onChange={(e) => setPrimaryDomain(e.target.value)}
-                placeholder="www.futuredecade.com"
-              />
-            </div>
+            {manifest?.domainSlots.length ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                {manifest.domainSlots.map((slot) => {
+                  const value =
+                    slot.sourceField === 'primaryDomain'
+                      ? primaryDomain
+                      : slot.sourceField === 'adminDomain'
+                        ? adminDomain
+                        : wsDomain;
+                  const onChange = (nextValue: string) => {
+                    if (slot.sourceField === 'primaryDomain') {
+                      setPrimaryDomain(nextValue);
+                      return;
+                    }
+                    if (slot.sourceField === 'adminDomain') {
+                      setAdminDomain(nextValue);
+                      return;
+                    }
+                    setWsDomain(nextValue);
+                  };
+
+                  return (
+                    <div key={slot.key} className="space-y-2">
+                      <Label htmlFor={`wizard-domain-${slot.key}`}>
+                        {slot.label}
+                        {slot.required ? ' *' : ''}
+                      </Label>
+                      <Input
+                        id={`wizard-domain-${slot.key}`}
+                        value={value}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder={slot.placeholder}
+                      />
+                      {slot.description ? (
+                        <p className="text-xs text-muted-foreground">{slot.description}</p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {visibleUserInputGroups.map((group) => (
+              <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+                <div>
+                  <p className="text-sm font-bold">{group.label}</p>
+                  {group.description ? (
+                    <p className="text-sm text-muted-foreground">{group.description}</p>
+                  ) : null}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {group.fields.map((field) => {
+                    if (field.type === 'boolean') {
+                      return (
+                        <label
+                          key={field.key}
+                          className="flex items-center gap-3 rounded-xl border border-border p-3"
+                        >
+                          <Checkbox
+                            checked={getBooleanFieldValue(deploymentDraft, field)}
+                            onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}
+                          />
+                          <span className="space-y-1">
+                            <span className="block text-sm font-medium">{field.label}</span>
+                            {field.description ? (
+                              <span className="block text-xs text-muted-foreground">
+                                {field.description}
+                              </span>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    }
+
+                    if (field.type === 'secret') {
+                      return (
+                        <div key={field.key} className="space-y-2">
+                          <Label htmlFor={`wizard-field-${field.key}`}>
+                            {field.label}
+                            {field.required ? ' *' : ''}
+                          </Label>
+                          <Input
+                            id={`wizard-field-${field.key}`}
+                            type="password"
+                            value={deploymentDraft.secrets[field.key] ?? ''}
+                            onChange={(event) => setDraftSecret(field.key, event.target.value)}
+                            placeholder={field.placeholder}
+                          />
+                          {field.description ? (
+                            <p className="text-xs text-muted-foreground">{field.description}</p>
+                          ) : null}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={field.key} className="space-y-2">
+                        <Label htmlFor={`wizard-field-${field.key}`}>
+                          {field.label}
+                          {field.required ? ' *' : ''}
+                        </Label>
+                        <Input
+                          id={`wizard-field-${field.key}`}
+                          type={field.type === 'email' ? 'email' : 'text'}
+                          value={getTextFieldValue(deploymentDraft, field)}
+                          onChange={(event) => setDraftValue(field.key, event.target.value)}
+                          placeholder={field.placeholder}
+                        />
+                        {field.description ? (
+                          <p className="text-xs text-muted-foreground">{field.description}</p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
 
             <div className="rounded-2xl border border-border">
               <button
@@ -247,26 +571,8 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                       <Input
                         id="wizard-server"
                         value={serverHost}
-                        onChange={(e) => setServerHost(e.target.value)}
+                        onChange={(event) => setServerHost(event.target.value)}
                         placeholder="144.48.8.218"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-admin-domain">后台域名</Label>
-                      <Input
-                        id="wizard-admin-domain"
-                        value={adminDomain}
-                        onChange={(e) => setAdminDomain(e.target.value)}
-                        placeholder="admin.futuredecade.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-ws-domain">WS 域名</Label>
-                      <Input
-                        id="wizard-ws-domain"
-                        value={wsDomain}
-                        onChange={(e) => setWsDomain(e.target.value)}
-                        placeholder="ws.futuredecade.com"
                       />
                     </div>
                     <div className="space-y-2">
@@ -274,11 +580,93 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                       <Input
                         id="wizard-install-path"
                         value={installPath}
-                        onChange={(e) => setInstallPath(e.target.value)}
-                        placeholder="/opt/fd-headless-wp-system"
+                        onChange={(event) => setInstallPath(event.target.value)}
+                        placeholder={selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}
                       />
                     </div>
                   </div>
+
+                  {advancedUserInputGroups.map((group) => (
+                    <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+                      <div>
+                        <p className="text-sm font-bold">{group.label}</p>
+                        {group.description ? (
+                          <p className="text-sm text-muted-foreground">{group.description}</p>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {group.fields.map((field) => {
+                          if (field.type === 'boolean') {
+                            return (
+                              <label
+                                key={field.key}
+                                className="flex items-center gap-3 rounded-xl border border-border p-3"
+                              >
+                                <Checkbox
+                                  checked={getBooleanFieldValue(deploymentDraft, field)}
+                                  onCheckedChange={(checked) =>
+                                    setDraftValue(field.key, Boolean(checked))
+                                  }
+                                />
+                                <span className="space-y-1">
+                                  <span className="block text-sm font-medium">{field.label}</span>
+                                  {field.description ? (
+                                    <span className="block text-xs text-muted-foreground">
+                                      {field.description}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            );
+                          }
+
+                          if (field.type === 'secret') {
+                            return (
+                              <div key={field.key} className="space-y-2">
+                                <Label htmlFor={`wizard-advanced-${field.key}`}>
+                                  {field.label}
+                                  {field.required ? ' *' : ''}
+                                </Label>
+                                <Input
+                                  id={`wizard-advanced-${field.key}`}
+                                  type="password"
+                                  value={deploymentDraft.secrets[field.key] ?? ''}
+                                  onChange={(event) => setDraftSecret(field.key, event.target.value)}
+                                  placeholder={field.placeholder}
+                                />
+                                {field.description ? (
+                                  <p className="text-xs text-muted-foreground">{field.description}</p>
+                                ) : null}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={field.key} className="space-y-2">
+                              <Label htmlFor={`wizard-advanced-${field.key}`}>
+                                {field.label}
+                                {field.required ? ' *' : ''}
+                              </Label>
+                              <Input
+                                id={`wizard-advanced-${field.key}`}
+                                type={field.type === 'email' ? 'email' : 'text'}
+                                value={getTextFieldValue(deploymentDraft, field)}
+                                onChange={(event) => setDraftValue(field.key, event.target.value)}
+                                placeholder={field.placeholder}
+                              />
+                              {field.description ? (
+                                <p className="text-xs text-muted-foreground">{field.description}</p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {!hasAdvancedSection ? (
+                    <p className="text-sm text-muted-foreground">当前没有额外的高级配置项。</p>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -288,7 +676,7 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                 上一步
               </Button>
               <Button
-                disabled={!selectedAppCode || !label.trim() || creating || issuing}
+                disabled={!selectedAppCode || !label.trim() || !manifest || creating || issuing}
                 onClick={handleCreate}
               >
                 {creating || issuing ? '创建中...' : '创建部署'}
@@ -309,12 +697,14 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
             {tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Remote Install Command</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Remote Install Command
+                  </p>
                   <div className="relative">
                     <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 pr-10 text-xs text-slate-100">
                       {tokenResult.remoteInstallCommand ?? '当前未生成远程安装命令'}
                     </pre>
-                    {tokenResult.remoteInstallCommand && (
+                    {tokenResult.remoteInstallCommand ? (
                       <button
                         type="button"
                         className="absolute right-2 top-2 rounded-lg bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
@@ -322,39 +712,59 @@ export function DeploymentWizard({ options, onCreateDeployment, onIssueToken, cr
                       >
                         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Token 尾号</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                      Token 尾号
+                    </p>
                     <p className="mt-1 font-mono text-sm text-slate-900">{tokenResult.tokenHint}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">过期时间</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">{formatTime(tokenResult.expiresAt)}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                      过期时间
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {formatTime(tokenResult.expiresAt)}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Exchange URL</p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{tokenResult.exchangeUrl}</pre>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Exchange URL
+                  </p>
+                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                    {tokenResult.exchangeUrl}
+                  </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">One-time Token</p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{tokenResult.token}</pre>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    One-time Token
+                  </p>
+                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                    {tokenResult.token}
+                  </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Exchange Curl</p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{tokenResult.exchangeCurl}</pre>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Exchange Curl
+                  </p>
+                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                    {tokenResult.exchangeCurl}
+                  </pre>
                 </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm text-amber-800">部署令牌签发未能完成，请在下方部署列表中手动签发。</p>
+                <p className="text-sm text-amber-800">
+                  部署令牌签发未能完成，请在下方部署列表中手动签发。
+                </p>
               </div>
             )}
 

@@ -10,7 +10,7 @@ import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
-import { getAppDeliveryMode } from '@/lib/app-delivery';
+import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
@@ -25,17 +25,24 @@ export function DeploymentsPage() {
 
   const deployableApps = useMemo<DeployableAppOption[]>(
     () =>
-      apps.filter((app) => {
-        if (getAppDeliveryMode(app) !== 'one_click') {
-          return false;
-        }
-        return summaryMap.has(app.code);
-      }).map((app) => ({
-        appCode: app.code,
-        appName: app.name,
-        appType: app.type,
-        featureCount: summaryMap.get(app.code)?.length ?? 0
-      })),
+      apps
+        .filter((app) => {
+          if (getAppDeliveryMode(app) !== 'one_click') {
+            return false;
+          }
+          return summaryMap.has(app.code);
+        })
+        .map((app) => {
+          const manifest = getDeliveryManifest(app);
+          return {
+            appCode: app.code,
+            appName: app.name,
+            appType: app.type,
+            featureCount: summaryMap.get(app.code)?.length ?? 0,
+            manifest,
+            defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+          };
+        }),
     [apps, summaries]
   );
 

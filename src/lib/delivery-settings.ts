@@ -4,6 +4,11 @@ import { appDeliverySettings, systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import { AppRepository } from '../modules/app/repository';
 import { hasPublicTable } from './db-compat';
+import {
+  listDeliveryManifestFields,
+  normalizeDeliveryManifest,
+  type DeliveryManifestField
+} from './delivery-manifest';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
 import { decryptJson, encryptJson } from './settings-crypto';
@@ -12,73 +17,72 @@ type SecretStatus = {
   configured: boolean;
 };
 
-export type DeliverySettingValues = {
-  repoUrl: string;
-  repoBranch: string;
-  frontendImage: string;
-  websocketImage: string;
-  letsencryptEmail: string;
-  acrUsername: string;
-  wordpressFetchReleaseAssets: boolean;
-  wordpressRunInit: boolean;
-  wordpressReleaseOwner: string;
-  fdThemeReleaseTag: string;
-  fdAdminUiReleaseTag: string;
-  fdMemberReleaseTag: string;
-  fdPaymentReleaseTag: string;
-  fdCommerceReleaseTag: string;
-  fdContentTypesReleaseTag: string;
-  fdWebsocketPushReleaseTag: string;
-  wpgraphqlJwtAuthReleaseTag: string;
-  wpgraphqlTaxQueryRef: string;
-};
+export type DeliverySettingValue = string | boolean;
+export type DeliverySettingValues = Record<string, DeliverySettingValue>;
+export type DeliverySettingSecrets = Record<string, string>;
 
 export type DeliverySettingsOverview = {
   appCode: string;
   configured: boolean;
   values: DeliverySettingValues;
-  secrets: {
-    acrPassword: SecretStatus;
-    githubToken: SecretStatus;
+  secrets: Record<string, SecretStatus>;
+};
+
+export type DeliverySettingsInput = {
+  values?: DeliverySettingValues;
+  secrets?: DeliverySettingSecrets;
+  installer?: {
+    repoUrl?: string;
+    repoBranch?: string;
+  };
+} & Record<string, unknown>;
+
+export type StoredDeliverySettings = {
+  values: DeliverySettingValues;
+  secrets: DeliverySettingSecrets;
+  installer: {
+    repoUrl: string;
+    repoBranch: string;
   };
 };
 
-export type DeliverySettingsInput = Partial<DeliverySettingValues> & {
-  acrPassword?: string;
-  githubToken?: string;
-};
-
-type StoredDeliverySettings = DeliverySettingValues & {
-  acrPassword: string;
-  githubToken: string;
-};
-
-const DEFAULTS: DeliverySettingValues = {
+const DEFAULT_INSTALLER = {
   repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-  repoBranch: 'main',
-  frontendImage: '',
-  websocketImage: '',
-  letsencryptEmail: '',
-  acrUsername: '',
-  wordpressFetchReleaseAssets: true,
-  wordpressRunInit: true,
-  wordpressReleaseOwner: 'FutureDecade',
-  fdThemeReleaseTag: 'v1.0.7',
-  fdAdminUiReleaseTag: 'v1.3.1',
-  fdMemberReleaseTag: 'v1.0.1',
-  fdPaymentReleaseTag: 'v1.0.0',
-  fdCommerceReleaseTag: 'v1.0.0',
-  fdContentTypesReleaseTag: 'v0.1.0',
-  fdWebsocketPushReleaseTag: 'v1.0.0',
-  wpgraphqlJwtAuthReleaseTag: 'v0.7.2',
-  wpgraphqlTaxQueryRef: 'v0.2.0'
+  repoBranch: 'main'
+};
+
+const LEGACY_VALUE_KEY_MAP: Record<
+  string,
+  { envKey: string; kind: 'string' | 'boolean' }
+> = {
+  frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
+  websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
+  letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
+  acrUsername: { envKey: 'ACR_USERNAME', kind: 'string' },
+  wordpressFetchReleaseAssets: { envKey: 'WORDPRESS_FETCH_RELEASE_ASSETS', kind: 'boolean' },
+  wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
+  wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
+  fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
+  fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
+  fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
+  fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
+  fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
+  fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
+  fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
+  wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
+  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
+};
+
+const LEGACY_SECRET_KEY_MAP: Record<string, string> = {
+  acrPassword: 'ACR_PASSWORD',
+  githubToken: 'GH_TOKEN'
 };
 
 function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeBoolean(value: unknown, fallback: boolean) {
+function normalizeBoolean(value: unknown) {
   if (typeof value === 'boolean') {
     return value;
   }
@@ -93,7 +97,7 @@ function normalizeBoolean(value: unknown, fallback: boolean) {
     }
   }
 
-  return fallback;
+  return undefined;
 }
 
 function normalizeObject(value: unknown): Record<string, unknown> {
@@ -102,6 +106,159 @@ function normalizeObject(value: unknown): Record<string, unknown> {
   }
 
   return value as Record<string, unknown>;
+}
+
+function normalizeValueRecord(value: unknown) {
+  const raw = normalizeObject(value);
+  const result: DeliverySettingValues = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    const stringValue = normalizeString(entry);
+    const booleanValue = normalizeBoolean(entry);
+
+    if (typeof entry === 'boolean') {
+      result[key] = entry;
+      continue;
+    }
+
+    if (typeof booleanValue === 'boolean' && typeof entry === 'string' && stringValue.length > 0) {
+      result[key] = booleanValue;
+      continue;
+    }
+
+    if (stringValue.length > 0) {
+      result[key] = stringValue;
+    }
+  }
+
+  return result;
+}
+
+function normalizeSecretRecord(value: unknown) {
+  const raw = normalizeObject(value);
+  const result: DeliverySettingSecrets = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    const normalized = normalizeString(entry);
+    if (normalized.length > 0) {
+      result[key] = normalized;
+    }
+  }
+
+  return result;
+}
+
+function createEmptyStoredSettings(): StoredDeliverySettings {
+  return {
+    values: {},
+    secrets: {},
+    installer: { ...DEFAULT_INSTALLER }
+  };
+}
+
+function normalizeInstallerOverrides(value: unknown) {
+  const raw = normalizeObject(value);
+
+  return {
+    repoUrl: normalizeString(raw.repoUrl) || DEFAULT_INSTALLER.repoUrl,
+    repoBranch: normalizeString(raw.repoBranch) || DEFAULT_INSTALLER.repoBranch
+  };
+}
+
+function normalizeLegacySettings(value: Record<string, unknown>): StoredDeliverySettings {
+  const next = createEmptyStoredSettings();
+
+  for (const [legacyKey, config] of Object.entries(LEGACY_VALUE_KEY_MAP)) {
+    const entry = value[legacyKey];
+    if (config.kind === 'boolean') {
+      const normalized = normalizeBoolean(entry);
+      if (typeof normalized === 'boolean') {
+        next.values[config.envKey] = normalized;
+      }
+      continue;
+    }
+
+    const normalized = normalizeString(entry);
+    if (normalized.length > 0) {
+      next.values[config.envKey] = normalized;
+    }
+  }
+
+  for (const [legacyKey, envKey] of Object.entries(LEGACY_SECRET_KEY_MAP)) {
+    const normalized = normalizeString(value[legacyKey]);
+    if (normalized.length > 0) {
+      next.secrets[envKey] = normalized;
+    }
+  }
+
+  const githubTokenAlias = normalizeString(value.GITHUB_TOKEN);
+  if (githubTokenAlias.length > 0 && !next.secrets.GH_TOKEN) {
+    next.secrets.GH_TOKEN = githubTokenAlias;
+  }
+
+  next.installer = {
+    repoUrl: normalizeString(value.repoUrl) || DEFAULT_INSTALLER.repoUrl,
+    repoBranch: normalizeString(value.repoBranch) || DEFAULT_INSTALLER.repoBranch
+  };
+
+  return next;
+}
+
+function normalizeStoredSettings(value: unknown): StoredDeliverySettings {
+  const raw = normalizeObject(value);
+
+  if (raw.values || raw.secrets || raw.installer) {
+    return {
+      values: normalizeValueRecord(raw.values),
+      secrets: normalizeSecretRecord(raw.secrets),
+      installer: normalizeInstallerOverrides(raw.installer)
+    };
+  }
+
+  return normalizeLegacySettings(raw);
+}
+
+function normalizeInputPatch(input: DeliverySettingsInput) {
+  const raw = normalizeObject(input);
+  if (raw.values || raw.secrets || raw.installer) {
+    return {
+      values: normalizeValueRecord(raw.values),
+      secrets: normalizeSecretRecord(raw.secrets),
+      installer: normalizeInstallerOverrides(raw.installer)
+    };
+  }
+
+  return normalizeLegacySettings(raw);
+}
+
+function resolveFieldValue(field: DeliveryManifestField, values: DeliverySettingValues) {
+  const current = values[field.key];
+  if (typeof current === 'boolean') {
+    return current;
+  }
+
+  if (typeof current === 'string' && current.trim().length > 0) {
+    return current.trim();
+  }
+
+  return field.defaultValue;
+}
+
+function isFieldConfigured(field: DeliveryManifestField, settings: StoredDeliverySettings) {
+  if (!field.required) {
+    return true;
+  }
+
+  if (field.type === 'secret') {
+    return Boolean(settings.secrets[field.key]);
+  }
+
+  const value = resolveFieldValue(field, settings.values);
+  if (typeof value === 'boolean') {
+    return true;
+  }
+
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 export class DeliverySettingsService {
@@ -158,34 +315,6 @@ export class DeliverySettingsService {
     }
 
     return row.value;
-  }
-
-  private normalizeStoredSettings(value: unknown): StoredDeliverySettings {
-    const raw = normalizeObject(value);
-
-    return {
-      repoUrl: normalizeString(raw.repoUrl) || DEFAULTS.repoUrl,
-      repoBranch: normalizeString(raw.repoBranch) || DEFAULTS.repoBranch,
-      frontendImage: normalizeString(raw.frontendImage),
-      websocketImage: normalizeString(raw.websocketImage),
-      letsencryptEmail: normalizeString(raw.letsencryptEmail),
-      acrUsername: normalizeString(raw.acrUsername),
-      acrPassword: normalizeString(raw.acrPassword),
-      githubToken: normalizeString(raw.githubToken),
-      wordpressFetchReleaseAssets: normalizeBoolean(raw.wordpressFetchReleaseAssets, DEFAULTS.wordpressFetchReleaseAssets),
-      wordpressRunInit: normalizeBoolean(raw.wordpressRunInit, DEFAULTS.wordpressRunInit),
-      wordpressReleaseOwner: normalizeString(raw.wordpressReleaseOwner) || DEFAULTS.wordpressReleaseOwner,
-      fdThemeReleaseTag: normalizeString(raw.fdThemeReleaseTag) || DEFAULTS.fdThemeReleaseTag,
-      fdAdminUiReleaseTag: normalizeString(raw.fdAdminUiReleaseTag) || DEFAULTS.fdAdminUiReleaseTag,
-      fdMemberReleaseTag: normalizeString(raw.fdMemberReleaseTag) || DEFAULTS.fdMemberReleaseTag,
-      fdPaymentReleaseTag: normalizeString(raw.fdPaymentReleaseTag) || DEFAULTS.fdPaymentReleaseTag,
-      fdCommerceReleaseTag: normalizeString(raw.fdCommerceReleaseTag) || DEFAULTS.fdCommerceReleaseTag,
-      fdContentTypesReleaseTag: normalizeString(raw.fdContentTypesReleaseTag) || DEFAULTS.fdContentTypesReleaseTag,
-      fdWebsocketPushReleaseTag: normalizeString(raw.fdWebsocketPushReleaseTag) || DEFAULTS.fdWebsocketPushReleaseTag,
-      wpgraphqlJwtAuthReleaseTag:
-        normalizeString(raw.wpgraphqlJwtAuthReleaseTag) || DEFAULTS.wpgraphqlJwtAuthReleaseTag,
-      wpgraphqlTaxQueryRef: normalizeString(raw.wpgraphqlTaxQueryRef) || DEFAULTS.wpgraphqlTaxQueryRef
-    };
   }
 
   private async saveLegacyEncryptedSetting(appCode: string, value: StoredDeliverySettings, updatedByUserId: string) {
@@ -264,7 +393,7 @@ export class DeliverySettingsService {
     if (app) {
       const currentRow = await this.findCurrentSettingRow(app.id);
       if (currentRow) {
-        return this.normalizeStoredSettings(this.decodeSetting(currentRow));
+        return normalizeStoredSettings(this.decodeSetting(currentRow));
       }
     }
 
@@ -273,89 +402,61 @@ export class DeliverySettingsService {
       return null;
     }
 
-    return this.normalizeStoredSettings(this.decodeSetting(legacyRow));
+    return normalizeStoredSettings(this.decodeSetting(legacyRow));
   }
 
   async getOverview(appCode: string): Promise<DeliverySettingsOverview> {
-    const stored = (await this.getStoredSettings(appCode)) ?? {
-      ...DEFAULTS,
-      acrPassword: '',
-      githubToken: ''
-    };
+    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    const stored = (await this.getStoredSettings(appCode)) ?? createEmptyStoredSettings();
+    const appMeta =
+      app?.meta && typeof app.meta === 'object' && !Array.isArray(app.meta)
+        ? (app.meta as Record<string, unknown>)
+        : {};
+    const manifest = normalizeDeliveryManifest(appMeta.deliveryManifest);
+    const secretStatuses = Object.fromEntries(
+      Object.entries(stored.secrets).map(([key, value]) => [key, { configured: Boolean(value) }])
+    );
 
-    const values: DeliverySettingValues = {
-      repoUrl: stored.repoUrl,
-      repoBranch: stored.repoBranch,
-      frontendImage: stored.frontendImage,
-      websocketImage: stored.websocketImage,
-      letsencryptEmail: stored.letsencryptEmail,
-      acrUsername: stored.acrUsername,
-      wordpressFetchReleaseAssets: stored.wordpressFetchReleaseAssets,
-      wordpressRunInit: stored.wordpressRunInit,
-      wordpressReleaseOwner: stored.wordpressReleaseOwner,
-      fdThemeReleaseTag: stored.fdThemeReleaseTag,
-      fdAdminUiReleaseTag: stored.fdAdminUiReleaseTag,
-      fdMemberReleaseTag: stored.fdMemberReleaseTag,
-      fdPaymentReleaseTag: stored.fdPaymentReleaseTag,
-      fdCommerceReleaseTag: stored.fdCommerceReleaseTag,
-      fdContentTypesReleaseTag: stored.fdContentTypesReleaseTag,
-      fdWebsocketPushReleaseTag: stored.fdWebsocketPushReleaseTag,
-      wpgraphqlJwtAuthReleaseTag: stored.wpgraphqlJwtAuthReleaseTag,
-      wpgraphqlTaxQueryRef: stored.wpgraphqlTaxQueryRef
-    };
+    for (const field of manifest?.secretFields ?? []) {
+      if (!Object.prototype.hasOwnProperty.call(secretStatuses, field.key)) {
+        secretStatuses[field.key] = { configured: false };
+      }
+    }
+
+    const configured = manifest
+      ? listDeliveryManifestFields(manifest, { scope: 'preset' }).every((field) => isFieldConfigured(field, stored))
+      : Boolean(Object.keys(stored.values).length > 0 || Object.keys(stored.secrets).length > 0);
 
     return {
       appCode,
-      configured: Boolean(
-        values.frontendImage &&
-          values.websocketImage &&
-          values.acrUsername &&
-          stored.acrPassword &&
-          stored.githubToken
-      ),
-      values,
-      secrets: {
-        acrPassword: { configured: Boolean(stored.acrPassword) },
-        githubToken: { configured: Boolean(stored.githubToken) }
-      }
+      configured,
+      values: stored.values,
+      secrets: secretStatuses
     };
   }
 
   async upsertSettings(appCode: string, input: DeliverySettingsInput, updatedByUserId: string) {
-    const current = (await this.getStoredSettings(appCode)) ?? {
-      ...DEFAULTS,
-      acrPassword: '',
-      githubToken: ''
-    };
+    const current = (await this.getStoredSettings(appCode)) ?? createEmptyStoredSettings();
+    const patch = normalizeInputPatch(input);
 
     const next: StoredDeliverySettings = {
-      repoUrl: normalizeString(input.repoUrl) || current.repoUrl,
-      repoBranch: normalizeString(input.repoBranch) || current.repoBranch,
-      frontendImage: normalizeString(input.frontendImage) || current.frontendImage,
-      websocketImage: normalizeString(input.websocketImage) || current.websocketImage,
-      letsencryptEmail: normalizeString(input.letsencryptEmail) || current.letsencryptEmail,
-      acrUsername: normalizeString(input.acrUsername) || current.acrUsername,
-      acrPassword: normalizeString(input.acrPassword) || current.acrPassword,
-      githubToken: normalizeString(input.githubToken) || current.githubToken,
-      wordpressFetchReleaseAssets:
-        typeof input.wordpressFetchReleaseAssets === 'boolean'
-          ? input.wordpressFetchReleaseAssets
-          : current.wordpressFetchReleaseAssets,
-      wordpressRunInit:
-        typeof input.wordpressRunInit === 'boolean' ? input.wordpressRunInit : current.wordpressRunInit,
-      wordpressReleaseOwner: normalizeString(input.wordpressReleaseOwner) || current.wordpressReleaseOwner,
-      fdThemeReleaseTag: normalizeString(input.fdThemeReleaseTag) || current.fdThemeReleaseTag,
-      fdAdminUiReleaseTag: normalizeString(input.fdAdminUiReleaseTag) || current.fdAdminUiReleaseTag,
-      fdMemberReleaseTag: normalizeString(input.fdMemberReleaseTag) || current.fdMemberReleaseTag,
-      fdPaymentReleaseTag: normalizeString(input.fdPaymentReleaseTag) || current.fdPaymentReleaseTag,
-      fdCommerceReleaseTag: normalizeString(input.fdCommerceReleaseTag) || current.fdCommerceReleaseTag,
-      fdContentTypesReleaseTag: normalizeString(input.fdContentTypesReleaseTag) || current.fdContentTypesReleaseTag,
-      fdWebsocketPushReleaseTag:
-        normalizeString(input.fdWebsocketPushReleaseTag) || current.fdWebsocketPushReleaseTag,
-      wpgraphqlJwtAuthReleaseTag:
-        normalizeString(input.wpgraphqlJwtAuthReleaseTag) || current.wpgraphqlJwtAuthReleaseTag,
-      wpgraphqlTaxQueryRef: normalizeString(input.wpgraphqlTaxQueryRef) || current.wpgraphqlTaxQueryRef
+      values: {
+        ...current.values,
+        ...patch.values
+      },
+      secrets: {
+        ...current.secrets,
+        ...patch.secrets
+      },
+      installer: {
+        repoUrl: patch.installer.repoUrl || current.installer.repoUrl,
+        repoBranch: patch.installer.repoBranch || current.installer.repoBranch
+      }
     };
+
+    if (next.secrets.GH_TOKEN && !next.secrets.GITHUB_TOKEN) {
+      next.secrets.GITHUB_TOKEN = next.secrets.GH_TOKEN;
+    }
 
     await this.saveEncryptedSetting(appCode, next, updatedByUserId);
     return this.getOverview(appCode);

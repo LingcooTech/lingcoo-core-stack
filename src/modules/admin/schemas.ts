@@ -125,24 +125,12 @@ export const adminAppCodeParamsSchema = z.object({
 });
 
 export const adminUpsertDeliverySettingsSchema = z.object({
-  repoUrl: z.string().trim().url().optional(),
-  repoBranch: z.string().trim().min(1).max(120).optional(),
-  frontendImage: z.string().trim().min(1).max(255).optional(),
-  websocketImage: z.string().trim().min(1).max(255).optional(),
-  letsencryptEmail: z.string().trim().email().optional(),
-  acrUsername: z.string().trim().min(1).max(255).optional(),
-  acrPassword: z.string().trim().min(1).max(255).optional(),
-  githubToken: z.string().trim().min(1).max(255).optional(),
-  wordpressFetchReleaseAssets: z.boolean().optional(),
-  wordpressRunInit: z.boolean().optional(),
-  wordpressReleaseOwner: z.string().trim().min(1).max(120).optional(),
-  fdThemeReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdAdminUiReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdMemberReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdPaymentReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdCommerceReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdContentTypesReleaseTag: z.string().trim().min(1).max(120).optional(),
-  fdWebsocketPushReleaseTag: z.string().trim().min(1).max(120).optional(),
-  wpgraphqlJwtAuthReleaseTag: z.string().trim().min(1).max(120).optional(),
-  wpgraphqlTaxQueryRef: z.string().trim().min(1).max(120).optional()
+  values: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
+  secrets: z.record(z.string(), z.string().trim().min(1).max(2048)).optional(),
+  installer: z
+    .object({
+      repoUrl: z.string().trim().url().optional(),
+      repoBranch: z.string().trim().min(1).max(120).optional()
+    })
+    .optional()
 });

@@ -44,7 +44,7 @@ import {
   createDeliveryManifestSourceDraft,
   createDeliverySecretState,
   createDeliverySettingsDraft,
-  EMPTY_DELIVERY_SECRET_STATE,
+  getDeliveryManifest,
   serializeDeliveryManifestSourceDraft,
   serializeDeliverySettingsDraft,
   type DeliveryManifestSourceDraft,
@@ -124,13 +124,13 @@ export function AppEditPage() {
   const [editablePlans, setEditablePlans] = useState<EditablePlan[]>([]);
   const [editableOffers, setEditableOffers] = useState<EditableOffer[]>([]);
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettingsDraft>(
-    createDeliverySettingsDraft(),
+    createDeliverySettingsDraft(undefined, null),
   );
   const [manifestSource, setManifestSource] = useState<DeliveryManifestSourceDraft>(
     createDeliveryManifestSourceDraft(),
   );
   const [deliverySecrets, setDeliverySecrets] = useState<DeliverySecretState>(
-    EMPTY_DELIVERY_SECRET_STATE,
+    createDeliverySecretState(undefined, null),
   );
   const [initialized, setInitialized] = useState(false);
   const [savedDraftSnapshot, setSavedDraftSnapshot] = useState('');
@@ -175,6 +175,7 @@ export function AppEditPage() {
     () => new Set((appsData?.items ?? []).map((item) => item.code)),
     [appsData?.items],
   );
+  const manifest = useMemo(() => getDeliveryManifest(app), [app]);
 
   const showDeliveryTab = form.deliveryMode === 'one_click';
   const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
@@ -186,7 +187,8 @@ export function AppEditPage() {
     setAllowNavigation(false);
 
     if (isCreateMode) {
-      const emptyDeliverySettings = createDeliverySettingsDraft();
+      const emptyDeliverySettings = createDeliverySettingsDraft(undefined, null);
+      const emptyDeliverySecrets = createDeliverySecretState(undefined, null);
       const emptyManifestSource = createDeliveryManifestSourceDraft();
       setForm(EMPTY_FORM_STATE);
       setEditableFeatures([]);
@@ -194,7 +196,7 @@ export function AppEditPage() {
       setEditableOffers([]);
       setDeliverySettings(emptyDeliverySettings);
       setManifestSource(emptyManifestSource);
-      setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
+      setDeliverySecrets(emptyDeliverySecrets);
       setSavedDraftSnapshot(
         buildDraftSnapshot(
           EMPTY_FORM_STATE,
@@ -202,7 +204,7 @@ export function AppEditPage() {
           [],
           [],
           emptyDeliverySettings,
-          EMPTY_DELIVERY_SECRET_STATE,
+          emptyDeliverySecrets,
         ),
       );
       setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(emptyManifestSource));
@@ -214,9 +216,9 @@ export function AppEditPage() {
     setEditableFeatures([]);
     setEditablePlans([]);
     setEditableOffers([]);
-    setDeliverySettings(createDeliverySettingsDraft());
+    setDeliverySettings(createDeliverySettingsDraft(undefined, null));
     setManifestSource(createDeliveryManifestSourceDraft());
-    setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
+    setDeliverySecrets(createDeliverySecretState(undefined, null));
     setSavedDraftSnapshot('');
     setSavedManifestSourceSnapshot('');
     setInitialized(false);
@@ -231,9 +233,9 @@ export function AppEditPage() {
     const nextFeatures = createEditableFeatures(app);
     const nextPlans = createEditablePlans(app, appPlanFeatures);
     const nextOffers = createEditableOffers(app);
-    const nextDeliverySettings = createDeliverySettingsDraft(deliverySettingsQuery.data);
+    const nextDeliverySettings = createDeliverySettingsDraft(deliverySettingsQuery.data, manifest);
     const nextManifestSource = createDeliveryManifestSourceDraft(app);
-    const nextDeliverySecrets = createDeliverySecretState(deliverySettingsQuery.data);
+    const nextDeliverySecrets = createDeliverySecretState(deliverySettingsQuery.data, manifest);
 
     setForm(nextForm);
     setEditableFeatures(nextFeatures);
@@ -262,6 +264,7 @@ export function AppEditPage() {
     initialized,
     isCatalogFetched,
     isCreateMode,
+    manifest,
   ]);
 
   useEffect(() => {
@@ -317,11 +320,12 @@ export function AppEditPage() {
       return { app: appResult, deliveryOverview };
     },
     onSuccess: ({ app: result, deliveryOverview }) => {
+      const nextManifest = getDeliveryManifest(result);
       const nextDeliverySettings = deliveryOverview
-        ? createDeliverySettingsDraft(deliveryOverview)
+        ? createDeliverySettingsDraft(deliveryOverview, nextManifest)
         : deliverySettings;
       const nextDeliverySecrets = deliveryOverview
-        ? createDeliverySecretState(deliveryOverview)
+        ? createDeliverySecretState(deliveryOverview, nextManifest)
         : deliverySecrets;
       const nextSnapshot = buildDraftSnapshot(
         form,
@@ -389,8 +393,8 @@ export function AppEditPage() {
       return targetAppCode;
     },
     onSuccess: (targetAppCode) => {
-      const nextDeliverySettings = createDeliverySettingsDraft();
-      const nextDeliverySecrets = EMPTY_DELIVERY_SECRET_STATE;
+      const nextDeliverySettings = createDeliverySettingsDraft(undefined, manifest);
+      const nextDeliverySecrets = createDeliverySecretState(undefined, manifest);
 
       setDeliverySettings(nextDeliverySettings);
       setDeliverySecrets(nextDeliverySecrets);
@@ -417,11 +421,24 @@ export function AppEditPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const setDeliveryField = <K extends keyof DeliverySettingsDraft>(
-    key: K,
-    value: DeliverySettingsDraft[K],
-  ) => {
-    setDeliverySettings((prev) => ({ ...prev, [key]: value }));
+  const setDeliveryField = (key: string, value: string | boolean) => {
+    setDeliverySettings((prev) => ({
+      ...prev,
+      values: {
+        ...prev.values,
+        [key]: value,
+      },
+    }));
+  };
+
+  const setDeliverySecretField = (key: string, value: string) => {
+    setDeliverySettings((prev) => ({
+      ...prev,
+      secrets: {
+        ...prev.secrets,
+        [key]: value,
+      },
+    }));
   };
 
   const setManifestField = <K extends keyof DeliveryManifestSourceDraft>(
@@ -695,8 +712,8 @@ export function AppEditPage() {
 
   const handleClearDelivery = () => {
     if (isCreateMode) {
-      setDeliverySettings(createDeliverySettingsDraft());
-      setDeliverySecrets(EMPTY_DELIVERY_SECRET_STATE);
+      setDeliverySettings(createDeliverySettingsDraft(undefined, manifest));
+      setDeliverySecrets(createDeliverySecretState(undefined, manifest));
       return;
     }
 
@@ -803,11 +820,12 @@ export function AppEditPage() {
             <AppEditDeliveryTab
               appCode={form.appCode}
               isCreateMode={isCreateMode}
+              manifest={manifest}
               deliverySettings={deliverySettings}
+              deliverySecrets={deliverySecrets}
               manifestSource={manifestSource}
-              acrPasswordConfigured={deliverySecrets.acrPasswordConfigured}
-              githubTokenConfigured={deliverySecrets.githubTokenConfigured}
-              updateField={setDeliveryField}
+              updateValueField={setDeliveryField}
+              updateSecretField={setDeliverySecretField}
               updateManifestField={setManifestField}
               hasSyncedManifest={hasSyncedManifest}
               isSyncingManifest={syncManifestMutation.isPending}
