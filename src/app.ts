@@ -194,10 +194,13 @@ export async function buildApp(env: AppEnv) {
 
     const errorName = error instanceof Error ? error.name : 'InternalServerError';
     const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
+    const details =
+      error && typeof error === 'object' && 'details' in error ? (error as { details?: unknown }).details : undefined;
 
     return reply.status(statusCode).send({
       error: errorName,
-      message: errorMessage
+      message: errorMessage,
+      ...(typeof details === 'undefined' ? {} : { details })
     });
   });
 

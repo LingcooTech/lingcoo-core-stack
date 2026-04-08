@@ -4,6 +4,7 @@ import { Boxes, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
+import { ApiError } from '@/api/client';
 import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
 import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, updateDeployment } from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
@@ -12,6 +13,12 @@ import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
+
+type DeploymentIssueDetails = {
+  code?: string;
+  missingDomains?: Array<{ label?: string }>;
+  missingFields?: Array<{ label?: string }>;
+};
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
@@ -99,7 +106,25 @@ export function DeploymentsPage() {
       toast.success('部署令牌已签发');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
     },
-    onError: (err) => {
+    onError: (err, variables) => {
+      const details =
+        err instanceof ApiError ? (err.details as DeploymentIssueDetails | undefined) : undefined;
+      if (details?.code === 'deployment_config_incomplete') {
+        const target = deployments.find((deployment) => deployment.id === variables.deploymentId) ?? null;
+        const missingLabels = [
+          ...(details.missingDomains ?? []).map((item) => item.label).filter(Boolean),
+          ...(details.missingFields ?? []).map((item) => item.label).filter(Boolean)
+        ].slice(0, 3);
+
+        setEditingDeployment(target);
+        toast.error(
+          missingLabels.length > 0
+            ? `当前 deployment 缺少必填配置：${missingLabels.join('、')}。请先补充后再签发 token。`
+            : '当前 deployment 缺少新的必填配置，请先补充后再签发 token。'
+        );
+        return;
+      }
+
       toast.error(err instanceof Error ? err.message : '签发部署令牌失败');
     }
   });

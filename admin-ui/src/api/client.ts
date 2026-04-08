@@ -15,10 +15,11 @@ export function clearToken(): void {
   localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
-class ApiError extends Error {
+export class ApiError<TDetails = unknown> extends Error {
   constructor(
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    public readonly details?: TDetails
   ) {
     super(message);
     this.name = 'ApiError';
@@ -52,13 +53,15 @@ export async function apiClient<T = unknown>(
 
   if (!response.ok) {
     let message = `请求失败 (${response.status})`;
+    let details: unknown;
     try {
-      const data = await response.json() as { message?: string; error?: string };
+      const data = await response.json() as { message?: string; error?: string; details?: unknown };
       message = data.message ?? data.error ?? message;
+      details = data.details;
     } catch {
       // ignore parse error
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, details);
   }
 
   if (response.status === 204) {

@@ -77,6 +77,12 @@ export interface FormState {
   links: AppLink[];
 }
 
+export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+
+export interface DeploymentPolicyDraft {
+  domainBindingSource: DeploymentDomainBindingSource;
+}
+
 export interface SaveRequest {
   appCode: string;
   payload: UpsertAppInput;
@@ -118,6 +124,29 @@ export const EMPTY_FORM_STATE: FormState = {
   faq: [],
   links: [],
 };
+
+function normalizeMetaRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
+export function createDeploymentPolicyDraft(
+  app?: Pick<AppWithDetails, 'meta'> | null
+): DeploymentPolicyDraft {
+  const meta = normalizeMetaRecord(app?.meta);
+  const policy = normalizeMetaRecord(meta.deploymentPolicy);
+  const source = typeof policy.domainBindingSource === 'string' ? policy.domainBindingSource : '';
+  const legacyMode = typeof policy.domainBindingMode === 'string' ? policy.domainBindingMode : '';
+  return {
+    domainBindingSource:
+      source === 'primaryDomain' || source === 'adminDomain' || source === 'wsDomain'
+        ? source
+        : legacyMode === 'frontend'
+          ? 'primaryDomain'
+          : 'none',
+  };
+}
 
 export function slugify(value: string) {
   return value
@@ -415,6 +444,7 @@ export function buildSaveRequest(
   editablePlans: EditablePlan[],
   editableOffers: EditableOffer[],
   appMeta: Record<string, unknown> | undefined,
+  deploymentPolicy: DeploymentPolicyDraft,
 ): SaveRequest {
   const normalizedAppCode = slugify(form.appCode);
 
@@ -456,6 +486,10 @@ export function buildSaveRequest(
   delete meta.checkoutOffers;
   delete meta.checkoutDefaultOfferCode;
   meta.deliveryMode = form.deliveryMode;
+  meta.deploymentPolicy = {
+    ...normalizeMetaRecord(meta.deploymentPolicy),
+    domainBindingSource: deploymentPolicy.domainBindingSource,
+  };
 
   return {
     appCode: normalizedAppCode,

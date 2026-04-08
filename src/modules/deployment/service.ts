@@ -122,6 +122,55 @@ function normalizeSecretRecord(value: unknown) {
   return result;
 }
 
+type DeploymentDomainBindingSource = 'none' | DeliveryManifestDomainSourceField;
+
+const DOMAIN_BINDING_SOURCE_LABELS: Record<DeliveryManifestDomainSourceField, string> = {
+  primaryDomain: '主域名',
+  adminDomain: '后台域名',
+  wsDomain: 'WS 域名'
+};
+
+type DeploymentPolicy = {
+  maxActiveDeployments: number;
+  domainBindingSource: DeploymentDomainBindingSource;
+};
+
+type DeploymentBindingState = {
+  sourceField: DeploymentDomainBindingSource;
+  boundDomain: string | null;
+  boundAt: string | null;
+};
+
+type DeploymentConfigIssue = {
+  kind: 'domain_slot' | 'user_input';
+  key: string;
+  label: string;
+  fieldType?: 'text' | 'secret' | 'boolean';
+  sourceField?: DeliveryManifestDomainSourceField;
+};
+
+function normalizeHostname(value: unknown) {
+  const normalized = normalizeString(value)
+    .toLowerCase()
+    .replace(/^(https?|wss?):\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/\.+$/, '');
+
+  return normalized;
+}
+
+function isDeploymentDomainBindingSource(value: string): value is DeliveryManifestDomainSourceField {
+  return value === 'primaryDomain' || value === 'adminDomain' || value === 'wsDomain';
+}
+
+function getDomainBindingSourceLabel(sourceField: DeploymentDomainBindingSource) {
+  if (sourceField === 'none') {
+    return '域名';
+  }
+
+  return DOMAIN_BINDING_SOURCE_LABELS[sourceField];
+}
+
 export class DeploymentService {
   constructor(
     private readonly db: DbClient,
@@ -183,11 +232,30 @@ export class DeploymentService {
       const token = latestTokenMap.get(row.id) ?? null;
       const deliveryValues = this.readDeploymentInputValues(row);
       const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
+      const policy = app
+        ? this.readDeploymentPolicy(app as DeploymentAppRecord)
+        : { maxActiveDeployments: 1, domainBindingSource: 'none' as const };
+      const binding = this.readDeploymentBinding(row);
+      const activeBindingSource = binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+      const currentBoundValue =
+        activeBindingSource === 'none'
+          ? null
+          : normalizeHostname(this.getSourceFieldValue(row, activeBindingSource)) || null;
+      const isDomainLocked =
+        activeBindingSource !== 'none' &&
+        Boolean(binding.boundDomain) &&
+        currentBoundValue === binding.boundDomain;
 
       return {
         ...row,
         deliveryValues,
         configuredSecretKeys,
+        domainBinding: {
+          sourceField: activeBindingSource,
+          isLocked: isDomainLocked,
+          boundDomain: binding.boundDomain,
+          boundAt: binding.boundAt
+        },
         user: user
           ? { id: user.id, email: user.email, displayName: user.displayName }
           : null,
@@ -264,10 +332,12 @@ export class DeploymentService {
     };
   }
 
-  private readDeploymentPolicy(app: DeploymentAppRecord) {
+  private readDeploymentPolicy(app: DeploymentAppRecord): DeploymentPolicy {
     const meta = this.normalizeMeta(app.meta);
     const policy = this.normalizeMeta(meta.deploymentPolicy);
     const rawMax = policy.maxActiveDeployments;
+    const rawDomainBindingSource = normalizeString(policy.domainBindingSource);
+    const rawLegacyDomainBindingMode = normalizeString(policy.domainBindingMode);
     const parsedMax =
       typeof rawMax === 'number'
         ? rawMax
@@ -277,7 +347,35 @@ export class DeploymentService {
 
     return {
       maxActiveDeployments:
-        Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1
+        Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
+      domainBindingSource: isDeploymentDomainBindingSource(rawDomainBindingSource)
+        ? rawDomainBindingSource
+        : rawLegacyDomainBindingMode === 'frontend'
+          ? 'primaryDomain'
+          : 'none'
+    };
+  }
+
+  private readDeploymentBinding(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+  ): DeploymentBindingState {
+    const meta = this.normalizeMeta(deployment?.meta);
+    const binding = this.normalizeMeta(meta.domainBinding);
+    const rawSourceField = normalizeString(binding.sourceField);
+    const rawLegacyMode = normalizeString(binding.mode);
+    const sourceField = isDeploymentDomainBindingSource(rawSourceField)
+      ? rawSourceField
+      : rawLegacyMode === 'frontend'
+        ? 'primaryDomain'
+        : 'none';
+    const boundDomain =
+      normalizeHostname(binding.boundDomain) || normalizeHostname(binding.primaryDomain) || null;
+    const boundAt = normalizeString(binding.boundAt) || null;
+
+    return {
+      sourceField,
+      boundDomain,
+      boundAt
     };
   }
 
@@ -302,6 +400,232 @@ export class DeploymentService {
     } catch {
       return {};
     }
+  }
+
+  private collectDeploymentConfigIssues(input: {
+    manifest: DeliveryManifest | null;
+    values: DeliverySettingValues;
+    secrets: DeliverySettingSecrets;
+    primaryDomain?: string | null;
+    adminDomain?: string | null;
+    wsDomain?: string | null;
+    policy?: DeploymentPolicy;
+  }) {
+    const issues: DeploymentConfigIssue[] = [];
+
+    if (!input.manifest) {
+      return issues;
+    }
+
+    const domainValueBySource: Record<DeliveryManifestDomainSourceField, string | undefined> = {
+      primaryDomain: normalizeHostname(input.primaryDomain) || undefined,
+      adminDomain: normalizeHostname(input.adminDomain) || undefined,
+      wsDomain: normalizeHostname(input.wsDomain) || undefined
+    };
+
+    for (const slot of input.manifest.domainSlots) {
+      if (!slot.required || domainValueBySource[slot.sourceField]) {
+        continue;
+      }
+
+      issues.push({
+        kind: 'domain_slot',
+        key: slot.key,
+        label: slot.label,
+        sourceField: slot.sourceField
+      });
+    }
+
+    if (input.policy?.domainBindingSource && input.policy.domainBindingSource !== 'none') {
+      const sourceField = input.policy.domainBindingSource;
+      const alreadyTracked = issues.some((issue) => issue.kind === 'domain_slot' && issue.sourceField === sourceField);
+      if (!alreadyTracked && !domainValueBySource[sourceField]) {
+        issues.push({
+          kind: 'domain_slot',
+          key: sourceField,
+          label: getDomainBindingSourceLabel(sourceField),
+          sourceField
+        });
+      }
+    }
+
+    for (const field of listDeliveryManifestFields(input.manifest, { scope: 'user_input' })) {
+      if (!field.required) {
+        continue;
+      }
+
+      if (field.type === 'secret') {
+        if (!input.secrets[field.key]) {
+          issues.push({
+            kind: 'user_input',
+            key: field.key,
+            label: field.label,
+            fieldType: 'secret'
+          });
+        }
+        continue;
+      }
+
+      if (field.type === 'boolean') {
+        if (typeof input.values[field.key] === 'undefined' && typeof field.defaultValue !== 'boolean') {
+          issues.push({
+            kind: 'user_input',
+            key: field.key,
+            label: field.label,
+            fieldType: 'boolean'
+          });
+        }
+        continue;
+      }
+
+      const value = input.values[field.key];
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        issues.push({
+          kind: 'user_input',
+          key: field.key,
+          label: field.label,
+          fieldType: 'text'
+        });
+      }
+    }
+
+    return issues;
+  }
+
+  private createDomainBindingLockedError(binding: DeploymentBindingState) {
+    return httpError(
+      409,
+      `${getDomainBindingSourceLabel(binding.sourceField)}已绑定到 ${binding.boundDomain}。如需更换，请提交工单处理。`,
+      {
+        code: 'deployment_domain_locked',
+        boundSourceField: binding.sourceField,
+        boundDomain: binding.boundDomain,
+        boundAt: binding.boundAt
+      }
+    );
+  }
+
+  private assertDomainBindingEditable(input: {
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    policy: DeploymentPolicy;
+    requestedPrimaryDomain?: string;
+    requestedAdminDomain?: string;
+    requestedWsDomain?: string;
+  }) {
+    const policySourceField = input.policy.domainBindingSource;
+    const binding = this.readDeploymentBinding(input.deployment);
+    const boundSourceField = binding.sourceField !== 'none' ? binding.sourceField : policySourceField;
+
+    if (boundSourceField === 'none' || !binding.boundDomain) {
+      return;
+    }
+
+    const requestedBySource: Partial<Record<DeliveryManifestDomainSourceField, string | undefined>> = {
+      primaryDomain: input.requestedPrimaryDomain,
+      adminDomain: input.requestedAdminDomain,
+      wsDomain: input.requestedWsDomain
+    };
+    const nextBoundValue =
+      typeof requestedBySource[boundSourceField] === 'string'
+        ? normalizeHostname(requestedBySource[boundSourceField])
+        : normalizeHostname(this.getSourceFieldValue(input.deployment, boundSourceField));
+
+    if (nextBoundValue === binding.boundDomain) {
+      return;
+    }
+
+    throw this.createDomainBindingLockedError(binding);
+  }
+
+  private ensureDeploymentReadyForTokenIssue(input: {
+    app: DeploymentAppRecord;
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+  }) {
+    const policy = this.readDeploymentPolicy(input.app);
+    const binding = this.readDeploymentBinding(input.deployment);
+    const activeBindingSource = binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+    const currentBoundValue =
+      activeBindingSource === 'none'
+        ? null
+        : normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource));
+    const issues = this.collectDeploymentConfigIssues({
+      manifest: this.readManifest(input.app),
+      values: this.readDeploymentInputValues(input.deployment),
+      secrets: this.readDeploymentInputSecrets(input.deployment),
+      primaryDomain: input.deployment?.primaryDomain,
+      adminDomain: input.deployment?.adminDomain,
+      wsDomain: input.deployment?.wsDomain,
+      policy
+    });
+
+    if (issues.length > 0) {
+      throw httpError(
+        409,
+        'Deployment configuration is incomplete. Please edit the deployment and fill in the required fields before issuing a new token.',
+        {
+          code: 'deployment_config_incomplete',
+          missingDomains: issues
+            .filter((issue) => issue.kind === 'domain_slot')
+            .map((issue) => ({
+              key: issue.key,
+              label: issue.label,
+              sourceField: issue.sourceField
+            })),
+          missingFields: issues
+            .filter((issue) => issue.kind === 'user_input')
+            .map((issue) => ({
+              key: issue.key,
+              label: issue.label,
+              fieldType: issue.fieldType
+            }))
+        }
+      );
+    }
+
+    if (binding.boundDomain && activeBindingSource !== 'none' && currentBoundValue !== binding.boundDomain) {
+      throw this.createDomainBindingLockedError(binding);
+    }
+  }
+
+  private async bindDeploymentDomainOnExchange(input: {
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    policy: DeploymentPolicy;
+  }) {
+    const sourceField = input.policy.domainBindingSource;
+    if (sourceField === 'none') {
+      return input.deployment;
+    }
+
+    const currentDomain = normalizeHostname(this.getSourceFieldValue(input.deployment, sourceField));
+    if (!currentDomain) {
+      throw httpError(409, `${getDomainBindingSourceLabel(sourceField)}不能为空，部署无法继续。`);
+    }
+
+    const binding = this.readDeploymentBinding(input.deployment);
+    if (binding.boundDomain && binding.boundDomain !== currentDomain) {
+      throw this.createDomainBindingLockedError(binding);
+    }
+
+    if (binding.boundDomain) {
+      return input.deployment;
+    }
+
+    const nextMeta = this.normalizeMeta(input.deployment?.meta);
+    nextMeta.domainBinding = {
+      sourceField,
+      boundDomain: currentDomain,
+      boundAt: new Date().toISOString()
+    };
+
+    const updated = await new DeploymentRepository(this.db).updateDeployment(input.deployment!.id, {
+      meta: nextMeta
+    });
+
+    if (!updated) {
+      throw httpError(500, 'Failed to bind deployment domain');
+    }
+
+    return updated;
   }
 
   private buildRemoteInstallCommand(input: {
@@ -451,6 +775,8 @@ export class DeploymentService {
   }) {
     const manifest = this.readManifest(input.app);
     const appDefaults = this.readLegacyDeploymentDefaults(input.app);
+    const policy = this.readDeploymentPolicy(input.app);
+    const binding = this.readDeploymentBinding(input.deployment);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
       input.app.code
     );
@@ -536,6 +862,21 @@ export class DeploymentService {
       }
     }
 
+    const activeBindingSource =
+      binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+    envDefaults.FD_DOMAIN_BINDING_SOURCE = activeBindingSource;
+
+    if (activeBindingSource !== 'none') {
+      const boundHost =
+        binding.boundDomain ||
+        normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource)) ||
+        '';
+
+      if (boundHost.length > 0) {
+        envDefaults.FD_BOUND_HOST = boundHost;
+      }
+    }
+
     const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
 
     return {
@@ -617,6 +958,21 @@ export class DeploymentService {
       wsDomain: input.wsDomain
     });
 
+    const creationIssues = this.collectDeploymentConfigIssues({
+      manifest,
+      values: deploymentValues,
+      secrets: deploymentSecrets,
+      primaryDomain: input.primaryDomain,
+      adminDomain: input.adminDomain,
+      wsDomain: input.wsDomain,
+      policy
+    });
+
+    if (creationIssues.length > 0) {
+      const firstIssue = creationIssues[0];
+      throw httpError(422, `${firstIssue.label} is required`);
+    }
+
     const deploymentMeta: Record<string, unknown> = {
       appCode: selection.app.code
     };
@@ -685,6 +1041,7 @@ export class DeploymentService {
 
     const app = await new AppService(this.db).getPublicApp(appRow.code);
     const manifest = this.readManifest(app);
+    const policy = this.readDeploymentPolicy(app);
     const currentValues = this.readDeploymentInputValues(deployment);
     const currentSecrets = this.readDeploymentInputSecrets(deployment);
     const nextValues = {
@@ -706,6 +1063,20 @@ export class DeploymentService {
       primaryDomain: nextPrimaryDomain,
       adminDomain: nextAdminDomain,
       wsDomain: nextWsDomain
+    });
+
+    const requestedPrimaryDomain =
+      typeof input.primaryDomain === 'string' ? input.primaryDomain.trim() || '' : undefined;
+    const requestedAdminDomain =
+      typeof input.adminDomain === 'string' ? input.adminDomain.trim() || '' : undefined;
+    const requestedWsDomain =
+      typeof input.wsDomain === 'string' ? input.wsDomain.trim() || '' : undefined;
+    this.assertDomainBindingEditable({
+      deployment,
+      policy,
+      requestedPrimaryDomain,
+      requestedAdminDomain,
+      requestedWsDomain
     });
 
     const nextMeta = this.normalizeMeta(deployment.meta);
@@ -765,6 +1136,14 @@ export class DeploymentService {
       throw httpError(409, 'Deployment is inactive. Reactivate or create a new deployment before issuing a token.');
     }
 
+    const app = await new AppService(this.db).getPublicApp(
+      (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? ''
+    );
+    this.ensureDeploymentReadyForTokenIssue({
+      app,
+      deployment
+    });
+
     await repository.expireActiveTokensByDeploymentId(deployment.id);
 
     const plainToken = this.createPlainToken();
@@ -795,9 +1174,6 @@ export class DeploymentService {
       }
     });
 
-    const app = await new AppService(this.db).getPublicApp(
-      (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? ''
-    );
     const bootstrap = await this.buildBootstrapPayload({
       app,
       deployment,
@@ -825,17 +1201,28 @@ export class DeploymentService {
       throw httpError(401, 'Deployment token is invalid or expired');
     }
 
-    const deployment = await new DeploymentRepository(this.db).findDeploymentById(matched.deploymentId);
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(matched.deploymentId);
     if (!deployment) {
       throw httpError(404, 'Deployment not found');
     }
 
     const [hydrated] = await this.hydrateDeployments([deployment]);
     const app = await new AppService(this.db).getPublicApp(hydrated.app?.code ?? '');
-    await new DeploymentRepository(this.db).markTokenUsed(matched.id);
-    await new DeploymentRepository(this.db).updateDeployment(deployment.id, {
+    const policy = this.readDeploymentPolicy(app);
+    this.ensureDeploymentReadyForTokenIssue({
+      app,
+      deployment
+    });
+    await repository.markTokenUsed(matched.id);
+    const boundDeployment = await this.bindDeploymentDomainOnExchange({
+      deployment,
+      policy
+    });
+    const updatedDeployment = await repository.updateDeployment(boundDeployment.id, {
       lastDeployedAt: new Date()
     });
+    const targetDeployment = updatedDeployment ?? boundDeployment;
 
     await new EventService(this.db).capture({
       userId: deployment.userId,
@@ -848,10 +1235,10 @@ export class DeploymentService {
     });
 
     return {
-      deployment: hydrated,
+      deployment: (await this.hydrateDeployments([targetDeployment]))[0],
       bootstrap: await this.buildBootstrapPayload({
         app,
-        deployment,
+        deployment: targetDeployment,
         token
       })
     };

@@ -4,6 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime } from '@/lib/utils';
 
+function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
+  switch (sourceField) {
+    case 'adminDomain':
+      return '后台域名';
+    case 'wsDomain':
+      return 'WS 域名';
+    case 'primaryDomain':
+    default:
+      return '主域名';
+  }
+}
+
 export function DeploymentRecordCard({
   deployment,
   issuedToken,
@@ -37,6 +49,9 @@ export function DeploymentRecordCard({
           <Badge variant="secondary">{deployment.environment}</Badge>
           {deployment.serverHost ? <Badge variant="secondary">{deployment.serverHost}</Badge> : null}
           {deployment.primaryDomain ? <Badge variant="outline">{deployment.primaryDomain}</Badge> : null}
+          {deployment.domainBinding.isLocked ? (
+            <Badge variant="secondary">已绑定域名</Badge>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -55,6 +70,16 @@ export function DeploymentRecordCard({
         <div className="grid gap-3 md:grid-cols-2">
           <InfoLine label="后台域名" value={deployment.adminDomain || '未设置'} />
           <InfoLine label="WS 域名" value={deployment.wsDomain || '未设置'} />
+          <InfoLine
+            label="域名绑定"
+            value={
+              deployment.domainBinding.isLocked
+                ? `${deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}`
+                : deployment.domainBinding.sourceField !== 'none'
+                  ? `启用，首次成功部署后锁定${getDomainSourceLabel(deployment.domainBinding.sourceField)}`
+                  : '未启用'
+            }
+          />
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
@@ -79,6 +104,11 @@ export function DeploymentRecordCard({
           </div>
           {deployment.status !== 'active' ? (
             <p className="mt-3 text-xs text-amber-700">当前 deployment 已停用。需要重新使用时，请编辑后新建 deployment，或保留此记录仅作历史参考。</p>
+          ) : null}
+          {deployment.domainBinding.isLocked ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              当前{deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}已绑定为 {deployment.domainBinding.boundDomain ?? deployment.primaryDomain}。如需更换，需要提交工单处理。
+            </p>
           ) : null}
 
           {issuedToken?.deploymentId === deployment.id ? (

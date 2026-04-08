@@ -652,6 +652,12 @@ export interface DeploymentSummary {
   lastDeployedAt: string | null;
   deliveryValues: Record<string, string | boolean>;
   configuredSecretKeys: string[];
+  domainBinding: {
+    sourceField: 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+    isLocked: boolean;
+    boundDomain: string | null;
+    boundAt: string | null;
+  };
   createdAt: string;
   updatedAt: string;
   user: UserSummary | null;

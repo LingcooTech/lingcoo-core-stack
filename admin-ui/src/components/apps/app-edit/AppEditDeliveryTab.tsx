@@ -1,12 +1,14 @@
 import { Shield, Trash2 } from 'lucide-react';
 
 import { AppEditSaveBar } from '@/components/apps/app-edit/AppEditSaveBar';
+import type { DeploymentPolicyDraft } from '@/components/apps/app-edit/model';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
 import {
   computeDeliveryConfigured,
@@ -25,9 +27,14 @@ interface AppEditDeliveryTabProps {
   manifest: DeliveryManifest | null;
   deliverySettings: DeliverySettingsDraft;
   deliverySecrets: DeliverySecretState;
+  deploymentPolicy: DeploymentPolicyDraft;
   manifestSource: DeliveryManifestSourceDraft;
   updateValueField: (key: string, value: string | boolean) => void;
   updateSecretField: (key: string, value: string) => void;
+  updateDeploymentPolicyField: <K extends keyof DeploymentPolicyDraft>(
+    key: K,
+    value: DeploymentPolicyDraft[K],
+  ) => void;
   updateManifestField: <K extends keyof DeliveryManifestSourceDraft>(
     key: K,
     value: DeliveryManifestSourceDraft[K],
@@ -136,9 +143,11 @@ export function AppEditDeliveryTab({
   manifest,
   deliverySettings,
   deliverySecrets,
+  deploymentPolicy,
   manifestSource,
   updateValueField,
   updateSecretField,
+  updateDeploymentPolicyField,
   updateManifestField,
   hasSyncedManifest,
   isSyncingManifest,
@@ -193,6 +202,42 @@ export function AppEditDeliveryTab({
               </div>
             </div>
           </div>
+
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="text-base">部署策略</CardTitle>
+              <CardDescription>
+                这里控制一键部署的商业约束，而不是安装器本身的 manifest 契约。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>域名绑定</Label>
+                <Select
+                  value={deploymentPolicy.domainBindingSource}
+                  onValueChange={(value) =>
+                    updateDeploymentPolicyField(
+                      'domainBindingSource',
+                      value as DeploymentPolicyDraft['domainBindingSource'],
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不启用</SelectItem>
+                    <SelectItem value="primaryDomain">绑定主域名</SelectItem>
+                    <SelectItem value="adminDomain">绑定后台域名</SelectItem>
+                    <SelectItem value="wsDomain">绑定 WS 域名</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  启用后，所选域名槽位会在首次成功部署后锁定。当前大多数站点建议绑定 `primaryDomain`。
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="border-dashed">
             <CardHeader>

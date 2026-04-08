@@ -30,6 +30,18 @@ type DeploymentDraft = {
   secrets: Record<string, string>;
 };
 
+function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
+  switch (sourceField) {
+    case 'adminDomain':
+      return '后台域名';
+    case 'wsDomain':
+      return 'WS 域名';
+    case 'primaryDomain':
+    default:
+      return '主域名';
+  }
+}
+
 export interface DeploymentEditAppOption {
   appCode: string;
   appName: string;
@@ -130,6 +142,8 @@ export function DeploymentEditDialog({
         .filter((group) => group.fields.length > 0),
     [userInputGroups]
   );
+  const bindingSourceField = deployment?.domainBinding.sourceField ?? 'none';
+  const boundDomain = deployment?.domainBinding.boundDomain ?? null;
 
   useEffect(() => {
     if (!deployment) {
@@ -332,8 +346,19 @@ export function DeploymentEditDialog({
                       value={value}
                       onChange={(event) => onChange(event.target.value)}
                       placeholder={slot.placeholder}
+                      disabled={deployment?.domainBinding.isLocked === true && bindingSourceField === slot.sourceField}
                     />
-                    {slot.description ? <p className="text-xs text-muted-foreground">{slot.description}</p> : null}
+                    {deployment?.domainBinding.isLocked === true && bindingSourceField === slot.sourceField ? (
+                      <p className="text-xs text-amber-700">
+                        当前{slot.label}已绑定为 {boundDomain ?? value}。如需更换，需要提交工单。
+                      </p>
+                    ) : bindingSourceField === slot.sourceField ? (
+                      <p className="text-xs text-muted-foreground">
+                        启用域名绑定后，首次成功部署会锁定这个{getDomainSourceLabel(slot.sourceField)}。
+                      </p>
+                    ) : slot.description ? (
+                      <p className="text-xs text-muted-foreground">{slot.description}</p>
+                    ) : null}
                   </div>
                 );
               })}
