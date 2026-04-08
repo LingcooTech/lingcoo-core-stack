@@ -236,6 +236,26 @@ export function AppEditDeliveryTab({
                   启用后，所选域名槽位会在首次成功部署后锁定。当前大多数站点建议绑定 `primaryDomain`。
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="max-active-deployments">Active Deployments 上限</Label>
+                <Input
+                  id="max-active-deployments"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={deploymentPolicy.maxActiveDeployments}
+                  onChange={(event) => {
+                    const parsed = Number.parseInt(event.target.value, 10);
+                    updateDeploymentPolicyField(
+                      'maxActiveDeployments',
+                      Number.isFinite(parsed) && parsed >= 1 ? parsed : 1,
+                    );
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  限制同一用户对当前应用可保留的 active deployment 数量。默认值是 `1`。
+                </p>
+              </div>
             </CardContent>
           </Card>
 

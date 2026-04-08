@@ -81,6 +81,7 @@ export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDom
 
 export interface DeploymentPolicyDraft {
   domainBindingSource: DeploymentDomainBindingSource;
+  maxActiveDeployments: number;
 }
 
 export interface SaveRequest {
@@ -138,6 +139,13 @@ export function createDeploymentPolicyDraft(
   const policy = normalizeMetaRecord(meta.deploymentPolicy);
   const source = typeof policy.domainBindingSource === 'string' ? policy.domainBindingSource : '';
   const legacyMode = typeof policy.domainBindingMode === 'string' ? policy.domainBindingMode : '';
+  const rawMax = policy.maxActiveDeployments;
+  const parsedMax =
+    typeof rawMax === 'number'
+      ? rawMax
+      : typeof rawMax === 'string' && rawMax.trim().length > 0
+        ? Number(rawMax)
+        : Number.NaN;
   return {
     domainBindingSource:
       source === 'primaryDomain' || source === 'adminDomain' || source === 'wsDomain'
@@ -145,6 +153,8 @@ export function createDeploymentPolicyDraft(
         : legacyMode === 'frontend'
           ? 'primaryDomain'
           : 'none',
+    maxActiveDeployments:
+      Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
   };
 }
 
@@ -489,6 +499,7 @@ export function buildSaveRequest(
   meta.deploymentPolicy = {
     ...normalizeMetaRecord(meta.deploymentPolicy),
     domainBindingSource: deploymentPolicy.domainBindingSource,
+    maxActiveDeployments: deploymentPolicy.maxActiveDeployments,
   };
 
   return {
