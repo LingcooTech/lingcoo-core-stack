@@ -1,7 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { DeploymentService } from './service';
-import { createDeploymentSchema, deploymentParamsSchema, exchangeDeploymentTokenSchema, issueDeploymentTokenSchema } from './schemas';
+import {
+  createDeploymentSchema,
+  deploymentParamsSchema,
+  exchangeDeploymentTokenSchema,
+  issueDeploymentTokenSchema,
+  updateDeploymentSchema
+} from './schemas';
 
 export const deploymentRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/deployments/me', { preHandler: app.authenticate }, async (request) => {
@@ -18,6 +24,16 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(201).send(deployment);
   });
 
+  app.patch('/v1/deployments/:deploymentId', { preHandler: app.requireEmailVerified }, async (request) => {
+    const params = deploymentParamsSchema.parse(request.params);
+    const payload = updateDeploymentSchema.parse(request.body);
+    return new DeploymentService(app.db, app.appEnv).updateDeployment({
+      deploymentId: params.deploymentId,
+      userId: request.user.sub,
+      ...payload
+    });
+  });
+
   app.post('/v1/deployments/:deploymentId/tokens', { preHandler: app.authenticate }, async (request) => {
     const params = deploymentParamsSchema.parse(request.params);
     const payload = issueDeploymentTokenSchema.parse(request.body);
@@ -25,6 +41,14 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
       deploymentId: params.deploymentId,
       userId: request.user.sub,
       expiresInHours: payload.expiresInHours
+    });
+  });
+
+  app.post('/v1/deployments/:deploymentId/deactivate', { preHandler: app.authenticate }, async (request) => {
+    const params = deploymentParamsSchema.parse(request.params);
+    return new DeploymentService(app.db, app.appEnv).deactivateDeployment({
+      deploymentId: params.deploymentId,
+      userId: request.user.sub
     });
   });
 

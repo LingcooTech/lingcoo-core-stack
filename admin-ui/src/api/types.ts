@@ -650,6 +650,8 @@ export interface DeploymentSummary {
   status: string;
   lastTokenIssuedAt: string | null;
   lastDeployedAt: string | null;
+  deliveryValues: Record<string, string | boolean>;
+  configuredSecretKeys: string[];
   createdAt: string;
   updatedAt: string;
   user: UserSummary | null;

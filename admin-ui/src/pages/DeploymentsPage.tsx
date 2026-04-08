@@ -4,8 +4,9 @@ import { Boxes, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
-import type { IssueDeploymentTokenResult } from '@/api/types';
-import { createDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements } from '@/api/user';
+import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
+import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, updateDeployment } from '@/api/user';
+import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
@@ -15,6 +16,7 @@ import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
 export function DeploymentsPage() {
   const qc = useQueryClient();
   const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
+  const [editingDeployment, setEditingDeployment] = useState<DeploymentSummary | null>(null);
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
   const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
@@ -22,6 +24,26 @@ export function DeploymentsPage() {
   const apps = appsQuery.data?.items ?? [];
   const summaries = entitlementsQuery.data?.summary ?? [];
   const summaryMap = new Map(summaries.map((entry) => [entry.appCode, entry.featureCodes]));
+  const oneClickAppMap = useMemo(
+    () =>
+      new Map(
+        apps
+          .filter((app) => getAppDeliveryMode(app) === 'one_click')
+          .map((app) => {
+            const manifest = getDeliveryManifest(app);
+            return [
+              app.code,
+              {
+                appCode: app.code,
+                appName: app.name,
+                manifest,
+                defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system'
+              }
+            ];
+          })
+      ),
+    [apps]
+  );
 
   const deployableApps = useMemo<DeployableAppOption[]>(
     () =>
@@ -57,6 +79,19 @@ export function DeploymentsPage() {
     }
   });
 
+  const updateDeploymentMutation = useMutation({
+    mutationFn: updateDeployment,
+    onSuccess: (result) => {
+      toast.success('部署配置已更新');
+      setEditingDeployment(null);
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+      setIssuedToken((current) => (current?.deploymentId === result.id ? null : current));
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '更新部署配置失败');
+    }
+  });
+
   const issueTokenMutation = useMutation({
     mutationFn: issueDeploymentToken,
     onSuccess: (result) => {
@@ -69,6 +104,18 @@ export function DeploymentsPage() {
     }
   });
 
+  const deactivateDeploymentMutation = useMutation({
+    mutationFn: deactivateDeployment,
+    onSuccess: () => {
+      toast.success('Deployment 已停用');
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+      setIssuedToken(null);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '停用 deployment 失败');
+    }
+  });
+
   const handleWizardCreate = async (payload: Parameters<typeof createDeployment>[0]): Promise<{ id: string }> => {
     return await createDeploymentMutation.mutateAsync(payload);
   };
@@ -78,6 +125,8 @@ export function DeploymentsPage() {
   };
 
   const deployments = deploymentsQuery.data?.items ?? [];
+  const editingAppOption =
+    editingDeployment?.app?.code ? oneClickAppMap.get(editingDeployment.app.code) ?? null : null;
 
   return (
     <div className="space-y-8">
@@ -122,13 +171,39 @@ export function DeploymentsPage() {
                   deployment={deployment}
                   issuedToken={issuedToken}
                   issuing={issueTokenMutation.isPending && issueTokenMutation.variables?.deploymentId === deployment.id}
+                  deactivating={
+                    deactivateDeploymentMutation.isPending &&
+                    deactivateDeploymentMutation.variables?.deploymentId === deployment.id
+                  }
                   onIssueToken={(deploymentId) => issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })}
+                  onEdit={(target) => setEditingDeployment(target)}
+                  onDeactivate={(target) => {
+                    if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {
+                      return;
+                    }
+                    deactivateDeploymentMutation.mutate({ deploymentId: target.id });
+                  }}
                 />
               ))}
             </div>
           )}
         </>
       )}
+
+      <DeploymentEditDialog
+        open={!!editingDeployment}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingDeployment(null);
+          }
+        }}
+        deployment={editingDeployment}
+        appOption={editingAppOption}
+        saving={updateDeploymentMutation.isPending}
+        onSave={async (payload) => {
+          await updateDeploymentMutation.mutateAsync(payload);
+        }}
+      />
     </div>
   );
 }

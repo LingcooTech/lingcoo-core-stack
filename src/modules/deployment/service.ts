@@ -181,9 +181,13 @@ export class DeploymentService {
       const app = appMap.get(row.appId) ?? null;
       const user = userMap.get(row.userId) ?? null;
       const token = latestTokenMap.get(row.id) ?? null;
+      const deliveryValues = this.readDeploymentInputValues(row);
+      const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
 
       return {
         ...row,
+        deliveryValues,
+        configuredSecretKeys,
         user: user
           ? { id: user.id, email: user.email, displayName: user.displayName }
           : null,
@@ -257,6 +261,23 @@ export class DeploymentService {
         repoUrl: normalizeString(raw.repoUrl) || undefined,
         repoBranch: normalizeString(raw.repoBranch) || undefined
       }
+    };
+  }
+
+  private readDeploymentPolicy(app: DeploymentAppRecord) {
+    const meta = this.normalizeMeta(app.meta);
+    const policy = this.normalizeMeta(meta.deploymentPolicy);
+    const rawMax = policy.maxActiveDeployments;
+    const parsedMax =
+      typeof rawMax === 'number'
+        ? rawMax
+        : typeof rawMax === 'string' && rawMax.trim().length > 0
+          ? Number(rawMax)
+          : Number.NaN;
+
+    return {
+      maxActiveDeployments:
+        Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1
     };
   }
 
@@ -570,6 +591,18 @@ export class DeploymentService {
       userId: input.userId,
       appCode: input.appCode
     });
+    const policy = this.readDeploymentPolicy(selection.app);
+    const activeCount = await new DeploymentRepository(this.db).countActiveDeploymentsByUserAndApp({
+      userId: input.userId,
+      appId: selection.app.id
+    });
+
+    if (activeCount >= policy.maxActiveDeployments) {
+      throw httpError(
+        409,
+        `Active deployment limit reached for this app (${policy.maxActiveDeployments}). Deactivate an existing deployment before creating a new one.`
+      );
+    }
 
     const manifest = this.readManifest(selection.app);
     const deploymentValues = normalizeValueRecord(input.values);
@@ -626,6 +659,97 @@ export class DeploymentService {
     return hydrated;
   }
 
+  async updateDeployment(input: {
+    deploymentId: string;
+    userId: string;
+    label?: string;
+    environment?: string;
+    serverHost?: string;
+    primaryDomain?: string;
+    adminDomain?: string;
+    wsDomain?: string;
+    installPath?: string;
+    values?: DeliverySettingValues;
+    secrets?: DeliverySettingSecrets;
+  }) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+    if (!deployment || deployment.userId !== input.userId) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    const appRow = await new AppRepository(this.db).findAppById(deployment.appId);
+    if (!appRow) {
+      throw httpError(404, 'App not found');
+    }
+
+    const app = await new AppService(this.db).getPublicApp(appRow.code);
+    const manifest = this.readManifest(app);
+    const currentValues = this.readDeploymentInputValues(deployment);
+    const currentSecrets = this.readDeploymentInputSecrets(deployment);
+    const nextValues = {
+      ...currentValues,
+      ...normalizeValueRecord(input.values)
+    };
+    const nextSecrets = {
+      ...currentSecrets,
+      ...normalizeSecretRecord(input.secrets)
+    };
+    const nextPrimaryDomain = input.primaryDomain ?? deployment.primaryDomain ?? undefined;
+    const nextAdminDomain = input.adminDomain ?? deployment.adminDomain ?? undefined;
+    const nextWsDomain = input.wsDomain ?? deployment.wsDomain ?? undefined;
+
+    this.validateDeploymentInputs({
+      manifest,
+      values: nextValues,
+      secrets: nextSecrets,
+      primaryDomain: nextPrimaryDomain,
+      adminDomain: nextAdminDomain,
+      wsDomain: nextWsDomain
+    });
+
+    const nextMeta = this.normalizeMeta(deployment.meta);
+    if (Object.keys(nextValues).length > 0 || Object.keys(nextSecrets).length > 0) {
+      nextMeta.deliveryInputs = {
+        values: nextValues,
+        secrets:
+          Object.keys(nextSecrets).length > 0
+            ? encryptJson(nextSecrets, this.getEncryptionSecret())
+            : undefined
+      };
+    } else {
+      delete nextMeta.deliveryInputs;
+    }
+
+    const updated = await repository.updateDeployment(deployment.id, {
+      label: input.label?.trim() || deployment.label,
+      environment: input.environment?.trim() || deployment.environment,
+      serverHost: typeof input.serverHost === 'string' ? input.serverHost.trim() || null : deployment.serverHost,
+      primaryDomain:
+        typeof input.primaryDomain === 'string' ? input.primaryDomain.trim() || null : deployment.primaryDomain,
+      adminDomain: typeof input.adminDomain === 'string' ? input.adminDomain.trim() || null : deployment.adminDomain,
+      wsDomain: typeof input.wsDomain === 'string' ? input.wsDomain.trim() || null : deployment.wsDomain,
+      installPath: input.installPath?.trim() || deployment.installPath,
+      meta: nextMeta
+    });
+
+    if (!updated) {
+      throw httpError(500, 'Failed to update deployment');
+    }
+
+    await new EventService(this.db).capture({
+      userId: input.userId,
+      appId: deployment.appId,
+      eventName: 'deployment.updated',
+      properties: {
+        deploymentId: deployment.id
+      }
+    });
+
+    const [hydrated] = await this.hydrateDeployments([updated]);
+    return hydrated;
+  }
+
   async issueDeploymentToken(input: {
     deploymentId: string;
     userId: string;
@@ -635,6 +759,10 @@ export class DeploymentService {
     const deployment = await repository.findDeploymentById(input.deploymentId);
     if (!deployment || deployment.userId !== input.userId) {
       throw httpError(404, 'Deployment not found');
+    }
+
+    if (deployment.status !== 'active') {
+      throw httpError(409, 'Deployment is inactive. Reactivate or create a new deployment before issuing a token.');
     }
 
     await repository.expireActiveTokensByDeploymentId(deployment.id);
@@ -727,5 +855,41 @@ export class DeploymentService {
         token
       })
     };
+  }
+
+  async deactivateDeployment(input: {
+    deploymentId: string;
+    userId: string;
+  }) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+    if (!deployment || deployment.userId !== input.userId) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    await repository.expireActiveTokensByDeploymentId(deployment.id);
+
+    const updated =
+      deployment.status === 'active'
+        ? await repository.updateDeployment(deployment.id, {
+            status: 'inactive'
+          })
+        : deployment;
+
+    if (!updated) {
+      throw httpError(500, 'Failed to deactivate deployment');
+    }
+
+    await new EventService(this.db).capture({
+      userId: input.userId,
+      appId: deployment.appId,
+      eventName: 'deployment.deactivated',
+      properties: {
+        deploymentId: deployment.id
+      }
+    });
+
+    const [hydrated] = await this.hydrateDeployments([updated]);
+    return hydrated;
   }
 }

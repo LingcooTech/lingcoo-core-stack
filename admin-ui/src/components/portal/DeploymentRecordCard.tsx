@@ -8,12 +8,18 @@ export function DeploymentRecordCard({
   deployment,
   issuedToken,
   issuing,
-  onIssueToken
+  deactivating,
+  onIssueToken,
+  onEdit,
+  onDeactivate
 }: {
   deployment: DeploymentSummary;
   issuedToken?: IssueDeploymentTokenResult | null;
   issuing?: boolean;
+  deactivating?: boolean;
   onIssueToken: (deploymentId: string) => void;
+  onEdit: (deployment: DeploymentSummary) => void;
+  onDeactivate: (deployment: DeploymentSummary) => void;
 }) {
   return (
     <Card className="border-slate-200/80 bg-white/95">
@@ -35,6 +41,17 @@ export function DeploymentRecordCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => onEdit(deployment)}>
+            编辑配置
+          </Button>
+          {deployment.status === 'active' ? (
+            <Button variant="destructive" size="sm" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
+              {deactivating ? '停用中...' : '停用 Deployment'}
+            </Button>
+          ) : null}
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           <InfoLine label="后台域名" value={deployment.adminDomain || '未设置'} />
           <InfoLine label="WS 域名" value={deployment.wsDomain || '未设置'} />
@@ -52,10 +69,17 @@ export function DeploymentRecordCard({
                   : '还没有签发 deploy token'}
               </p>
             </div>
-            <Button variant="outline" onClick={() => onIssueToken(deployment.id)} disabled={issuing}>
+            <Button
+              variant="outline"
+              onClick={() => onIssueToken(deployment.id)}
+              disabled={issuing || deployment.status !== 'active'}
+            >
               {issuing ? '签发中...' : '签发新 Token'}
             </Button>
           </div>
+          {deployment.status !== 'active' ? (
+            <p className="mt-3 text-xs text-amber-700">当前 deployment 已停用。需要重新使用时，请编辑后新建 deployment，或保留此记录仅作历史参考。</p>
+          ) : null}
 
           {issuedToken?.deploymentId === deployment.id ? (
             <div className="mt-4 space-y-3">

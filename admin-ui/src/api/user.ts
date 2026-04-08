@@ -51,6 +51,25 @@ export async function createDeployment(payload: {
   });
 }
 
+export async function updateDeployment(payload: {
+  deploymentId: string;
+  label?: string;
+  environment?: string;
+  serverHost?: string;
+  primaryDomain?: string;
+  adminDomain?: string;
+  wsDomain?: string;
+  installPath?: string;
+  values?: Record<string, string | boolean>;
+  secrets?: Record<string, string>;
+}): Promise<DeploymentSummary> {
+  const { deploymentId, ...body } = payload;
+  return apiClient<DeploymentSummary>(`/v1/deployments/${encodeURIComponent(deploymentId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  });
+}
+
 export async function issueDeploymentToken(payload: {
   deploymentId: string;
   expiresInHours?: number;
@@ -60,5 +79,11 @@ export async function issueDeploymentToken(payload: {
     body: JSON.stringify({
       expiresInHours: payload.expiresInHours ?? 2
     })
+  });
+}
+
+export async function deactivateDeployment(payload: { deploymentId: string }): Promise<DeploymentSummary> {
+  return apiClient<DeploymentSummary>(`/v1/deployments/${encodeURIComponent(payload.deploymentId)}/deactivate`, {
+    method: 'POST'
   });
 }

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, ne } from 'drizzle-orm';
 
 import { deploymentTokens, deployments } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -52,6 +52,29 @@ export class DeploymentRepository {
   async findDeploymentById(id: string) {
     const [deployment] = await this.db.select().from(deployments).where(eq(deployments.id, id)).limit(1);
     return deployment ?? null;
+  }
+
+  async countActiveDeploymentsByUserAndApp(input: {
+    userId: string;
+    appId: string;
+    excludeDeploymentId?: string;
+  }) {
+    const filters = [
+      eq(deployments.userId, input.userId),
+      eq(deployments.appId, input.appId),
+      eq(deployments.status, 'active')
+    ];
+
+    if (input.excludeDeploymentId) {
+      filters.push(ne(deployments.id, input.excludeDeploymentId));
+    }
+
+    const [result] = await this.db
+      .select({ count: count() })
+      .from(deployments)
+      .where(and(...filters));
+
+    return Number(result?.count ?? 0);
   }
 
   async createDeploymentToken(input: {
@@ -125,17 +148,38 @@ export class DeploymentRepository {
   }
 
   async updateDeployment(deploymentId: string, input: {
+    label?: string;
+    environment?: string;
+    serverHost?: string | null;
+    primaryDomain?: string | null;
+    adminDomain?: string | null;
+    wsDomain?: string | null;
+    installPath?: string | null;
+    status?: 'active' | 'inactive' | 'cancelled' | 'expired';
+    meta?: Record<string, unknown>;
     lastTokenIssuedAt?: Date | null;
     lastDeployedAt?: Date | null;
     updatedAt?: Date;
   }) {
+    const changes: Record<string, unknown> = {
+      updatedAt: input.updatedAt ?? new Date()
+    };
+
+    if (typeof input.label !== 'undefined') changes.label = input.label;
+    if (typeof input.environment !== 'undefined') changes.environment = input.environment;
+    if (typeof input.serverHost !== 'undefined') changes.serverHost = input.serverHost;
+    if (typeof input.primaryDomain !== 'undefined') changes.primaryDomain = input.primaryDomain;
+    if (typeof input.adminDomain !== 'undefined') changes.adminDomain = input.adminDomain;
+    if (typeof input.wsDomain !== 'undefined') changes.wsDomain = input.wsDomain;
+    if (typeof input.installPath !== 'undefined') changes.installPath = input.installPath;
+    if (typeof input.status !== 'undefined') changes.status = input.status;
+    if (typeof input.meta !== 'undefined') changes.meta = input.meta;
+    if (typeof input.lastTokenIssuedAt !== 'undefined') changes.lastTokenIssuedAt = input.lastTokenIssuedAt;
+    if (typeof input.lastDeployedAt !== 'undefined') changes.lastDeployedAt = input.lastDeployedAt;
+
     const [deployment] = await this.db
       .update(deployments)
-      .set({
-        lastTokenIssuedAt: input.lastTokenIssuedAt,
-        lastDeployedAt: input.lastDeployedAt,
-        updatedAt: input.updatedAt ?? new Date()
-      })
+      .set(changes)
       .where(eq(deployments.id, deploymentId))
       .returning();
 
