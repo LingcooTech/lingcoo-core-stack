@@ -5,6 +5,12 @@ import { eq } from 'drizzle-orm';
 import { appDeliverySettings, systemSettings } from '../../db/schema';
 import type { DbClient } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
+import {
+  listDeliveryManifestFields,
+  normalizeDeliveryManifest
+} from '../../lib/delivery-manifest';
+import { DeliverySettingsService } from '../../lib/delivery-settings';
+import { loadEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { EventService } from '../event/service';
@@ -846,6 +852,12 @@ export class AppService {
       );
     }
 
+    const manifest = normalizeDeliveryManifest(remoteManifest);
+
+    if (!manifest) {
+      throw httpError(502, 'Delivery manifest is empty or invalid');
+    }
+
     const nextMeta = {
       ...meta,
       deliveryManifest: remoteManifest,
@@ -853,6 +865,26 @@ export class AppService {
     };
 
     await new AppRepository(this.db).updateAppMetaByCode(appCode, nextMeta);
+
+    const presetDefaults = Object.fromEntries(
+      listDeliveryManifestFields(manifest, { scope: 'preset', includeSecrets: false })
+        .filter((field) => typeof field.defaultValue !== 'undefined')
+        .map((field) => [field.key, field.defaultValue!])
+    );
+
+    const installerPatch = {
+      repoUrl: manifest.installer.repoUrl || nextSource.repoUrl || undefined,
+      repoBranch: manifest.installer.repoBranch || nextSource.repoBranch || undefined
+    };
+
+    await new DeliverySettingsService(this.db, loadEnv()).upsertSettings(
+      appCode,
+      {
+        values: presetDefaults,
+        installer: installerPatch
+      },
+      actorUserId
+    );
 
     await new EventService(this.db).capture({
       userId: actorUserId,
@@ -863,7 +895,8 @@ export class AppService {
         manifestUrl,
         repoUrl: nextSource.repoUrl,
         repoBranch: nextSource.repoBranch,
-        manifestPath: nextSource.manifestPath || null
+        manifestPath: nextSource.manifestPath || null,
+        appliedPresetDefaults: Object.keys(presetDefaults)
       }
     });
 
