@@ -144,6 +144,8 @@ export function renderBillingDebugPage() {
             <div class="split">
               <button id="toggle-orders" class="secondary" type="button">显示订单 JSON</button>
               <button id="toggle-webhooks" class="secondary" type="button">显示 Webhook JSON</button>
+              <button id="toggle-events" class="secondary" type="button">显示 Events JSON</button>
+              <button id="toggle-entitlements" class="secondary" type="button">显示 Entitlements JSON</button>
             </div>
             <pre id="orders-json" class="hidden">[]</pre>
             <pre id="webhooks-json" class="hidden">[]</pre>
@@ -155,7 +157,6 @@ export function renderBillingDebugPage() {
     </div>
 
     <script>
-      const apiBase = '';
       const state = {
         orders: null,
         webhooks: null,
@@ -170,7 +171,13 @@ export function renderBillingDebugPage() {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', { hour12: false });
       };
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[ch]));
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
 
       function setLastUpdated(text) {
         byId('last-updated').textContent = text;
@@ -339,6 +346,8 @@ export function renderBillingDebugPage() {
 
       byId('toggle-orders').addEventListener('click', () => byId('orders-json').classList.toggle('hidden'));
       byId('toggle-webhooks').addEventListener('click', () => byId('webhooks-json').classList.toggle('hidden'));
+      byId('toggle-events').addEventListener('click', () => byId('events-json').classList.toggle('hidden'));
+      byId('toggle-entitlements').addEventListener('click', () => byId('entitlements-json').classList.toggle('hidden'));
 
       void loadData().catch((error) => {
         setLastUpdated('加载失败：' + (error instanceof Error ? error.message : String(error)));
