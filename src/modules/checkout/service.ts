@@ -14,6 +14,7 @@ import { AppRepository } from '../app/repository';
 import { CheckoutRepository } from './repository';
 
 type SessionRecord = NonNullable<Awaited<ReturnType<CheckoutRepository['findSessionByCode']>>>;
+const AUTO_RECONCILE_STATUS_COOLDOWN_MS = 5_000;
 
 export class CheckoutService {
   constructor(
@@ -42,6 +43,14 @@ export class CheckoutService {
 
   private buildHostedUrl(sessionCode: string) {
     return new URL(`/checkout/${sessionCode}`, this.env.PUBLIC_BASE_URL).toString();
+  }
+
+  private getSessionMeta(value: unknown) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return { ...(value as Record<string, unknown>) };
+    }
+
+    return {};
   }
 
   private async resolveProvider(preferred?: 'wechat_pay' | 'alipay') {
@@ -78,6 +87,68 @@ export class CheckoutService {
     }
 
     return { session, order, app, plan };
+  }
+
+  private shouldAutoReconcileStatus(detail: {
+    session: SessionRecord;
+    order: { status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded' };
+  }) {
+    if (detail.order.status === 'paid' || detail.session.status !== 'pending') {
+      return false;
+    }
+
+    if (detail.session.expiresAt && detail.session.expiresAt.getTime() < Date.now()) {
+      return false;
+    }
+
+    const sessionMeta = this.getSessionMeta(detail.session.meta);
+    const lastAttemptAt =
+      typeof sessionMeta.lastStatusReconcileAt === 'string' ? Date.parse(sessionMeta.lastStatusReconcileAt) : Number.NaN;
+
+    if (!Number.isFinite(lastAttemptAt)) {
+      return true;
+    }
+
+    return Date.now() - lastAttemptAt >= AUTO_RECONCILE_STATUS_COOLDOWN_MS;
+  }
+
+  private async maybeAutoReconcileStatus(detail: {
+    session: SessionRecord;
+    order: {
+      orderNo: string;
+      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+      paidAt?: Date | null;
+    };
+  }) {
+    if (!this.shouldAutoReconcileStatus(detail)) {
+      return detail;
+    }
+
+    const sessionMeta = this.getSessionMeta(detail.session.meta);
+    const attemptedAt = new Date().toISOString();
+
+    await new CheckoutRepository(this.db).updateSessionMeta(detail.session.id, {
+      ...sessionMeta,
+      lastStatusReconcileAt: attemptedAt
+    });
+
+    console.log('[FD Checkout] auto reconcile status poll', {
+      sessionCode: detail.session.sessionCode,
+      orderNo: detail.order.orderNo,
+      lastStatusReconcileAt: attemptedAt
+    });
+
+    try {
+      await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(detail.order.orderNo);
+      return this.loadSessionDetail(detail.session.sessionCode);
+    } catch (error) {
+      console.error('[FD Checkout] auto reconcile status poll failed', {
+        sessionCode: detail.session.sessionCode,
+        orderNo: detail.order.orderNo,
+        error
+      });
+      return detail;
+    }
   }
 
   private toCreatedSessionPayload(input: {
@@ -385,7 +456,7 @@ export class CheckoutService {
   }
 
   async getSessionStatus(sessionCode: string) {
-    const detail = await this.loadSessionDetail(sessionCode);
+    const detail = await this.maybeAutoReconcileStatus(await this.loadSessionDetail(sessionCode));
     const status = this.resolveEffectiveStatus(detail.session, detail.order.status);
 
     return {

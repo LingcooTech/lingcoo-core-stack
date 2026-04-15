@@ -326,8 +326,8 @@ export class BillingService {
       provider: order.provider,
       kind: query.kind,
       providerOrderId: query.providerOrderId ?? null,
-      paidAt: query.paidAt instanceof Date ? query.paidAt.toISOString() : query.paidAt ?? null,
-      reason: query.reason ?? null
+      paidAt: query.kind === 'paid' ? query.paidAt.toISOString() : null,
+      reason: query.kind === 'paid' ? null : query.reason
     });
 
     if (query.kind === 'paid') {

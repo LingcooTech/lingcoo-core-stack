@@ -149,6 +149,19 @@ export class CheckoutRepository {
     return session ?? null;
   }
 
+  async updateSessionMeta(sessionId: string, meta: Record<string, unknown>) {
+    const [session] = await this.db
+      .update(checkoutSessions)
+      .set({
+        meta,
+        updatedAt: new Date()
+      })
+      .where(eq(checkoutSessions.id, sessionId))
+      .returning();
+
+    return session ?? null;
+  }
+
   async markPaymentAttemptsPaidByOrderId(orderId: string, providerReference?: string | null) {
     return this.db
       .update(paymentAttempts)

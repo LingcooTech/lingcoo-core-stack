@@ -74,7 +74,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
           kind: notification.kind,
           orderNo: notification.kind === 'paid' ? notification.orderNo : undefined,
           providerOrderId: notification.kind === 'paid' ? notification.providerOrderId : undefined,
-          reason: notification.reason
+          reason: notification.kind === 'paid' ? undefined : notification.reason
         },
         'wechat pay notification parsed'
       );
@@ -139,7 +139,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
           kind: notification.kind,
           orderNo: notification.kind === 'paid' ? notification.orderNo : undefined,
           providerOrderId: notification.kind === 'paid' ? notification.providerOrderId : undefined,
-          reason: notification.reason
+          reason: notification.kind === 'paid' ? undefined : notification.reason
         },
         'alipay notification parsed'
       );
