@@ -171,13 +171,17 @@ export function renderBillingDebugPage() {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', { hour12: false });
       };
-      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[ch]));
+      const escapeHtml = (value) =>
+        String(value ?? '').replace(/[&<>"']/g, (ch) => {
+          const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+          };
+          return map[ch] || ch;
+        });
 
       function setLastUpdated(text) {
         byId('last-updated').textContent = text;
