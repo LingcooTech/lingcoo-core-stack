@@ -218,6 +218,17 @@ export class BillingService {
         throw httpError(409, `Order currency mismatch for ${notification.orderNo}`);
       }
 
+      console.log('[FD Billing] handlePaymentNotification', {
+        provider: notification.provider,
+        providerEventId: notification.providerEventId,
+        orderNo: notification.orderNo,
+        providerOrderId: notification.providerOrderId,
+        amount: notification.amount,
+        currency: notification.currency,
+        paidAt: notification.paidAt instanceof Date ? notification.paidAt.toISOString() : notification.paidAt,
+        webhookProcessedAt: webhookEvent.processedAt ?? null
+      });
+
       const result = await this.completeOrderPayment(tx as DbClient, {
         order,
         providerOrderId: notification.providerOrderId,
@@ -237,6 +248,16 @@ export class BillingService {
 
       await repository.markWebhookProcessed(webhookEvent.id);
 
+      console.log('[FD Billing] handlePaymentNotification complete', {
+        provider: notification.provider,
+        providerEventId: notification.providerEventId,
+        orderNo: notification.orderNo,
+        duplicate: false,
+        granted: Boolean(result.granted),
+        orderStatus: result.order?.status,
+        paidAt: result.order?.paidAt instanceof Date ? result.order.paidAt.toISOString() : result.order?.paidAt ?? null
+      });
+
       return {
         duplicate: false,
         order: result.order,
@@ -254,7 +275,21 @@ export class BillingService {
   }
 
   private async syncOrderRecord(order: BillingOrder) {
+    console.log('[FD Billing] syncOrderRecord start', {
+      orderNo: order.orderNo,
+      provider: order.provider,
+      orderStatus: order.status,
+      providerOrderId: order.providerOrderId ?? null,
+      paidAt: order.paidAt instanceof Date ? order.paidAt.toISOString() : order.paidAt ?? null
+    });
+
     if (order.status === 'paid') {
+      console.log('[FD Billing] syncOrderRecord current_state paid', {
+        orderNo: order.orderNo,
+        provider: order.provider,
+        providerOrderId: order.providerOrderId ?? null,
+        paidAt: order.paidAt instanceof Date ? order.paidAt.toISOString() : order.paidAt ?? null
+      });
       return {
         changed: false,
         order,
@@ -270,6 +305,13 @@ export class BillingService {
 
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     const providerAdapter = getBillingProviderAdapter(order.provider);
+    console.log('[FD Billing] syncOrderRecord queryPayment request', {
+      orderNo: order.orderNo,
+      provider: order.provider,
+      providerOrderId: order.providerOrderId ?? null,
+      amount: order.amount,
+      currency: order.currency
+    });
     const query = await providerAdapter.queryPayment({
       env: runtimeEnv,
       order: {
@@ -278,6 +320,14 @@ export class BillingService {
         amount: order.amount,
         currency: order.currency
       }
+    });
+    console.log('[FD Billing] syncOrderRecord queryPayment response', {
+      orderNo: order.orderNo,
+      provider: order.provider,
+      kind: query.kind,
+      providerOrderId: query.providerOrderId ?? null,
+      paidAt: query.paidAt instanceof Date ? query.paidAt.toISOString() : query.paidAt ?? null,
+      reason: query.reason ?? null
     });
 
     if (query.kind === 'paid') {
@@ -290,6 +340,14 @@ export class BillingService {
         })
       });
       const latestOrder = await new BillingRepository(this.db).findOrderByOrderNo(order.orderNo);
+
+      console.log('[FD Billing] syncOrderRecord paid reconciled', {
+        orderNo: order.orderNo,
+        provider: order.provider,
+        duplicate: result.duplicate,
+        latestStatus: latestOrder?.status ?? null,
+        latestPaidAt: latestOrder?.paidAt instanceof Date ? latestOrder.paidAt.toISOString() : latestOrder?.paidAt ?? null
+      });
 
       return {
         changed: !result.duplicate,
@@ -305,6 +363,15 @@ export class BillingService {
     }
 
     const latestOrder = await new BillingRepository(this.db).findOrderByOrderNo(order.orderNo);
+
+    console.log('[FD Billing] syncOrderRecord unpaid/other state', {
+      orderNo: order.orderNo,
+      provider: order.provider,
+      kind: query.kind,
+      latestStatus: latestOrder?.status ?? null,
+      latestPaidAt: latestOrder?.paidAt instanceof Date ? latestOrder.paidAt.toISOString() : latestOrder?.paidAt ?? null,
+      reason: query.reason ?? null
+    });
 
     return {
       changed: false,
