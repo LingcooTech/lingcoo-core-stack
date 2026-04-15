@@ -132,21 +132,10 @@ export class CheckoutService {
       lastStatusReconcileAt: attemptedAt
     });
 
-    console.log('[FD Checkout] auto reconcile status poll', {
-      sessionCode: detail.session.sessionCode,
-      orderNo: detail.order.orderNo,
-      lastStatusReconcileAt: attemptedAt
-    });
-
     try {
       await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(detail.order.orderNo);
       return this.loadSessionDetail(detail.session.sessionCode);
     } catch (error) {
-      console.error('[FD Checkout] auto reconcile status poll failed', {
-        sessionCode: detail.session.sessionCode,
-        orderNo: detail.order.orderNo,
-        error
-      });
       return detail;
     }
   }

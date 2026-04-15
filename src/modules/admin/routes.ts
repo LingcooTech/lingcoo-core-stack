@@ -10,7 +10,6 @@ import { QiniuSettingsService } from '../../lib/qiniu-settings';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
 import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
-import { renderBillingDebugPage } from './billing-debug-page';
 import {
   adminAppCodeParamsSchema,
   adminEntitlementParamsSchema,
@@ -94,10 +93,6 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/licenses', sendSPA);
   app.get('/admin/operations', sendSPA);
   app.get('/admin/observability', sendSPA);
-  app.get('/admin/billing-debug', async (_request, reply) => {
-    reply.type('text/html; charset=utf-8');
-    return reply.send(renderBillingDebugPage());
-  });
   app.get('/admin/users', sendSPA);
   app.get('/admin/installs', sendSPA);
 

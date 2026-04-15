@@ -18,7 +18,8 @@ cd "${DEPLOY_PATH}"
 
 git fetch --prune origin
 git checkout main
-git pull --ff-only origin main
+# The deploy checkout is treated as a disposable mirror of origin/main.
+git reset --hard origin/main
 
 printf '%s' "${ACR_PASSWORD}" | docker login "${ACR_REGISTRY}" --username "${ACR_USERNAME}" --password-stdin
 

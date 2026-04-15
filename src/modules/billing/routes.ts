@@ -50,15 +50,6 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/billing/providers/wechat/notify', { config: { rawBody: true } }, async (request, reply) => {
     try {
-      request.log.info(
-        {
-          headers: request.headers,
-          hasRawBody: Boolean(request.rawBody),
-          rawBodyLength: typeof request.rawBody === 'string' ? request.rawBody.length : request.rawBody?.length ?? 0
-        },
-        'wechat pay notification received'
-      );
-
       const runtimeEnv = await new PaymentSettingsService(app.db, app.appEnv).buildRuntimeEnv();
       const provider = getBillingProviderAdapter('wechat_pay');
       const notification = await provider.parseNotification({
@@ -68,28 +59,8 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         body: request.body
       });
 
-      request.log.info(
-        {
-          providerEventId: notification.providerEventId,
-          kind: notification.kind,
-          orderNo: notification.kind === 'paid' ? notification.orderNo : undefined,
-          providerOrderId: notification.kind === 'paid' ? notification.providerOrderId : undefined,
-          reason: notification.kind === 'paid' ? undefined : notification.reason
-        },
-        'wechat pay notification parsed'
-      );
-
       if (notification.kind === 'paid') {
-        const result = await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
-        request.log.info(
-          {
-            providerEventId: notification.providerEventId,
-            orderNo: notification.orderNo,
-            duplicate: result.duplicate,
-            granted: Boolean(result.granted)
-          },
-          'wechat pay notification handled'
-        );
+        await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
       } else {
         request.log.info(
           {
@@ -115,15 +86,6 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/billing/providers/alipay/notify', { config: { rawBody: true } }, async (request, reply) => {
     try {
-      request.log.info(
-        {
-          headers: request.headers,
-          hasRawBody: Boolean(request.rawBody),
-          rawBodyLength: typeof request.rawBody === 'string' ? request.rawBody.length : request.rawBody?.length ?? 0
-        },
-        'alipay notification received'
-      );
-
       const runtimeEnv = await new PaymentSettingsService(app.db, app.appEnv).buildRuntimeEnv();
       const provider = getBillingProviderAdapter('alipay');
       const notification = await provider.parseNotification({
@@ -133,28 +95,8 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         body: request.body
       });
 
-      request.log.info(
-        {
-          providerEventId: notification.providerEventId,
-          kind: notification.kind,
-          orderNo: notification.kind === 'paid' ? notification.orderNo : undefined,
-          providerOrderId: notification.kind === 'paid' ? notification.providerOrderId : undefined,
-          reason: notification.kind === 'paid' ? undefined : notification.reason
-        },
-        'alipay notification parsed'
-      );
-
       if (notification.kind === 'paid') {
-        const result = await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
-        request.log.info(
-          {
-            providerEventId: notification.providerEventId,
-            orderNo: notification.orderNo,
-            duplicate: result.duplicate,
-            granted: Boolean(result.granted)
-          },
-          'alipay notification handled'
-        );
+        await new BillingService(app.db, app.appEnv).handlePaymentNotification(notification);
       } else {
         request.log.info(
           {

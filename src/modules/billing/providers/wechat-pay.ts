@@ -281,23 +281,8 @@ export class WechatPayProvider implements BillingProviderAdapter {
     }
 
     const payload = this.parseXml(rawBody);
-    console.log('[FD Billing][WeChat] parseNotification raw', {
-      hasRawBody: Boolean(rawBody),
-      rawBodyLength: rawBody.length,
-      payloadKeys: Object.keys(payload),
-      return_code: payload.return_code ?? null,
-      result_code: payload.result_code ?? null,
-      out_trade_no: payload.out_trade_no ?? null,
-      transaction_id: payload.transaction_id ?? null,
-      total_fee: payload.total_fee ?? null,
-      time_end: payload.time_end ?? null
-    });
 
     if (payload.return_code !== 'SUCCESS') {
-      console.log('[FD Billing][WeChat] parseNotification ignored return_code', {
-        providerEventId: payload.out_trade_no || `wechat_${Date.now()}`,
-        return_code: payload.return_code ?? null
-      });
       return {
         kind: 'ignored',
         provider: this.code,
@@ -308,10 +293,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
     }
 
     this.verifySignature(payload, this.getApiKey(context.env));
-    console.log('[FD Billing][WeChat] parseNotification signature ok', {
-      out_trade_no: payload.out_trade_no ?? null,
-      transaction_id: payload.transaction_id ?? null
-    });
 
     if (payload.appid && payload.appid !== context.env.WECHAT_PAY_APP_ID) {
       throw httpError(400, 'WeChat Pay app id mismatch');
@@ -322,10 +303,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
     }
 
     if (payload.result_code !== 'SUCCESS') {
-      console.log('[FD Billing][WeChat] parseNotification ignored result_code', {
-        providerEventId: payload.transaction_id || payload.out_trade_no || `wechat_${Date.now()}`,
-        result_code: payload.result_code ?? null
-      });
       return {
         kind: 'ignored',
         provider: this.code,
@@ -344,16 +321,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
       throw httpError(400, 'Invalid WeChat Pay total_fee');
     }
 
-    const paidAt = this.parsePaidAt(payload.time_end);
-    console.log('[FD Billing][WeChat] parseNotification paid', {
-      providerEventId: payload.transaction_id,
-      orderNo: payload.out_trade_no,
-      providerOrderId: payload.transaction_id,
-      amount,
-      currency: payload.fee_type || 'CNY',
-      paidAt: paidAt.toISOString()
-    });
-
     return {
       kind: 'paid',
       provider: this.code,
@@ -362,7 +329,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
       providerOrderId: payload.transaction_id,
       amount,
       currency: payload.fee_type || 'CNY',
-      paidAt,
+      paidAt: this.parsePaidAt(payload.time_end),
       payload: normalizeObject(payload)
     };
   }
@@ -385,16 +352,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
     }
 
     requestPayload.sign = this.createSignature(requestPayload, this.getApiKey(context.env), 'HMAC-SHA256');
-    console.log('[FD Billing][WeChat] queryPayment request', {
-      orderNo: context.order.orderNo,
-      providerOrderId: context.order.providerOrderId ?? null,
-      request: {
-        appid: requestPayload.appid,
-        mch_id: requestPayload.mch_id,
-        out_trade_no: requestPayload.out_trade_no,
-        transaction_id: requestPayload.transaction_id ?? null
-      }
-    });
 
     const response = await fetch(new URL(WECHAT_ORDER_QUERY_API_PATH, this.getApiBaseUrl(context.env)), {
       method: 'POST',
@@ -408,11 +365,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
     const responseText = await response.text();
 
     if (!response.ok) {
-      console.log('[FD Billing][WeChat] queryPayment http error', {
-        orderNo: context.order.orderNo,
-        status: response.status,
-        responseText
-      });
       throw httpError(502, `WeChat Pay query order failed: ${response.status} ${responseText || 'empty response'}`);
     }
 
@@ -420,30 +372,14 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
     if (payload.return_code === 'SUCCESS' && payload.sign) {
       this.verifySignature(payload, this.getApiKey(context.env));
-      console.log('[FD Billing][WeChat] queryPayment signature ok', {
-        orderNo: context.order.orderNo,
-        return_code: payload.return_code,
-        result_code: payload.result_code ?? null
-      });
     }
 
     if (payload.return_code !== 'SUCCESS') {
-      console.log('[FD Billing][WeChat] queryPayment return_code not success', {
-        orderNo: context.order.orderNo,
-        return_code: payload.return_code ?? null,
-        return_msg: payload.return_msg ?? null
-      });
       throw httpError(502, `WeChat Pay query order failed: ${payload.return_msg ?? 'unknown return error'}`);
     }
 
     if (payload.result_code !== 'SUCCESS') {
       const errorCode = payload.err_code?.trim().toUpperCase();
-      console.log('[FD Billing][WeChat] queryPayment result_code not success', {
-        orderNo: context.order.orderNo,
-        errorCode: errorCode ?? null,
-        err_code_des: payload.err_code_des ?? null,
-        return_msg: payload.return_msg ?? null
-      });
       if (errorCode === 'ORDERNOTEXIST') {
         return {
           kind: 'not_found',
@@ -462,14 +398,6 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
     const tradeState = payload.trade_state?.trim().toUpperCase() || 'UNKNOWN';
     const normalizedPayload = normalizeObject(payload);
-    console.log('[FD Billing][WeChat] queryPayment parsed', {
-      orderNo: context.order.orderNo,
-      tradeState,
-      providerOrderId: payload.transaction_id ?? null,
-      paidAt: payload.time_end ?? null,
-      amount: payload.total_fee ?? null,
-      feeType: payload.fee_type ?? null
-    });
 
     if (tradeState === 'SUCCESS') {
       if (!payload.transaction_id || !payload.total_fee) {
