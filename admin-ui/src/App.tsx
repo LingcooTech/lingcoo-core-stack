@@ -16,6 +16,8 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
+import { AiTranslateWorkflowPrivacyPage } from '@/pages/AiTranslateWorkflowPrivacyPage';
+import { AiTranslateWorkflowSupportPage } from '@/pages/AiTranslateWorkflowSupportPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -69,6 +71,8 @@ const router = createBrowserRouter(
       <Route element={<UserShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/apps" element={<HomePage />} />
+        <Route path="/apps/ai-translate-workflow/privacy" element={<AiTranslateWorkflowPrivacyPage />} />
+        <Route path="/apps/ai-translate-workflow/support" element={<AiTranslateWorkflowSupportPage />} />
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />

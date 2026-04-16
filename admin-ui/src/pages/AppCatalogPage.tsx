@@ -133,6 +133,7 @@ export function AppCatalogPage() {
   const hasContent = app.content && app.content.trim().length > 0;
   const hasFaq = app.faq && app.faq.length > 0;
   const hasLinks = app.links && app.links.length > 0;
+  const hasAiTranslateWorkflowResources = app.code === 'ai_translate_workflow';
 
   return (
     <div className="space-y-12">
@@ -322,6 +323,34 @@ export function AppCatalogPage() {
                     </Badge>
                   </a>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {hasAiTranslateWorkflowResources && (
+            <section className="space-y-6">
+              <h2 className="text-2xl font-black tracking-tight text-slate-950">隐私与支持</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Link
+                  to="/apps/ai-translate-workflow/privacy"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-5 py-4 text-sm transition hover:border-slate-300 hover:shadow-sm"
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-slate-900">隐私政策</p>
+                    <p className="text-xs text-muted-foreground">查看扩展的数据流、存储范围与删除方式</p>
+                  </div>
+                </Link>
+                <Link
+                  to="/apps/ai-translate-workflow/support"
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-5 py-4 text-sm transition hover:border-slate-300 hover:shadow-sm"
+                >
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-slate-900">支持页</p>
+                    <p className="text-xs text-muted-foreground">查看账号、授权、OpenRouter 与导出排障建议</p>
+                  </div>
+                </Link>
               </div>
             </section>
           )}
