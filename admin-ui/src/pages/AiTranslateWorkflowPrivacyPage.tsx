@@ -45,8 +45,8 @@ const sections = [
     title: '6. 扩展会使用哪些权限',
     body: [
       'storage：保存你的翻译设置、本地导出配置、账号状态缓存和当前浏览器里的敏感配置。',
-      'activeTab 与 scripting：在你主动激活扩展时，把页面工具栏和翻译逻辑注入当前网页，而不是默认对所有网页持续运行。',
-      '如果你在设置页开启白名单自动注入，扩展会仅对你自己配置并授权过的站点自动注入工具栏。',
+      'activeTab 与 scripting：用于把页面工具栏和翻译逻辑注入网页。',
+      '当你保存工具栏默认状态设置并授权网页访问权限后，扩展会在普通网页打开时自动注入工具栏；如果你启用了白名单规则，白名单站点会在默认折叠模式下仍然自动展开工具栏。',
       'openrouter.ai、api.notion.com 与 stack.futuredecade.com：分别用于 OpenRouter 模型请求、Notion API 调用，以及 FD Stack 的账号、支付、订单、授权接口。',
       '当你使用 WordPress 发布或公众号导出等高级能力时，扩展可能会在操作当下额外请求站点访问权限，用于连接目标站点和下载远程图片。'
     ]
@@ -97,7 +97,7 @@ const highlightCards = [
   },
   {
     title: '权限使用',
-    description: '只在你主动激活扩展时注入页面脚本，不再默认全站持续运行。',
+    description: '授权后可在普通网页自动注入，白名单站点还能覆盖默认折叠规则。',
     icon: LockKeyhole
   },
   {
