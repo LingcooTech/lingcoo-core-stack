@@ -4,10 +4,9 @@ import { Link } from 'react-router-dom';
 import type { AppWithDetails } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import {
-  formatOfferPriceLabel,
+  formatOfferStartingPriceLabel,
   getActiveOffers,
   getAppTypeLabel,
-  getPreferredOffer,
 } from '@/lib/app-catalog-ui';
 import { cn, getInitials } from '@/lib/utils';
 
@@ -38,7 +37,7 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
 
 function AppCardBody({ app }: { app: AppWithDetails }) {
   const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
-  const preferredOffer = getPreferredOffer(activeOffers);
+  const priceLabel = formatOfferStartingPriceLabel(activeOffers);
 
   return (
     <div className="relative overflow-hidden p-6">
@@ -68,9 +67,6 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
         <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
-            {preferredOffer?.title || '暂无套餐'}
-          </span>
-          <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
             {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
           </span>
         </div>
@@ -80,13 +76,13 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           <p
             className={cn(
               'text-xl font-bold',
-              preferredOffer && preferredOffer.priceAmount <= 0 ? 'text-green-600' : 'text-gray-900',
+              priceLabel === '免费' ? 'text-green-600' : 'text-gray-900',
             )}
           >
-            {formatOfferPriceLabel(preferredOffer)}
+            {priceLabel}
           </p>
           <p className="text-xs text-gray-400">
-            {preferredOffer?.title || '暂无上架中的售卖方案'}
+            {activeOffers.length > 1 ? '支持多个套餐选择' : activeOffers.length === 1 ? '当前仅有一个套餐' : '暂无上架中的售卖方案'}
           </p>
         </div>
       </div>

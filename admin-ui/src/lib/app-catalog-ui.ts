@@ -5,6 +5,14 @@ type AppOffer = AppWithDetails['checkoutOffers'][number];
 type CatalogOffer = AppCatalog['offers'][number];
 type OfferLike = AppOffer | CatalogOffer;
 
+function formatOfferPriceAmount(priceAmount: number, currency: string) {
+  if (priceAmount <= 0) {
+    return '免费';
+  }
+
+  return formatAmount(priceAmount, currency);
+}
+
 export function getAppTypeLabel(type: string | null | undefined) {
   switch (type) {
     case 'extension':
@@ -57,10 +65,45 @@ export function formatOfferPriceLabel(offer: OfferLike | null | undefined) {
   if (!offer) {
     return '即将开放';
   }
-  if (offer.priceAmount <= 0) {
-    return '免费';
+  return formatOfferPriceAmount(offer.priceAmount, offer.currency);
+}
+
+export function formatOfferStartingPriceLabel<T extends { priceAmount: number; currency: string; status: string }>(
+  offers: T[],
+) {
+  const activeOffers = getActiveOffers(offers);
+  if (!activeOffers.length) {
+    return '即将开放';
   }
-  return formatAmount(offer.priceAmount, offer.currency);
+
+  const sorted = [...activeOffers].sort((left, right) => left.priceAmount - right.priceAmount);
+  const minOffer = sorted[0];
+  const maxOffer = sorted[sorted.length - 1];
+
+  if (minOffer.priceAmount === maxOffer.priceAmount) {
+    return formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency);
+  }
+
+  return `${formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency)} 起`;
+}
+
+export function formatOfferRangeLabel<T extends { priceAmount: number; currency: string; status: string }>(
+  offers: T[],
+) {
+  const activeOffers = getActiveOffers(offers);
+  if (!activeOffers.length) {
+    return '即将开放';
+  }
+
+  const sorted = [...activeOffers].sort((left, right) => left.priceAmount - right.priceAmount);
+  const minOffer = sorted[0];
+  const maxOffer = sorted[sorted.length - 1];
+
+  if (minOffer.priceAmount === maxOffer.priceAmount) {
+    return formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency);
+  }
+
+  return `${formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency)} - ${formatOfferPriceAmount(maxOffer.priceAmount, maxOffer.currency)}`;
 }
 
 export function formatOfferCycleLabel(offer: OfferLike | null | undefined) {

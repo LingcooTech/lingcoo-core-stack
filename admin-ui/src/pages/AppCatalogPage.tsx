@@ -13,7 +13,7 @@ import { OfferCard } from '@/components/portal/OfferCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  formatOfferPriceLabel,
+  formatOfferRangeLabel,
   getAppStatusLabel,
   getAppTypeLabel,
   getLinkTypeLabel,
@@ -28,7 +28,6 @@ export function AppCatalogPage() {
   const params = useParams<{ appCode: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [selectedOfferCode, setSelectedOfferCode] = useState<string>('');
   const [activeTab, setActiveTab] = useState<DetailTabKey>('intro');
   const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
@@ -40,21 +39,14 @@ export function AppCatalogPage() {
   });
 
   useEffect(() => {
-    setSelectedOfferCode('');
     setActiveTab('intro');
     setOpenFaqIndices(new Set());
     setPurchaseDialogOpen(false);
   }, [params.appCode]);
 
   const offers = data?.offers.filter((offer) => offer.status === 'active') ?? [];
-
-  const selectedOffer = useMemo(() => {
-    if (!offers.length) return null;
-    if (selectedOfferCode) {
-      return offers.find((offer) => offer.code === selectedOfferCode) ?? offers[0];
-    }
-    return getPreferredOffer(offers);
-  }, [offers, selectedOfferCode]);
+  const preferredOffer = useMemo(() => getPreferredOffer(offers), [offers]);
+  const priceRangeLabel = useMemo(() => formatOfferRangeLabel(offers), [offers]);
 
   const planFeatureMap = useMemo(() => {
     const featureMap = new Map((data?.features ?? []).map((feature) => [feature.id, feature]));
@@ -213,9 +205,9 @@ export function AppCatalogPage() {
                   <Badge className="bg-white text-gray-700 hover:bg-white">
                     {getAppStatusLabel(app.status)}
                   </Badge>
-                  {selectedOffer?.badge ? (
+                  {preferredOffer?.badge ? (
                     <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
-                      {selectedOffer.badge}
+                      {preferredOffer.badge}
                     </Badge>
                   ) : null}
                 </div>
@@ -234,13 +226,13 @@ export function AppCatalogPage() {
             <div className="rounded-[24px] border border-gray-200 bg-white p-5 shadow-sm">
               <div className="text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">价格</p>
-                <p className="mt-3 text-4xl font-bold text-gray-900">{formatOfferPriceLabel(selectedOffer)}</p>
+                <p className="mt-3 text-4xl font-bold text-gray-900">{priceRangeLabel}</p>
                 <p className="mt-2 text-sm text-gray-500">
-                  {selectedOffer?.title ?? '暂无可购买方案'}
+                  {offers.length > 1 ? `${offers.length} 个套餐，购买时选择` : preferredOffer?.title ?? '暂无可购买方案'}
                 </p>
               </div>
 
-              <Button className="mt-5 h-11 w-full rounded-2xl" onClick={startCheckout} disabled={!selectedOffer}>
+              <Button className="mt-5 h-11 w-full rounded-2xl" onClick={startCheckout} disabled={!preferredOffer}>
                 立即购买
               </Button>
 
@@ -366,9 +358,7 @@ export function AppCatalogPage() {
                       <OfferCard
                         key={offer.code}
                         offer={offer}
-                        selected={selectedOffer?.code === offer.code}
                         features={planFeatureMap.get(offer.planId) ?? []}
-                        onSelect={() => setSelectedOfferCode(offer.code)}
                       />
                     ))}
                   </div>
@@ -483,7 +473,7 @@ export function AppCatalogPage() {
         open={purchaseDialogOpen}
         onOpenChange={setPurchaseDialogOpen}
         offers={offers}
-        initialOfferCode={selectedOffer?.code ?? null}
+        initialOfferCode={preferredOffer?.code ?? null}
         websiteUrl={websiteLink?.url ?? null}
       />
     </div>

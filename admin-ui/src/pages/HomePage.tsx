@@ -9,7 +9,11 @@ import { AppCard } from '@/components/portal/AppCard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatOfferPriceLabel, getActiveOffers, getAppTypeLabel, getPreferredOffer } from '@/lib/app-catalog-ui';
+import {
+  formatOfferStartingPriceLabel,
+  getActiveOffers,
+  getAppTypeLabel,
+} from '@/lib/app-catalog-ui';
 import { cn, getInitials } from '@/lib/utils';
 
 function rankAppsByHeat(items: AppWithDetails[]) {
@@ -123,7 +127,8 @@ export function HomePage() {
                 style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
               >
                 {hotApps.map((app) => {
-                  const preferredOffer = getPreferredOffer(app.checkoutOffers ?? []);
+                  const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
+                  const priceLabel = formatOfferStartingPriceLabel(activeOffers);
 
                   return (
                     <article key={app.id} className="min-w-full">
@@ -183,10 +188,10 @@ export function HomePage() {
                           <div className="rounded-[24px] border border-gray-200 bg-white/90 p-5 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">起始价格</p>
                             <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
-                              {formatOfferPriceLabel(preferredOffer)}
+                              {priceLabel}
                             </p>
                             <p className="mt-2 text-sm leading-6 text-gray-500">
-                              {preferredOffer?.title || '暂无上架中的售卖方案'}
+                              {activeOffers.length > 1 ? `${activeOffers.length} 个套餐可选` : activeOffers.length === 1 ? '当前仅有一个套餐' : '暂无上架中的售卖方案'}
                             </p>
                           </div>
                         </div>

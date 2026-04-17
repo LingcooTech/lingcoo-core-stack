@@ -26,18 +26,23 @@ export function OfferCard({
   onSelect
 }: {
   offer: Offer;
-  selected: boolean;
+  selected?: boolean;
   features: string[];
-  onSelect: () => void;
+  onSelect?: () => void;
 }) {
+  const interactive = typeof onSelect === 'function';
+
   return (
-    <button
-      type="button"
+    <div
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
       onClick={onSelect}
       className={`rounded-lg border p-6 text-left transition-all duration-300 ${
         selected
           ? 'border-primary bg-blue-50/70 shadow-lg shadow-blue-500/10 ring-1 ring-primary/10'
-          : 'border-gray-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-gray-900/5'
+          : interactive
+            ? 'border-gray-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-gray-900/5'
+            : 'border-gray-200 bg-white'
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -64,6 +69,6 @@ export function OfferCard({
           ))}
         </div>
       ) : null}
-    </button>
+    </div>
   );
 }
