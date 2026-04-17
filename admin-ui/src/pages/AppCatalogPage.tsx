@@ -142,7 +142,7 @@ export function AppCatalogPage() {
             返回应用中心
           </Link>
         </Button>
-        <div className="rounded-[28px] border border-gray-200 bg-white px-6 py-12 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white px-6 py-12 shadow-sm">
           <p className="text-center text-sm text-gray-500">
             应用不存在或暂未上架，请返回应用中心浏览其他应用。
           </p>
@@ -152,12 +152,14 @@ export function AppCatalogPage() {
   }
 
   const app = data.app;
-  const hasHighlights = app.highlights && app.highlights.length > 0;
-  const hasScreenshots = app.screenshots && app.screenshots.length > 0;
-  const hasContent = app.content && app.content.trim().length > 0;
-  const hasFaq = app.faq && app.faq.length > 0;
+  const hasHighlights = app.highlights.length > 0;
+  const hasScreenshots = app.screenshots.length > 0;
+  const hasContent = Boolean(app.content && app.content.trim().length > 0);
+  const hasFaq = app.faq.length > 0;
   const hasAiTranslateWorkflowResources = app.code === 'ai_translate_workflow';
-  const selectedFeatures = selectedOffer ? Array.from(new Set(planFeatureMap.get(selectedOffer.planId) ?? [])) : [];
+  const selectedFeatures = selectedOffer
+    ? Array.from(new Set(planFeatureMap.get(selectedOffer.planId) ?? []))
+    : [];
   const supportLink = app.links.find((item) => item.type === 'support');
   const websiteLink = app.links.find((item) => item.type === 'website');
   const docsLink = app.links.find((item) => item.type === 'docs');
@@ -214,437 +216,363 @@ export function AppCatalogPage() {
         </Link>
       </Button>
 
-      <section className="overflow-hidden rounded-[32px] border border-gray-200 bg-white shadow-sm">
-        <div className="w-full bg-gradient-to-b from-slate-100 via-sky-50/80 to-white">
-          <div className="px-6 py-8 sm:px-8 md:py-10">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-col gap-6 md:flex-row md:items-start">
-                <div className="flex shrink-0 justify-center md:justify-start">
-                  {app.iconUrl ? (
-                    <img
-                      src={app.iconUrl}
-                      alt={app.name}
-                      className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain shadow-lg md:h-32 md:w-32"
-                    />
-                  ) : (
-                    <div className="flex h-28 w-28 items-center justify-center rounded-[22%] bg-white text-3xl font-semibold text-gray-400 shadow-lg md:h-32 md:w-32">
-                      {getInitials(app.name)}
-                    </div>
-                  )}
-                </div>
+      <section className="-mx-4 border-b border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/75 to-white px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        {app.coverUrl ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-cover bg-center opacity-[0.06]"
+            style={{ backgroundImage: `url(${app.coverUrl})` }}
+          />
+        ) : null}
 
-                <div className="min-w-0 flex-1 text-center md:text-left">
-                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                    {app.category ? (
-                      <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
-                    ) : null}
-                    <Badge className="bg-white/80 text-gray-700 hover:bg-white/80">
-                      {getAppTypeLabel(app.type)}
-                    </Badge>
-                    <Badge className="bg-white/80 text-gray-700 hover:bg-white/80">
-                      {getAppStatusLabel(app.status)}
-                    </Badge>
-                    {selectedOffer?.badge ? (
-                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
-                        {selectedOffer.badge}
-                      </Badge>
-                    ) : null}
+        <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
+          <div className="space-y-6">
+            <div className="grid gap-5 md:grid-cols-[112px,minmax(0,1fr)]">
+              <div className="flex justify-center md:justify-start">
+                {app.iconUrl ? (
+                  <img
+                    src={app.iconUrl}
+                    alt={app.name}
+                    className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain shadow-lg"
+                  />
+                ) : (
+                  <div className="flex h-28 w-28 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
+                    {getInitials(app.name)}
                   </div>
-
-                  <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
-                    {app.name}
-                  </h1>
-                  <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
-                    {app.tagline || app.description || '统一展示应用价值、套餐和资源入口。'}
-                  </p>
-
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                    {[
-                      `${app.highlights.length} 项亮点`,
-                      `${activeAppOffers.length} 个方案`,
-                      `${resourceCards.length} 个资源入口`,
-                    ].map((item) => (
-                      <span
-                        key={item}
-                        className="inline-flex items-center rounded-full border border-gray-200 bg-white/80 px-3 py-1.5 text-sm text-gray-600"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="w-full max-w-sm shrink-0 rounded-[28px] border border-gray-200 bg-white/90 p-6 shadow-sm">
-                <div className="text-center">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-                    当前套餐
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
-                    {selectedOffer?.title ?? '暂无可购买方案'}
-                  </h2>
-                  <p className="mt-4 text-3xl font-bold text-gray-900">
-                    {formatOfferPriceLabel(selectedOffer)}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">{formatOfferCycleLabel(selectedOffer)}</p>
-                  {selectedOffer?.description ? (
-                    <p className="mt-3 text-sm leading-6 text-gray-500">{selectedOffer.description}</p>
+              <div className="min-w-0 text-center md:text-left">
+                <div className="mb-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                  {app.category ? (
+                    <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
+                  ) : null}
+                  <Badge className="bg-white text-gray-700 hover:bg-white">
+                    {getAppTypeLabel(app.type)}
+                  </Badge>
+                  <Badge className="bg-white text-gray-700 hover:bg-white">
+                    {getAppStatusLabel(app.status)}
+                  </Badge>
+                  {selectedOffer?.badge ? (
+                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                      {selectedOffer.badge}
+                    </Badge>
                   ) : null}
                 </div>
 
-                {offers.length > 1 ? (
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {offers.map((offer) => (
-                      <button
-                        key={offer.code}
-                        type="button"
-                        onClick={() => setSelectedOfferCode(offer.code)}
-                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                          selectedOffer?.code === offer.code
-                            ? 'border-sky-200 bg-sky-50 text-sky-700'
-                            : 'border-gray-200 bg-white text-gray-500 hover:text-gray-900'
-                        }`}
-                      >
-                        {offer.title}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+                <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+                  {app.name}
+                </h1>
+                <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
+                  {app.tagline || app.description || '统一展示应用价值、套餐和资源入口。'}
+                </p>
 
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  {(['wechat_pay', 'alipay'] as const).map((provider) => (
-                    <button
-                      key={provider}
-                      type="button"
-                      onClick={() => setProviderPreference(provider)}
-                      className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
-                        providerPreference === provider
-                          ? 'border-sky-200 bg-sky-50 text-sky-700'
-                          : 'border-gray-200 bg-white text-gray-600 hover:text-gray-900'
-                      }`}
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                  {[
+                    `${app.highlights.length} 项亮点`,
+                    `${activeAppOffers.length} 个方案`,
+                    `${resourceCards.length} 个资源入口`,
+                  ].map((item) => (
+                    <span
+                      key={item}
+                      className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600"
                     >
-                      {provider === 'wechat_pay' ? '微信支付' : '支付宝'}
-                    </button>
+                      {item}
+                    </span>
                   ))}
                 </div>
-
-                <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                  {isAuthenticated && user ? `当前已登录：${user.email}` : '登录后即可直接购买并同步授权状态。'}
-                </div>
-
-                <Button
-                  className="mt-5 h-11 w-full rounded-2xl"
-                  onClick={startCheckout}
-                  disabled={!selectedOffer || checkoutMutation.isPending}
-                >
-                  {checkoutMutation.isPending ? (
-                    <>
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      正在跳转支付...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4" />
-                      {isAuthenticated ? '立即购买' : '登录后购买'}
-                    </>
-                  )}
-                </Button>
-
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {websiteLink ? (
-                    <Button variant="outline" className="rounded-2xl" asChild>
-                      <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
-                        官网
-                        <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  ) : null}
-                  {supportLink ? (
-                    <Button variant="outline" className="rounded-2xl" asChild>
-                      <a href={supportLink.url} target="_blank" rel="noopener noreferrer">
-                        支持
-                        <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  ) : docsLink ? (
-                    <Button variant="outline" className="rounded-2xl" asChild>
-                      <a href={docsLink.url} target="_blank" rel="noopener noreferrer">
-                        文档
-                        <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  ) : null}
-                </div>
               </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
+              {[
+                { label: '核心亮点', value: String(app.highlights.length), note: '帮助快速判断适用场景' },
+                { label: '售卖方案', value: String(activeAppOffers.length), note: '支持按方案比较价格' },
+                { label: '帮助入口', value: String(resourceCards.length), note: '文档、支持与下载入口' },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border border-gray-200 bg-white/85 p-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">{item.note}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        <div className="px-6 py-8 sm:px-8">
-          <div className="flex flex-col gap-8 lg:flex-row">
-            <div className="min-w-0 flex-1">
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex gap-8 overflow-x-auto" aria-label="Tabs">
-                  {visibleTabs.map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setActiveTab(tab.key)}
-                      className={`shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors ${
-                        activeTab === tab.key
-                          ? 'border-sky-500 text-sky-600'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </nav>
+          <aside className="w-full xl:justify-self-end">
+            <div className="rounded-[24px] border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">当前套餐</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
+                  {selectedOffer?.title ?? '暂无可购买方案'}
+                </h2>
+                <p className="mt-3 text-3xl font-bold text-gray-900">
+                  {formatOfferPriceLabel(selectedOffer)}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">{formatOfferCycleLabel(selectedOffer)}</p>
+                {selectedOffer?.description ? (
+                  <p className="mt-3 text-sm leading-6 text-gray-500">{selectedOffer.description}</p>
+                ) : null}
               </div>
 
-              <div className="pt-6">
-                {activeTab === 'intro' ? (
-                  hasContent ? (
-                    <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
-                      <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
-                        {app.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <div className="rounded-[24px] border border-gray-200 bg-gray-50 p-6">
-                      <p className="text-sm leading-7 text-gray-600">
-                        {app.description || app.tagline || '该应用暂未提供详细介绍。'}
-                      </p>
-                    </div>
-                  )
+              {offers.length > 1 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {offers.map((offer) => (
+                    <button
+                      key={offer.code}
+                      type="button"
+                      onClick={() => setSelectedOfferCode(offer.code)}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        selectedOffer?.code === offer.code
+                          ? 'border-sky-200 bg-sky-50 text-sky-700'
+                          : 'border-gray-200 bg-white text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      {offer.title}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {(['wechat_pay', 'alipay'] as const).map((provider) => (
+                  <button
+                    key={provider}
+                    type="button"
+                    onClick={() => setProviderPreference(provider)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
+                      providerPreference === provider
+                        ? 'border-sky-200 bg-sky-50 text-sky-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {provider === 'wechat_pay' ? '微信支付' : '支付宝'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                {isAuthenticated && user ? `当前已登录：${user.email}` : '登录后即可直接购买并同步授权状态。'}
+              </div>
+
+              <Button
+                className="mt-4 h-11 w-full rounded-2xl"
+                onClick={startCheckout}
+                disabled={!selectedOffer || checkoutMutation.isPending}
+              >
+                {checkoutMutation.isPending ? (
+                  <>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    正在跳转支付...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    {isAuthenticated ? '立即购买' : '登录后购买'}
+                  </>
+                )}
+              </Button>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {websiteLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
+                      官网
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
                 ) : null}
-
-                {activeTab === 'features' ? (
-                  hasHighlights ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {app.highlights.map((highlight, index) => (
-                        <div key={index} className="rounded-[24px] border border-gray-200 bg-gray-50 p-6">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-                            {highlight.icon || '✦'}
-                          </div>
-                          <h3 className="mt-4 text-lg font-semibold text-gray-900">{highlight.title}</h3>
-                          <p className="mt-2 text-sm leading-6 text-gray-600">{highlight.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState
-                      icon={CheckCircle2}
-                      title="暂无功能特性"
-                      description="当前还没有录入应用亮点。"
-                    />
-                  )
-                ) : null}
-
-                {activeTab === 'screenshots' ? (
-                  hasScreenshots ? (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {app.screenshots.map((screenshot, index) => (
-                        <a
-                          key={index}
-                          href={screenshot.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group overflow-hidden rounded-[24px] border border-gray-200 bg-white transition-colors hover:border-sky-200"
-                        >
-                          <div className="aspect-[16/10] overflow-hidden bg-gray-100">
-                            <img
-                              src={screenshot.url}
-                              alt={screenshot.caption || `截图 ${index + 1}`}
-                              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                            />
-                          </div>
-                          {screenshot.caption ? (
-                            <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
-                              {screenshot.caption}
-                            </div>
-                          ) : null}
-                        </a>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState
-                      icon={LoaderCircle}
-                      title="暂无截图"
-                      description="当前还没有录入应用截图。"
-                    />
-                  )
-                ) : null}
-
-                {activeTab === 'pricing' ? (
-                  offers.length === 0 ? (
-                    <EmptyState
-                      icon={CreditCard}
-                      title="暂无可购买的套餐"
-                      description="该应用目前没有上架中的价格方案，请稍后再来查看。"
-                    />
-                  ) : (
-                    <div className="grid gap-4">
-                      {offers.map((offer) => (
-                        <OfferCard
-                          key={offer.code}
-                          offer={offer}
-                          selected={selectedOffer?.code === offer.code}
-                          features={planFeatureMap.get(offer.planId) ?? []}
-                          onSelect={() => setSelectedOfferCode(offer.code)}
-                        />
-                      ))}
-                    </div>
-                  )
-                ) : null}
-
-                {activeTab === 'support' ? (
-                  <div className="space-y-6">
-                    {hasFaq ? (
-                      <div className="space-y-3">
-                        {app.faq.map((item, index) => {
-                          const open = openFaqIndices.has(index);
-                          return (
-                            <div key={index} className="overflow-hidden rounded-[24px] border border-gray-200 bg-white">
-                              <button
-                                type="button"
-                                onClick={() => toggleFaq(index)}
-                                className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-                              >
-                                <span className="text-base font-semibold text-gray-900">{item.question}</span>
-                                <ChevronDown
-                                  className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
-                                    open ? 'rotate-180' : ''
-                                  }`}
-                                />
-                              </button>
-                              {open ? (
-                                <div className="border-t border-gray-100 px-6 py-5 text-sm leading-7 text-gray-600">
-                                  {item.answer}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-
-                    {resourceCards.length > 0 ? (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {resourceCards.map((resource) => {
-                          const isInternal = resource.url.startsWith('/');
-                          const content = (
-                            <div className="rounded-[24px] border border-gray-200 bg-gray-50 p-5 transition-colors hover:border-sky-200 hover:bg-sky-50/40">
-                              <div className="flex items-center gap-2">
-                                <Badge className="bg-white text-gray-700 hover:bg-white">
-                                  {resource.typeLabel}
-                                </Badge>
-                                <p className="text-sm font-semibold text-gray-900">{resource.label}</p>
-                              </div>
-                              <p className="mt-3 text-sm leading-6 text-gray-500">{resource.note}</p>
-                            </div>
-                          );
-
-                          return isInternal ? (
-                            <Link key={resource.label} to={resource.url} className="block no-underline">
-                              {content}
-                            </Link>
-                          ) : (
-                            <a
-                              key={resource.label}
-                              href={resource.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block no-underline"
-                            >
-                              {content}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-
-                    {!hasFaq && resourceCards.length === 0 ? (
-                      <EmptyState
-                        icon={ArrowUpRight}
-                        title="暂无帮助内容"
-                        description="当前还没有 FAQ 或外部资源入口。"
-                      />
-                    ) : null}
-                  </div>
+                {supportLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={supportLink.url} target="_blank" rel="noopener noreferrer">
+                      支持
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : docsLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={docsLink.url} target="_blank" rel="noopener noreferrer">
+                      文档
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
                 ) : null}
               </div>
             </div>
+          </aside>
+        </div>
+      </section>
 
-            <aside className="w-full shrink-0 lg:w-80">
-              <div className="space-y-5 lg:sticky lg:top-24">
-                <div className="rounded-[24px] bg-gray-50 p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">
-                    应用信息
-                  </h3>
-                  <dl className="mt-4 space-y-3 text-sm">
-                    {[
-                      { label: '类型', value: getAppTypeLabel(app.type) },
-                      { label: '分类', value: app.category || '未设置' },
-                      { label: '状态', value: getAppStatusLabel(app.status) },
-                      { label: '更新时间', value: formatTime(app.updatedAt) },
-                      { label: '资源入口', value: `${resourceCards.length} 个` },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-start justify-between gap-4">
-                        <dt className="text-gray-500">{item.label}</dt>
-                        <dd className="text-right font-medium text-gray-900">{item.value}</dd>
+      <section className="py-2">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr),280px]">
+          <div className="min-w-0">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex gap-8 overflow-x-auto" aria-label="Tabs">
+                {visibleTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors ${
+                      activeTab === tab.key
+                        ? 'border-sky-500 text-sky-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <div className="pt-6">
+              {activeTab === 'intro' ? (
+                hasContent ? (
+                  <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
+                    <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                      {app.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+                    <p className="text-sm leading-7 text-gray-600">
+                      {app.description || app.tagline || '该应用暂未提供详细介绍。'}
+                    </p>
+                  </div>
+                )
+              ) : null}
+
+              {activeTab === 'features' ? (
+                hasHighlights ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {app.highlights.map((highlight, index) => (
+                      <div key={index} className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                          {highlight.icon || '✦'}
+                        </div>
+                        <h3 className="mt-4 text-lg font-semibold text-gray-900">{highlight.title}</h3>
+                        <p className="mt-2 text-sm leading-6 text-gray-600">{highlight.description}</p>
                       </div>
                     ))}
-                  </dl>
-                </div>
-
-                {selectedOffer ? (
-                  <div className="rounded-[24px] bg-sky-50 p-5">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">
-                      当前方案
-                    </h3>
-                    <p className="mt-3 text-lg font-semibold text-gray-900">{selectedOffer.title}</p>
-                    <p className="mt-1 text-sm text-gray-600">{formatOfferCycleLabel(selectedOffer)}</p>
-                    <p className="mt-4 text-2xl font-bold text-gray-900">
-                      {formatOfferPriceLabel(selectedOffer)}
-                    </p>
-                    {selectedFeatures.length > 0 ? (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {selectedFeatures.slice(0, 8).map((feature) => (
-                          <span
-                            key={feature}
-                            className="inline-flex items-center gap-1 rounded-full border border-sky-100 bg-white px-3 py-1 text-xs font-medium text-gray-700"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                            {feature}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
                   </div>
-                ) : null}
+                ) : (
+                  <EmptyState
+                    icon={CheckCircle2}
+                    title="暂无功能特性"
+                    description="当前还没有录入应用亮点。"
+                  />
+                )
+              ) : null}
 
-                {resourceCards.length > 0 ? (
-                  <div className="rounded-[24px] bg-gray-50 p-5">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">
-                      资源入口
-                    </h3>
-                    <div className="mt-4 space-y-3">
+              {activeTab === 'screenshots' ? (
+                hasScreenshots ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {app.screenshots.map((screenshot, index) => (
+                      <a
+                        key={index}
+                        href={screenshot.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group overflow-hidden rounded-2xl border border-gray-200 bg-white transition-colors hover:border-sky-200"
+                      >
+                        <div className="aspect-[16/10] overflow-hidden bg-gray-100">
+                          <img
+                            src={screenshot.url}
+                            alt={screenshot.caption || `截图 ${index + 1}`}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                          />
+                        </div>
+                        {screenshot.caption ? (
+                          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
+                            {screenshot.caption}
+                          </div>
+                        ) : null}
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={LoaderCircle}
+                    title="暂无截图"
+                    description="当前还没有录入应用截图。"
+                  />
+                )
+              ) : null}
+
+              {activeTab === 'pricing' ? (
+                offers.length === 0 ? (
+                  <EmptyState
+                    icon={CreditCard}
+                    title="暂无可购买的套餐"
+                    description="该应用目前没有上架中的价格方案，请稍后再来查看。"
+                  />
+                ) : (
+                  <div className="grid gap-4">
+                    {offers.map((offer) => (
+                      <OfferCard
+                        key={offer.code}
+                        offer={offer}
+                        selected={selectedOffer?.code === offer.code}
+                        features={planFeatureMap.get(offer.planId) ?? []}
+                        onSelect={() => setSelectedOfferCode(offer.code)}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : null}
+
+              {activeTab === 'support' ? (
+                <div className="space-y-6">
+                  {hasFaq ? (
+                    <div className="space-y-3">
+                      {app.faq.map((item, index) => {
+                        const open = openFaqIndices.has(index);
+
+                        return (
+                          <div key={index} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                            <button
+                              type="button"
+                              onClick={() => toggleFaq(index)}
+                              className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                            >
+                              <span className="text-base font-semibold text-gray-900">{item.question}</span>
+                              <ChevronDown
+                                className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+                                  open ? 'rotate-180' : ''
+                                }`}
+                              />
+                            </button>
+                            {open ? (
+                              <div className="border-t border-gray-100 px-6 py-5 text-sm leading-7 text-gray-600">
+                                {item.answer}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  {resourceCards.length > 0 ? (
+                    <div className="grid gap-4 md:grid-cols-2">
                       {resourceCards.map((resource) => {
                         const isInternal = resource.url.startsWith('/');
-                        const label = (
-                          <div className="flex items-start justify-between gap-3 rounded-2xl bg-white px-4 py-3">
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{resource.label}</p>
-                              <p className="mt-1 text-xs leading-5 text-gray-500">{resource.note}</p>
+                        const card = (
+                          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition-colors hover:border-sky-200 hover:bg-sky-50/40">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-white text-gray-700 hover:bg-white">
+                                {resource.typeLabel}
+                              </Badge>
+                              <p className="text-sm font-semibold text-gray-900">{resource.label}</p>
                             </div>
-                            <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                            <p className="mt-3 text-sm leading-6 text-gray-500">{resource.note}</p>
                           </div>
                         );
 
                         return isInternal ? (
                           <Link key={resource.label} to={resource.url} className="block no-underline">
-                            {label}
+                            {card}
                           </Link>
                         ) : (
                           <a
@@ -654,16 +582,106 @@ export function AppCatalogPage() {
                             rel="noopener noreferrer"
                             className="block no-underline"
                           >
-                            {label}
+                            {card}
                           </a>
                         );
                       })}
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            </aside>
+                  ) : null}
+
+                  {!hasFaq && resourceCards.length === 0 ? (
+                    <EmptyState
+                      icon={ArrowUpRight}
+                      title="暂无帮助内容"
+                      description="当前还没有 FAQ 或外部资源入口。"
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
+
+          <aside className="w-full shrink-0">
+            <div className="space-y-5 lg:sticky lg:top-24">
+              <div className="rounded-2xl bg-gray-50 p-5">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">应用信息</h3>
+                <dl className="mt-4 space-y-3 text-sm">
+                  {[
+                    { label: '类型', value: getAppTypeLabel(app.type) },
+                    { label: '分类', value: app.category || '未设置' },
+                    { label: '状态', value: getAppStatusLabel(app.status) },
+                    { label: '更新时间', value: formatTime(app.updatedAt) },
+                    { label: '资源入口', value: `${resourceCards.length} 个` },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-start justify-between gap-4">
+                      <dt className="text-gray-500">{item.label}</dt>
+                      <dd className="text-right font-medium text-gray-900">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              {selectedOffer ? (
+                <div className="rounded-2xl bg-sky-50 p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">当前方案</h3>
+                  <p className="mt-3 text-lg font-semibold text-gray-900">{selectedOffer.title}</p>
+                  <p className="mt-1 text-sm text-gray-600">{formatOfferCycleLabel(selectedOffer)}</p>
+                  <p className="mt-4 text-2xl font-bold text-gray-900">
+                    {formatOfferPriceLabel(selectedOffer)}
+                  </p>
+                  {selectedFeatures.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {selectedFeatures.slice(0, 8).map((feature) => (
+                        <span
+                          key={feature}
+                          className="inline-flex items-center gap-1 rounded-full border border-sky-100 bg-white px-3 py-1 text-xs font-medium text-gray-700"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {resourceCards.length > 0 ? (
+                <div className="rounded-2xl bg-gray-50 p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">资源入口</h3>
+                  <div className="mt-4 space-y-3">
+                    {resourceCards.map((resource) => {
+                      const isInternal = resource.url.startsWith('/');
+                      const row = (
+                        <div className="flex items-start justify-between gap-3 rounded-2xl bg-white px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{resource.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-gray-500">{resource.note}</p>
+                          </div>
+                          <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                        </div>
+                      );
+
+                      return isInternal ? (
+                        <Link key={resource.label} to={resource.url} className="block no-underline">
+                          {row}
+                        </Link>
+                      ) : (
+                        <a
+                          key={resource.label}
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block no-underline"
+                        >
+                          {row}
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </aside>
         </div>
       </section>
     </div>
