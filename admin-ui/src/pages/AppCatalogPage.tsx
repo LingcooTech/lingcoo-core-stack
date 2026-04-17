@@ -163,153 +163,153 @@ export function AppCatalogPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="space-y-6">
-      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
-        <Link to="/">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          返回应用中心
-        </Link>
-      </Button>
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+          <Link to="/">
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            返回应用中心
+          </Link>
+        </Button>
 
-      <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 border-b border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white px-4 sm:px-6 lg:px-8">
-        {app.coverUrl ? (
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.06]"
-            style={{ backgroundImage: `url(${app.coverUrl})` }}
-          />
-        ) : null}
+        <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 border-b border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white px-4 sm:px-6 lg:px-8">
+          {app.coverUrl ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.06]"
+              style={{ backgroundImage: `url(${app.coverUrl})` }}
+            />
+          ) : null}
 
-        <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
-          <div className="space-y-6">
-            <div className="grid gap-5 md:grid-cols-[128px,minmax(0,1fr)]">
-              <div className="flex justify-center md:justify-start">
-                {app.iconUrl ? (
-                  <img
-                    src={app.iconUrl}
-                    alt={app.name}
-                    className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain shadow-lg"
-                  />
-                ) : (
-                  <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
-                    {getInitials(app.name)}
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 text-center md:text-left">
-                <div className="mb-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                  {app.category ? (
-                    <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
-                  ) : null}
-                  <Badge className="bg-white text-gray-700 hover:bg-white">
-                    {getAppTypeLabel(app.type)}
-                  </Badge>
-                  <Badge className="bg-white text-gray-700 hover:bg-white">
-                    {getAppStatusLabel(app.status)}
-                  </Badge>
-                  {preferredOffer?.badge ? (
-                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
-                      {preferredOffer.badge}
-                    </Badge>
-                  ) : null}
+          <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
+            <div className="space-y-6">
+              <div className="grid gap-5 md:grid-cols-[128px,minmax(0,1fr)]">
+                <div className="flex justify-center md:justify-start">
+                  {app.iconUrl ? (
+                    <img
+                      src={app.iconUrl}
+                      alt={app.name}
+                      className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain shadow-lg"
+                    />
+                  ) : (
+                    <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
+                      {getInitials(app.name)}
+                    </div>
+                  )}
                 </div>
 
-                <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
-                  {app.name}
-                </h1>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
-                  {app.tagline || app.description || '该应用暂未提供简介。'}
-                </p>
+                <div className="min-w-0 text-center md:text-left">
+                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                    {app.category ? (
+                      <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
+                    ) : null}
+                    <Badge className="bg-white text-gray-700 hover:bg-white">
+                      {getAppTypeLabel(app.type)}
+                    </Badge>
+                    <Badge className="bg-white text-gray-700 hover:bg-white">
+                      {getAppStatusLabel(app.status)}
+                    </Badge>
+                    {preferredOffer?.badge ? (
+                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                        {preferredOffer.badge}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+                    {app.name}
+                  </h1>
+                  <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
+                    {app.tagline || app.description || '该应用暂未提供简介。'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <aside className="w-full xl:justify-self-end">
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-center">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">价格</p>
-                <p className="mt-3 text-4xl font-bold text-gray-900">{priceRangeLabel}</p>
-                <p className="mt-2 text-sm text-gray-500">
-                  {offers.length > 1 ? `${offers.length} 个套餐，购买时选择` : preferredOffer?.title ?? '暂无可购买方案'}
-                </p>
-              </div>
+            <aside className="w-full xl:justify-self-end">
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="text-center">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">价格</p>
+                  <p className="mt-3 text-4xl font-bold text-gray-900">{priceRangeLabel}</p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {offers.length > 1 ? `${offers.length} 个套餐，购买时选择` : preferredOffer?.title ?? '暂无可购买方案'}
+                  </p>
+                </div>
 
-              <Button className="mt-5 h-11 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
-                立即购买
-              </Button>
-
-              {websiteLink ? (
-                <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
-                  <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
-                    演示地址
-                    <ArrowUpRight className="h-4 w-4" />
-                  </a>
+                <Button className="mt-5 h-11 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
+                  立即购买
                 </Button>
-              ) : null}
-            </div>
-          </aside>
-        </div>
-      </section>
 
-      <section className="py-2">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 min-w-0 lg:max-w-[calc(100%-320px-2rem)]">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex gap-8 overflow-x-auto" aria-label="Tabs">
-                {visibleTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors ${
-                      activeTab === tab.key
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
+                {websiteLink ? (
+                  <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
+                    <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
+                      演示地址
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </aside>
+          </div>
+        </section>
 
-            <div className="pt-6">
-              {activeTab === 'intro' ? (
-                hasContent ? (
-                  <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
-                    <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
-                      {app.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-6">
-                    <p className="text-sm leading-7 text-gray-600">
-                      {app.description || app.tagline || '该应用暂未提供详细介绍。'}
-                    </p>
-                  </div>
-                )
-              ) : null}
+        <section className="py-2">
+          <div className="flex flex-col gap-8 lg:flex-row">
+            <div className="min-w-0 flex-1 lg:max-w-[calc(100%-320px-2rem)]">
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex gap-8 overflow-x-auto" aria-label="Tabs">
+                  {visibleTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors ${
+                        activeTab === tab.key
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
 
-              {activeTab === 'features' ? (
-                hasHighlights ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {app.highlights.map((highlight, index) => (
-                      <div key={index} className="rounded-xl border border-gray-200 bg-gray-50 p-6">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                          {highlight.icon || '✦'}
+              <div className="pt-6">
+                {activeTab === 'intro' ? (
+                  hasContent ? (
+                    <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                        {app.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-6">
+                      <p className="text-sm leading-7 text-gray-600">
+                        {app.description || app.tagline || '该应用暂未提供详细介绍。'}
+                      </p>
+                    </div>
+                  )
+                ) : null}
+
+                {activeTab === 'features' ? (
+                  hasHighlights ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {app.highlights.map((highlight, index) => (
+                        <div key={index} className="rounded-xl border border-gray-200 bg-gray-50 p-6">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                            {highlight.icon || '✦'}
+                          </div>
+                          <h3 className="mt-4 text-lg font-semibold text-gray-900">{highlight.title}</h3>
+                          <p className="mt-2 text-sm leading-6 text-gray-600">{highlight.description}</p>
                         </div>
-                        <h3 className="mt-4 text-lg font-semibold text-gray-900">{highlight.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-gray-600">{highlight.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={CheckCircle2}
-                    title="暂无功能特性"
-                    description="当前还没有录入应用亮点。"
-                  />
-                )
-              ) : null}
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={CheckCircle2}
+                      title="暂无功能特性"
+                      description="当前还没有录入应用亮点。"
+                    />
+                  )
+                ) : null}
 
               {activeTab === 'screenshots' ? (
                 hasScreenshots ? (
@@ -442,31 +442,32 @@ export function AppCatalogPage() {
                   ) : null}
                 </div>
               ) : null}
-            </div>
-          </div>
-
-          <aside className="w-full shrink-0 lg:w-80">
-            <div className="space-y-5 lg:sticky lg:top-24">
-              <div className="rounded-xl bg-gray-50 p-5">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">应用信息</h3>
-                <dl className="mt-4 space-y-3 text-sm">
-                  {[
-                    { label: '类型', value: getAppTypeLabel(app.type) },
-                    { label: '分类', value: app.category || '未设置' },
-                    { label: '状态', value: getAppStatusLabel(app.status) },
-                    { label: '更新时间', value: formatTime(app.updatedAt) },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-start justify-between gap-4">
-                      <dt className="text-gray-500">{item.label}</dt>
-                      <dd className="text-right font-medium text-gray-900">{item.value}</dd>
-                    </div>
-                  ))}
-                </dl>
               </div>
             </div>
-          </aside>
-        </div>
-      </section>
+
+            <aside className="w-full shrink-0 lg:w-80">
+              <div className="space-y-5 lg:sticky lg:top-24">
+                <div className="rounded-xl bg-gray-50 p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">应用信息</h3>
+                  <dl className="mt-4 space-y-3 text-sm">
+                    {[
+                      { label: '类型', value: getAppTypeLabel(app.type) },
+                      { label: '分类', value: app.category || '未设置' },
+                      { label: '状态', value: getAppStatusLabel(app.status) },
+                      { label: '更新时间', value: formatTime(app.updatedAt) },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-start justify-between gap-4">
+                        <dt className="text-gray-500">{item.label}</dt>
+                        <dd className="text-right font-medium text-gray-900">{item.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
 
       <AppPurchaseDialog
         appCode={app.code}
