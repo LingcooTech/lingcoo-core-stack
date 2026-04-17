@@ -9,6 +9,7 @@ import {
   RefreshCcw,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import type { AppCatalog } from '@/api/types';
 import {
@@ -20,6 +21,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/auth';
 import {
   formatOfferCycleLabel,
   formatOfferPriceLabel,
@@ -51,6 +53,7 @@ export function AppPurchaseDialog({
   websiteUrl,
   onPaymentSuccess,
 }: AppPurchaseDialogProps) {
+  const { isEmailVerified } = useAuth();
   const [providerPreference, setProviderPreference] = useState<'wechat_pay' | 'alipay'>('wechat_pay');
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [externalPaymentOpened, setExternalPaymentOpened] = useState(false);
@@ -100,6 +103,14 @@ export function AppPurchaseDialog({
     onSuccess: (result) => {
       setSessionCode(result.sessionCode);
       setExternalPaymentOpened(false);
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : '创建订单失败，请稍后重试';
+      if (message === 'Please verify your email address') {
+        toast.error('请先完成邮箱验证，再创建订单');
+        return;
+      }
+      toast.error(message);
     },
   });
 
@@ -322,7 +333,14 @@ export function AppPurchaseDialog({
                     <Button
                       className="rounded-2xl"
                       disabled={!selectedOffer || checkoutMutation.isPending}
-                      onClick={() => checkoutMutation.mutate()}
+                      onClick={() => {
+                        if (!isEmailVerified) {
+                          toast.error('请先完成邮箱验证，再创建订单');
+                          window.location.href = `/verify-email?next=${encodeURIComponent(window.location.pathname)}`;
+                          return;
+                        }
+                        checkoutMutation.mutate();
+                      }}
                     >
                       {checkoutMutation.isPending ? (
                         <>
@@ -332,7 +350,7 @@ export function AppPurchaseDialog({
                       ) : (
                         <>
                           <CreditCard className="h-4 w-4" />
-                          创建订单
+                          {isEmailVerified ? '创建订单' : '先验证邮箱'}
                         </>
                       )}
                     </Button>
