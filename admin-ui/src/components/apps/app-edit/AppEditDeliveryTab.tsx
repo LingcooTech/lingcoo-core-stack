@@ -83,7 +83,7 @@ function renderPresetField(input: {
     return (
       <label
         key={field.key}
-        className="flex items-center gap-3 rounded-xl border border-border p-3"
+        className="flex items-center gap-3 rounded-md border border-border p-3"
       >
         <Checkbox
           checked={getBooleanFieldValue(deliverySettings, field)}
@@ -189,11 +189,11 @@ export function AppEditDeliveryTab({
             ))}
           </div>
 
-          <div className="rounded-2xl border bg-muted/30 p-4">
+          <div className="rounded-lg border bg-muted/30 p-4">
             <div className="flex items-start gap-3">
               <Shield className="mt-0.5 h-4 w-4 text-muted-foreground" />
               <div className="space-y-1">
-                <p className="text-sm font-black">
+                <p className="text-sm font-semibold">
                   {isCreateMode ? '首次保存会先创建应用，再写入交付配置。' : `当前应用: ${appCode}`}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -319,7 +319,7 @@ export function AppEditDeliveryTab({
                   />
                 </div>
               </div>
-              <div className="rounded-xl border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
                 {isCreateMode
                   ? '请先保存应用，再同步 delivery manifest。'
                   : hasSyncedManifest
@@ -400,7 +400,7 @@ export function AppEditDeliveryTab({
                   {manifest.domainSlots.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-3">
                       {manifest.domainSlots.map((slot) => (
-                        <div key={slot.key} className="rounded-xl border bg-muted/30 p-3">
+                        <div key={slot.key} className="rounded-md border bg-muted/30 p-3">
                           <p className="text-sm font-bold">{slot.label}</p>
                           <p className="mt-1 text-xs text-muted-foreground">{slot.envKey}</p>
                           {slot.description ? (
@@ -413,7 +413,7 @@ export function AppEditDeliveryTab({
 
                   {userInputGroups.length > 0 ? (
                     userInputGroups.map((group) => (
-                      <div key={group.key} className="space-y-2 rounded-xl border bg-muted/20 p-4">
+                      <div key={group.key} className="space-y-2 rounded-md border bg-muted/20 p-4">
                         <div>
                           <p className="text-sm font-bold">{group.label}</p>
                           {group.description ? (

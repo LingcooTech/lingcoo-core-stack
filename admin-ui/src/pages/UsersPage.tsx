@@ -206,7 +206,7 @@ export function UsersPage() {
           ]}
         />
 
-        <div className="rounded-2xl border border-border bg-white overflow-hidden">
+        <div className="rounded-lg border border-border bg-white overflow-hidden">
           <DataTable
             columns={columns}
             data={users}

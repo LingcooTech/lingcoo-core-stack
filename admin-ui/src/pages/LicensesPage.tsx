@@ -219,8 +219,8 @@ export function LicensesPage() {
       <SectionHeader sectionKey="licenses" />
       <div className="p-6 space-y-6">
         {/* Grant Form */}
-        <div className="max-w-lg rounded-2xl border border-border bg-white p-5">
-          <h3 className="text-sm font-black mb-4">人工发放授权</h3>
+        <div className="max-w-lg rounded-lg border border-border bg-white p-5">
+          <h3 className="text-sm font-semibold mb-4">人工发放授权</h3>
           <Form {...grantForm}>
             <form onSubmit={grantForm.handleSubmit((v) => grantMutation.mutate(v))} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -285,7 +285,7 @@ export function LicensesPage() {
         {/* Entitlements Table */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-black text-muted-foreground uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               授权明细 ({totalEntitlements})
             </h3>
           </div>
@@ -296,7 +296,7 @@ export function LicensesPage() {
               searchPlaceholder="搜索用户、应用、套餐、订单号..."
             />
           </div>
-          <div className="rounded-2xl border border-border bg-white overflow-hidden">
+          <div className="rounded-lg border border-border bg-white overflow-hidden">
             <DataTable
               columns={columns}
               data={entitlements}

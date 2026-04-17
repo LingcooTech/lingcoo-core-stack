@@ -57,7 +57,7 @@ export function AppEditHeader({
             <Separator orientation="vertical" className="hidden h-8 lg:block" />
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-lg font-black">{title}</p>
+                <p className="text-lg font-semibold">{title}</p>
                 {isCreateMode ? (
                   <Badge variant="outline">New App</Badge>
                 ) : null}
@@ -85,9 +85,9 @@ export function AppEditHeader({
         </div>
 
         <div className="overflow-x-auto pb-1">
-          <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-2xl bg-muted/70 p-1">
+          <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
             {visibleTabs.map((tab) => (
-              <TabsTrigger key={tab.key} value={tab.key} className="min-w-[108px] rounded-xl">
+              <TabsTrigger key={tab.key} value={tab.key} className="min-w-[108px] rounded-md">
                 {tab.label}
               </TabsTrigger>
             ))}

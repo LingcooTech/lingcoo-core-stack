@@ -25,10 +25,10 @@ export function EntitlementProductCard({
   items: HydratedEntitlement[];
 }) {
   return (
-    <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+    <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-blue-50 p-3 text-primary">
+          <div className="rounded-lg bg-blue-50 p-3 text-primary">
             <Boxes className="h-5 w-5" />
           </div>
           <div>
@@ -47,17 +47,17 @@ export function EntitlementProductCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">应用数量</p>
-            <p className="mt-2 text-2xl font-black tracking-tight text-slate-950">{relatedApps.length || 1}</p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">应用数量</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{relatedApps.length || 1}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">能力项</p>
-            <p className="mt-2 text-2xl font-black tracking-tight text-slate-950">{featureNames.length}</p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">能力项</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{featureNames.length}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">授权记录</p>
-            <p className="mt-2 text-2xl font-black tracking-tight text-slate-950">{items.length}</p>
+          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">授权记录</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{items.length}</p>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export function EntitlementProductCard({
 
         <div className="space-y-2 text-sm text-muted-foreground">
           {items.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+            <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium text-slate-800">{item.plan?.name ?? item.plan?.code ?? '未命名能力'}</span>
                 <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>{item.status}</Badge>

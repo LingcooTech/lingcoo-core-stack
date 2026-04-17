@@ -42,11 +42,11 @@ export function AppEditOfferCard({
     null;
 
   return (
-    <div className="space-y-3 rounded-2xl border p-4">
+    <div className="space-y-3 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-black">{offer.title || `Offer ${index + 1}`}</p>
+            <p className="text-sm font-semibold">{offer.title || `Offer ${index + 1}`}</p>
             {offer.isDefault ? (
               <Badge className="bg-amber-500 text-white hover:bg-amber-500">默认</Badge>
             ) : null}

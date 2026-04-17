@@ -67,7 +67,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   onSelect={() => handleSelect(item)}
                   className="flex items-center gap-3"
                 >
-                  <span className="flex-shrink-0 w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center text-[9px] font-black text-muted-foreground">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground">
                     {item.icon}
                   </span>
                   <span className="flex-1 min-w-0">

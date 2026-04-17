@@ -150,7 +150,7 @@ export function OrdersPage() {
   return (
     <div>
       <div className="p-6">
-        <h1 className="text-2xl font-black tracking-tight">订单管理</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">订单管理</h1>
         <p className="text-sm text-muted-foreground mt-1">查看订单详情、支付记录与补单操作</p>
       </div>
       <div className="px-6 pb-6 space-y-4">
@@ -185,7 +185,7 @@ export function OrdersPage() {
           ]}
         />
 
-        <div className="rounded-2xl border border-border bg-white overflow-hidden">
+        <div className="rounded-lg border border-border bg-white overflow-hidden">
           <DataTable
             columns={orderColumns}
             data={orders}
@@ -206,9 +206,9 @@ export function OrdersPage() {
 
         {/* Order Detail Panel */}
         {selectedOrderNo && (
-          <div className="rounded-2xl border border-border bg-white p-5 space-y-5">
+          <div className="rounded-lg border border-border bg-white p-5 space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black">订单详情: {selectedOrderNo}</h3>
+              <h3 className="text-sm font-semibold">订单详情: {selectedOrderNo}</h3>
               <Button size="sm" variant="outline" onClick={() => reconcileMutation.mutate(selectedOrderNo)} disabled={reconcileMutation.isPending}>
                 {reconcileMutation.isPending ? '同步中...' : '同步订单'}
               </Button>
@@ -246,8 +246,8 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 
       {/* Checkout Session */}
       {item.checkoutSession && (
-        <div className="p-3 rounded-xl bg-muted/30 border border-border">
-          <p className="text-xs font-black mb-2">Checkout Session</p>
+        <div className="p-3 rounded-md bg-muted/30 border border-border">
+          <p className="text-xs font-semibold mb-2">Checkout Session</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <InfoBlock label="Code" value={item.checkoutSession.sessionCode} mono />
             <InfoBlock label="状态" value={item.checkoutSession.status} />
@@ -261,10 +261,10 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       {/* Payment Attempts */}
       {paymentAttempts.length > 0 && (
         <div>
-          <p className="text-xs font-black mb-2">支付尝试 ({paymentAttempts.length})</p>
+          <p className="text-xs font-semibold mb-2">支付尝试 ({paymentAttempts.length})</p>
           <div className="space-y-2">
             {paymentAttempts.map((attempt) => (
-              <div key={attempt.id} className="p-3 rounded-xl bg-muted/30 border border-border">
+              <div key={attempt.id} className="p-3 rounded-md bg-muted/30 border border-border">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-xs font-mono font-bold">{attempt.attemptNo}</span>
                   <StatusPill tone={statusToTone(attempt.status)} label={attempt.status} />
@@ -286,7 +286,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       {/* Entitlements */}
       {entitlements.length > 0 && (
         <div>
-          <p className="text-xs font-black mb-2">关联权益 ({entitlements.length})</p>
+          <p className="text-xs font-semibold mb-2">关联权益 ({entitlements.length})</p>
           <div className="flex flex-wrap gap-2">
             {entitlements.map((e) => (
               <div key={e.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/30 border border-border text-xs">
@@ -301,7 +301,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       {/* Events */}
       {events.length > 0 && (
         <div>
-          <p className="text-xs font-black mb-2">关联事件 ({events.length})</p>
+          <p className="text-xs font-semibold mb-2">关联事件 ({events.length})</p>
           <div className="space-y-1">
             {events.map((ev, idx) => (
               <div key={idx} className="flex items-center gap-3 text-xs py-1 border-b border-border last:border-0">
@@ -320,7 +320,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 function InfoBlock({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`text-xs mt-0.5 ${mono ? 'font-mono' : 'font-medium'} truncate`}>{value}</p>
     </div>
   );

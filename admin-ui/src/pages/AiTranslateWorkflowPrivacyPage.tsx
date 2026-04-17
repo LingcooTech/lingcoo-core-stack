@@ -123,10 +123,10 @@ export function AiTranslateWorkflowPrivacyPage() {
           </Link>
         </Button>
 
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/95 p-8 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-[0.28em] text-primary">Privacy Policy</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">AI Translate Workflow 隐私政策</h1>
-          <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+        <section className="rounded-lg border border-gray-200/80 bg-white/95 p-8 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">Privacy Policy</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">AI Translate Workflow 隐私政策</h1>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600">
             这份页面只说明当前扩展的真实数据流。核心原则很直接：翻译与校对正文直接发给 OpenRouter，
             账号和授权走 FD Stack，导出内容直接发给你自己配置的目标服务。
           </p>
@@ -148,9 +148,9 @@ export function AiTranslateWorkflowPrivacyPage() {
         {highlightCards.map((item) => {
           const Icon = item.icon;
           return (
-            <Card key={item.title} className="border-slate-200/80 bg-white/95">
+            <Card key={item.title} className="border-gray-200/80 bg-white/95">
               <CardHeader className="space-y-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-800">
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-slate-800">
                   <Icon className="h-5 w-5" />
                 </span>
                 <CardTitle>{item.title}</CardTitle>
@@ -164,11 +164,11 @@ export function AiTranslateWorkflowPrivacyPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
         <div className="space-y-6">
           {sections.map((section) => (
-            <Card key={section.title} className="border-slate-200/80 bg-white/95">
+            <Card key={section.title} className="border-gray-200/80 bg-white/95">
               <CardHeader>
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm leading-7 text-slate-700">
+              <CardContent className="space-y-3 text-sm leading-7 text-gray-700">
                 {section.body.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}
@@ -178,12 +178,12 @@ export function AiTranslateWorkflowPrivacyPage() {
         </div>
 
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
-          <Card className="border-slate-200/80 bg-white/95">
+          <Card className="border-gray-200/80 bg-white/95">
             <CardHeader>
               <CardTitle>快速摘要</CardTitle>
               <CardDescription>可以直接复用到商店后台和对外说明。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm leading-6 text-slate-700">
+            <CardContent className="space-y-3 text-sm leading-6 text-gray-700">
               <p>OpenRouter key 不上传到我们的服务器。</p>
               <p>翻译和校对正文直接发到 OpenRouter。</p>
               <p>WordPress / Notion 凭据仅保存到当前浏览器本地。</p>
@@ -191,7 +191,7 @@ export function AiTranslateWorkflowPrivacyPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200/80 bg-white/95">
+          <Card className="border-gray-200/80 bg-white/95">
             <CardHeader>
               <CardTitle>相关页面</CardTitle>
             </CardHeader>

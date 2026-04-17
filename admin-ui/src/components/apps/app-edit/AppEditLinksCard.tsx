@@ -46,7 +46,7 @@ export function AppEditLinksCard({ links, onChange }: AppEditLinksCardProps) {
           <p className="text-xs text-muted-foreground">暂无链接，点击右上角添加。</p>
         ) : null}
         {links.map((item, index) => (
-          <div key={index} className="flex items-start gap-3 rounded-xl border p-3">
+          <div key={index} className="flex items-start gap-3 rounded-md border p-3">
             <div className="grid flex-1 gap-2 md:grid-cols-3">
               <Input
                 value={item.label}

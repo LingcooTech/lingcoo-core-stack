@@ -28,7 +28,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
           <Button
             variant="outline"
             size="icon"
-            className="flex-shrink-0 h-9 w-9 rounded-xl"
+            className="flex-shrink-0 h-9 w-9 rounded-md"
             onClick={onToggleSidebar}
           >
             <Menu className="w-4 h-4" />
@@ -41,7 +41,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
           >
             <Search className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="flex-1">搜索...</span>
-            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider">
               <kbd className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded border border-border bg-white text-[10px] font-mono">/</kbd>
             </span>
           </button>
@@ -56,7 +56,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
               target={action.external ? '_blank' : undefined}
               rel={action.external ? 'noreferrer' : undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border text-xs font-bold no-underline transition-colors',
+                'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-xs font-bold no-underline transition-colors',
                 action.tone === 'primary'
                   ? 'bg-gradient-to-br from-primary to-blue-600 border-transparent text-white'
                   : 'bg-white border-border text-foreground hover:bg-muted'
@@ -74,9 +74,9 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
           <a
             href="/"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-white text-xs font-bold text-foreground no-underline hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-white text-xs font-bold text-foreground no-underline hover:bg-muted transition-colors"
           >
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-[9px] font-black">ST</span>
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-[9px] font-semibold">ST</span>
             <span>状态</span>
           </a>
         </div>

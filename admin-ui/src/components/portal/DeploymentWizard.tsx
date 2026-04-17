@@ -317,7 +317,7 @@ export function DeploymentWizard({
   const hasAdvancedSection = advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
 
   return (
-    <Card className="border-slate-200/80 bg-white/95">
+    <Card className="border-gray-200/80 bg-white/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
         <CardDescription>通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。</CardDescription>
@@ -337,7 +337,7 @@ export function DeploymentWizard({
                     !isActive && !isDone && 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-black">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold">
                     {isDone ? <Check className="h-3 w-3" /> : stepNum}
                   </span>
                   {sLabel}
@@ -361,7 +361,7 @@ export function DeploymentWizard({
                     type="button"
                     onClick={() => handleSelectApp(app.appCode)}
                     className={cn(
-                      'flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:shadow-sm',
+                      'flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm',
                       isSelected
                         ? 'border-primary bg-primary/5 shadow-sm'
                         : 'border-border bg-white hover:border-slate-300',
@@ -369,8 +369,8 @@ export function DeploymentWizard({
                   >
                     <div
                       className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-slate-100 text-slate-600',
+                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-gray-100 text-gray-600',
                       )}
                     >
                       {getInitials(app.appName)}
@@ -407,7 +407,7 @@ export function DeploymentWizard({
         {step === 2 && (
           <>
             {!manifest ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm font-bold text-amber-900">当前应用还没有同步交付 Manifest</p>
                 <p className="mt-1 text-sm text-amber-800">
                   请先在后台应用编辑页同步 `fd-delivery.manifest.json`，然后再创建部署记录。
@@ -479,7 +479,7 @@ export function DeploymentWizard({
             ) : null}
 
             {visibleUserInputGroups.map((group) => (
-              <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+              <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                 <div>
                   <p className="text-sm font-bold">{group.label}</p>
                   {group.description ? (
@@ -492,7 +492,7 @@ export function DeploymentWizard({
                       return (
                         <label
                           key={field.key}
-                          className="flex items-center gap-3 rounded-xl border border-border p-3"
+                          className="flex items-center gap-3 rounded-md border border-border p-3"
                         >
                           <Checkbox
                             checked={getBooleanFieldValue(deploymentDraft, field)}
@@ -554,7 +554,7 @@ export function DeploymentWizard({
               </div>
             ))}
 
-            <div className="rounded-2xl border border-border">
+            <div className="rounded-lg border border-border">
               <button
                 type="button"
                 className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -587,7 +587,7 @@ export function DeploymentWizard({
                   </div>
 
                   {advancedUserInputGroups.map((group) => (
-                    <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+                    <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                       <div>
                         <p className="text-sm font-bold">{group.label}</p>
                         {group.description ? (
@@ -600,7 +600,7 @@ export function DeploymentWizard({
                             return (
                               <label
                                 key={field.key}
-                                className="flex items-center gap-3 rounded-xl border border-border p-3"
+                                className="flex items-center gap-3 rounded-md border border-border p-3"
                               >
                                 <Checkbox
                                   checked={getBooleanFieldValue(deploymentDraft, field)}
@@ -687,7 +687,7 @@ export function DeploymentWizard({
 
         {step === 3 && (
           <>
-            <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
               <p className="text-sm font-bold text-green-800">部署记录已创建成功</p>
               <p className="mt-1 text-sm text-green-700">
                 部署名称：<span className="font-bold">{label}</span>
@@ -697,11 +697,11 @@ export function DeploymentWizard({
             {tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Remote Install Command
                   </p>
                   <div className="relative">
-                    <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 pr-10 text-xs text-slate-100">
+                    <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 pr-10 text-xs text-slate-100">
                       {tokenResult.remoteInstallCommand ?? '当前未生成远程安装命令'}
                     </pre>
                     {tokenResult.remoteInstallCommand ? (
@@ -717,14 +717,14 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                       Token 尾号
                     </p>
                     <p className="mt-1 font-mono text-sm text-slate-900">{tokenResult.tokenHint}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                       过期时间
                     </p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
@@ -734,34 +734,34 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Exchange URL
                   </p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.exchangeUrl}
                   </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     One-time Token
                   </p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.token}
                   </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Exchange Curl
                   </p>
-                  <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.exchangeCurl}
                   </pre>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm text-amber-800">
                   部署令牌签发未能完成，请在下方部署列表中手动签发。
                 </p>

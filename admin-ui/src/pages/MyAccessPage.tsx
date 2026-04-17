@@ -35,10 +35,10 @@ export function MyAccessPage() {
   return (
     <div className="space-y-10">
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-[32px] border border-slate-200/80 bg-white/92 p-8 shadow-sm shadow-slate-900/5">
-          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Entitlements</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">我的应用</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Entitlements</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">我的应用</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
             这里应该像正式产品后台里的“已购产品与能力中心”，而不是简单的数据回显。
             用户会在这里确认自己买到了什么、当前解锁了哪些能力、哪些应用已经可以继续使用或部署。
           </p>
@@ -61,10 +61,10 @@ export function MyAccessPage() {
                 note: '用于 WordPress、Notion、部署等后续入口'
               }
             ].map((item) => (
-              <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
               </div>
             ))}
           </div>
@@ -90,14 +90,14 @@ export function MyAccessPage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <Card key={item.title} className="border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
                 <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-base font-black tracking-tight text-slate-950">{item.title}</p>
-                    <p className="text-sm leading-7 text-slate-600">{item.desc}</p>
+                    <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
+                    <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -107,8 +107,8 @@ export function MyAccessPage() {
       </section>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="rounded-[28px] border-slate-200/80 bg-white/95">
-          <CardContent className="flex items-center justify-center gap-3 p-10 text-slate-500">
+        <Card className="rounded-lg border-gray-200/80 bg-white/95">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载授权状态...
           </CardContent>
@@ -122,8 +122,8 @@ export function MyAccessPage() {
       ) : (
         <section className="space-y-5">
           <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Purchased Products</p>
-            <h2 className="text-3xl font-black tracking-tight text-slate-950">已购产品与能力</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Purchased Products</p>
+            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">已购产品与能力</h2>
           </div>
           <div className="grid gap-5 lg:grid-cols-2">
             {summary.map((entry) => {

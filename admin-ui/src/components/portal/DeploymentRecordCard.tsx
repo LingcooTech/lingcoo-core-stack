@@ -34,7 +34,7 @@ export function DeploymentRecordCard({
   onDeactivate: (deployment: DeploymentSummary) => void;
 }) {
   return (
-    <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+    <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -57,11 +57,11 @@ export function DeploymentRecordCard({
 
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => onEdit(deployment)}>
+          <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onEdit(deployment)}>
             编辑配置
           </Button>
           {deployment.status === 'active' ? (
-            <Button variant="destructive" size="sm" className="rounded-2xl" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
+            <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
               {deactivating ? '停用中...' : '停用 Deployment'}
             </Button>
           ) : null}
@@ -84,10 +84,10 @@ export function DeploymentRecordCard({
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
 
-        <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
+        <div className="rounded-lg border border-gray-200 bg-gray-50/85 p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-black tracking-tight text-slate-900">Deploy Token</p>
+              <p className="text-sm font-semibold tracking-tight text-slate-900">Deploy Token</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {deployment.latestToken
                   ? `最近一次 token 尾号 ${deployment.latestToken.tokenHint}，状态 ${deployment.latestToken.status}`
@@ -96,7 +96,7 @@ export function DeploymentRecordCard({
             </div>
             <Button
               variant="outline"
-              className="rounded-2xl"
+              className="rounded-lg"
               onClick={() => onIssueToken(deployment.id)}
               disabled={issuing || deployment.status !== 'active'}
             >
@@ -117,22 +117,22 @@ export function DeploymentRecordCard({
               <InfoLine label="本次 Token 尾号" value={issuedToken.tokenHint} mono />
               <InfoLine label="过期时间" value={formatTime(issuedToken.expiresAt)} />
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Remote Install</p>
-                <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Remote Install</p>
+                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.remoteInstallCommand ?? '当前未生成远程安装命令'}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Exchange URL</p>
-                <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.exchangeUrl}</pre>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Exchange URL</p>
+                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.exchangeUrl}</pre>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">One-time Token</p>
-                <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.token}</pre>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">One-time Token</p>
+                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.token}</pre>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Exchange Curl</p>
-                <pre className="overflow-x-auto rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.exchangeCurl}</pre>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Exchange Curl</p>
+                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">{issuedToken.exchangeCurl}</pre>
               </div>
             </div>
           ) : null}
@@ -144,8 +144,8 @@ export function DeploymentRecordCard({
 
 function InfoLine({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</p>
       <p className={`mt-1 text-sm text-slate-900 ${mono ? 'font-mono' : 'font-medium'}`}>{value}</p>
     </div>
   );

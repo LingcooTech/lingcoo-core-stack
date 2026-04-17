@@ -32,12 +32,12 @@ export function UserShell() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-6">
               <Link to="/" className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 via-slate-800 to-blue-600 text-sm font-black tracking-[0.18em] text-white shadow-lg shadow-slate-900/15">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
                   FD
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-slate-500">FutureDecade Platform</p>
-                  <p className="text-base font-black tracking-tight text-slate-950">FD Stack</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">FutureDecade Platform</p>
+                  <p className="text-base font-semibold tracking-tight text-gray-900">FD Stack</p>
                 </div>
               </Link>
 
@@ -50,8 +50,8 @@ export function UserShell() {
                     to={item.to}
                     className={({ isActive }) =>
                       cn(
-                        'inline-flex items-center gap-2 rounded-2xl border border-transparent px-3.5 py-2.5 text-sm font-bold text-slate-600 transition-all hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900',
-                        isActive && 'border-slate-900 bg-slate-900 text-white shadow-sm hover:border-slate-900 hover:bg-slate-900 hover:text-white'
+                        'inline-flex items-center gap-2 rounded-lg border border-transparent px-3.5 py-2.5 text-sm font-bold text-gray-600 transition-all hover:border-gray-200 hover:bg-gray-50 hover:text-slate-900',
+                        isActive && 'border-slate-900 bg-gray-900 text-white shadow-sm hover:border-slate-900 hover:bg-gray-900 hover:text-white'
                       )
                     }
                   >
@@ -64,13 +64,13 @@ export function UserShell() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-right lg:block">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Consumer Portal</p>
+              <div className="hidden rounded-lg border border-gray-200/80 bg-gray-50/80 px-3 py-2 text-right lg:block">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Consumer Portal</p>
                 <p className="text-xs font-semibold text-slate-900">应用发现 · 购买授权 · 部署交付</p>
               </div>
               {isAuthenticated ? (
                 <>
-                  <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right sm:block">
+                  <div className="hidden rounded-lg border border-gray-200 bg-white px-3 py-2 text-right sm:block">
                     <p className="text-xs font-bold text-slate-900">{user?.email}</p>
                     <p className="text-[11px] text-muted-foreground">{isAdmin ? '管理员已登录' : '用户中心已登录'}</p>
                   </div>
@@ -112,8 +112,8 @@ export function UserShell() {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      'inline-flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition-all hover:border-slate-300 hover:text-slate-900',
-                      isActive && 'border-slate-900 bg-slate-900 text-white hover:border-slate-900 hover:text-white'
+                      'inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-600 transition-all hover:border-slate-300 hover:text-slate-900',
+                      isActive && 'border-slate-900 bg-gray-900 text-white hover:border-slate-900 hover:text-white'
                     )
                   }
                 >

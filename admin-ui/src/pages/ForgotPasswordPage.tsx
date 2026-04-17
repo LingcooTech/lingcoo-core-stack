@@ -63,9 +63,9 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="w-full border-slate-200/80">
+      <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl font-black">找回密码</CardTitle>
+          <CardTitle className="text-2xl font-semibold">找回密码</CardTitle>
           <CardDescription>
             先输入账号邮箱获取 6 位验证码，再设置新密码。验证码有效期为 10 分钟。
           </CardDescription>
@@ -92,7 +92,7 @@ export function ForgotPasswordPage() {
             </form>
           </Form>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <p className="text-sm font-bold text-slate-900">重置密码</p>
             <p className="mt-1 text-xs text-muted-foreground">
               当前邮箱：{submittedEmail || activeEmail || '请先填写邮箱并发送验证码'}

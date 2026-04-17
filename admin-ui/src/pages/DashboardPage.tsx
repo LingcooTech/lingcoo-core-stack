@@ -51,7 +51,7 @@ export function DashboardPage() {
 
         {/* Payment Status */}
         <div>
-          <h2 className="text-sm font-black text-muted-foreground uppercase tracking-wider mb-3">支付通道状态</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">支付通道状态</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PaymentStatusCard
               name="微信支付"
@@ -70,7 +70,7 @@ export function DashboardPage() {
 
         {/* Quick Links */}
         <div>
-          <h2 className="text-sm font-black text-muted-foreground uppercase tracking-wider mb-3">快速入口</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">快速入口</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickLinks.map((link) => {
               const Icon = link.icon;
@@ -78,13 +78,13 @@ export function DashboardPage() {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="group flex flex-col gap-3 p-4 rounded-2xl border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all no-underline"
+                  className="group flex flex-col gap-3 p-4 rounded-lg border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all no-underline"
                 >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${link.color}`}>
+                  <div className={`w-9 h-9 rounded-md flex items-center justify-center ${link.color}`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-foreground">{link.label}</p>
+                    <p className="text-sm font-semibold text-foreground">{link.label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
@@ -98,12 +98,12 @@ export function DashboardPage() {
         {orders.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-black text-muted-foreground uppercase tracking-wider">最近订单</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">最近订单</h2>
               <Link to="/admin/orders" className="text-xs font-bold text-primary hover:underline">
                 查看全部 →
               </Link>
             </div>
-            <div className="rounded-2xl border border-border bg-white overflow-hidden">
+            <div className="rounded-lg border border-border bg-white overflow-hidden">
               {orders.slice(0, 5).map((order, idx) => (
                 <div
                   key={order.orderNo}
@@ -145,7 +145,7 @@ function MetricCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-black uppercase tracking-wider text-muted-foreground">{label}</CardTitle>
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -153,7 +153,7 @@ function MetricCard({
         ) : (
           <>
             <p
-              className={`text-2xl font-black tracking-tight ${
+              className={`text-2xl font-semibold tracking-tight ${
                 tone === 'warn' && value > 0 ? 'text-amber-600' : 'text-foreground'
               }`}
             >
@@ -181,10 +181,10 @@ function PaymentStatusCard({
   return (
     <Link
       to={href}
-      className="flex items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-white hover:border-primary/30 transition-colors no-underline"
+      className="flex items-center justify-between gap-3 p-4 rounded-lg border border-border bg-white hover:border-primary/30 transition-colors no-underline"
     >
       <div>
-        <p className="text-sm font-black text-foreground">{name}</p>
+        <p className="text-sm font-semibold text-foreground">{name}</p>
         {loading ? (
           <div className="h-3 w-20 mt-1 rounded bg-muted animate-pulse" />
         ) : config ? (

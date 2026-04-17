@@ -50,9 +50,9 @@ export function VerifyEmailPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="w-full border-slate-200/80">
+      <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl font-black">验证邮箱</CardTitle>
+          <CardTitle className="text-2xl font-semibold">验证邮箱</CardTitle>
           <CardDescription>
             我们已向 {user?.email ?? '您的邮箱'} 发送了 6 位数字验证码
           </CardDescription>

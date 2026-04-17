@@ -553,20 +553,20 @@ export function SettingsPage() {
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
         <Tabs defaultValue="smtp" className="max-w-3xl space-y-5">
-          <div className="rounded-3xl border border-border bg-white p-6 shadow-sm">
+          <div className="rounded-lg border border-border bg-white p-6 shadow-sm">
             <div className="space-y-3">
               <div>
-                <h2 className="text-lg font-black text-foreground">系统设置</h2>
+                <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
                 <p className="mt-1 text-sm text-muted-foreground">把系统能力按 SMTP、云存储和 AI Hub 分组管理，减少长页面滚动。</p>
               </div>
-              <TabsList className="h-auto w-full justify-start gap-1 rounded-2xl bg-muted/70 p-1">
-                <TabsTrigger value="smtp" className="min-w-[108px] rounded-xl">
+              <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
+                <TabsTrigger value="smtp" className="min-w-[108px] rounded-md">
                   SMTP
                 </TabsTrigger>
-                <TabsTrigger value="qiniu" className="min-w-[108px] rounded-xl">
+                <TabsTrigger value="qiniu" className="min-w-[108px] rounded-md">
                   七牛云
                 </TabsTrigger>
-                <TabsTrigger value="ai" className="min-w-[108px] rounded-xl">
+                <TabsTrigger value="ai" className="min-w-[108px] rounded-md">
                   AI Hub
                 </TabsTrigger>
               </TabsList>
@@ -574,9 +574,9 @@ export function SettingsPage() {
           </div>
 
           <TabsContent value="smtp" className="mt-0">
-            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill tone={smtpData?.configured ? 'ok' : 'neutral'} label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
                   <StatusPill
                     tone={smtpData?.source === 'database' ? 'ok' : smtpData?.source === 'env' ? 'warn' : 'neutral'}
@@ -584,7 +584,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-foreground">SMTP 配置</h2>
+                  <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     用于注册验证码、邮箱验证和找回密码邮件。数据库配置会优先生效，并覆盖环境变量读取结果。
                   </p>
@@ -594,7 +594,7 @@ export function SettingsPage() {
               {smtpLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -693,7 +693,7 @@ export function SettingsPage() {
                       control={smtpForm.control}
                       name="secure"
                       render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3">
+                        <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-4 py-3">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
@@ -714,9 +714,9 @@ export function SettingsPage() {
                       </Button>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                    <div className="rounded-lg border border-border bg-gray-50/70 p-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-black text-foreground">发送测试邮件</h3>
+                        <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
                         <p className="text-sm text-muted-foreground">
                           使用当前表单中的 SMTP 参数发送一封测试邮件，不会自动保存本页改动。
                         </p>
@@ -757,9 +757,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="qiniu" className="mt-0">
-            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill tone={qiniuData?.configured ? 'ok' : 'neutral'} label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'} />
                   <StatusPill
                     tone={qiniuData?.source === 'database' ? 'ok' : qiniuData?.source === 'env' ? 'warn' : 'neutral'}
@@ -767,7 +767,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-foreground">七牛云存储</h2>
+                  <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     用于应用图标、封面和截图的直接上传与图片选择。保存后，应用编辑页会出现云存储上传/选择入口。
                   </p>
@@ -777,7 +777,7 @@ export function SettingsPage() {
               {qiniuLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -900,9 +900,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="ai" className="mt-0">
-            <div className="space-y-5 rounded-3xl border border-border bg-white p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
                     label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
@@ -917,7 +917,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-foreground">AI API Hub</h2>
+                  <h2 className="text-lg font-semibold text-foreground">AI API Hub</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     先接入 OpenRouter 作为第一个模型 Provider。后续新增其他服务商时，继续沿用同一套 Hub 结构和接口。
                   </p>
@@ -927,7 +927,7 @@ export function SettingsPage() {
               {openrouterLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-xl bg-muted" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -938,9 +938,9 @@ export function SettingsPage() {
                     )}
                     className="space-y-5"
                   >
-                    <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                    <div className="rounded-lg border border-border bg-gray-50/70 p-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-black text-foreground">OpenRouter Provider</h3>
+                        <h3 className="text-sm font-semibold text-foreground">OpenRouter Provider</h3>
                         <p className="text-sm text-muted-foreground">
                           管理员这里只需要填写 API Key。API 地址、Referer 和标题由系统自动管理；先测试连接，再拉取模型列表并选择默认模型即可。
                         </p>
@@ -993,7 +993,7 @@ export function SettingsPage() {
                     </div>
 
                     {openrouterConnectionResult ? (
-                      <div className="rounded-2xl border border-border bg-white p-4">
+                      <div className="rounded-lg border border-border bg-white p-4">
                         <div className="flex flex-wrap items-center gap-3">
                           <StatusPill tone="ok" label="连接成功" />
                           <StatusPill tone="info" label={`${openrouterConnectionResult.modelCount} 个模型`} />
@@ -1004,10 +1004,10 @@ export function SettingsPage() {
                         </div>
                         {openrouterConnectionResult.sampleModels.length ? (
                           <div className="mt-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Sample Models</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sample Models</p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {openrouterConnectionResult.sampleModels.map((item) => (
-                                <span key={item} className="rounded-full border border-border bg-slate-50 px-3 py-1 text-xs text-muted-foreground">
+                                <span key={item} className="rounded-full border border-border bg-gray-50 px-3 py-1 text-xs text-muted-foreground">
                                   {item}
                                 </span>
                               ))}
@@ -1017,10 +1017,10 @@ export function SettingsPage() {
                       </div>
                     ) : null}
 
-                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                    <div className="space-y-4 rounded-lg border border-border bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <h3 className="text-sm font-black text-foreground">默认模型</h3>
+                          <h3 className="text-sm font-semibold text-foreground">默认模型</h3>
                           <p className="text-sm text-muted-foreground">
                             拉取到模型列表后，在这里选择 OpenRouter 的默认模型。
                           </p>
@@ -1065,10 +1065,10 @@ export function SettingsPage() {
                       />
 
                       {selectedOpenRouterModel ? (
-                        <div className="rounded-2xl border border-border bg-slate-50/70 p-4 text-sm">
+                        <div className="rounded-lg border border-border bg-gray-50/70 p-4 text-sm">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="font-black text-foreground">{selectedOpenRouterModel.name || selectedOpenRouterModel.id}</p>
+                              <p className="font-semibold text-foreground">{selectedOpenRouterModel.name || selectedOpenRouterModel.id}</p>
                               <p className="text-xs font-mono text-muted-foreground">{selectedOpenRouterModel.id}</p>
                             </div>
                             <StatusPill tone="info" label={selectedOpenRouterModel.modality || 'text'} />
@@ -1077,34 +1077,34 @@ export function SettingsPage() {
                             <p className="mt-3 text-sm text-muted-foreground">{selectedOpenRouterModel.description}</p>
                           ) : null}
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Context</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Context</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens</p>
                             </div>
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Max Output</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Max Output</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)} tokens</p>
                             </div>
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Prompt Pricing</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Prompt Pricing</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.promptPricing)}</p>
                             </div>
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Completion Pricing</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Completion Pricing</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.completionPricing)}</p>
                             </div>
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Input Modalities</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Input Modalities</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.inputModalities)}</p>
                             </div>
-                            <div className="rounded-xl border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Output Modalities</p>
+                            <div className="rounded-md border border-border bg-white px-3 py-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Output Modalities</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.outputModalities)}</p>
                             </div>
                           </div>
                         </div>
                       ) : openrouterModelsLoaded ? (
-                        <div className="rounded-2xl border border-dashed border-border bg-slate-50/50 px-4 py-5 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-dashed border-border bg-gray-50/50 px-4 py-5 text-sm text-muted-foreground">
                           {openrouterModels.length
                             ? '模型列表已加载，但你还没有选择默认模型。'
                             : '当前配置下没有拉取到模型列表，请检查 API Key。'}
@@ -1112,9 +1112,9 @@ export function SettingsPage() {
                       ) : null}
                     </div>
 
-                    <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                    <div className="space-y-4 rounded-lg border border-border bg-white p-4">
                       <div>
-                        <h3 className="text-sm font-black text-foreground">模型对话测试</h3>
+                        <h3 className="text-sm font-semibold text-foreground">模型对话测试</h3>
                         <p className="text-sm text-muted-foreground">
                           使用当前表单中的 OpenRouter 配置直接发一条测试消息，确认模型调用链和默认模型是否正常。
                         </p>
@@ -1136,7 +1136,7 @@ export function SettingsPage() {
                         </Button>
                       </div>
                       {openrouterChatResult ? (
-                        <div className="rounded-2xl border border-border bg-slate-50/70 p-4">
+                        <div className="rounded-lg border border-border bg-gray-50/70 p-4">
                           <div className="flex flex-wrap items-center gap-3">
                             <StatusPill tone="ok" label={openrouterChatResult.model} />
                             <StatusPill
@@ -1144,7 +1144,7 @@ export function SettingsPage() {
                               label={`Prompt ${openrouterChatResult.usage.promptTokens ?? 0} / Completion ${openrouterChatResult.usage.completionTokens ?? 0}`}
                             />
                           </div>
-                          <ScrollArea className="mt-4 h-[220px] rounded-2xl border border-border bg-white">
+                          <ScrollArea className="mt-4 h-[220px] rounded-lg border border-border bg-white">
                             <div className="space-y-3 p-4 text-sm">
                               <p className="whitespace-pre-wrap leading-6 text-foreground">{openrouterChatResult.content}</p>
                               {openrouterChatResult.finishReason ? (
@@ -1156,7 +1156,7 @@ export function SettingsPage() {
                       ) : null}
                     </div>
 
-                    <div className="rounded-2xl border border-dashed border-border bg-slate-50/60 p-4 text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed border-border bg-gray-50/60 p-4 text-sm text-muted-foreground">
                       OpenRouter 官方 API 地址已固定为 <span className="font-mono text-foreground">{OPENROUTER_DEFAULT_BASE_URL}</span>。
                       `HTTP-Referer` 和 `X-Title` 会由系统自动补齐，管理员不需要手动填写高级设置。
                     </div>

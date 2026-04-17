@@ -31,10 +31,10 @@ export function MyOrdersPage() {
   return (
     <div className="space-y-10">
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-[32px] border border-slate-200/80 bg-white/92 p-8 shadow-sm shadow-slate-900/5">
-          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Orders</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">订单记录</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Orders</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">订单记录</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
             这里不只是历史账单列表，而是用户确认支付状态、回看套餐、判断授权同步是否正常的主入口。
             页面结构应该优先表达“已支付、待同步、累计金额”这些用户真正关心的信息。
           </p>
@@ -57,10 +57,10 @@ export function MyOrdersPage() {
                 note: '可手动点击同步订单状态'
               }
             ].map((item) => (
-              <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
               </div>
             ))}
           </div>
@@ -89,15 +89,15 @@ export function MyOrdersPage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <Card key={item.title} className="border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
                 <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">{item.title}</p>
-                    <p className="text-2xl font-black tracking-tight text-slate-950">{item.value}</p>
-                    <p className="text-sm leading-7 text-slate-600">{item.note}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{item.title}</p>
+                    <p className="text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                    <p className="text-sm leading-7 text-gray-600">{item.note}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -108,14 +108,14 @@ export function MyOrdersPage() {
 
       <section className="space-y-5">
         <div className="space-y-2">
-          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Order Timeline</p>
-          <h2 className="text-3xl font-black tracking-tight text-slate-950">全部订单</h2>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Order Timeline</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-gray-900">全部订单</h2>
         </div>
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="rounded-[28px] border-slate-200/80 bg-white/95">
-              <CardContent className="flex items-center justify-center gap-3 p-10 text-slate-500">
+            <Card className="rounded-lg border-gray-200/80 bg-white/95">
+              <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
                 <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
                 正在加载订单记录...
               </CardContent>

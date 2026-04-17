@@ -16,8 +16,8 @@ export function AppCard({ app }: { app: AppWithDetails }) {
   const priceLabel = minPrice ? formatAmount(minPrice.priceAmount, minPrice.currency) : '即将开放';
 
   return (
-    <Card className="group overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-900/10">
-      <div className="relative h-32 overflow-hidden border-b border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-800 to-sky-700">
+    <Card className="group overflow-hidden rounded-lg border border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-900/10">
+      <div className="relative h-32 overflow-hidden border-b border-gray-200/70 bg-gradient-to-br from-gray-950 via-gray-800 to-sky-700">
         {app.coverUrl ? (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-30 transition duration-500 group-hover:scale-105"
@@ -46,39 +46,39 @@ export function AppCard({ app }: { app: AppWithDetails }) {
             <img
               src={app.iconUrl}
               alt={app.name}
-              className="h-16 w-16 shrink-0 rounded-[22px] bg-slate-50 object-cover shadow-sm"
+              className="h-16 w-16 shrink-0 rounded-lg bg-gray-50 object-cover shadow-sm"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-gradient-to-br from-slate-950 via-slate-700 to-sky-600 text-lg font-black text-white shadow-sm">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-700 to-sky-600 text-lg font-semibold text-white shadow-sm">
               {getInitials(app.name)}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className="text-xl font-black tracking-tight text-slate-950 transition-colors group-hover:text-blue-600">
+            <h3 className="text-xl font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-blue-600">
               {app.name}
             </h3>
-            <p className="mt-2 line-clamp-3 text-sm leading-7 text-slate-600">
+            <p className="mt-2 line-clamp-3 text-sm leading-7 text-gray-600">
               {app.tagline || app.description || '优质应用，等你体验。'}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">
             <Sparkles className="h-3.5 w-3.5 text-blue-600" />
             {featureCount} 项亮点
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">
             {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
           </span>
         </div>
 
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">起始价格</p>
-            <p className="text-2xl font-black tracking-tight text-slate-950">{priceLabel}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">起始价格</p>
+            <p className="text-2xl font-semibold tracking-tight text-gray-900">{priceLabel}</p>
           </div>
-          <Button asChild className="shrink-0 rounded-2xl">
+          <Button asChild className="shrink-0 rounded-lg">
             <Link to={`/apps/${app.code}`}>
               查看详情
               <ArrowRight className="h-4 w-4" />

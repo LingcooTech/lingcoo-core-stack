@@ -20,11 +20,11 @@ export function EmptyState({
   return (
     <Card className={cn('border-dashed border-slate-300 bg-white/80', className)}>
       <CardContent className="flex flex-col items-center justify-center gap-4 p-10 text-center">
-        <div className="rounded-3xl bg-slate-100 p-4 text-slate-600">
+        <div className="rounded-lg bg-gray-100 p-4 text-gray-600">
           <Icon className="h-7 w-7" />
         </div>
         <div className="space-y-2">
-          <p className="text-lg font-black text-slate-950">{title}</p>
+          <p className="text-lg font-semibold text-gray-900">{title}</p>
           <p className="max-w-xl text-sm leading-7 text-muted-foreground">{description}</p>
         </div>
         {action}

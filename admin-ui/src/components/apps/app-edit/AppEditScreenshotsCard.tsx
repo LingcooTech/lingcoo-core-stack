@@ -52,7 +52,7 @@ export function AppEditScreenshotsCard({
           <p className="text-xs text-muted-foreground">暂无截图，点击右上角添加。</p>
         ) : null}
         {screenshots.map((item, index) => (
-          <div key={index} className="flex items-start gap-3 rounded-xl border p-3">
+          <div key={index} className="flex items-start gap-3 rounded-md border p-3">
             <div className="flex-1 space-y-2">
               <QiniuImageField
                 value={item.url}
@@ -60,7 +60,7 @@ export function AppEditScreenshotsCard({
                 placeholder="图片 URL"
                 defaultPrefix={`${appCode}/screenshots`}
                 previewAlt={item.caption || `截图 ${index + 1}`}
-                previewClassName="h-40 w-full rounded-xl border object-cover"
+                previewClassName="h-40 w-full rounded-md border object-cover"
                 dialogTitle="选择应用截图"
                 dialogDescription="截图会展示在用户侧应用详情页，建议统一尺寸比例。"
               />

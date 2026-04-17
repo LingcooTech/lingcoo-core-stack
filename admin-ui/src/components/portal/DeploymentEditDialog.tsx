@@ -366,7 +366,7 @@ export function DeploymentEditDialog({
           ) : null}
 
           {visibleUserInputGroups.map((group) => (
-            <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+            <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
               <div>
                 <p className="text-sm font-bold">{group.label}</p>
                 {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
@@ -375,7 +375,7 @@ export function DeploymentEditDialog({
                 {group.fields.map((field) => {
                   if (field.type === 'boolean') {
                     return (
-                      <label key={field.key} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                      <label key={field.key} className="flex items-center gap-3 rounded-md border border-border p-3">
                         <Checkbox
                           checked={getBooleanFieldValue(deploymentDraft, field)}
                           onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}
@@ -431,7 +431,7 @@ export function DeploymentEditDialog({
             </div>
           ))}
 
-          <div className="rounded-2xl border border-border">
+          <div className="rounded-lg border border-border">
             <button
               type="button"
               className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -464,7 +464,7 @@ export function DeploymentEditDialog({
                 </div>
 
                 {advancedUserInputGroups.map((group) => (
-                  <div key={group.key} className="space-y-4 rounded-2xl border border-border p-4">
+                  <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                     <div>
                       <p className="text-sm font-bold">{group.label}</p>
                       {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
@@ -473,7 +473,7 @@ export function DeploymentEditDialog({
                       {group.fields.map((field) => {
                         if (field.type === 'boolean') {
                           return (
-                            <label key={field.key} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                            <label key={field.key} className="flex items-center gap-3 rounded-md border border-border p-3">
                               <Checkbox
                                 checked={getBooleanFieldValue(deploymentDraft, field)}
                                 onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}

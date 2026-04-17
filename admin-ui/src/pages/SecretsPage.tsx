@@ -53,13 +53,13 @@ export function SecretsPage() {
   return (
     <div>
       <div className="p-6">
-        <h1 className="text-2xl font-black tracking-tight">应用密钥</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">应用密钥</h1>
         <p className="text-sm text-muted-foreground mt-1">生成和管理应用 API 密钥</p>
       </div>
       <div className="p-6 pt-0">
         <div className="max-w-xl space-y-6">
-          <div className="rounded-2xl border border-border bg-white p-5">
-            <h3 className="mb-4 text-sm font-black">生成 App Secret</h3>
+          <div className="rounded-lg border border-border bg-white p-5">
+            <h3 className="mb-4 text-sm font-semibold">生成 App Secret</h3>
             <div className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-bold">选择应用</label>
@@ -95,9 +95,9 @@ export function SecretsPage() {
           </div>
 
           {apps.filter((app) => (app.secrets?.length ?? 0) > 0).map((app) => (
-            <div key={app.code} className="overflow-hidden rounded-2xl border border-border bg-white">
+            <div key={app.code} className="overflow-hidden rounded-lg border border-border bg-white">
               <div className="border-b border-border bg-muted/30 px-4 py-3">
-                <p className="text-sm font-black">{app.name}</p>
+                <p className="text-sm font-semibold">{app.name}</p>
                 <p className="text-xs font-mono text-muted-foreground">{app.code}</p>
               </div>
               {app.secrets?.map((secret) => (
@@ -129,12 +129,12 @@ export function SecretsPage() {
           </DialogHeader>
           {secretResult && (
             <div className="space-y-3">
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs">
-                <p className="mb-1 font-black text-amber-800">appCode: {secretResult.appCode}</p>
-                <p className="mb-1 font-black text-amber-800">secretId: {secretResult.secretId}</p>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
+                <p className="mb-1 font-semibold text-amber-800">appCode: {secretResult.appCode}</p>
+                <p className="mb-1 font-semibold text-amber-800">secretId: {secretResult.secretId}</p>
               </div>
               <div className="relative">
-                <div className="break-all rounded-xl bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
+                <div className="break-all rounded-md bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
                   {secretVisible ? secretResult.secret : '\u2022'.repeat(Math.min(secretResult.secret.length, 40))}
                 </div>
                 <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">

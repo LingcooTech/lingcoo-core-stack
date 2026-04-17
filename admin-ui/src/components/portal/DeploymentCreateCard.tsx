@@ -55,7 +55,7 @@ export function DeploymentCreateCard({
   }, [selectedApp, label]);
 
   return (
-    <Card className="border-slate-200/80 bg-white/95">
+    <Card className="border-gray-200/80 bg-white/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
         <CardDescription>先记录系统部署目标和域名信息，再签发一次性 deploy token，供后续安装脚本接入。</CardDescription>
@@ -71,7 +71,7 @@ export function DeploymentCreateCard({
                 setAppCode(event.target.value);
                 setLabel('');
               }}
-              className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               {options.map((option) => (
                 <option key={option.appCode} value={option.appCode}>

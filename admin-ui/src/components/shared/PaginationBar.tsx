@@ -25,7 +25,7 @@ export function PaginationBar({
   const end = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-xs text-muted-foreground">
         {total === 0 ? `暂无${itemLabel}` : `显示 ${start}-${end} / ${total} ${itemLabel}`}
       </div>

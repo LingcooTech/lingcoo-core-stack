@@ -138,7 +138,7 @@ export function AppEditBasicsTab({
               onChange={(value) => setField('iconUrl', value)}
               defaultPrefix={`${appAssetPrefix}/icon`}
               previewAlt="icon"
-              previewClassName="h-16 w-16 rounded-xl border object-cover"
+              previewClassName="h-16 w-16 rounded-md border object-cover"
               dialogTitle="选择应用图标"
               dialogDescription="支持从七牛云已有图片中选择，或直接上传新的图标素材。"
             />
@@ -151,7 +151,7 @@ export function AppEditBasicsTab({
               onChange={(value) => setField('coverUrl', value)}
               defaultPrefix={`${appAssetPrefix}/cover`}
               previewAlt="cover"
-              previewClassName="h-32 w-full rounded-xl border object-cover"
+              previewClassName="h-32 w-full rounded-md border object-cover"
               dialogTitle="选择应用封面图"
               dialogDescription="封面图会展示在应用详情页头部，建议使用横向大图。"
             />

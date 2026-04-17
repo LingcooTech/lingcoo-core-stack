@@ -87,7 +87,7 @@ export function PaymentsPage() {
       <SectionHeader sectionKey="payments" />
       <div className="p-6">
         {isLoading ? (
-          <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 rounded-xl bg-muted animate-pulse" />)}</div>
+          <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-10 rounded-md bg-muted animate-pulse" />)}</div>
         ) : (
           <Tabs defaultValue="wechat">
             <TabsList className="mb-6">
@@ -98,7 +98,7 @@ export function PaymentsPage() {
             <TabsContent value="wechat">
               <div className="max-w-xl space-y-5">
                 {/* Status Row */}
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/50 border border-border">
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border">
                   <StatusPill
                     tone={wechat?.configured ? 'ok' : 'neutral'}
                     label={wechat?.configured ? '配置完成' : '配置不完整'}
@@ -145,7 +145,7 @@ export function PaymentsPage() {
                       )} />
                     </div>
                     <FormField control={wechatForm.control} name="disableH5" render={({ field }) => (
-                      <FormItem className="flex items-center gap-3 p-4 rounded-xl border border-border bg-white">
+                      <FormItem className="flex items-center gap-3 p-4 rounded-md border border-border bg-white">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -175,7 +175,7 @@ export function PaymentsPage() {
 
             <TabsContent value="alipay">
               <div className="max-w-xl space-y-5">
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/50 border border-border">
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border">
                   <StatusPill
                     tone={alipay?.configured ? 'ok' : 'neutral'}
                     label={alipay?.configured ? '配置完成' : '配置不完整'}
@@ -225,7 +225,7 @@ export function PaymentsPage() {
                       </FormItem>
                     )} />
                     <FormField control={alipayForm.control} name="f2fPay" render={({ field }) => (
-                      <FormItem className="flex items-center gap-3 p-4 rounded-xl border border-border bg-white">
+                      <FormItem className="flex items-center gap-3 p-4 rounded-md border border-border bg-white">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>

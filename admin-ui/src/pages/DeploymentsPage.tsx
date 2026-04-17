@@ -159,10 +159,10 @@ export function DeploymentsPage() {
   return (
     <div className="space-y-10">
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-[32px] border border-slate-200/80 bg-white/92 p-8 shadow-sm shadow-slate-900/5">
-          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployments</p>
-          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">部署管理</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployments</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">部署管理</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
             购买后的真正产品体验不应该在订单页终止。部署页需要把“哪些应用可以继续交付、当前有哪些 deployment、哪一个 token 最近签发”
             这些信息讲清楚，并把创建 deployment 的动作做成产品级入口。
           </p>
@@ -185,10 +185,10 @@ export function DeploymentsPage() {
                 note: '最近至少签发过一次安装令牌'
               }
             ].map((item) => (
-              <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
               </div>
             ))}
           </div>
@@ -214,14 +214,14 @@ export function DeploymentsPage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <Card key={item.title} className="border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
                 <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-base font-black tracking-tight text-slate-950">{item.title}</p>
-                    <p className="text-sm leading-7 text-slate-600">{item.desc}</p>
+                    <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
+                    <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -231,8 +231,8 @@ export function DeploymentsPage() {
       </section>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
-        <Card className="rounded-[28px] border-slate-200/80 bg-white/95">
-          <CardContent className="flex items-center justify-center gap-3 p-10 text-slate-500">
+        <Card className="rounded-lg border-gray-200/80 bg-white/95">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载部署数据...
           </CardContent>
@@ -247,8 +247,8 @@ export function DeploymentsPage() {
         <>
           <section className="space-y-5">
             <div className="space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployable Apps</p>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950">可继续交付的应用</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployable Apps</p>
+              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">可继续交付的应用</h2>
             </div>
             <div className="grid gap-5 lg:grid-cols-2">
               {deployableApps.map((option) => {
@@ -269,8 +269,8 @@ export function DeploymentsPage() {
 
           <section className="space-y-5">
             <div className="space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployment Wizard</p>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950">创建部署记录</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployment Wizard</p>
+              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">创建部署记录</h2>
             </div>
             <DeploymentWizard
               options={deployableApps}
@@ -290,8 +290,8 @@ export function DeploymentsPage() {
           ) : (
             <section className="space-y-5">
               <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployment Records</p>
-                <h2 className="text-3xl font-black tracking-tight text-slate-950">现有部署记录</h2>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployment Records</p>
+                <h2 className="text-3xl font-semibold tracking-tight text-gray-900">现有部署记录</h2>
               </div>
               <div className="grid gap-4">
                 {deployments.map((deployment) => (

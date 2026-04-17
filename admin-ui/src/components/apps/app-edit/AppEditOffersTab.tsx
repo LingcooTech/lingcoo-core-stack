@@ -77,7 +77,7 @@ export function AppEditOffersTab({
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black">应用售卖梯度</p>
+                <p className="text-sm font-semibold">应用售卖梯度</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   默认 Offer 会在前台优先展示。
                 </p>
@@ -95,7 +95,7 @@ export function AppEditOffersTab({
             </div>
 
             {editableOffers.length === 0 && availablePlans.length > 0 ? (
-              <div className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
+              <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
                 尚未配置自定义 Offer，前端将回退到基础 Plan 展示。
               </div>
             ) : null}

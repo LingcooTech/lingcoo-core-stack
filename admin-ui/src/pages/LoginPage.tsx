@@ -54,30 +54,30 @@ export function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#edf2f7]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#edf2f7] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-base font-black shadow-lg shadow-primary/20">
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-base font-bold shadow-lg shadow-primary/20">
             FD
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-black tracking-tight">fd-core-stack</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">管理后台</p>
+            <h1 className="text-xl font-bold tracking-tight">fd-core-stack</h1>
+            <p className="text-sm text-gray-600 mt-0.5">管理后台</p>
           </div>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
-          <h2 className="text-base font-black mb-1">{isRegisterMode ? '创建管理员账号' : '登录'}</h2>
-          <p className="text-xs text-muted-foreground mb-5">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-base font-semibold mb-1">{isRegisterMode ? '创建管理员账号' : '登录'}</h2>
+          <p className="text-xs text-gray-600 mb-5">
             {isRegisterMode ? '这是系统首次启动，请创建管理员账号。' : '使用管理员账号登录后台。'}
           </p>
 

@@ -23,7 +23,7 @@ export function QiniuImageField({
   defaultPrefix,
   placeholder = 'https://...',
   previewAlt,
-  previewClassName = 'h-20 w-full rounded-xl border object-cover',
+  previewClassName = 'h-20 w-full rounded-md border object-cover',
   dialogTitle,
   dialogDescription
 }: QiniuImageFieldProps) {

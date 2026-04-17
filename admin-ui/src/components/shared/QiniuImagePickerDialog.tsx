@@ -158,7 +158,7 @@ export function QiniuImagePickerDialog({
 
         <div className="space-y-4 px-6 py-5">
           {!qiniuSettings?.configured ? (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
               七牛云尚未配置完整。请先到“系统设置”里填写 Access Key、Secret Key、Bucket 和公共访问域名。
             </div>
           ) : (
@@ -207,7 +207,7 @@ export function QiniuImagePickerDialog({
                 当前目录: {prefix || '根目录'}。上传时会自动附带日期目录，避免文件名冲突。
               </p>
 
-              <ScrollArea className="h-[420px] rounded-2xl border border-border">
+              <ScrollArea className="h-[420px] rounded-lg border border-border">
                 <div className="p-4">
                   {loadImagesMutation.isPending && items.length === 0 ? (
                     <div className="flex h-[340px] items-center justify-center text-sm text-muted-foreground">
@@ -228,7 +228,7 @@ export function QiniuImagePickerDialog({
                         <button
                           key={item.key}
                           type="button"
-                          className="overflow-hidden rounded-2xl border border-border bg-white text-left transition hover:border-primary/40 hover:shadow-sm"
+                          className="overflow-hidden rounded-lg border border-border bg-white text-left transition hover:border-primary/40 hover:shadow-sm"
                           onClick={() => {
                             onSelect(item.url);
                             onOpenChange(false);

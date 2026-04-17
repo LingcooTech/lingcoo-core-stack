@@ -45,7 +45,7 @@ export function AppEditFaqCard({ faq, onChange }: AppEditFaqCardProps) {
           <p className="text-xs text-muted-foreground">暂无常见问题，点击右上角添加。</p>
         ) : null}
         {faq.map((item, index) => (
-          <div key={index} className="space-y-2 rounded-xl border p-4">
+          <div key={index} className="space-y-2 rounded-md border p-4">
             <div className="flex items-start justify-between gap-2">
               <span className="text-xs font-bold text-muted-foreground">Q{index + 1}</span>
               <Button

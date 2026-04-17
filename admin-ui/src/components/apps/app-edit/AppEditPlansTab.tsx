@@ -62,17 +62,17 @@ export function AppEditPlansTab({
         </CardHeader>
         <CardContent className="space-y-3">
           {features.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
               当前还没有功能。先创建 feature，后面套餐才能关联这些功能。
             </div>
           ) : (
             features.map((feature, index) => (
-              <div key={feature.id} className="space-y-4 rounded-2xl border p-4">
+              <div key={feature.id} className="space-y-4 rounded-lg border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-black">
+                      <p className="text-sm font-semibold">
                         {feature.name.trim() || `功能 ${index + 1}`}
                       </p>
                     </div>
@@ -186,23 +186,23 @@ export function AppEditPlansTab({
         </CardHeader>
         <CardContent className="space-y-3">
           {features.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
               请先创建功能，再创建套餐。每个套餐至少要关联一个功能。
             </div>
           ) : null}
 
           {plans.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
               当前还没有套餐。创建套餐后，Offers Tab 才能绑定并售卖。
             </div>
           ) : (
             plans.map((plan, index) => (
-              <div key={plan.id} className="space-y-4 rounded-2xl border p-4">
+              <div key={plan.id} className="space-y-4 rounded-lg border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-black">{plan.name.trim() || `套餐 ${index + 1}`}</p>
+                      <p className="text-sm font-semibold">{plan.name.trim() || `套餐 ${index + 1}`}</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {formatPlanInterval(plan.interval)} · {plan.code || '未设置 Plan Code'}
@@ -350,9 +350,9 @@ export function AppEditPlansTab({
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
                   <div>
-                    <p className="text-sm font-black">关联功能</p>
+                    <p className="text-sm font-semibold">关联功能</p>
                     <p className="text-xs text-muted-foreground">
                       至少勾选一个功能。授权结果会根据这里的映射聚合。
                     </p>
@@ -363,7 +363,7 @@ export function AppEditPlansTab({
                       return (
                         <label
                           key={feature.id}
-                          className="flex items-start gap-3 rounded-xl border bg-white p-3"
+                          className="flex items-start gap-3 rounded-md border bg-white p-3"
                         >
                           <Checkbox
                             checked={checked}

@@ -28,7 +28,7 @@ export function JsonViewer({ data, label = 'Payload', defaultExpanded = false, c
         <span className="font-bold">{label}</span>
       </button>
       {expanded && (
-        <pre className="mt-1.5 p-2 rounded-lg bg-slate-50 border border-border text-[11px] font-mono leading-relaxed overflow-auto max-h-48 whitespace-pre-wrap break-all">
+        <pre className="mt-1.5 p-2 rounded-lg bg-gray-50 border border-border text-[11px] font-mono leading-relaxed overflow-auto max-h-48 whitespace-pre-wrap break-all">
           {json}
         </pre>
       )}

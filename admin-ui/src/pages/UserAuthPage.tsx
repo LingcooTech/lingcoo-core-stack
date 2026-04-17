@@ -55,9 +55,9 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="w-full border-slate-200/80">
+      <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl font-black">{mode === 'register' ? '创建用户账号' : '登录用户中心'}</CardTitle>
+          <CardTitle className="text-2xl font-semibold">{mode === 'register' ? '创建用户账号' : '登录用户中心'}</CardTitle>
           <CardDescription>
             {mode === 'register'
               ? '注册后即可管理订单、授权，并进入后续的系统部署流程。'

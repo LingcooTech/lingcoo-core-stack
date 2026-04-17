@@ -18,9 +18,9 @@ export function AppEditSaveBar({
   onSave,
 }: AppEditSaveBarProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="text-sm font-black">{title}</p>
+        <p className="text-sm font-semibold">{title}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <Button onClick={onSave} disabled={disabled}>

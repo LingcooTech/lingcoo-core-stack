@@ -276,7 +276,7 @@ export function AppsPage() {
   return (
     <div>
       <div className="p-6">
-        <h1 className="text-2xl font-black tracking-tight">应用管理</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">应用管理</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           新建应用会进入完整配置页，直接填写 App Code、功能、套餐和 Offers。
         </p>
@@ -292,7 +292,7 @@ export function AppsPage() {
           </Button>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-border bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-white">
           <DataTable
             columns={appColumns}
             data={apps}
@@ -338,7 +338,7 @@ export function AppsPage() {
         }}
       >
         {pendingDangerAction?.kind === 'purge' ? (
-          <div className="space-y-4 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="space-y-4 rounded-md border border-red-200 bg-red-50 p-4">
             <div className="space-y-1 text-sm text-red-700">
               <p>会清空：展示内容、Features、Offers、Secrets、Delivery Settings。</p>
               <p>会保留但停用：应用主体、Plans、订单、结账、订阅、部署、事件、用户数据。</p>
