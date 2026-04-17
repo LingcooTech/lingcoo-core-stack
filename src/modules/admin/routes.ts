@@ -7,6 +7,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { DeliverySettingsService } from '../../lib/delivery-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { QiniuSettingsService } from '../../lib/qiniu-settings';
+import { SiteSettingsService } from '../../lib/site-settings';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
 import { AuthRepository } from '../auth/repository';
 import { AdminService } from './service';
@@ -25,6 +26,7 @@ import {
   paymentProviderParamsSchema,
   qiniuListImagesQuerySchema,
   qiniuSettingsSchema,
+  siteSettingsSchema,
   qiniuTestConnectionSchema,
   qiniuUploadTokenSchema,
   smtpSettingsSchema,
@@ -116,6 +118,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async () => {
     return new QiniuSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/system-settings/site', { preHandler: app.requireAdmin }, async () => {
+    return new SiteSettingsService(app.db, app.appEnv).getOverview();
   });
 
   app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
@@ -223,6 +229,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async () => {
     await new QiniuSettingsService(app.db, app.appEnv).clearSettings();
+    return { ok: true };
+  });
+
+  app.put('/v1/admin/system-settings/site', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = siteSettingsSchema.parse(request.body);
+    return new SiteSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  });
+
+  app.delete('/v1/admin/system-settings/site', { preHandler: app.requireAdmin }, async () => {
+    await new SiteSettingsService(app.db, app.appEnv).clearSettings();
     return { ok: true };
   });
 

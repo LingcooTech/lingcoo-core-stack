@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -10,9 +12,11 @@ import {
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
+import { getPublicSiteSettings } from '@/api/settings';
 import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
@@ -44,6 +48,20 @@ const queryClient = new QueryClient({
     }
   }
 });
+
+function SiteAppearanceSync() {
+  const { data } = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000
+  });
+
+  useEffect(() => {
+    syncDocumentFavicon(data?.faviconUrl);
+  }, [data?.faviconUrl]);
+
+  return null;
+}
 
 function ProtectedUserRoute() {
   const location = useLocation();
@@ -113,6 +131,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <SiteAppearanceSync />
         <RouterProvider router={router} />
         <Toaster position="top-right" richColors />
       </AuthProvider>

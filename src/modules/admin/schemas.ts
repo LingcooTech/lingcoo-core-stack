@@ -18,6 +18,29 @@ const optionalUrlString = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
+const optionalSitePathOrUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => {
+    if (!value) {
+      return true;
+    }
+
+    if (value.startsWith('/')) {
+      return true;
+    }
+
+    try {
+      const url = new URL(value);
+      return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol);
+    } catch {
+      return false;
+    }
+  }, '请输入有效链接，支持 /path、http(s)、mailto 或 tel')
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 export const paymentProviderParamsSchema = z.object({
   provider: z.enum(['wechat_pay', 'alipay'])
 });
@@ -59,6 +82,36 @@ export const qiniuSettingsSchema = z.object({
   publicBaseUrl: optionalUrlString,
   uploadHost: optionalUrlString,
   defaultPrefix: optionalTrimmedString(255)
+});
+
+export const siteFooterLinkSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  url: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .refine((value) => {
+      if (value.startsWith('/')) {
+        return true;
+      }
+
+      try {
+        const url = new URL(value);
+        return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol);
+      } catch {
+        return false;
+      }
+    }, '请输入有效链接，支持 /path、http(s)、mailto 或 tel'),
+  openInNewTab: z.boolean().optional()
+});
+
+export const siteSettingsSchema = z.object({
+  siteName: optionalTrimmedString(120),
+  logoUrl: optionalSitePathOrUrl,
+  faviconUrl: optionalSitePathOrUrl,
+  footerCopyright: optionalTrimmedString(255),
+  footerLinks: z.array(siteFooterLinkSchema).max(12).optional()
 });
 
 export const qiniuTestConnectionSchema = qiniuSettingsSchema;

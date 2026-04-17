@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { SiteSettingsService } from '../../lib/site-settings';
 import { moduleNames } from '../names';
 
 export const systemRoutes: FastifyPluginAsync = async (app) => {
@@ -31,5 +32,9 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
     return {
       items: [...moduleNames]
     };
+  });
+
+  app.get('/v1/system/site-settings', async () => {
+    return new SiteSettingsService(app.db, app.appEnv).getPublicSettings();
   });
 };

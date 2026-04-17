@@ -3,10 +3,12 @@ import type {
   AiChatCompletionResult,
   AiProviderListResponse,
   AiProviderModelsResponse,
+  PublicSiteSettings,
   QiniuSettingsOverview,
   QiniuTestConnectionResult,
   OpenRouterSettingsOverview,
   OpenRouterTestConnectionResult,
+  SiteSettingsOverview,
   SmtpSettingsOverview,
   SmtpTestEmailResult
 } from './types';
@@ -33,6 +35,20 @@ export interface QiniuSettingsInput {
   publicBaseUrl?: string;
   uploadHost?: string;
   defaultPrefix?: string;
+}
+
+export interface SiteFooterLinkInput {
+  label: string;
+  url: string;
+  openInNewTab?: boolean;
+}
+
+export interface SiteSettingsInput {
+  siteName?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  footerCopyright?: string;
+  footerLinks?: SiteFooterLinkInput[];
 }
 
 export interface OpenRouterSettingsInput {
@@ -95,6 +111,25 @@ export async function testQiniuSettings(payload: QiniuSettingsInput): Promise<Qi
     method: 'POST',
     body: JSON.stringify(payload)
   });
+}
+
+export async function getSiteSettings(): Promise<SiteSettingsOverview> {
+  return apiClient<SiteSettingsOverview>('/v1/admin/system-settings/site');
+}
+
+export async function upsertSiteSettings(payload: SiteSettingsInput): Promise<SiteSettingsOverview> {
+  return apiClient<SiteSettingsOverview>('/v1/admin/system-settings/site', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function clearSiteSettings(): Promise<void> {
+  await apiClient('/v1/admin/system-settings/site', { method: 'DELETE' });
+}
+
+export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
+  return apiClient<PublicSiteSettings>('/v1/system/site-settings');
 }
 
 export async function getAiProviders(): Promise<AiProviderListResponse> {

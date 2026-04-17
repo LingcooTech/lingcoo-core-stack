@@ -208,6 +208,26 @@ export interface QiniuUploadTokenResult {
   expiresIn: number;
 }
 
+export interface SiteFooterLink {
+  label: string;
+  url: string;
+  openInNewTab: boolean;
+}
+
+export interface SiteSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'none';
+  values: {
+    siteName: string;
+    logoUrl: string;
+    faviconUrl: string;
+    footerCopyright: string;
+    footerLinks: SiteFooterLink[];
+  };
+}
+
+export type PublicSiteSettings = SiteSettingsOverview['values'];
+
 export interface AiProviderStatus {
   code: string;
   label: string;

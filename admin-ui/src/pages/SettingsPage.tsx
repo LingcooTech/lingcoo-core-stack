@@ -1,17 +1,20 @@
+import { Plus, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import {
   clearOpenRouterSettings,
   clearQiniuSettings,
+  clearSiteSettings,
   clearSmtpSettings,
   getAiProviders,
   getOpenRouterSettings,
   getQiniuSettings,
+  getSiteSettings,
   getSmtpSettings,
   previewOpenRouterChatCompletion,
   previewOpenRouterModels,
@@ -20,10 +23,12 @@ import {
   testQiniuSettings,
   upsertOpenRouterSettings,
   upsertQiniuSettings,
+  upsertSiteSettings,
   upsertSmtpSettings
 } from '@/api/settings';
 import type { AiChatCompletionResult, AiModelSummary, OpenRouterTestConnectionResult } from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { QiniuImageField } from '@/components/shared/QiniuImageField';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
@@ -58,6 +63,33 @@ const qiniuSchema = z.object({
   defaultPrefix: z.string().optional()
 });
 
+const optionalSiteLinkField = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() : value),
+  z
+    .union([
+      z.string().startsWith('/'),
+      z.string().url('请输入有效链接'),
+      z.string().startsWith('mailto:'),
+      z.string().startsWith('tel:'),
+      z.literal('')
+    ])
+    .refine((value) => Boolean(value) || value === '', '请输入有效链接')
+);
+
+const siteLinkSchema = z.object({
+  label: z.string().trim().min(1, '请输入链接名称').max(60, '名称不能超过 60 个字符'),
+  url: optionalSiteLinkField.refine((value) => Boolean(value), '请输入链接地址'),
+  openInNewTab: z.boolean().optional()
+});
+
+const siteSchema = z.object({
+  siteName: z.string().trim().min(1, '请输入站点名称').max(120, '站点名称不能超过 120 个字符'),
+  logoUrl: optionalSiteLinkField,
+  faviconUrl: optionalSiteLinkField,
+  footerCopyright: z.string().trim().min(1, '请输入页脚版权').max(255, '页脚版权不能超过 255 个字符'),
+  footerLinks: z.array(siteLinkSchema).max(12, '最多保留 12 个页脚链接')
+});
+
 const openrouterSchema = z.object({
   apiKey: z.string().optional(),
   baseUrl: optionalUrlField,
@@ -72,6 +104,7 @@ const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').m
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 type QiniuValues = z.infer<typeof qiniuSchema>;
+type SiteValues = z.infer<typeof siteSchema>;
 type OpenRouterValues = z.infer<typeof openrouterSchema>;
 
 function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
@@ -105,6 +138,20 @@ function buildQiniuPayload(values: QiniuValues, options: { includeSecretKey: boo
     ...(publicBaseUrl ? { publicBaseUrl } : {}),
     ...(uploadHost ? { uploadHost } : {}),
     ...(defaultPrefix ? { defaultPrefix } : {})
+  };
+}
+
+function buildSitePayload(values: SiteValues) {
+  return {
+    siteName: values.siteName.trim(),
+    logoUrl: values.logoUrl.trim(),
+    faviconUrl: values.faviconUrl.trim(),
+    footerCopyright: values.footerCopyright.trim(),
+    footerLinks: values.footerLinks.map((item) => ({
+      label: item.label.trim(),
+      url: item.url.trim(),
+      openInNewTab: Boolean(item.openInNewTab)
+    }))
   };
 }
 
@@ -172,6 +219,7 @@ const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function SettingsPage() {
   const qc = useQueryClient();
+  const [clearSiteOpen, setClearSiteOpen] = useState(false);
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
   const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
   const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
@@ -194,6 +242,11 @@ export function SettingsPage() {
   const { data: smtpData, isLoading: smtpLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
     queryFn: getSmtpSettings
+  });
+
+  const { data: siteData, isLoading: siteLoading } = useQuery({
+    queryKey: ['system-settings', 'site'],
+    queryFn: getSiteSettings
   });
 
   const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
@@ -228,6 +281,26 @@ export function SettingsPage() {
       uploadHost: 'https://upload.qiniup.com',
       defaultPrefix: ''
     }
+  });
+
+  const siteForm = useForm<SiteValues>({
+    resolver: zodResolver(siteSchema),
+    defaultValues: {
+      siteName: 'FD Stack',
+      logoUrl: '',
+      faviconUrl: '',
+      footerCopyright: '© {year} FutureDecade. All rights reserved.',
+      footerLinks: []
+    }
+  });
+
+  const {
+    fields: siteLinkFields,
+    append: appendSiteLink,
+    remove: removeSiteLink
+  } = useFieldArray({
+    control: siteForm.control,
+    name: 'footerLinks'
   });
 
   const openrouterForm = useForm<OpenRouterValues>({
@@ -270,6 +343,20 @@ export function SettingsPage() {
       defaultPrefix: qiniuData.values.defaultPrefix
     });
   }, [qiniuData, qiniuForm]);
+
+  useEffect(() => {
+    if (!siteData) {
+      return;
+    }
+
+    siteForm.reset({
+      siteName: siteData.values.siteName,
+      logoUrl: siteData.values.logoUrl,
+      faviconUrl: siteData.values.faviconUrl,
+      footerCopyright: siteData.values.footerCopyright,
+      footerLinks: siteData.values.footerLinks
+    });
+  }, [siteData, siteForm]);
 
   useEffect(() => {
     if (!openrouterData) {
@@ -336,6 +423,36 @@ export function SettingsPage() {
       toast.success(`测试邮件已发送到 ${result.to}`);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败')
+  });
+
+  const saveSiteMutation = useMutation({
+    mutationFn: upsertSiteSettings,
+    onSuccess: (result) => {
+      toast.success('站点品牌与页脚设置已保存');
+      qc.setQueryData(['system-settings', 'site'], result);
+      qc.setQueryData(['public-site-settings'], result.values);
+      siteForm.reset({
+        siteName: result.values.siteName,
+        logoUrl: result.values.logoUrl,
+        faviconUrl: result.values.faviconUrl,
+        footerCopyright: result.values.footerCopyright,
+        footerLinks: result.values.footerLinks
+      });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+  });
+
+  const clearSiteMutation = useMutation({
+    mutationFn: clearSiteSettings,
+    onSuccess: async () => {
+      toast.success('站点品牌与页脚设置已重置');
+      setClearSiteOpen(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['system-settings', 'site'] }),
+        qc.invalidateQueries({ queryKey: ['public-site-settings'] })
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败')
   });
 
   const saveQiniuMutation = useMutation({
@@ -552,14 +669,17 @@ export function SettingsPage() {
     <div>
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
-        <Tabs defaultValue="smtp" className="max-w-3xl space-y-5">
+        <Tabs defaultValue="site" className="max-w-5xl space-y-5">
           <div className="rounded-lg border border-border bg-white p-6 shadow-sm">
             <div className="space-y-3">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
-                <p className="mt-1 text-sm text-muted-foreground">把系统能力按 SMTP、云存储和 AI Hub 分组管理，减少长页面滚动。</p>
+                <p className="mt-1 text-sm text-muted-foreground">把站点展示、SMTP、云存储和 AI Hub 分组管理，减少长页面滚动。</p>
               </div>
               <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
+                <TabsTrigger value="site" className="min-w-[108px] rounded-md">
+                  品牌与页脚
+                </TabsTrigger>
                 <TabsTrigger value="smtp" className="min-w-[108px] rounded-md">
                   SMTP
                 </TabsTrigger>
@@ -572,6 +692,204 @@ export function SettingsPage() {
               </TabsList>
             </div>
           </div>
+
+          <TabsContent value="site" className="mt-0">
+            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                  <StatusPill tone={siteData?.configured ? 'ok' : 'neutral'} label={siteData?.configured ? '品牌设置已自定义' : '使用默认站点展示'} />
+                  <StatusPill tone={siteData?.source === 'database' ? 'ok' : 'neutral'} label={`来源: ${siteData?.source === 'database' ? '数据库' : '默认值'}`} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">品牌与页脚</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    维护用户侧 header / footer 展示、favicon 与页脚菜单链接。保存后用户侧界面会直接读取这组公开配置。
+                  </p>
+                </div>
+              </div>
+
+              {siteLoading ? (
+                <div className="space-y-3">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...siteForm}>
+                  <form onSubmit={siteForm.handleSubmit((values) => saveSiteMutation.mutate(buildSitePayload(values)))} className="space-y-6">
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <FormField
+                        control={siteForm.control}
+                        name="siteName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>站点名称</FormLabel>
+                            <FormControl>
+                              <Input placeholder="FD Stack" {...field} />
+                            </FormControl>
+                            <FormDescription>用于用户侧 Header / Footer 的品牌名称展示。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={siteForm.control}
+                        name="footerCopyright"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>页脚版权</FormLabel>
+                            <FormControl>
+                              <Input placeholder="© {year} FutureDecade. All rights reserved." {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              支持使用 <code>{'{year}'}</code> 占位符自动替换为当前年份。
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <FormField
+                        control={siteForm.control}
+                        name="logoUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Logo</FormLabel>
+                            <FormControl>
+                              <QiniuImageField
+                                value={field.value}
+                                onChange={field.onChange}
+                                defaultPrefix="site-assets/logo"
+                                previewAlt="site logo"
+                                previewClassName="h-20 w-40 rounded-md border bg-white object-contain p-2"
+                                dialogTitle="选择站点 Logo"
+                                dialogDescription="支持从七牛云已有图片中选择，或直接上传新的站点 Logo。"
+                              />
+                            </FormControl>
+                            <FormDescription>会显示在用户侧顶部导航与页脚品牌区。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={siteForm.control}
+                        name="faviconUrl"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Favicon</FormLabel>
+                            <FormControl>
+                              <QiniuImageField
+                                value={field.value}
+                                onChange={field.onChange}
+                                defaultPrefix="site-assets/favicon"
+                                previewAlt="site favicon"
+                                previewClassName="h-16 w-16 rounded-md border bg-white object-contain p-2"
+                                dialogTitle="选择站点 Favicon"
+                                dialogDescription="建议上传方形透明背景图标，保存后会同步到浏览器标签页图标。"
+                              />
+                            </FormControl>
+                            <FormDescription>支持 SVG / PNG / ICO 或其他可公开访问的图标链接。</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">Footer 菜单链接</h3>
+                          <p className="text-sm text-muted-foreground">支持站内路径、完整 URL、`mailto:` 与 `tel:`。最多保留 12 项。</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => appendSiteLink({ label: '', url: '', openInNewTab: false })}
+                          disabled={siteLinkFields.length >= 12}
+                        >
+                          <Plus className="h-4 w-4" />
+                          新增链接
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {siteLinkFields.map((field, index) => (
+                          <div key={field.id} className="rounded-lg border border-border bg-white p-4">
+                            <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
+                              <div className="space-y-2">
+                                <FormLabel>名称</FormLabel>
+                                <Input
+                                  placeholder="应用中心"
+                                  {...siteForm.register(`footerLinks.${index}.label`)}
+                                />
+                                <p className="text-xs text-destructive">
+                                  {siteForm.formState.errors.footerLinks?.[index]?.label?.message}
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <FormLabel>链接</FormLabel>
+                                <Input
+                                  placeholder="/ or https://..."
+                                  {...siteForm.register(`footerLinks.${index}.url`)}
+                                />
+                                <p className="text-xs text-destructive">
+                                  {siteForm.formState.errors.footerLinks?.[index]?.url?.message}
+                                </p>
+                              </div>
+
+                              <div className="space-y-3">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeSiteLink(index)}>
+                                  <Trash2 className="h-4 w-4" />
+                                  删除
+                                </Button>
+                                <FormField
+                                  control={siteForm.control}
+                                  name={`footerLinks.${index}.openInNewTab`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                      <FormControl>
+                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                      </FormControl>
+                                      <div>
+                                        <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {!siteLinkFields.length ? (
+                          <div className="rounded-lg border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
+                            当前没有自定义 footer 链接。你可以新增常用入口，或直接点击“重置”恢复默认菜单。
+                          </div>
+                        ) : null}
+                        {typeof siteForm.formState.errors.footerLinks?.message === 'string' ? (
+                          <p className="text-sm text-destructive">{siteForm.formState.errors.footerLinks.message}</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" disabled={saveSiteMutation.isPending}>
+                        {saveSiteMutation.isPending ? '保存中...' : '保存品牌与页脚'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={clearSiteMutation.isPending} onClick={() => setClearSiteOpen(true)}>
+                        重置为默认配置
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="smtp" className="mt-0">
             <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
@@ -1167,6 +1485,17 @@ export function SettingsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ConfirmActionDialog
+        open={clearSiteOpen}
+        onOpenChange={setClearSiteOpen}
+        title="重置品牌与页脚配置？"
+        description="这会删除数据库中的站点品牌设置，并恢复默认站点名称、默认 footer 菜单以及默认 favicon。"
+        confirmText={clearSiteMutation.isPending ? '重置中...' : '确认重置'}
+        confirmVariant="destructive"
+        isConfirming={clearSiteMutation.isPending}
+        onConfirm={() => clearSiteMutation.mutate()}
+      />
 
       <ConfirmActionDialog
         open={clearSmtpOpen}

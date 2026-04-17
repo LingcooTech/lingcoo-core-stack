@@ -1,11 +1,14 @@
 import { Boxes, LayoutDashboard, LogIn, LogOut, ReceiptText, Rocket, ShieldCheck } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import { getPublicSiteSettings } from '@/api/settings';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
 import { Button } from '@/components/ui/button';
 import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
-import { cn } from '@/lib/utils';
+import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { useAuth } from '@/lib/auth';
+import { cn, getInitials } from '@/lib/utils';
 
 const iconMap = {
   BX: Boxes,
@@ -24,6 +27,12 @@ const navItems: Array<{ key: UserSectionKey; to: string; label: string; note: st
 export function UserShell() {
   const location = useLocation();
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
+  const { data: siteSettings } = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000
+  });
+  const siteName = getSiteDisplayName(siteSettings);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_28%),linear-gradient(180deg,#f8fbff_0%,#edf3f8_42%,#f7fafc_100%)]">
@@ -32,12 +41,20 @@ export function UserShell() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-6">
               <Link to="/" className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
-                  FD
-                </div>
+                {siteSettings?.logoUrl ? (
+                  <img
+                    src={siteSettings.logoUrl}
+                    alt={siteName}
+                    className="h-11 w-11 rounded-lg border border-gray-200 bg-white object-contain p-1 shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
+                    {getInitials(siteName)}
+                  </div>
+                )}
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">FutureDecade Platform</p>
-                  <p className="text-base font-semibold tracking-tight text-gray-900">FD Stack</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Consumer Portal</p>
+                  <p className="text-base font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
 
@@ -144,7 +161,7 @@ export function UserShell() {
         <Outlet />
       </main>
 
-      <ConsumerFooter />
+      <ConsumerFooter siteSettings={siteSettings} />
     </div>
   );
 }
