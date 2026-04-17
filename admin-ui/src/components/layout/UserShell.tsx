@@ -1,11 +1,13 @@
 import { Boxes, LayoutDashboard, LogIn, LogOut, ReceiptText, Rocket, ShieldCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { getPublicSiteSettings } from '@/api/settings';
 import { Container } from '@/components/layout/Container';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
 import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { useAuth } from '@/lib/auth';
@@ -27,6 +29,7 @@ const navItems: Array<{ key: UserSectionKey; to: string; label: string; note: st
 
 export function UserShell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
   const { data: siteSettings } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
@@ -87,30 +90,43 @@ export function UserShell() {
             </nav>
 
             {/* 右侧: 工具区域 (1/5) */}
-            <div className="flex flex-wrap items-center justify-end gap-2 w-full lg:w-1/5">
-              <div className="hidden rounded-lg border border-gray-200/80 bg-gray-50/80 px-3 py-2 text-right lg:block">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Consumer Portal</p>
-                <p className="text-xs font-semibold text-slate-900">应用发现 · 购买授权 · 部署交付</p>
-              </div>
+            <div className="flex items-center justify-end w-full lg:w-1/5">
               {isAuthenticated ? (
-                <>
-                  <div className="hidden rounded-lg border border-gray-200 bg-white px-3 py-2 text-right sm:block">
-                    <p className="text-xs font-bold text-slate-900">{user?.email}</p>
-                    <p className="text-[11px] text-muted-foreground">{isAdmin ? '管理员已登录' : '用户中心已登录'}</p>
-                  </div>
-                  {isAdmin ? (
-                    <Button variant="outline" asChild>
-                      <Link to="/admin">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="rounded-full border border-gray-200 bg-white p-1.5 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      aria-label="打开用户菜单"
+                    >
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    {isAdmin ? (
+                      <DropdownMenuItem
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          navigate('/admin');
+                        }}
+                      >
                         <LayoutDashboard className="h-4 w-4" />
                         管理后台
-                      </Link>
-                    </Button>
-                  ) : null}
-                  <Button variant="ghost" onClick={logout}>
-                    <LogOut className="h-4 w-4" />
-                    退出
-                  </Button>
-                </>
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        logout();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      退出
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <>
                   <Button variant="ghost" asChild>
