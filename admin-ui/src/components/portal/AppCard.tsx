@@ -68,7 +68,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
         <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
-            {app.highlights.length} 项亮点
+            {preferredOffer?.title || '暂无套餐'}
           </span>
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
             {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}

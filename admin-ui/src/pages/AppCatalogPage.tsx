@@ -482,7 +482,8 @@ export function AppCatalogPage() {
         appName={app.name}
         open={purchaseDialogOpen}
         onOpenChange={setPurchaseDialogOpen}
-        offer={selectedOffer}
+        offers={offers}
+        initialOfferCode={selectedOffer?.code ?? null}
         websiteUrl={websiteLink?.url ?? null}
       />
     </div>
