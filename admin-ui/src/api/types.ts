@@ -496,7 +496,62 @@ export interface CheckoutSessionCreated {
   createdAt: string;
 }
 
+export interface CheckoutSessionPublic {
+  sessionId: string;
+  sessionCode: string;
+  status: string;
+  app: AppSummary;
+  product: {
+    code: string;
+    name: string;
+  };
+  plan: {
+    code: string;
+    name: string;
+    interval: string | null;
+  };
+  order: {
+    orderNo: string;
+    subject: string;
+    amount: number;
+    amountYuan: string;
+    currency: string;
+  };
+  paymentAction:
+    | {
+        type: 'qr_code';
+        qrCodeText: string;
+        codeUrl: string;
+        qrCodeDataUrl: string;
+      }
+    | {
+        type: 'redirect_url';
+        url: string;
+      }
+    | null;
+  successUrl: string | null;
+  cancelUrl: string | null;
+  expiresAt: string | null;
+  completedAt: string | null;
+}
+
+export interface CheckoutSessionStatus {
+  sessionCode: string;
+  status: string;
+  orderNo: string;
+  paidAt: string | null;
+  completedAt: string | null;
+  expiresAt: string | null;
+}
+
 export interface ReconcileResponse {
+  sessionCode?: string;
+  status?: string;
+  orderNo?: string;
+  paidAt?: string | null;
+  completedAt?: string | null;
+  expiresAt?: string | null;
+  changed?: boolean;
   reconciliation: {
     status: string;
     reason: string;

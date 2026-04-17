@@ -1,29 +1,19 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  ChevronDown,
-  CreditCard,
-  LoaderCircle,
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronDown, CreditCard, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 import { getAppCatalog } from '@/api/apps';
-import { createCheckoutSession } from '@/api/user';
+import { AppPurchaseDialog } from '@/components/portal/AppPurchaseDialog';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { OfferCard } from '@/components/portal/OfferCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  formatOfferCycleLabel,
   formatOfferPriceLabel,
-  getActiveOffers,
   getAppStatusLabel,
   getAppTypeLabel,
   getLinkTypeLabel,
@@ -37,12 +27,11 @@ type DetailTabKey = 'intro' | 'features' | 'screenshots' | 'pricing' | 'support'
 export function AppCatalogPage() {
   const params = useParams<{ appCode: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { isAuthenticated, user } = useAuth();
-  const [providerPreference, setProviderPreference] = useState<'wechat_pay' | 'alipay'>('wechat_pay');
+  const { isAuthenticated } = useAuth();
   const [selectedOfferCode, setSelectedOfferCode] = useState<string>('');
   const [activeTab, setActiveTab] = useState<DetailTabKey>('intro');
   const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['app-catalog', params.appCode],
@@ -54,6 +43,7 @@ export function AppCatalogPage() {
     setSelectedOfferCode('');
     setActiveTab('intro');
     setOpenFaqIndices(new Set());
+    setPurchaseDialogOpen(false);
   }, [params.appCode]);
 
   const offers = data?.offers.filter((offer) => offer.status === 'active') ?? [];
@@ -82,37 +72,6 @@ export function AppCatalogPage() {
     return grouped;
   }, [data]);
 
-  const checkoutMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedOffer) {
-        throw new Error('请先选择一个套餐');
-      }
-
-      return createCheckoutSession({
-        appCode: data?.app.code ?? '',
-        planCode: selectedOffer.planCode,
-        offerCode: selectedOffer.code,
-        providerPreference,
-        successUrl: `${window.location.origin}/orders`,
-        cancelUrl: `${window.location.origin}${location.pathname}`,
-      });
-    },
-    onSuccess: (result) => {
-      window.location.href = result.presentation.url;
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '创建支付失败，请稍后重试');
-    },
-  });
-
-  const startCheckout = () => {
-    if (!isAuthenticated) {
-      navigate(`/login?next=${encodeURIComponent(location.pathname)}`);
-      return;
-    }
-    checkoutMutation.mutate();
-  };
-
   const toggleFaq = (index: number) => {
     setOpenFaqIndices((prev) => {
       const next = new Set(prev);
@@ -123,6 +82,14 @@ export function AppCatalogPage() {
       }
       return next;
     });
+  };
+
+  const startCheckout = () => {
+    if (!isAuthenticated) {
+      navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    setPurchaseDialogOpen(true);
   };
 
   if (isLoading) {
@@ -157,13 +124,7 @@ export function AppCatalogPage() {
   const hasContent = Boolean(app.content && app.content.trim().length > 0);
   const hasFaq = app.faq.length > 0;
   const hasAiTranslateWorkflowResources = app.code === 'ai_translate_workflow';
-  const selectedFeatures = selectedOffer
-    ? Array.from(new Set(planFeatureMap.get(selectedOffer.planId) ?? []))
-    : [];
-  const supportLink = app.links.find((item) => item.type === 'support');
   const websiteLink = app.links.find((item) => item.type === 'website');
-  const docsLink = app.links.find((item) => item.type === 'docs');
-  const activeAppOffers = getActiveOffers(app.checkoutOffers ?? []);
 
   const resourceCards = [
     ...(app.links ?? []).map((link) => ({
@@ -219,12 +180,12 @@ export function AppCatalogPage() {
       <section className="-mx-4 border-b border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/75 to-white px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         {app.coverUrl ? (
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-[360px] bg-cover bg-center opacity-[0.06]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.06]"
             style={{ backgroundImage: `url(${app.coverUrl})` }}
           />
         ) : null}
 
-        <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
+        <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),300px] xl:items-start">
           <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-[112px,minmax(0,1fr)]">
               <div className="flex justify-center md:justify-start">
@@ -263,142 +224,34 @@ export function AppCatalogPage() {
                   {app.name}
                 </h1>
                 <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
-                  {app.tagline || app.description || '统一展示应用价值、套餐和资源入口。'}
+                  {app.tagline || app.description || '该应用暂未提供简介。'}
                 </p>
-
-                <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                  {[
-                    `${app.highlights.length} 项亮点`,
-                    `${activeAppOffers.length} 个方案`,
-                    `${resourceCards.length} 个资源入口`,
-                  ].map((item) => (
-                    <span
-                      key={item}
-                      className="inline-flex items-center rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
               </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 xl:max-w-3xl">
-              {[
-                { label: '核心亮点', value: String(app.highlights.length), note: '帮助快速判断适用场景' },
-                { label: '售卖方案', value: String(activeAppOffers.length), note: '支持按方案比较价格' },
-                { label: '帮助入口', value: String(resourceCards.length), note: '文档、支持与下载入口' },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl border border-gray-200 bg-white/85 p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                  <p className="mt-2 text-sm leading-6 text-gray-500">{item.note}</p>
-                </div>
-              ))}
             </div>
           </div>
 
           <aside className="w-full xl:justify-self-end">
             <div className="rounded-[24px] border border-gray-200 bg-white p-5 shadow-sm">
               <div className="text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">当前套餐</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">价格</p>
+                <p className="mt-3 text-4xl font-bold text-gray-900">{formatOfferPriceLabel(selectedOffer)}</p>
+                <p className="mt-2 text-sm text-gray-500">
                   {selectedOffer?.title ?? '暂无可购买方案'}
-                </h2>
-                <p className="mt-3 text-3xl font-bold text-gray-900">
-                  {formatOfferPriceLabel(selectedOffer)}
                 </p>
-                <p className="mt-1 text-sm text-gray-500">{formatOfferCycleLabel(selectedOffer)}</p>
-                {selectedOffer?.description ? (
-                  <p className="mt-3 text-sm leading-6 text-gray-500">{selectedOffer.description}</p>
-                ) : null}
               </div>
 
-              {offers.length > 1 ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {offers.map((offer) => (
-                    <button
-                      key={offer.code}
-                      type="button"
-                      onClick={() => setSelectedOfferCode(offer.code)}
-                      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                        selectedOffer?.code === offer.code
-                          ? 'border-sky-200 bg-sky-50 text-sky-700'
-                          : 'border-gray-200 bg-white text-gray-500 hover:text-gray-900'
-                      }`}
-                    >
-                      {offer.title}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                {(['wechat_pay', 'alipay'] as const).map((provider) => (
-                  <button
-                    key={provider}
-                    type="button"
-                    onClick={() => setProviderPreference(provider)}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
-                      providerPreference === provider
-                        ? 'border-sky-200 bg-sky-50 text-sky-700'
-                        : 'border-gray-200 bg-white text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {provider === 'wechat_pay' ? '微信支付' : '支付宝'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                {isAuthenticated && user ? `当前已登录：${user.email}` : '登录后即可直接购买并同步授权状态。'}
-              </div>
-
-              <Button
-                className="mt-4 h-11 w-full rounded-2xl"
-                onClick={startCheckout}
-                disabled={!selectedOffer || checkoutMutation.isPending}
-              >
-                {checkoutMutation.isPending ? (
-                  <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                    正在跳转支付...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4" />
-                    {isAuthenticated ? '立即购买' : '登录后购买'}
-                  </>
-                )}
+              <Button className="mt-5 h-11 w-full rounded-2xl" onClick={startCheckout} disabled={!selectedOffer}>
+                立即购买
               </Button>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {websiteLink ? (
-                  <Button variant="outline" className="rounded-2xl" asChild>
-                    <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
-                      官网
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  </Button>
-                ) : null}
-                {supportLink ? (
-                  <Button variant="outline" className="rounded-2xl" asChild>
-                    <a href={supportLink.url} target="_blank" rel="noopener noreferrer">
-                      支持
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  </Button>
-                ) : docsLink ? (
-                  <Button variant="outline" className="rounded-2xl" asChild>
-                    <a href={docsLink.url} target="_blank" rel="noopener noreferrer">
-                      文档
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
+              {websiteLink ? (
+                <Button variant="outline" className="mt-3 h-11 w-full rounded-2xl" asChild>
+                  <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
+                    演示地址
+                    <ArrowUpRight className="h-4 w-4" />
+                  </a>
+                </Button>
+              ) : null}
             </div>
           </aside>
         </div>
@@ -611,7 +464,6 @@ export function AppCatalogPage() {
                     { label: '分类', value: app.category || '未设置' },
                     { label: '状态', value: getAppStatusLabel(app.status) },
                     { label: '更新时间', value: formatTime(app.updatedAt) },
-                    { label: '资源入口', value: `${resourceCards.length} 个` },
                   ].map((item) => (
                     <div key={item.label} className="flex items-start justify-between gap-4">
                       <dt className="text-gray-500">{item.label}</dt>
@@ -620,70 +472,19 @@ export function AppCatalogPage() {
                   ))}
                 </dl>
               </div>
-
-              {selectedOffer ? (
-                <div className="rounded-2xl bg-sky-50 p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">当前方案</h3>
-                  <p className="mt-3 text-lg font-semibold text-gray-900">{selectedOffer.title}</p>
-                  <p className="mt-1 text-sm text-gray-600">{formatOfferCycleLabel(selectedOffer)}</p>
-                  <p className="mt-4 text-2xl font-bold text-gray-900">
-                    {formatOfferPriceLabel(selectedOffer)}
-                  </p>
-                  {selectedFeatures.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {selectedFeatures.slice(0, 8).map((feature) => (
-                        <span
-                          key={feature}
-                          className="inline-flex items-center gap-1 rounded-full border border-sky-100 bg-white px-3 py-1 text-xs font-medium text-gray-700"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {resourceCards.length > 0 ? (
-                <div className="rounded-2xl bg-gray-50 p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-900">资源入口</h3>
-                  <div className="mt-4 space-y-3">
-                    {resourceCards.map((resource) => {
-                      const isInternal = resource.url.startsWith('/');
-                      const row = (
-                        <div className="flex items-start justify-between gap-3 rounded-2xl bg-white px-4 py-3">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{resource.label}</p>
-                            <p className="mt-1 text-xs leading-5 text-gray-500">{resource.note}</p>
-                          </div>
-                          <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                        </div>
-                      );
-
-                      return isInternal ? (
-                        <Link key={resource.label} to={resource.url} className="block no-underline">
-                          {row}
-                        </Link>
-                      ) : (
-                        <a
-                          key={resource.label}
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block no-underline"
-                        >
-                          {row}
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </aside>
         </div>
       </section>
+
+      <AppPurchaseDialog
+        appCode={app.code}
+        appName={app.name}
+        open={purchaseDialogOpen}
+        onOpenChange={setPurchaseDialogOpen}
+        offer={selectedOffer}
+        websiteUrl={websiteLink?.url ?? null}
+      />
     </div>
   );
 }

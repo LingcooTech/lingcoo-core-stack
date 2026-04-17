@@ -1,5 +1,15 @@
 import { apiClient } from './client';
-import type { CheckoutSessionCreated, DeploymentsResponse, EntitlementsResponse, IssueDeploymentTokenResult, OrdersResponse, DeploymentSummary } from './types';
+import type {
+  CheckoutSessionCreated,
+  CheckoutSessionPublic,
+  CheckoutSessionStatus,
+  DeploymentsResponse,
+  EntitlementsResponse,
+  IssueDeploymentTokenResult,
+  OrdersResponse,
+  DeploymentSummary,
+  ReconcileResponse,
+} from './types';
 
 export async function listMyOrders(): Promise<OrdersResponse> {
   return apiClient<OrdersResponse>('/v1/billing/orders/me');
@@ -26,6 +36,20 @@ export async function createCheckoutSession(payload: {
   return apiClient<CheckoutSessionCreated>('/v1/checkout/sessions', {
     method: 'POST',
     body: JSON.stringify(payload)
+  });
+}
+
+export async function getCheckoutSessionPublic(sessionCode: string): Promise<CheckoutSessionPublic> {
+  return apiClient<CheckoutSessionPublic>(`/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/public`);
+}
+
+export async function getCheckoutSessionStatus(sessionCode: string): Promise<CheckoutSessionStatus> {
+  return apiClient<CheckoutSessionStatus>(`/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/status`);
+}
+
+export async function reconcileCheckoutSession(sessionCode: string): Promise<ReconcileResponse> {
+  return apiClient<ReconcileResponse>(`/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/reconcile`, {
+    method: 'POST',
   });
 }
 

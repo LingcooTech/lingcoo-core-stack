@@ -239,9 +239,6 @@ export function AppsPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Resources</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">应用列表</h1>
-          <p className="mt-2 text-sm leading-6 text-gray-500">
-            以更高信息密度查看应用状态、售卖配置和管理动作，优先保证中台操作效率。
-          </p>
         </div>
 
         <Button asChild>
@@ -254,10 +251,10 @@ export function AppsPage() {
 
       <div className="grid gap-4 lg:grid-cols-4">
         {[
-          { icon: Boxes, label: '应用总数', value: String(apps.length), note: '全部未删除应用' },
-          { icon: Sparkles, label: '已上架', value: String(publishedCount), note: '仍对用户可见的应用' },
-          { icon: Archive, label: '已归档', value: String(archivedCount), note: '停止对外展示但历史保留' },
-          { icon: CreditCard, label: '可售卖', value: String(activeOfferCount), note: '至少存在一个活动 Offer' },
+          { icon: Boxes, label: '应用总数', value: String(apps.length) },
+          { icon: Sparkles, label: '已上架', value: String(publishedCount) },
+          { icon: Archive, label: '已归档', value: String(archivedCount) },
+          { icon: CreditCard, label: '可售卖', value: String(activeOfferCount) },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -273,7 +270,6 @@ export function AppsPage() {
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
-              <p className="mt-2 text-sm leading-6 text-gray-500">{item.note}</p>
             </div>
           );
         })}
