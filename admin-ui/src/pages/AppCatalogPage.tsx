@@ -180,7 +180,7 @@ export function AppCatalogPage() {
   ];
 
   return (
-    <div className="space-y-12">
+    <div className="max-w-7xl mx-auto space-y-12 px-4 sm:px-6 lg:px-8 py-8">
       <Button variant="ghost" asChild className="px-0 text-muted-foreground">
         <Link to="/">
           <ArrowLeft className="mr-1 h-4 w-4" />
@@ -188,9 +188,9 @@ export function AppCatalogPage() {
         </Link>
       </Button>
 
-      <section className="overflow-hidden rounded-lg border border-gray-200/80 bg-white/95 shadow-xl shadow-gray-900/5">
+      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
         <div className="grid lg:grid-cols-[minmax(0,1.2fr),380px]">
-          <div className="relative overflow-hidden bg-gradient-to-br from-gray-950 via-gray-800 to-sky-700 p-8 text-white md:p-10">
+          <div className="relative overflow-hidden bg-gradient-to-br from-gray-950 via-gray-800 to-blue-700 p-8 text-white md:p-10">
             {app.coverUrl ? (
               <div
                 className="absolute inset-0 bg-cover bg-center opacity-25"
@@ -226,7 +226,7 @@ export function AppCatalogPage() {
 
                 <div className="min-w-0">
                   <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{app.name}</h1>
-                  <p className="mt-4 max-w-3xl text-base leading-8 text-sky-50/90 md:text-lg">
+                  <p className="mt-4 max-w-3xl text-base leading-relaxed text-blue-50/90 md:text-lg">
                     {app.tagline || app.description || '这是一个更接近正式产品页的应用详情页：先讲清楚是什么，再承接购买与交付。'}
                   </p>
                 </div>
@@ -251,29 +251,29 @@ export function AppCatalogPage() {
                   }
                 ].map((item) => (
                   <div key={item.label} className="rounded-lg border border-white/12 bg-white/10 p-4 backdrop-blur">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-50/70">{item.label}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-50/70">{item.label}</p>
                     <p className="mt-2 text-3xl font-semibold tracking-tight">{item.value}</p>
-                    <p className="mt-1 text-xs leading-6 text-sky-50/70">{item.note}</p>
+                    <p className="mt-1 text-xs leading-normal text-blue-50/70">{item.note}</p>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-6 border-t border-gray-200/80 bg-white p-8 lg:border-l lg:border-t-0">
+          <div className="flex flex-col justify-between gap-6 border-t border-gray-200 bg-white p-8 lg:border-l lg:border-t-0">
             <div className="space-y-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Purchase</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Purchase</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
                   {selectedOffer?.title ?? '暂无可购买方案'}
                 </h2>
-                <p className="mt-2 text-sm leading-7 text-gray-600">
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">
                   {selectedOffer?.description || '这里应该像正式产品页一样，把价格、支付方式、购买状态和下一步动作清楚交代给用户。'}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">当前价格</p>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">当前价格</p>
                 <p className="mt-2 text-4xl font-semibold tracking-tight text-gray-900">
                   {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '即将开放'}
                 </p>
@@ -301,7 +301,7 @@ export function AppCatalogPage() {
 
               {selectedFeatures.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">本方案包含</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">本方案包含</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedFeatures.slice(0, 6).map((feature) => (
                       <span
@@ -397,14 +397,14 @@ export function AppCatalogPage() {
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <Card key={item.title} className="rounded-lg border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
+            <Card key={item.title} className="rounded-lg border-gray-200 bg-white shadow-sm">
               <CardContent className="flex items-start gap-4 p-6">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-lg font-semibold tracking-tight text-gray-900">{item.title}</h3>
-                  <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
+                  <p className="text-sm leading-relaxed text-gray-600">{item.desc}</p>
                 </div>
               </CardContent>
             </Card>
@@ -416,19 +416,19 @@ export function AppCatalogPage() {
         <div className="space-y-12">
           <section className="space-y-6">
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Overview</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Overview</p>
               <h2 className="text-3xl font-semibold tracking-tight text-gray-900">产品概览</h2>
             </div>
-            <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+            <Card className="rounded-lg border-gray-200 bg-white shadow-sm">
               <CardContent className="p-7">
                 {hasContent ? (
-                  <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-img:rounded-lg prose-p:leading-8">
+                  <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-img:rounded-lg prose-p:leading-relaxed">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                       {app.content}
                     </ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="text-sm leading-7 text-gray-500">该应用暂无详细介绍。</p>
+                  <p className="text-sm leading-relaxed text-gray-500">该应用暂无详细介绍。</p>
                 )}
               </CardContent>
             </Card>
@@ -437,19 +437,19 @@ export function AppCatalogPage() {
           {hasHighlights && (
             <section className="space-y-6">
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Highlights</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Highlights</p>
                 <h2 className="text-3xl font-semibold tracking-tight text-gray-900">核心亮点</h2>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {app.highlights.map((highlight, idx) => (
-                  <Card key={idx} className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+                  <Card key={idx} className="rounded-lg border-gray-200 bg-white shadow-sm">
                     <CardContent className="space-y-4 p-6">
                       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-900 text-2xl text-white">
                         {highlight.icon || '✦'}
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-lg font-semibold tracking-tight text-gray-900">{highlight.title}</h3>
-                        <p className="text-sm leading-7 text-gray-600">{highlight.description}</p>
+                        <p className="text-sm leading-relaxed text-gray-600">{highlight.description}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -461,7 +461,7 @@ export function AppCatalogPage() {
           {hasScreenshots && (
             <section className="space-y-6">
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Screenshots</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Screenshots</p>
                 <h2 className="text-3xl font-semibold tracking-tight text-gray-900">应用截图</h2>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
@@ -471,7 +471,7 @@ export function AppCatalogPage() {
                     href={screenshot.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm shadow-gray-900/5"
+                    className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
                   >
                     <div className="aspect-[16/10] overflow-hidden bg-gray-100">
                       <img
@@ -481,7 +481,7 @@ export function AppCatalogPage() {
                       />
                     </div>
                     {screenshot.caption ? (
-                      <div className="border-t border-gray-200/80 px-5 py-4 text-sm text-gray-600">
+                      <div className="border-t border-gray-200 px-5 py-4 text-sm text-gray-600">
                         {screenshot.caption}
                       </div>
                     ) : null}
@@ -493,7 +493,7 @@ export function AppCatalogPage() {
 
           <section className="space-y-6" id="pricing">
             <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Plans</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Plans</p>
               <h2 className="text-3xl font-semibold tracking-tight text-gray-900">套餐与价格</h2>
             </div>
             {offers.length === 0 ? (
@@ -520,14 +520,14 @@ export function AppCatalogPage() {
           {hasFaq && (
             <section className="space-y-6">
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">FAQ</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">FAQ</p>
                 <h2 className="text-3xl font-semibold tracking-tight text-gray-900">常见问题</h2>
               </div>
               <div className="space-y-3">
                 {app.faq.map((item, idx) => {
                   const isOpen = openFaqIndices.has(idx);
                   return (
-                    <Card key={idx} className="overflow-hidden rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+                    <Card key={idx} className="overflow-hidden rounded-lg border-gray-200 bg-white shadow-sm">
                       <button
                         type="button"
                         onClick={() => toggleFaq(idx)}
@@ -539,7 +539,7 @@ export function AppCatalogPage() {
                         />
                       </button>
                       {isOpen ? (
-                        <div className="border-t border-gray-200/80 px-6 py-5 text-sm leading-7 text-gray-600">
+                        <div className="border-t border-gray-200 px-6 py-5 text-sm leading-relaxed text-gray-600">
                           {item.answer}
                         </div>
                       ) : null}
@@ -552,14 +552,14 @@ export function AppCatalogPage() {
         </div>
 
         <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-          <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+          <Card className="rounded-lg border-gray-200 bg-white shadow-sm">
             <CardHeader className="space-y-2">
               <CardTitle className="text-xl">快速摘要</CardTitle>
               <CardDescription>把用户做购买决定前最关心的信息压缩到这一栏。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm leading-7 text-gray-600">
-              <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">当前选择</p>
+            <CardContent className="space-y-4 text-sm leading-relaxed text-gray-600">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">当前选择</p>
                 <p className="mt-2 text-lg font-semibold text-gray-900">{selectedOffer?.title ?? '暂无可购买方案'}</p>
                 <p className="text-gray-500">
                   {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '请稍后再试'}
@@ -582,7 +582,7 @@ export function AppCatalogPage() {
           </Card>
 
           {resourceCards.length > 0 ? (
-            <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+            <Card className="rounded-lg border-gray-200 bg-white shadow-sm">
               <CardHeader className="space-y-2">
                 <CardTitle className="text-xl">资源与入口</CardTitle>
                 <CardDescription>把文档、支持、官网与合规页面统一到一个区域。</CardDescription>
@@ -591,16 +591,16 @@ export function AppCatalogPage() {
                 {resourceCards.map((link) => {
                   const isInternal = link.url.startsWith('/');
                   const content = (
-                    <div className="group flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50/70 px-4 py-4 transition hover:border-slate-300 hover:bg-white">
+                    <div className="group flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 transition hover:border-slate-300 hover:bg-white">
                       <div className="rounded-full border border-gray-200 bg-white p-2 text-gray-500">
                         <ExternalLink className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-bold text-gray-900">{link.label}</p>
-                          <Badge variant="outline" className="text-[10px]">{link.typeLabel}</Badge>
+                          <Badge variant="outline" className="text-xs">{link.typeLabel}</Badge>
                         </div>
-                        <p className="mt-1 text-xs leading-6 text-gray-500">{link.note}</p>
+                        <p className="mt-1 text-xs leading-normal text-gray-500">{link.note}</p>
                       </div>
                     </div>
                   );

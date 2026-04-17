@@ -16,15 +16,15 @@ export function AppCard({ app }: { app: AppWithDetails }) {
   const priceLabel = minPrice ? formatAmount(minPrice.priceAmount, minPrice.currency) : '即将开放';
 
   return (
-    <Card className="group overflow-hidden rounded-lg border border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-900/10">
-      <div className="relative h-32 overflow-hidden border-b border-gray-200/70 bg-gradient-to-br from-gray-950 via-gray-800 to-sky-700">
+    <Card className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md hover:border-gray-300">
+      <div className="relative h-32 overflow-hidden border-b border-gray-200 bg-gradient-to-br from-gray-900 via-gray-800 to-blue-700">
         {app.coverUrl ? (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-30 transition duration-500 group-hover:scale-105"
+            className="absolute inset-0 bg-cover bg-center opacity-30 transition duration-300 group-hover:scale-105"
             style={{ backgroundImage: `url(${app.coverUrl})` }}
           />
         ) : null}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(125,211,252,0.34),_transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_65%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(125,211,252,0.3),_transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_65%)]" />
         <div className="relative flex h-full items-start justify-between gap-3 p-4">
           <div className="flex flex-wrap gap-2">
             {app.category ? (
@@ -49,7 +49,7 @@ export function AppCard({ app }: { app: AppWithDetails }) {
               className="h-16 w-16 shrink-0 rounded-lg bg-gray-50 object-cover shadow-sm"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-700 to-sky-600 text-lg font-semibold text-white shadow-sm">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gray-900 via-gray-700 to-blue-600 text-lg font-semibold text-white shadow-sm">
               {getInitials(app.name)}
             </div>
           )}
@@ -57,7 +57,7 @@ export function AppCard({ app }: { app: AppWithDetails }) {
             <h3 className="text-xl font-semibold tracking-tight text-gray-900 transition-colors group-hover:text-blue-600">
               {app.name}
             </h3>
-            <p className="mt-2 line-clamp-3 text-sm leading-7 text-gray-600">
+            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-gray-600">
               {app.tagline || app.description || '优质应用，等你体验。'}
             </p>
           </div>
@@ -75,10 +75,10 @@ export function AppCard({ app }: { app: AppWithDetails }) {
 
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">起始价格</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">起始价格</p>
             <p className="text-2xl font-semibold tracking-tight text-gray-900">{priceLabel}</p>
           </div>
-          <Button asChild className="shrink-0 rounded-lg">
+          <Button asChild className="shrink-0 rounded-md">
             <Link to={`/apps/${app.code}`}>
               查看详情
               <ArrowRight className="h-4 w-4" />
