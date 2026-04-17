@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .max-w-consumer {
+    max-width: 1200px;
+  }
+
+  .max-w-reading {
+    max-width: 760px;
+  }
+}
+
 @layer base {
   :root {
     --background: 210 40% 98%;
@@ -34,5 +44,9 @@
   body {
     @apply bg-[#edf2f7] text-foreground;
     font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }

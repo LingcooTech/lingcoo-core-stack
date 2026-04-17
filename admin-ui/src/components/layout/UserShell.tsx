@@ -1,6 +1,7 @@
 import { Boxes, LayoutDashboard, LogIn, LogOut, ReceiptText, Rocket, ShieldCheck } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
 import { Button } from '@/components/ui/button';
 import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
 import { cn } from '@/lib/utils';
@@ -25,21 +26,22 @@ export function UserShell() {
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_45%),linear-gradient(180deg,#f8fbff_0%,#edf2f7_100%)]">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-500 text-sm font-black text-white shadow-lg shadow-primary/20">
-                FD
-              </div>
-              <div>
-                <p className="text-sm font-black tracking-tight">FD Stack</p>
-                <p className="text-[11px] text-muted-foreground">应用中心</p>
-              </div>
-            </Link>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_28%),linear-gradient(180deg,#f8fbff_0%,#edf3f8_42%,#f7fafc_100%)]">
+      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/82 backdrop-blur-xl">
+        <div className="mx-auto max-w-consumer px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-6">
+              <Link to="/" className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 via-slate-800 to-blue-600 text-sm font-black tracking-[0.18em] text-white shadow-lg shadow-slate-900/15">
+                  FD
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-slate-500">FutureDecade Platform</p>
+                  <p className="text-base font-black tracking-tight text-slate-950">FD Stack</p>
+                </div>
+              </Link>
 
-            <nav className="hidden items-center gap-1 md:flex">
+              <nav className="hidden items-center gap-1.5 lg:flex">
               {navItems.map((item) => {
                 const Icon = iconMap[item.icon];
                 return (
@@ -48,8 +50,8 @@ export function UserShell() {
                     to={item.to}
                     className={({ isActive }) =>
                       cn(
-                        'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900',
-                        isActive && 'bg-slate-900 text-white hover:bg-slate-900 hover:text-white'
+                        'inline-flex items-center gap-2 rounded-2xl border border-transparent px-3.5 py-2.5 text-sm font-bold text-slate-600 transition-all hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900',
+                        isActive && 'border-slate-900 bg-slate-900 text-white shadow-sm hover:border-slate-900 hover:bg-slate-900 hover:text-white'
                       )
                     }
                   >
@@ -58,49 +60,75 @@ export function UserShell() {
                   </NavLink>
                 );
               })}
-            </nav>
-          </div>
+              </nav>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {isAuthenticated ? (
-              <>
-                <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right sm:block">
-                  <p className="text-xs font-bold text-slate-900">{user?.email}</p>
-                  <p className="text-[11px] text-muted-foreground">{isAdmin ? '管理员已登录' : '用户中心已登录'}</p>
-                </div>
-                {isAdmin ? (
-                  <Button variant="outline" asChild>
-                    <Link to="/admin">
-                      <LayoutDashboard className="h-4 w-4" />
-                      管理后台
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-right lg:block">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Consumer Portal</p>
+                <p className="text-xs font-semibold text-slate-900">应用发现 · 购买授权 · 部署交付</p>
+              </div>
+              {isAuthenticated ? (
+                <>
+                  <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right sm:block">
+                    <p className="text-xs font-bold text-slate-900">{user?.email}</p>
+                    <p className="text-[11px] text-muted-foreground">{isAdmin ? '管理员已登录' : '用户中心已登录'}</p>
+                  </div>
+                  {isAdmin ? (
+                    <Button variant="outline" asChild>
+                      <Link to="/admin">
+                        <LayoutDashboard className="h-4 w-4" />
+                        管理后台
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" onClick={logout}>
+                    <LogOut className="h-4 w-4" />
+                    退出
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link to="/login">
+                      <LogIn className="h-4 w-4" />
+                      登录
                     </Link>
                   </Button>
-                ) : null}
-                <Button variant="ghost" onClick={logout}>
-                  <LogOut className="h-4 w-4" />
-                  退出
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" asChild>
-                  <Link to="/login">
-                    <LogIn className="h-4 w-4" />
-                    登录
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/register">注册</Link>
-                </Button>
-              </>
-            )}
+                  <Button asChild>
+                    <Link to="/register">注册</Link>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
+
+          <nav className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 lg:hidden">
+            {navItems.map((item) => {
+              const Icon = iconMap[item.icon];
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'inline-flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition-all hover:border-slate-300 hover:text-slate-900',
+                      isActive && 'border-slate-900 bg-slate-900 text-white hover:border-slate-900 hover:text-white'
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
       {isAuthenticated && user && !user.emailVerified ? (
         <div className="border-b border-amber-200 bg-amber-50/90">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6">
+          <div className="mx-auto flex max-w-consumer items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6 lg:px-8">
             <div>
               <p className="font-bold text-amber-900">邮箱尚未验证</p>
               <p className="text-amber-800/80">请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。</p>
@@ -112,9 +140,11 @@ export function UserShell() {
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-consumer px-4 py-10 sm:px-6 lg:px-8">
         <Outlet />
       </main>
+
+      <ConsumerFooter />
     </div>
   );
 }

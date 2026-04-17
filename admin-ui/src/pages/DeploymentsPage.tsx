@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, Rocket } from 'lucide-react';
+import { Boxes, LoaderCircle, Rocket, ServerCog, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
@@ -9,6 +9,7 @@ import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types'
 import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, updateDeployment } from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
+import { DeployableAppCard } from '@/components/portal/DeployableAppCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Card, CardContent } from '@/components/ui/card';
@@ -152,18 +153,88 @@ export function DeploymentsPage() {
   const deployments = deploymentsQuery.data?.items ?? [];
   const editingAppOption =
     editingDeployment?.app?.code ? oneClickAppMap.get(editingDeployment.app.code) ?? null : null;
+  const activeDeployments = deployments.filter((deployment) => deployment.status === 'active');
+  const tokenReadyDeployments = deployments.filter((deployment) => Boolean(deployment.latestToken));
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-2 pt-4">
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">部署管理</h1>
-        <p className="text-lg text-muted-foreground">管理应用部署和服务器配置</p>
+    <div className="space-y-10">
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
+        <div className="rounded-[32px] border border-slate-200/80 bg-white/92 p-8 shadow-sm shadow-slate-900/5">
+          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployments</p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">部署管理</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+            购买后的真正产品体验不应该在订单页终止。部署页需要把“哪些应用可以继续交付、当前有哪些 deployment、哪一个 token 最近签发”
+            这些信息讲清楚，并把创建 deployment 的动作做成产品级入口。
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                label: '可部署应用',
+                value: String(deployableApps.length),
+                note: '已购且支持 one-click delivery 的应用'
+              },
+              {
+                label: '激活部署',
+                value: String(activeDeployments.length),
+                note: '当前仍在运行中的 deployment 记录'
+              },
+              {
+                label: '已签发 Token',
+                value: String(tokenReadyDeployments.length),
+                note: '最近至少签发过一次安装令牌'
+              }
+            ].map((item) => (
+              <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          {[
+            {
+              icon: Rocket,
+              title: '持续交付',
+              desc: '部署页要让用户感受到购买之后仍有明确的安装与交付流程，而不是孤立的技术表单。'
+            },
+            {
+              icon: ShieldCheck,
+              title: '授权承接部署',
+              desc: '只有当前账户下已解锁的一键部署应用，才会继续进入这里的 deployment 流程。'
+            },
+            {
+              icon: ServerCog,
+              title: '服务器配置显式化',
+              desc: 'deployment 不是一堆字段，而是一个面向安装路径、域名、token 和交付状态的完整记录。'
+            }
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card key={item.title} className="border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+                <CardContent className="flex items-start gap-4 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-black tracking-tight text-slate-950">{item.title}</p>
+                    <p className="text-sm leading-7 text-slate-600">{item.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </section>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
-        <Card>
-          <CardContent className="flex items-center justify-center p-8">
-            <Rocket className="h-6 w-6 animate-pulse text-primary" />
+        <Card className="rounded-[28px] border-slate-200/80 bg-white/95">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-slate-500">
+            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            正在加载部署数据...
           </CardContent>
         </Card>
       ) : deployableApps.length === 0 ? (
@@ -174,13 +245,41 @@ export function DeploymentsPage() {
         />
       ) : (
         <>
-          <DeploymentWizard
-            options={deployableApps}
-            onCreateDeployment={handleWizardCreate}
-            onIssueToken={handleWizardIssueToken}
-            creating={createDeploymentMutation.isPending}
-            issuing={issueTokenMutation.isPending}
-          />
+          <section className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployable Apps</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950">可继续交付的应用</h2>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {deployableApps.map((option) => {
+                const app = apps.find((item) => item.code === option.appCode);
+                if (!app) {
+                  return null;
+                }
+                return (
+                  <DeployableAppCard
+                    key={option.appCode}
+                    app={app}
+                    featureCount={option.featureCount}
+                  />
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployment Wizard</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950">创建部署记录</h2>
+            </div>
+            <DeploymentWizard
+              options={deployableApps}
+              onCreateDeployment={handleWizardCreate}
+              onIssueToken={handleWizardIssueToken}
+              creating={createDeploymentMutation.isPending}
+              issuing={issueTokenMutation.isPending}
+            />
+          </section>
 
           {deployments.length === 0 ? (
             <EmptyState
@@ -189,28 +288,34 @@ export function DeploymentsPage() {
               description="选择一个已购应用，创建部署记录后即可签发安装令牌并完成一键部署。"
             />
           ) : (
-            <div className="grid gap-4">
-              {deployments.map((deployment) => (
-                <DeploymentRecordCard
-                  key={deployment.id}
-                  deployment={deployment}
-                  issuedToken={issuedToken}
-                  issuing={issueTokenMutation.isPending && issueTokenMutation.variables?.deploymentId === deployment.id}
-                  deactivating={
-                    deactivateDeploymentMutation.isPending &&
-                    deactivateDeploymentMutation.variables?.deploymentId === deployment.id
-                  }
-                  onIssueToken={(deploymentId) => issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })}
-                  onEdit={(target) => setEditingDeployment(target)}
-                  onDeactivate={(target) => {
-                    if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {
-                      return;
+            <section className="space-y-5">
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Deployment Records</p>
+                <h2 className="text-3xl font-black tracking-tight text-slate-950">现有部署记录</h2>
+              </div>
+              <div className="grid gap-4">
+                {deployments.map((deployment) => (
+                  <DeploymentRecordCard
+                    key={deployment.id}
+                    deployment={deployment}
+                    issuedToken={issuedToken}
+                    issuing={issueTokenMutation.isPending && issueTokenMutation.variables?.deploymentId === deployment.id}
+                    deactivating={
+                      deactivateDeploymentMutation.isPending &&
+                      deactivateDeploymentMutation.variables?.deploymentId === deployment.id
                     }
-                    deactivateDeploymentMutation.mutate({ deploymentId: target.id });
-                  }}
-                />
-              ))}
-            </div>
+                    onIssueToken={(deploymentId) => issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })}
+                    onEdit={(target) => setEditingDeployment(target)}
+                    onDeactivate={(target) => {
+                      if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {
+                        return;
+                      }
+                      deactivateDeploymentMutation.mutate({ deploymentId: target.id });
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
           )}
         </>
       )}

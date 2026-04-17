@@ -34,11 +34,11 @@ export function DeploymentRecordCard({
   onDeactivate: (deployment: DeploymentSummary) => void;
 }) {
   return (
-    <Card className="border-slate-200/80 bg-white/95">
+    <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
       <CardHeader className="space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle>{deployment.label}</CardTitle>
+            <CardTitle className="text-xl tracking-tight">{deployment.label}</CardTitle>
             <CardDescription>
               {deployment.app?.name ?? deployment.app?.code ?? 'Unknown App'}
             </CardDescription>
@@ -57,11 +57,11 @@ export function DeploymentRecordCard({
 
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => onEdit(deployment)}>
+          <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => onEdit(deployment)}>
             编辑配置
           </Button>
           {deployment.status === 'active' ? (
-            <Button variant="destructive" size="sm" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
+            <Button variant="destructive" size="sm" className="rounded-2xl" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
               {deactivating ? '停用中...' : '停用 Deployment'}
             </Button>
           ) : null}
@@ -84,10 +84,10 @@ export function DeploymentRecordCard({
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-[24px] border border-slate-200 bg-slate-50/85 p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-black text-slate-900">Deploy Token</p>
+              <p className="text-sm font-black tracking-tight text-slate-900">Deploy Token</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {deployment.latestToken
                   ? `最近一次 token 尾号 ${deployment.latestToken.tokenHint}，状态 ${deployment.latestToken.status}`
@@ -96,6 +96,7 @@ export function DeploymentRecordCard({
             </div>
             <Button
               variant="outline"
+              className="rounded-2xl"
               onClick={() => onIssueToken(deployment.id)}
               disabled={issuing || deployment.status !== 'active'}
             >

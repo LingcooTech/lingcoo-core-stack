@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { KeyRound, LoaderCircle } from 'lucide-react';
+import { Boxes, KeyRound, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
 
 import { listApps } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
@@ -30,45 +30,121 @@ export function MyAccessPage() {
     }
   }
 
+  const activeItems = items.filter((item) => item.status === 'active');
+
   return (
-    <div className="space-y-8">
-      <section className="space-y-2 pt-4">
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">我的应用</h1>
-        <p className="text-lg text-muted-foreground">已购应用和授权状态</p>
+    <div className="space-y-10">
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
+        <div className="rounded-[32px] border border-slate-200/80 bg-white/92 p-8 shadow-sm shadow-slate-900/5">
+          <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Entitlements</p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">我的应用</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+            这里应该像正式产品后台里的“已购产品与能力中心”，而不是简单的数据回显。
+            用户会在这里确认自己买到了什么、当前解锁了哪些能力、哪些应用已经可以继续使用或部署。
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                label: '已购应用',
+                value: String(summary.length),
+                note: '当前账户下已产生授权摘要的应用'
+              },
+              {
+                label: '激活授权',
+                value: String(activeItems.length),
+                note: '正在生效中的 entitlement 记录'
+              },
+              {
+                label: '解锁能力',
+                value: String(summary.reduce((count, entry) => count + entry.featureCodes.length, 0)),
+                note: '用于 WordPress、Notion、部署等后续入口'
+              }
+            ].map((item) => (
+              <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{item.value}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          {[
+            {
+              icon: ShieldCheck,
+              title: '授权状态',
+              desc: '当前页面优先回答“哪些产品已解锁”，而不是先展示底层表字段。'
+            },
+            {
+              icon: Sparkles,
+              title: '能力可见性',
+              desc: '解锁的能力项应该直接可见，便于用户理解当前套餐到底打开了什么。'
+            },
+            {
+              icon: Boxes,
+              title: '后续入口',
+              desc: '购买后的真正下一步通常是继续使用、继续部署，而不是停留在订单页。'
+            }
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card key={item.title} className="border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+                <CardContent className="flex items-start gap-4 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-black tracking-tight text-slate-950">{item.title}</p>
+                    <p className="text-sm leading-7 text-slate-600">{item.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </section>
 
       {entitlementsQuery.isLoading ? (
-        <Card>
-          <CardContent className="flex items-center justify-center p-8">
+        <Card className="rounded-[28px] border-slate-200/80 bg-white/95">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-slate-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            正在加载授权状态...
           </CardContent>
         </Card>
       ) : summary.length === 0 ? (
         <EmptyState
           icon={KeyRound}
           title="还没有已购应用"
-          description="还没有已购应用，去应用中心选购吧"
+          description="还没有已购应用，去应用中心选购吧。"
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {summary.map((entry) => {
-            const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
-            const relatedApps = appsByProduct.get(entry.appCode) ?? [];
-            const featureNames = entry.featureCodes.map(
-              (code) => featureNameMap.get(code) ?? code
-            );
+        <section className="space-y-5">
+          <div className="space-y-2">
+            <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Purchased Products</p>
+            <h2 className="text-3xl font-black tracking-tight text-slate-950">已购产品与能力</h2>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-2">
+            {summary.map((entry) => {
+              const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
+              const relatedApps = appsByProduct.get(entry.appCode) ?? [];
+              const featureNames = entry.featureCodes.map(
+                (code) => featureNameMap.get(code) ?? code
+              );
 
-            return (
-              <EntitlementProductCard
-                key={entry.appCode}
-                productName={relatedItems[0]?.app?.name ?? entry.appCode}
-                featureNames={featureNames}
-                relatedApps={relatedApps}
-                items={relatedItems}
-              />
-            );
-          })}
-        </div>
+              return (
+                <EntitlementProductCard
+                  key={entry.appCode}
+                  productName={relatedItems[0]?.app?.name ?? entry.appCode}
+                  featureNames={featureNames}
+                  relatedApps={relatedApps}
+                  items={relatedItems}
+                />
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

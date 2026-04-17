@@ -1,5 +1,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ChevronDown, CreditCard, ExternalLink, LoaderCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronDown,
+  CreditCard,
+  ExternalLink,
+  LoaderCircle,
+  ShieldCheck,
+  Sparkles
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -21,7 +31,7 @@ export function AppCatalogPage() {
   const params = useParams<{ appCode: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [providerPreference, setProviderPreference] = useState<'wechat_pay' | 'alipay'>('wechat_pay');
   const [selectedOfferCode, setSelectedOfferCode] = useState<string>('');
   const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
@@ -132,67 +142,315 @@ export function AppCatalogPage() {
   const hasScreenshots = app.screenshots && app.screenshots.length > 0;
   const hasContent = app.content && app.content.trim().length > 0;
   const hasFaq = app.faq && app.faq.length > 0;
-  const hasLinks = app.links && app.links.length > 0;
   const hasAiTranslateWorkflowResources = app.code === 'ai_translate_workflow';
+  const selectedFeatures = selectedOffer ? Array.from(new Set(planFeatureMap.get(selectedOffer.planId) ?? [])) : [];
+  const supportLink = app.links.find((item) => item.type === 'support');
+  const websiteLink = app.links.find((item) => item.type === 'website');
+  const docsLink = app.links.find((item) => item.type === 'docs');
+
+  const resourceCards = [
+    ...(app.links ?? []).map((link) => ({
+      label: link.label,
+      url: link.url,
+      note:
+        link.type === 'docs' ? '查看说明文档与操作指引' :
+        link.type === 'support' ? '进入支持入口与帮助说明' :
+        link.type === 'website' ? '访问官网或产品主页' :
+        link.type === 'download' ? '获取下载与安装入口' : '外部资源链接',
+      typeLabel:
+        link.type === 'docs' ? '文档' :
+        link.type === 'support' ? '支持' :
+        link.type === 'website' ? '官网' :
+        link.type === 'download' ? '下载' : '链接'
+    })),
+    ...(hasAiTranslateWorkflowResources ? [
+      {
+        label: '隐私政策',
+        url: '/apps/ai-translate-workflow/privacy',
+        note: '查看数据流、权限用途与删除方式',
+        typeLabel: '合规'
+      },
+      {
+        label: '支持页',
+        url: '/apps/ai-translate-workflow/support',
+        note: '查看账号、授权、OpenRouter 与导出排障建议',
+        typeLabel: '支持'
+      }
+    ] : [])
+  ];
 
   return (
     <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="space-y-6 pt-4">
-        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
-          <Link to="/">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            返回应用中心
-          </Link>
-        </Button>
-        <div className="flex items-start gap-6">
-          {app.iconUrl ? (
-            <img
-              src={app.iconUrl}
-              alt={app.name}
-              className="h-20 w-20 shrink-0 rounded-3xl object-cover shadow-sm"
-            />
-          ) : (
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-2xl font-bold text-white shadow-sm">
-              {getInitials(app.name)}
-            </div>
-          )}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-black tracking-tight text-slate-950">{app.name}</h1>
-              {app.category && (
-                <Badge variant="secondary" className="rounded-full">
-                  {app.category}
+      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+        <Link to="/">
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          返回应用中心
+        </Link>
+      </Button>
+
+      <section className="overflow-hidden rounded-[36px] border border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/5">
+        <div className="grid lg:grid-cols-[minmax(0,1.2fr),380px]">
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-800 to-sky-700 p-8 text-white md:p-10">
+            {app.coverUrl ? (
+              <div
+                className="absolute inset-0 bg-cover bg-center opacity-25"
+                style={{ backgroundImage: `url(${app.coverUrl})` }}
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(125,211,252,0.3),_transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_60%)]" />
+            <div className="relative space-y-7">
+              <div className="flex flex-wrap gap-2">
+                {app.category ? (
+                  <Badge className="bg-white/14 text-white hover:bg-white/14">{app.category}</Badge>
+                ) : null}
+                <Badge className="bg-white/10 text-white hover:bg-white/10">
+                  {app.type === 'extension' ? 'Extension' : app.type}
                 </Badge>
-              )}
+                {selectedOffer?.badge ? (
+                  <Badge className="bg-amber-300/90 text-slate-950 hover:bg-amber-300/90">{selectedOffer.badge}</Badge>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                {app.iconUrl ? (
+                  <img
+                    src={app.iconUrl}
+                    alt={app.name}
+                    className="h-24 w-24 shrink-0 rounded-[28px] border border-white/15 bg-white/85 object-cover shadow-xl"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[28px] border border-white/15 bg-white/10 text-3xl font-black text-white shadow-xl">
+                    {getInitials(app.name)}
+                  </div>
+                )}
+
+                <div className="min-w-0">
+                  <h1 className="text-4xl font-black tracking-tight md:text-5xl">{app.name}</h1>
+                  <p className="mt-4 max-w-3xl text-base leading-8 text-sky-50/90 md:text-lg">
+                    {app.tagline || app.description || '这是一个更接近正式产品页的应用详情页：先讲清楚是什么，再承接购买与交付。'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {[
+                  {
+                    label: '核心亮点',
+                    value: String(app.highlights.length || 0),
+                    note: '帮助用户快速判断适用场景'
+                  },
+                  {
+                    label: '价格方案',
+                    value: String(offers.length || 0),
+                    note: '支持购买决策与套餐比较'
+                  },
+                  {
+                    label: '帮助入口',
+                    value: String((app.links ?? []).length + (hasAiTranslateWorkflowResources ? 2 : 0)),
+                    note: '文档、支持、官网与合规说明'
+                  }
+                ].map((item) => (
+                  <div key={item.label} className="rounded-3xl border border-white/12 bg-white/10 p-4 backdrop-blur">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-sky-50/70">{item.label}</p>
+                    <p className="mt-2 text-3xl font-black tracking-tight">{item.value}</p>
+                    <p className="mt-1 text-xs leading-6 text-sky-50/70">{item.note}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="max-w-2xl text-lg text-muted-foreground">
-              {app.tagline || app.description || '优质应用，等你体验。'}
-            </p>
+          </div>
+
+          <div className="flex flex-col justify-between gap-6 border-t border-slate-200/80 bg-white p-8 lg:border-l lg:border-t-0">
+            <div className="space-y-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">Purchase</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+                  {selectedOffer?.title ?? '暂无可购买方案'}
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">
+                  {selectedOffer?.description || '这里应该像正式产品页一样，把价格、支付方式、购买状态和下一步动作清楚交代给用户。'}
+                </p>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">当前价格</p>
+                <p className="mt-2 text-4xl font-black tracking-tight text-slate-950">
+                  {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '即将开放'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedOffer ? (selectedOffer.interval === 'month' ? '按月订阅' : selectedOffer.interval === 'year' ? '按年订阅' : '一次性') : '当前没有上架中的购买方案'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {(['wechat_pay', 'alipay'] as const).map((provider) => (
+                  <button
+                    key={provider}
+                    type="button"
+                    onClick={() => setProviderPreference(provider)}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-bold transition ${
+                      providerPreference === provider
+                        ? 'border-primary bg-blue-50 text-primary shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    {provider === 'wechat_pay' ? '微信支付' : '支付宝'}
+                  </button>
+                ))}
+              </div>
+
+              {selectedFeatures.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">本方案包含</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedFeatures.slice(0, 6).map((feature) => (
+                      <span
+                        key={feature}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-4">
+              {isAuthenticated && user ? (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  当前已登录：{user.email}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  登录后即可直接购买，并在“我的应用”中查看授权状态。
+                </div>
+              )}
+
+              <Button
+                className="w-full rounded-2xl"
+                size="lg"
+                onClick={startCheckout}
+                disabled={!selectedOffer || checkoutMutation.isPending}
+              >
+                {checkoutMutation.isPending ? (
+                  <>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    正在跳转支付...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    {isAuthenticated ? '立即购买' : '登录后购买'}
+                  </>
+                )}
+              </Button>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {websiteLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
+                      官网
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+                {supportLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={supportLink.url} target="_blank" rel="noopener noreferrer">
+                      支持
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : docsLink ? (
+                  <Button variant="outline" className="rounded-2xl" asChild>
+                    <a href={docsLink.url} target="_blank" rel="noopener noreferrer">
+                      文档
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-12 lg:grid-cols-[1fr,380px]">
-        {/* Main Content Column */}
+      <section className="grid gap-4 lg:grid-cols-3">
+        {[
+          {
+            title: '为什么值得购买',
+            desc: '详情页不仅展示卖点，还应该把“买完以后能得到什么”讲清楚。',
+            icon: Sparkles
+          },
+          {
+            title: '授权自动同步',
+            desc: '支付完成后，当前账户的权限状态会统一进入授权体系，而不是分散在多个页面里。',
+            icon: ShieldCheck
+          },
+          {
+            title: '持续交付',
+            desc: '购买不是终点，后续还能承接部署、交付和更新服务，这是平台前台的重要信任点。',
+            icon: CreditCard
+          }
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.title} className="rounded-[28px] border-slate-200/80 bg-white/92 shadow-sm shadow-slate-900/5">
+              <CardContent className="flex items-start gap-4 p-6">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black tracking-tight text-slate-950">{item.title}</h3>
+                  <p className="text-sm leading-7 text-slate-600">{item.desc}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </section>
+
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr),320px]">
         <div className="space-y-12">
-          {/* Highlights Section */}
+          <section className="space-y-6">
+            <div className="space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Overview</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950">产品概览</h2>
+            </div>
+            <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+              <CardContent className="p-7">
+                {hasContent ? (
+                  <div className="prose prose-slate max-w-none prose-headings:font-black prose-a:text-primary prose-img:rounded-2xl prose-p:leading-8">
+                    <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                      {app.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-7 text-slate-500">该应用暂无详细介绍。</p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
           {hasHighlights && (
             <section className="space-y-6">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">产品亮点</h2>
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Highlights</p>
+                <h2 className="text-3xl font-black tracking-tight text-slate-950">核心亮点</h2>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {app.highlights.map((highlight, idx) => (
-                  <Card key={idx} className="border-slate-200/80 bg-white/95">
-                    <CardHeader className="space-y-2 pb-2">
-                      {highlight.icon && (
-                        <span className="text-2xl">{highlight.icon}</span>
-                      )}
-                      <CardTitle className="text-base">{highlight.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-sm leading-relaxed">
-                        {highlight.description}
-                      </CardDescription>
+                  <Card key={idx} className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+                    <CardContent className="space-y-4 p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-2xl text-white">
+                        {highlight.icon || '✦'}
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-black tracking-tight text-slate-950">{highlight.title}</h3>
+                        <p className="text-sm leading-7 text-slate-600">{highlight.description}</p>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -200,57 +458,49 @@ export function AppCatalogPage() {
             </section>
           )}
 
-          {/* Screenshots Section */}
           {hasScreenshots && (
             <section className="space-y-6">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">应用截图</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4">
+              <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Screenshots</p>
+                <h2 className="text-3xl font-black tracking-tight text-slate-950">应用截图</h2>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
                 {app.screenshots.map((screenshot, idx) => (
                   <a
                     key={idx}
                     href={screenshot.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group shrink-0"
+                    className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm shadow-slate-900/5"
                   >
-                    <div className="overflow-hidden rounded-xl border border-slate-200 transition group-hover:shadow-md">
+                    <div className="aspect-[16/10] overflow-hidden bg-slate-100">
                       <img
                         src={screenshot.url}
                         alt={screenshot.caption || `截图 ${idx + 1}`}
-                        className="h-48 w-auto max-w-xs object-cover transition group-hover:scale-[1.02]"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
                       />
                     </div>
-                    {screenshot.caption && (
-                      <p className="mt-2 text-xs text-muted-foreground">{screenshot.caption}</p>
-                    )}
+                    {screenshot.caption ? (
+                      <div className="border-t border-slate-200/80 px-5 py-4 text-sm text-slate-600">
+                        {screenshot.caption}
+                      </div>
+                    ) : null}
                   </a>
                 ))}
               </div>
             </section>
           )}
 
-          {/* Content Section (Markdown) */}
-          <section className="space-y-6">
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">详细介绍</h2>
-            {hasContent ? (
-              <div className="prose prose-slate max-w-none prose-headings:font-black prose-a:text-primary prose-img:rounded-xl">
-                <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
-                  {app.content}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">该应用暂无详细介绍</p>
-            )}
-          </section>
-
-          {/* Pricing Section */}
-          <section id="pricing" className="space-y-6">
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">套餐与价格</h2>
+          <section className="space-y-6" id="pricing">
+            <div className="space-y-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">Plans</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950">套餐与价格</h2>
+            </div>
             {offers.length === 0 ? (
               <EmptyState
                 icon={CreditCard}
                 title="暂无可购买的套餐"
-                description="该应用目前没有上架的价格方案，请稍后再来查看。"
+                description="该应用目前没有上架中的价格方案，请稍后再来查看。"
               />
             ) : (
               <div className="grid gap-4">
@@ -267,157 +517,107 @@ export function AppCatalogPage() {
             )}
           </section>
 
-          {/* FAQ Section */}
           {hasFaq && (
             <section className="space-y-6">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">常见问题</h2>
               <div className="space-y-2">
+                <p className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">FAQ</p>
+                <h2 className="text-3xl font-black tracking-tight text-slate-950">常见问题</h2>
+              </div>
+              <div className="space-y-3">
                 {app.faq.map((item, idx) => {
                   const isOpen = openFaqIndices.has(idx);
                   return (
-                    <div key={idx} className="rounded-xl border border-slate-200 bg-white/95">
+                    <Card key={idx} className="overflow-hidden rounded-[24px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
                       <button
                         type="button"
                         onClick={() => toggleFaq(idx)}
-                        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
                       >
-                        <span className="text-sm font-bold text-slate-900">{item.question}</span>
+                        <span className="text-base font-black tracking-tight text-slate-950">{item.question}</span>
                         <ChevronDown
-                          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                            isOpen ? 'rotate-180' : ''
-                          }`}
+                          className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                         />
                       </button>
-                      {isOpen && (
-                        <div className="border-t border-slate-100 px-5 py-4">
-                          <p className="text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+                      {isOpen ? (
+                        <div className="border-t border-slate-200/80 px-6 py-5 text-sm leading-7 text-slate-600">
+                          {item.answer}
                         </div>
-                      )}
-                    </div>
+                      ) : null}
+                    </Card>
                   );
                 })}
               </div>
             </section>
           )}
-
-          {/* Links Section */}
-          {hasLinks && (
-            <section className="space-y-6">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">相关链接</h2>
-              <div className="space-y-2">
-                {app.links.map((link, idx) => (
-                  <a
-                    key={idx}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-5 py-3.5 text-sm transition hover:border-slate-300 hover:shadow-sm"
-                  >
-                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="font-medium text-slate-900">{link.label}</span>
-                    <Badge variant="outline" className="ml-auto rounded-full text-xs">
-                      {link.type === 'docs' ? '文档' :
-                       link.type === 'support' ? '支持' :
-                       link.type === 'website' ? '官网' :
-                       link.type === 'download' ? '下载' : '链接'}
-                    </Badge>
-                  </a>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {hasAiTranslateWorkflowResources && (
-            <section className="space-y-6">
-              <h2 className="text-2xl font-black tracking-tight text-slate-950">隐私与支持</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link
-                  to="/apps/ai-translate-workflow/privacy"
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-5 py-4 text-sm transition hover:border-slate-300 hover:shadow-sm"
-                >
-                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-slate-900">隐私政策</p>
-                    <p className="text-xs text-muted-foreground">查看扩展的数据流、存储范围与删除方式</p>
-                  </div>
-                </Link>
-                <Link
-                  to="/apps/ai-translate-workflow/support"
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-5 py-4 text-sm transition hover:border-slate-300 hover:shadow-sm"
-                >
-                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-slate-900">支持页</p>
-                    <p className="text-xs text-muted-foreground">查看账号、授权、OpenRouter 与导出排障建议</p>
-                  </div>
-                </Link>
-              </div>
-            </section>
-          )}
         </div>
 
-        {/* Checkout Sidebar (sticky on desktop) */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
-          <Card className="border-slate-200/80">
-            <CardHeader>
-              <CardTitle>购买</CardTitle>
-              <CardDescription>选择支付方式，完成购买后即可使用</CardDescription>
+        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+            <CardHeader className="space-y-2">
+              <CardTitle className="text-xl">快速摘要</CardTitle>
+              <CardDescription>把用户做购买决定前最关心的信息压缩到这一栏。</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setProviderPreference('wechat_pay')}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-bold transition ${
-                    providerPreference === 'wechat_pay' ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 bg-white text-slate-700'
-                  }`}
-                >
-                  微信支付
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setProviderPreference('alipay')}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-bold transition ${
-                    providerPreference === 'alipay' ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 bg-white text-slate-700'
-                  }`}
-                >
-                  支付宝
-                </button>
-              </div>
-
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">当前选择</p>
-                <p className="mt-2 text-lg font-black">{selectedOffer?.title ?? '请选择套餐'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '暂无价格'}
+            <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">当前选择</p>
+                <p className="mt-2 text-lg font-black text-slate-950">{selectedOffer?.title ?? '暂无可购买方案'}</p>
+                <p className="text-slate-500">
+                  {selectedOffer ? formatAmount(selectedOffer.priceAmount, selectedOffer.currency) : '请稍后再试'}
                 </p>
               </div>
 
-              {offers.length > 0 && (
-                <a href="#pricing" className="block text-center text-xs text-muted-foreground hover:text-primary">
-                  查看全部套餐与价格
-                </a>
-              )}
-
-              <Button className="w-full" size="lg" onClick={startCheckout} disabled={!selectedOffer || checkoutMutation.isPending}>
-                {checkoutMutation.isPending ? (
-                  <>
-                    <LoaderCircle className="mr-1 h-4 w-4 animate-spin" />
-                    正在跳转支付...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="mr-1 h-4 w-4" />
-                    {isAuthenticated ? '立即购买' : '登录后购买'}
-                  </>
-                )}
-              </Button>
-
-              <p className="text-xs leading-6 text-muted-foreground">
-                支付成功后，相关权限将自动生效。你可以在「我的应用」中查看已购内容和授权状态。
-              </p>
+              <div className="space-y-3">
+                {[
+                  '购买完成后授权自动同步到当前账户',
+                  '订单与支付状态可在用户中心持续回看',
+                  '部署与后续交付入口仍在同一平台内承接'
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-emerald-600" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+
+          {resourceCards.length > 0 ? (
+            <Card className="rounded-[28px] border-slate-200/80 bg-white/95 shadow-sm shadow-slate-900/5">
+              <CardHeader className="space-y-2">
+                <CardTitle className="text-xl">资源与入口</CardTitle>
+                <CardDescription>把文档、支持、官网与合规页面统一到一个区域。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {resourceCards.map((link) => {
+                  const isInternal = link.url.startsWith('/');
+                  const content = (
+                    <div className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4 transition hover:border-slate-300 hover:bg-white">
+                      <div className="rounded-full border border-slate-200 bg-white p-2 text-slate-500">
+                        <ExternalLink className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-950">{link.label}</p>
+                          <Badge variant="outline" className="text-[10px]">{link.typeLabel}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs leading-6 text-slate-500">{link.note}</p>
+                      </div>
+                    </div>
+                  );
+
+                  return isInternal ? (
+                    <Link key={link.label} to={link.url}>
+                      {content}
+                    </Link>
+                  ) : (
+                    <a key={link.label} href={link.url} target="_blank" rel="noopener noreferrer">
+                      {content}
+                    </a>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </div>
