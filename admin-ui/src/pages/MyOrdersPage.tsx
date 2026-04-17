@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, CreditCard, FileSearch, LoaderCircle, RefreshCw, Wallet } from 'lucide-react';
+import { CheckCircle2, FileSearch, LoaderCircle, RefreshCw, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listMyOrders, syncMyOrder } from '@/api/user';
