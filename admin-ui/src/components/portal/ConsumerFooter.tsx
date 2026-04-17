@@ -2,6 +2,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { PublicSiteSettings } from '@/api/types';
+import { Container } from '@/components/layout/Container';
 import { getInitials } from '@/lib/utils';
 import { getSiteDisplayName, isExternalSiteUrl, resolveFooterCopyright } from '@/lib/site-settings';
 
@@ -17,8 +18,8 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
   );
 
   return (
-    <footer className="border-t border-gray-200/80 bg-white/88 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <footer className="border-t border-gray-200 bg-gray-50">
+      <Container className="py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -90,7 +91,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
           <p>{copyrightText}</p>
           <p>页脚菜单、品牌 Logo 与 favicon 均可在管理后台系统设置中维护。</p>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }

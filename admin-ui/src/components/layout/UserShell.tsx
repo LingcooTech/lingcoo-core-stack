@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { getPublicSiteSettings } from '@/api/settings';
+import { Container } from '@/components/layout/Container';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
 import { Button } from '@/components/ui/button';
 import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
@@ -36,10 +37,11 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_28%),linear-gradient(180deg,#f8fbff_0%,#edf3f8_42%,#f7fafc_100%)]">
-      <header className="sticky top-0 z-40 border-b border-white/70 bg-white/82 backdrop-blur-xl">
-        <div className="mx-auto max-w-consumer px-4 py-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm shadow-sm">
+        <Container className="py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-6">
+            {/* 左侧: Logo 区域 (1/5) */}
+            <div className="flex items-center justify-between w-full lg:w-1/5 lg:justify-start">
               <Link to="/" className="flex items-center gap-3">
                 {siteSettings?.logoUrl ? (
                   <img
@@ -57,8 +59,11 @@ export function UserShell() {
                   <p className="text-base font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
+            </div>
 
-              <nav className="hidden items-center gap-1.5 lg:flex">
+            {/* 中间: 导航菜单 (3/5) - 桌面端显示 */}
+            <nav className="hidden lg:flex items-center justify-center w-full lg:w-3/5 gap-6"
+                 aria-label="主导航">
               {navItems.map((item) => {
                 const Icon = iconMap[item.icon];
                 return (
@@ -67,8 +72,10 @@ export function UserShell() {
                     to={item.to}
                     className={({ isActive }) =>
                       cn(
-                        'inline-flex items-center gap-2 rounded-lg border border-transparent px-3.5 py-2.5 text-sm font-bold text-gray-600 transition-all hover:border-gray-200 hover:bg-gray-50 hover:text-slate-900',
-                        isActive && 'border-slate-900 bg-gray-900 text-white shadow-sm hover:border-slate-900 hover:bg-gray-900 hover:text-white'
+                        'inline-flex items-center gap-2 text-base font-normal whitespace-nowrap transition-colors duration-200',
+                        isActive 
+                          ? 'text-primary font-medium' 
+                          : 'text-gray-600 hover:text-primary'
                       )
                     }
                   >
@@ -77,10 +84,10 @@ export function UserShell() {
                   </NavLink>
                 );
               })}
-              </nav>
-            </div>
+            </nav>
 
-            <div className="flex flex-wrap items-center gap-2">
+            {/* 右侧: 工具区域 (1/5) */}
+            <div className="flex flex-wrap items-center justify-end gap-2 w-full lg:w-1/5">
               <div className="hidden rounded-lg border border-gray-200/80 bg-gray-50/80 px-3 py-2 text-right lg:block">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Consumer Portal</p>
                 <p className="text-xs font-semibold text-slate-900">应用发现 · 购买授权 · 部署交付</p>
@@ -120,7 +127,8 @@ export function UserShell() {
             </div>
           </div>
 
-          <nav className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 lg:hidden">
+          {/* 移动端导航菜单 */}
+          <nav className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 lg:hidden" aria-label="移动端导航">
             {navItems.map((item) => {
               const Icon = iconMap[item.icon];
               return (
@@ -140,12 +148,12 @@ export function UserShell() {
               );
             })}
           </nav>
-        </div>
+        </Container>
       </header>
 
       {isAuthenticated && user && !user.emailVerified ? (
         <div className="border-b border-amber-200 bg-amber-50/90">
-          <div className="mx-auto flex max-w-consumer items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6 lg:px-8">
+          <Container className="flex items-center justify-between gap-4 py-3 text-sm">
             <div>
               <p className="font-bold text-amber-900">邮箱尚未验证</p>
               <p className="text-amber-800/80">请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。</p>
@@ -153,13 +161,13 @@ export function UserShell() {
             <Button asChild size="sm">
               <Link to={`/verify-email?next=${encodeURIComponent(location.pathname)}`}>立即验证</Link>
             </Button>
-          </div>
+          </Container>
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-consumer px-4 py-10 sm:px-6 lg:px-8">
+      <Container as="main" className="py-10">
         <Outlet />
-      </main>
+      </Container>
 
       <ConsumerFooter siteSettings={siteSettings} />
     </div>
