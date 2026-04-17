@@ -79,7 +79,8 @@ export function HomePage() {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="space-y-10">
       <section className="space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -121,7 +122,7 @@ export function HomePage() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
@@ -139,18 +140,18 @@ export function HomePage() {
                             style={{ backgroundImage: `url(${app.coverUrl})` }}
                           />
                         ) : null}
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.98))]" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
-                        <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[120px,minmax(0,1fr),220px]">
+                        <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[128px,minmax(0,1fr),220px]">
                           <div className="flex justify-center xl:justify-start">
                             {app.iconUrl ? (
                               <img
                                 src={app.iconUrl}
                                 alt={app.name}
-                                className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain shadow-md"
+                                className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain shadow-md"
                               />
                             ) : (
-                              <div className="flex h-28 w-28 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
+                              <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
                                 {getInitials(app.name)}
                               </div>
                             )}
@@ -185,8 +186,8 @@ export function HomePage() {
                             </div>
                           </div>
 
-                          <div className="rounded-[24px] border border-gray-200 bg-white/90 p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">起始价格</p>
+                          <div className="rounded-xl border border-gray-200 bg-white/90 p-5 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">起始价格</p>
                             <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
                               {priceLabel}
                             </p>
@@ -232,15 +233,15 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+        <div className="flex gap-8 overflow-x-auto pb-1">
           <button
             type="button"
             onClick={() => setActiveCategory('')}
             className={cn(
-              'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              'shrink-0 rounded-md px-3 py-1.5 text-[15px] transition-colors',
               activeCategory === ''
-                ? 'bg-gray-100 text-gray-900'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900',
+                ? 'bg-gray-100 text-gray-900 font-medium'
+                : 'text-gray-600 hover:text-gray-900',
             )}
           >
             全部应用
@@ -251,10 +252,10 @@ export function HomePage() {
               type="button"
               onClick={() => setActiveCategory(category)}
               className={cn(
-                'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                'shrink-0 rounded-md px-3 py-1.5 text-[15px] transition-colors',
                 activeCategory === category
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900',
+                  ? 'bg-gray-100 text-gray-900 font-medium'
+                  : 'text-gray-600 hover:text-gray-900',
               )}
             >
               {category}
@@ -265,7 +266,7 @@ export function HomePage() {
         {isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-[28px] border border-gray-200 bg-white p-6">
+              <div key={index} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-6">
                 <div className="mx-auto h-24 w-24 animate-pulse rounded-[22%] bg-gray-100" />
                 <div className="mx-auto mt-5 h-4 w-24 animate-pulse rounded bg-gray-100" />
                 <div className="mx-auto mt-4 h-4 w-40 animate-pulse rounded bg-gray-100" />
@@ -288,6 +289,7 @@ export function HomePage() {
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }

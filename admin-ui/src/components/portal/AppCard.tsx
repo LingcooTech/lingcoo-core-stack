@@ -41,7 +41,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
   return (
     <div className="relative overflow-hidden p-6">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-slate-50 via-sky-50/70 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
       <div className="relative flex flex-col items-center text-center">
         <div className="mb-5 flex justify-center">
@@ -92,7 +92,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'group overflow-hidden rounded-[28px] border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-lg',
+    'group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md',
     className,
   );
 
