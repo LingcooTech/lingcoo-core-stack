@@ -3,6 +3,17 @@ export default {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
+    screens: {
+      sm: '640px',
+      tablet: '768px',
+      laptop: '1024px',
+      desktop: '1280px',
+      wide: '1440px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1440px'
+    },
     extend: {
       colors: {
         border: 'hsl(var(--border))',
@@ -93,19 +104,19 @@ export default {
       },
       borderRadius: {
         none: '0px',
-        sm: '0.125rem',
+        sm: 'var(--radius-small, 0.125rem)',
         DEFAULT: '0.25rem',
-        md: '0.375rem',
-        lg: '0.5rem',
+        md: 'var(--radius-medium, 0.375rem)',
+        lg: 'var(--radius-large, 0.5rem)',
         xl: '0.75rem',
         '2xl': '1rem',
         full: '9999px',
       },
       boxShadow: {
-        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        sm: 'var(--shadow-small, 0 1px 2px 0 rgba(15, 23, 42, 0.05))',
         DEFAULT: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
-        md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
-        lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+        md: 'var(--shadow-medium, 0 4px 10px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06))',
+        lg: 'var(--shadow-large, 0 16px 32px -12px rgba(15, 23, 42, 0.14))',
         xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
         '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)',

@@ -75,9 +75,9 @@ export function UserShell() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_28%),linear-gradient(180deg,#f8fbff_0%,#edf3f8_42%,#f7fafc_100%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.10),_transparent_24%),linear-gradient(180deg,#f9fbff_0%,#f2f6fb_42%,#f8fafc_100%)]">
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm shadow-sm">
-        <Container className="py-4">
+        <Container className="py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1 lg:max-w-[240px]">
               <Link to="/" className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export function UserShell() {
                   </div>
                 )}
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">用户中心</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">用户中心</p>
                   <p className="text-base font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
@@ -110,7 +110,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className={cn(
-                            'inline-flex items-center gap-1 text-base font-normal whitespace-nowrap transition-colors duration-200',
+                            'inline-flex items-center gap-1 text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
                             isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                           )}
                         >
@@ -156,7 +156,7 @@ export function UserShell() {
                       target={item.openInNewTab ? '_blank' : undefined}
                       rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
                       className={cn(
-                        'text-base font-normal whitespace-nowrap transition-colors duration-200',
+                        'text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
                         isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )}
                     >
@@ -171,7 +171,7 @@ export function UserShell() {
                     to={item.url}
                     className={({ isActive: currentActive }) =>
                       cn(
-                        'text-base font-normal whitespace-nowrap transition-colors duration-200',
+                        'text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
                         currentActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )
                     }
@@ -198,7 +198,7 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="relative rounded-full border border-gray-200 bg-white p-1.5 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="relative rounded-full border border-gray-200 bg-white p-1.5 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-9 w-9">
@@ -281,7 +281,7 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm lg:hidden">
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-lg shadow-slate-900/5 lg:hidden">
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">导航</p>
                 <div className="space-y-2">

@@ -22,7 +22,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
   return (
     <>
-      <header className="flex items-center justify-between gap-4 min-h-[64px] px-5 border-b border-border bg-white flex-shrink-0">
+      <header className="sticky top-0 z-20 flex min-h-[64px] items-center justify-between gap-4 border-b border-border bg-white/80 px-5 backdrop-blur-sm flex-shrink-0">
         {/* Left */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Button
@@ -37,7 +37,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="flex items-center gap-3 h-10 w-full max-w-[440px] px-3.5 rounded-full border border-border bg-[#f8fafc] text-left text-sm text-muted-foreground hover:border-primary/30 transition-colors cursor-pointer"
+            className="flex items-center gap-3 h-10 w-full max-w-[440px] px-3.5 rounded-full border border-gray-200 bg-white text-left text-sm text-muted-foreground shadow-sm hover:border-primary/30 transition-colors cursor-pointer"
           >
             <Search className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="flex-1">搜索...</span>
@@ -56,10 +56,10 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
               target={action.external ? '_blank' : undefined}
               rel={action.external ? 'noreferrer' : undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 h-9 px-3 rounded-md border text-xs font-bold no-underline transition-colors',
+                'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold no-underline transition-all',
                 action.tone === 'primary'
-                  ? 'bg-gradient-to-br from-primary to-blue-600 border-transparent text-white'
-                  : 'bg-white border-border text-foreground hover:bg-muted'
+                  ? 'bg-gradient-to-br from-primary to-blue-600 border-transparent text-white shadow-sm hover:shadow'
+                  : 'bg-white border-border text-foreground hover:bg-muted shadow-sm'
               )}
             >
               <span>{action.label}</span>
@@ -74,7 +74,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
           <a
             href="/"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border bg-white text-xs font-bold text-foreground no-underline hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-foreground no-underline hover:bg-muted transition-colors shadow-sm"
           >
             <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-[9px] font-semibold">ST</span>
             <span>状态</span>

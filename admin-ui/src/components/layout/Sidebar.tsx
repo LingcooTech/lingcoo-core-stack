@@ -22,13 +22,13 @@ export function Sidebar({ collapsed }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-0 h-screen flex flex-col bg-[#f3f5f8] border-r border-border overflow-hidden transition-all duration-200',
+        'sticky top-0 h-screen flex flex-col bg-[#f7f8fb] border-r border-border overflow-hidden transition-all duration-200',
         collapsed ? 'w-[84px]' : 'w-[268px]'
       )}
     >
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 pt-5 pb-4 flex-shrink-0">
-        <div className="flex-shrink-0 w-10 h-10 rounded-md bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-sm font-semibold shadow-lg shadow-primary/20">
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm shadow-primary/20">
           FD
         </div>
         {!collapsed && (
@@ -41,7 +41,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       {/* Nav */}
       <ScrollArea className="flex-1 px-2">
         {adminNavigationGroups.map((group) => (
-          <div key={group.label} className="mb-2">
+          <div key={group.label} className="mb-3">
             {!collapsed && (
               <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
                 {group.label}
@@ -55,16 +55,16 @@ export function Sidebar({ collapsed }: SidebarProps) {
                   key={key}
                   to={meta.href}
                   className={cn(
-                    'flex items-start gap-2.5 min-h-[52px] px-3 py-2.5 rounded-md border transition-colors mb-0.5',
+                    'mb-1 flex min-h-[48px] items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-colors',
                     'text-sm font-bold text-foreground no-underline',
                     isActive
-                      ? 'bg-blue-50 border-blue-100 text-primary'
-                      : 'border-transparent hover:bg-white hover:border-border'
+                      ? 'bg-white border-blue-100 text-primary shadow-sm'
+                      : 'border-transparent hover:bg-white hover:border-border hover:shadow-sm'
                   )}
                 >
                   <span
                     className={cn(
-                      'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold border',
+                      'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold border transition-colors',
                       isActive
                         ? 'bg-blue-100 border-blue-200 text-primary'
                         : 'bg-white border-border text-muted-foreground'

@@ -19,18 +19,15 @@ export function Container({
   size = 'xl',
   as: Component = 'div',
 }: ContainerProps) {
-  // 定义不同尺寸的最大宽度
   const sizeClasses: Record<string, string> = {
     sm: 'max-w-2xl',
     md: 'max-w-4xl',
     lg: 'max-w-5xl',
-    xl: 'max-w-7xl', // 1280px - 标准容器宽度
+    xl: 'max-w-container',
     full: 'max-w-full',
   };
 
-  // 统一的响应式内边距
-  // 移动端: 16px, 平板: 24px, 桌面: 32px
-  const paddingClasses = 'px-4 sm:px-6 lg:px-8';
+  const paddingClasses = 'px-4 sm:px-6 md:px-8 xl:px-6';
 
   return (
     <Component className={cn(sizeClasses[size], 'mx-auto', paddingClasses, className)}>

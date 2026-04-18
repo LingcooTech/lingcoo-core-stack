@@ -18,7 +18,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
   );
 
   return (
-    <footer className="border-t border-gray-200 bg-gray-50">
+    <footer className="border-t border-gray-200 bg-[#f8fafc]">
       <Container className="py-10">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
           <div className="space-y-4">

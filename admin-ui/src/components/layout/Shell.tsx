@@ -14,7 +14,7 @@ export function Shell() {
       }}
     >
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-      <div className="flex flex-col min-h-screen bg-white overflow-hidden">
+      <div className="flex min-h-screen flex-col overflow-hidden bg-[#f8fafc]">
         <Topbar onToggleSidebar={() => setCollapsed((c) => !c)} />
         <main className="flex-1 overflow-auto">
           <Outlet />
