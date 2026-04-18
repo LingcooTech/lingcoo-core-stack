@@ -1,7 +1,9 @@
-import { Boxes, KeyRound } from 'lucide-react';
+import { Boxes, KeyRound, Rocket } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import type { HydratedEntitlement } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime } from '@/lib/utils';
 
@@ -17,12 +19,14 @@ export function EntitlementProductCard({
   productName,
   featureNames,
   relatedApps,
-  items
+  items,
+  deploymentHref
 }: {
   productName: string;
   featureNames: string[];
   relatedApps: string[];
   items: HydratedEntitlement[];
+  deploymentHref?: string;
 }) {
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
@@ -84,6 +88,17 @@ export function EntitlementProductCard({
             </div>
           ))}
         </div>
+
+        {deploymentHref ? (
+          <div className="flex justify-end border-t border-gray-100 pt-4">
+            <Button asChild className="rounded-lg">
+              <Link to={deploymentHref}>
+                开始部署
+                <Rocket className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

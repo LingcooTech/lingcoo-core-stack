@@ -82,10 +82,22 @@ const siteLinkSchema = z.object({
   openInNewTab: z.boolean().optional()
 });
 
+const siteNavigationChildSchema = siteLinkSchema;
+
+const siteNavigationItemSchema = z
+  .object({
+    label: z.string().trim().min(1, '请输入一级菜单名称').max(60, '名称不能超过 60 个字符'),
+    url: optionalSiteLinkField,
+    openInNewTab: z.boolean().optional(),
+    children: z.array(siteNavigationChildSchema).max(12, '二级菜单最多 12 项')
+  })
+  .refine((value) => Boolean(value.url) || value.children.length > 0, '一级菜单至少配置链接或一个二级菜单');
+
 const siteSchema = z.object({
   siteName: z.string().trim().min(1, '请输入站点名称').max(120, '站点名称不能超过 120 个字符'),
   logoUrl: optionalSiteLinkField,
   faviconUrl: optionalSiteLinkField,
+  headerNavigation: z.array(siteNavigationItemSchema).max(12, '顶部导航最多保留 12 项'),
   footerCopyright: z.string().trim().min(1, '请输入页脚版权').max(255, '页脚版权不能超过 255 个字符'),
   footerLinks: z.array(siteLinkSchema).max(12, '最多保留 12 个页脚链接')
 });
@@ -146,6 +158,16 @@ function buildSitePayload(values: SiteValues) {
     siteName: values.siteName.trim(),
     logoUrl: values.logoUrl.trim(),
     faviconUrl: values.faviconUrl.trim(),
+    headerNavigation: values.headerNavigation.map((item) => ({
+      label: item.label.trim(),
+      url: item.url.trim(),
+      openInNewTab: Boolean(item.openInNewTab),
+      children: item.children.map((child) => ({
+        label: child.label.trim(),
+        url: child.url.trim(),
+        openInNewTab: Boolean(child.openInNewTab)
+      }))
+    })),
     footerCopyright: values.footerCopyright.trim(),
     footerLinks: values.footerLinks.map((item) => ({
       label: item.label.trim(),
@@ -289,11 +311,13 @@ export function SettingsPage() {
       siteName: 'FD Stack',
       logoUrl: '',
       faviconUrl: '',
+      headerNavigation: [],
       footerCopyright: '© {year} FutureDecade. All rights reserved.',
       footerLinks: []
     }
   });
 
+  const headerNavigation = siteForm.watch('headerNavigation') ?? [];
   const {
     fields: siteLinkFields,
     append: appendSiteLink,
@@ -302,6 +326,55 @@ export function SettingsPage() {
     control: siteForm.control,
     name: 'footerLinks'
   });
+
+  const appendHeaderNavigation = () => {
+    siteForm.setValue(
+      'headerNavigation',
+      [
+        ...headerNavigation,
+        { label: '', url: '', openInNewTab: false, children: [] }
+      ],
+      { shouldDirty: true, shouldValidate: true }
+    );
+  };
+
+  const removeHeaderNavigation = (index: number) => {
+    siteForm.setValue(
+      'headerNavigation',
+      headerNavigation.filter((_, itemIndex) => itemIndex !== index),
+      { shouldDirty: true, shouldValidate: true }
+    );
+  };
+
+  const appendHeaderNavigationChild = (index: number) => {
+    siteForm.setValue(
+      'headerNavigation',
+      headerNavigation.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              children: [...item.children, { label: '', url: '', openInNewTab: false }]
+            }
+          : item
+      ),
+      { shouldDirty: true, shouldValidate: true }
+    );
+  };
+
+  const removeHeaderNavigationChild = (parentIndex: number, childIndex: number) => {
+    siteForm.setValue(
+      'headerNavigation',
+      headerNavigation.map((item, itemIndex) =>
+        itemIndex === parentIndex
+          ? {
+              ...item,
+              children: item.children.filter((_, currentChildIndex) => currentChildIndex !== childIndex)
+            }
+          : item
+      ),
+      { shouldDirty: true, shouldValidate: true }
+    );
+  };
 
   const openrouterForm = useForm<OpenRouterValues>({
     resolver: zodResolver(openrouterSchema),
@@ -353,6 +426,7 @@ export function SettingsPage() {
       siteName: siteData.values.siteName,
       logoUrl: siteData.values.logoUrl,
       faviconUrl: siteData.values.faviconUrl,
+      headerNavigation: siteData.values.headerNavigation,
       footerCopyright: siteData.values.footerCopyright,
       footerLinks: siteData.values.footerLinks
     });
@@ -435,6 +509,7 @@ export function SettingsPage() {
         siteName: result.values.siteName,
         logoUrl: result.values.logoUrl,
         faviconUrl: result.values.faviconUrl,
+        headerNavigation: result.values.headerNavigation,
         footerCopyright: result.values.footerCopyright,
         footerLinks: result.values.footerLinks
       });
@@ -797,6 +872,172 @@ export function SettingsPage() {
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">顶部导航菜单</h3>
+                          <p className="text-sm text-muted-foreground">
+                            桌面端按一级菜单展示；如果配置二级菜单，则桌面端显示下拉菜单，移动端显示汉堡菜单折叠项。
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={appendHeaderNavigation}
+                          disabled={headerNavigation.length >= 12}
+                        >
+                          <Plus className="h-4 w-4" />
+                          新增一级菜单
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {headerNavigation.map((item, index) => (
+                          <div key={`site-nav-${index}`} className="rounded-lg border border-border bg-white p-4">
+                            <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
+                              <div className="space-y-2">
+                                <FormLabel>一级菜单名称</FormLabel>
+                                <Input placeholder="应用中心" {...siteForm.register(`headerNavigation.${index}.label`)} />
+                                <p className="text-xs text-destructive">
+                                  {siteForm.formState.errors.headerNavigation?.[index]?.label?.message}
+                                </p>
+                              </div>
+
+                              <div className="space-y-2">
+                                <FormLabel>一级菜单链接</FormLabel>
+                                <Input
+                                  placeholder="/ or https://...，有二级菜单时可留空"
+                                  {...siteForm.register(`headerNavigation.${index}.url`)}
+                                />
+                                <p className="text-xs text-muted-foreground">如果当前一级菜单只作为下拉入口，可不填链接。</p>
+                                <p className="text-xs text-destructive">
+                                  {siteForm.formState.errors.headerNavigation?.[index]?.url?.message}
+                                </p>
+                              </div>
+
+                              <div className="space-y-3">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeHeaderNavigation(index)}>
+                                  <Trash2 className="h-4 w-4" />
+                                  删除
+                                </Button>
+                                <FormField
+                                  control={siteForm.control}
+                                  name={`headerNavigation.${index}.openInNewTab`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                      <FormControl>
+                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                      </FormControl>
+                                      <div>
+                                        <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-4">
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">二级下拉菜单</p>
+                                  <p className="text-sm text-muted-foreground">为空时按普通一级菜单渲染；有内容时桌面端显示下拉。</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => appendHeaderNavigationChild(index)}
+                                  disabled={(item.children?.length ?? 0) >= 12}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  新增二级菜单
+                                </Button>
+                              </div>
+
+                              {(item.children ?? []).length ? (
+                                <div className="space-y-3">
+                                  {item.children.map((_, childIndex) => (
+                                    <div
+                                      key={`site-nav-${index}-child-${childIndex}`}
+                                      className="grid gap-4 rounded-lg border border-border bg-white p-4 lg:grid-cols-[minmax(0,160px),minmax(0,1fr),auto] lg:items-start"
+                                    >
+                                      <div className="space-y-2">
+                                        <FormLabel>二级菜单名称</FormLabel>
+                                        <Input
+                                          placeholder="购买授权"
+                                          {...siteForm.register(`headerNavigation.${index}.children.${childIndex}.label`)}
+                                        />
+                                        <p className="text-xs text-destructive">
+                                          {siteForm.formState.errors.headerNavigation?.[index]?.children?.[childIndex]?.label?.message}
+                                        </p>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <FormLabel>二级菜单链接</FormLabel>
+                                        <Input
+                                          placeholder="/ or https://..."
+                                          {...siteForm.register(`headerNavigation.${index}.children.${childIndex}.url`)}
+                                        />
+                                        <p className="text-xs text-destructive">
+                                          {siteForm.formState.errors.headerNavigation?.[index]?.children?.[childIndex]?.url?.message}
+                                        </p>
+                                      </div>
+
+                                      <div className="space-y-3">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => removeHeaderNavigationChild(index, childIndex)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          删除
+                                        </Button>
+                                        <FormField
+                                          control={siteForm.control}
+                                          name={`headerNavigation.${index}.children.${childIndex}.openInNewTab`}
+                                          render={({ field }) => (
+                                            <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                              <FormControl>
+                                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                              </FormControl>
+                                              <div>
+                                                <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                              </div>
+                                            </FormItem>
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="rounded-lg border border-dashed border-border bg-white px-4 py-5 text-sm text-muted-foreground">
+                                  当前没有二级菜单，一级菜单会直接作为普通导航链接显示。
+                                </div>
+                              )}
+                            </div>
+
+                            {typeof siteForm.formState.errors.headerNavigation?.[index]?.message === 'string' ? (
+                              <p className="mt-3 text-xs text-destructive">
+                                {siteForm.formState.errors.headerNavigation[index]?.message}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
+
+                        {!headerNavigation.length ? (
+                          <div className="rounded-lg border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
+                            当前没有自定义顶部导航。你可以新增一级菜单，并为其中任意项补充二级下拉菜单。
+                          </div>
+                        ) : null}
+                        {typeof siteForm.formState.errors.headerNavigation?.message === 'string' ? (
+                          <p className="text-sm text-destructive">{siteForm.formState.errors.headerNavigation.message}</p>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">

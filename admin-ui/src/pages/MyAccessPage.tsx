@@ -6,6 +6,7 @@ import { listMyEntitlements } from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { Card, CardContent } from '@/components/ui/card';
+import { getAppDeliveryMode } from '@/lib/app-delivery';
 
 export function MyAccessPage() {
   const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
@@ -14,6 +15,7 @@ export function MyAccessPage() {
   const summary = entitlementsQuery.data?.summary ?? [];
   const items = entitlementsQuery.data?.items ?? [];
   const apps = appsQuery.data?.items ?? [];
+  const appByCode = new Map(apps.map((app) => [app.code, app]));
 
   const appsByProduct = new Map<string, string[]>();
   for (const app of apps) {
@@ -129,9 +131,12 @@ export function MyAccessPage() {
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
               const relatedApps = appsByProduct.get(entry.appCode) ?? [];
+              const app = appByCode.get(entry.appCode) ?? null;
               const featureNames = entry.featureCodes.map(
                 (code) => featureNameMap.get(code) ?? code
               );
+              const isDeployable = Boolean(app && getAppDeliveryMode(app) === 'one_click');
+              const deploymentHref = isDeployable ? `/deploy?app=${encodeURIComponent(entry.appCode)}` : undefined;
 
               return (
                 <EntitlementProductCard
@@ -140,6 +145,7 @@ export function MyAccessPage() {
                   featureNames={featureNames}
                   relatedApps={relatedApps}
                   items={relatedItems}
+                  deploymentHref={deploymentHref}
                 />
               );
             })}

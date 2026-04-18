@@ -106,10 +106,22 @@ export const siteFooterLinkSchema = z.object({
   openInNewTab: z.boolean().optional()
 });
 
+export const siteNavigationChildSchema = siteFooterLinkSchema;
+
+export const siteNavigationItemSchema = z
+  .object({
+    label: z.string().trim().min(1).max(60),
+    url: optionalSitePathOrUrl,
+    openInNewTab: z.boolean().optional(),
+    children: z.array(siteNavigationChildSchema).max(12).optional()
+  })
+  .refine((value) => Boolean(value.url) || (value.children?.length ?? 0) > 0, '一级菜单至少要有链接或一个二级菜单');
+
 export const siteSettingsSchema = z.object({
   siteName: optionalTrimmedString(120),
   logoUrl: optionalSitePathOrUrl,
   faviconUrl: optionalSitePathOrUrl,
+  headerNavigation: z.array(siteNavigationItemSchema).max(12).optional(),
   footerCopyright: optionalTrimmedString(255),
   footerLinks: z.array(siteFooterLinkSchema).max(12).optional()
 });

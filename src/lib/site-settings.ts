@@ -12,10 +12,20 @@ export type SiteFooterLink = {
   openInNewTab: boolean;
 };
 
+export type SiteNavigationChild = SiteFooterLink;
+
+export type SiteNavigationItem = {
+  label: string;
+  url: string;
+  openInNewTab: boolean;
+  children: SiteNavigationChild[];
+};
+
 export type SiteSettings = {
   siteName: string;
   logoUrl: string;
   faviconUrl: string;
+  headerNavigation: SiteNavigationItem[];
   footerCopyright: string;
   footerLinks: SiteFooterLink[];
 };
@@ -29,11 +39,15 @@ export type SiteSettingsOverview = {
 const SITE_SETTINGS_KEY = 'system.site.presentation';
 const DEFAULT_SITE_NAME = 'FD Stack';
 const DEFAULT_COPYRIGHT = '© {year} FutureDecade. All rights reserved.';
+const DEFAULT_HEADER_NAVIGATION: SiteNavigationItem[] = [
+  { label: '应用中心', url: '/', openInNewTab: false, children: [] },
+  { label: '订单记录', url: '/orders', openInNewTab: false, children: [] },
+  { label: '我的应用', url: '/access', openInNewTab: false, children: [] }
+];
 const DEFAULT_FOOTER_LINKS: SiteFooterLink[] = [
   { label: '应用中心', url: '/', openInNewTab: false },
   { label: '我的订单', url: '/orders', openInNewTab: false },
   { label: '我的应用', url: '/access', openInNewTab: false },
-  { label: '部署管理', url: '/deploy', openInNewTab: false },
   { label: '隐私政策', url: '/apps/ai-translate-workflow/privacy', openInNewTab: false },
   { label: '支持页', url: '/apps/ai-translate-workflow/support', openInNewTab: false }
 ];
@@ -125,6 +139,44 @@ function cloneFooterLinks(links: SiteFooterLink[]) {
   return links.map((item) => ({ ...item }));
 }
 
+function cloneHeaderNavigation(items: SiteNavigationItem[]) {
+  return items.map((item) => ({
+    ...item,
+    children: cloneFooterLinks(item.children)
+  }));
+}
+
+function normalizeHeaderNavigation(value: unknown): SiteNavigationItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const raw = normalizeObject(item);
+      const label = normalizeString(raw.label).slice(0, 60);
+      const url = normalizeSiteUrl(raw.url);
+      const children = normalizeFooterLinks(raw.children);
+
+      if (!label) {
+        return null;
+      }
+
+      if (!url && children.length === 0) {
+        return null;
+      }
+
+      return {
+        label,
+        url,
+        openInNewTab: normalizeBoolean(raw.openInNewTab),
+        children
+      } satisfies SiteNavigationItem;
+    })
+    .filter((item): item is SiteNavigationItem => Boolean(item))
+    .slice(0, 12);
+}
+
 function buildDefaultSiteSettings(env: AppEnv): SiteSettings {
   const envSiteName = normalizeString(env.APP_NAME);
 
@@ -132,6 +184,7 @@ function buildDefaultSiteSettings(env: AppEnv): SiteSettings {
     siteName: envSiteName && envSiteName !== 'fd-core-stack' ? envSiteName : DEFAULT_SITE_NAME,
     logoUrl: '',
     faviconUrl: '',
+    headerNavigation: cloneHeaderNavigation(DEFAULT_HEADER_NAVIGATION),
     footerCopyright: DEFAULT_COPYRIGHT,
     footerLinks: cloneFooterLinks(DEFAULT_FOOTER_LINKS)
   };
@@ -164,12 +217,14 @@ export class SiteSettingsService {
   private normalizeSettings(value: unknown): SiteSettings {
     const defaults = this.getDefaults();
     const raw = normalizeObject(value);
+    const headerNavigation = normalizeHeaderNavigation(raw.headerNavigation);
     const footerLinks = normalizeFooterLinks(raw.footerLinks);
 
     return {
       siteName: normalizeString(raw.siteName).slice(0, 120) || defaults.siteName,
       logoUrl: normalizeSiteUrl(raw.logoUrl),
       faviconUrl: normalizeSiteUrl(raw.faviconUrl),
+      headerNavigation: headerNavigation.length ? cloneHeaderNavigation(headerNavigation) : cloneHeaderNavigation(defaults.headerNavigation),
       footerCopyright: normalizeString(raw.footerCopyright).slice(0, 255) || defaults.footerCopyright,
       footerLinks: cloneFooterLinks(footerLinks)
     };
@@ -201,6 +256,16 @@ export class SiteSettingsService {
       siteName?: string;
       logoUrl?: string;
       faviconUrl?: string;
+      headerNavigation?: Array<{
+        label: string;
+        url?: string;
+        openInNewTab?: boolean;
+        children?: Array<{
+          label: string;
+          url: string;
+          openInNewTab?: boolean;
+        }>;
+      }>;
       footerCopyright?: string;
       footerLinks?: Array<{
         label: string;

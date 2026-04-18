@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Boxes, LoaderCircle, Rocket, ServerCog, ShieldCheck } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
@@ -23,6 +24,7 @@ type DeploymentIssueDetails = {
 
 export function DeploymentsPage() {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
   const [editingDeployment, setEditingDeployment] = useState<DeploymentSummary | null>(null);
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
@@ -155,6 +157,10 @@ export function DeploymentsPage() {
     editingDeployment?.app?.code ? oneClickAppMap.get(editingDeployment.app.code) ?? null : null;
   const activeDeployments = deployments.filter((deployment) => deployment.status === 'active');
   const tokenReadyDeployments = deployments.filter((deployment) => Boolean(deployment.latestToken));
+  const requestedAppCode = searchParams.get('app')?.trim() || '';
+  const initialDeployAppCode = deployableApps.some((option) => option.appCode === requestedAppCode)
+    ? requestedAppCode
+    : undefined;
 
   return (
     <div className="space-y-10">
@@ -274,6 +280,7 @@ export function DeploymentsPage() {
             </div>
             <DeploymentWizard
               options={deployableApps}
+              initialAppCode={initialDeployAppCode}
               onCreateDeployment={handleWizardCreate}
               onIssueToken={handleWizardIssueToken}
               creating={createDeploymentMutation.isPending}

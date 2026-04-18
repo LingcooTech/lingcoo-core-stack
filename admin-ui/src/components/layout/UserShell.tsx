@@ -1,50 +1,85 @@
-import { Boxes, LayoutDashboard, LogIn, LogOut, ReceiptText, Rocket, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, X } from 'lucide-react';
 
+import type { SiteNavigationItem } from '@/api/types';
 import { getPublicSiteSettings } from '@/api/settings';
 import { Container } from '@/components/layout/Container';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { userSectionMeta, type UserSectionKey } from '@/lib/user-foundation';
-import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  getNormalizedInternalPath,
+  getSiteDisplayName,
+  getSiteHeaderNavigation,
+  isExternalSiteUrl,
+  isInternalSiteUrl,
+  PUBLIC_SITE_SETTINGS_QUERY_KEY
+} from '@/lib/site-settings';
 import { useAuth } from '@/lib/auth';
 import { cn, getInitials } from '@/lib/utils';
 
-const iconMap = {
-  BX: Boxes,
-  RC: ReceiptText,
-  SH: ShieldCheck,
-  DP: Rocket
-};
+function isActiveSiteUrl(url: string, pathname: string) {
+  if (!isInternalSiteUrl(url)) {
+    return false;
+  }
 
-const navItems: Array<{ key: UserSectionKey; to: string; label: string; note: string; icon: keyof typeof iconMap }> = [
-  { key: 'discover', to: userSectionMeta.discover.href, label: userSectionMeta.discover.navTitle, note: userSectionMeta.discover.navNote, icon: 'BX' },
-  { key: 'orders', to: userSectionMeta.orders.href, label: userSectionMeta.orders.navTitle, note: userSectionMeta.orders.navNote, icon: 'RC' },
-  { key: 'access', to: userSectionMeta.access.href, label: userSectionMeta.access.navTitle, note: userSectionMeta.access.navNote, icon: 'SH' },
-  { key: 'deploy', to: userSectionMeta.deploy.href, label: userSectionMeta.deploy.navTitle, note: userSectionMeta.deploy.navNote, icon: 'DP' }
-];
+  const normalizedPath = getNormalizedInternalPath(url);
+  if (!normalizedPath) {
+    return false;
+  }
+
+  return pathname === normalizedPath || (normalizedPath !== '/' && pathname.startsWith(`${normalizedPath}/`));
+}
+
+function hasActiveNavigationItem(item: SiteNavigationItem, pathname: string) {
+  return isActiveSiteUrl(item.url, pathname) || item.children.some((child) => isActiveSiteUrl(child.url, pathname));
+}
 
 export function UserShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin, logout, user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: siteSettings } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
     queryFn: getPublicSiteSettings,
     staleTime: 5 * 60_000
   });
   const siteName = getSiteDisplayName(siteSettings);
+  const headerNavigation = getSiteHeaderNavigation(siteSettings);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  const handleSiteNavigation = (url: string, openInNewTab = false) => {
+    if (!url) {
+      return;
+    }
+
+    if (openInNewTab) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (isInternalSiteUrl(url)) {
+      navigate(url);
+      return;
+    }
+
+    window.location.assign(url);
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.12),_transparent_28%),linear-gradient(180deg,#f8fbff_0%,#edf3f8_42%,#f7fafc_100%)]">
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm shadow-sm">
         <Container className="py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* 左侧: Logo 区域 (1/5) */}
-            <div className="flex items-center justify-between w-full lg:w-1/5 lg:justify-start">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1 lg:max-w-[240px]">
               <Link to="/" className="flex items-center gap-3">
                 {siteSettings?.logoUrl ? (
                   <img
@@ -64,33 +99,100 @@ export function UserShell() {
               </Link>
             </div>
 
-            {/* 中间: 导航菜单 (3/5) - 桌面端显示 */}
-            <nav className="hidden lg:flex items-center justify-center w-full lg:w-3/5 gap-6"
-                 aria-label="主导航">
-              {navItems.map((item) => {
-                const Icon = iconMap[item.icon];
+            <nav className="hidden flex-1 items-center justify-center gap-2 lg:flex" aria-label="主导航">
+              {headerNavigation.map((item) => {
+                const isActive = hasActiveNavigationItem(item, location.pathname);
+
+                if (item.children.length > 0) {
+                  return (
+                    <DropdownMenu key={`${item.label}:${item.url}`}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                            isActive ? 'bg-primary/8 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                          )}
+                        >
+                          {item.label}
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="w-56">
+                        {item.url ? (
+                          <>
+                            <DropdownMenuItem
+                              onSelect={(event) => {
+                                event.preventDefault();
+                                handleSiteNavigation(item.url, item.openInNewTab);
+                              }}
+                            >
+                              {item.label}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        ) : null}
+                        {item.children.map((child) => (
+                          <DropdownMenuItem
+                            key={`${item.label}:${child.label}:${child.url}`}
+                            onSelect={(event) => {
+                              event.preventDefault();
+                              handleSiteNavigation(child.url, child.openInNewTab);
+                            }}
+                          >
+                            {child.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                }
+
+                if (item.openInNewTab || isExternalSiteUrl(item.url)) {
+                  return (
+                    <a
+                      key={`${item.label}:${item.url}`}
+                      href={item.url}
+                      target={item.openInNewTab ? '_blank' : undefined}
+                      rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+                      className={cn(
+                        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                        isActive ? 'bg-primary/8 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
+                      )}
+                    >
+                      {item.label}
+                    </a>
+                  );
+                }
+
                 return (
                   <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
+                    key={`${item.label}:${item.url}`}
+                    to={item.url}
+                    className={({ isActive: currentActive }) =>
                       cn(
-                        'inline-flex items-center gap-2 text-base font-normal whitespace-nowrap transition-colors duration-200',
-                        isActive 
-                          ? 'text-primary font-medium' 
-                          : 'text-gray-600 hover:text-primary'
+                        'inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                        currentActive ? 'bg-primary/8 text-primary' : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
                       )
                     }
                   >
-                    <Icon className="h-4 w-4" />
                     {item.label}
                   </NavLink>
                 );
               })}
             </nav>
 
-            {/* 右侧: 工具区域 (1/5) */}
-            <div className="flex items-center justify-end w-full lg:w-1/5">
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setMobileMenuOpen((current) => !current)}
+                aria-label={mobileMenuOpen ? '关闭导航菜单' : '打开导航菜单'}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
               {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -129,13 +231,13 @@ export function UserShell() {
                 </DropdownMenu>
               ) : (
                 <>
-                  <Button variant="ghost" asChild>
+                  <Button variant="ghost" asChild className="hidden sm:inline-flex">
                     <Link to="/login">
                       <LogIn className="h-4 w-4" />
                       登录
                     </Link>
                   </Button>
-                  <Button asChild>
+                  <Button asChild className="hidden sm:inline-flex">
                     <Link to="/register">注册</Link>
                   </Button>
                 </>
@@ -143,27 +245,81 @@ export function UserShell() {
             </div>
           </div>
 
-          {/* 移动端导航菜单 */}
-          <nav className="-mx-2 flex gap-2 overflow-x-auto px-2 pb-1 lg:hidden" aria-label="移动端导航">
-            {navItems.map((item) => {
-              const Icon = iconMap[item.icon];
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-600 transition-all hover:border-slate-300 hover:text-slate-900',
-                      isActive && 'border-slate-900 bg-gray-900 text-white hover:border-slate-900 hover:text-white'
+          {mobileMenuOpen ? (
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:hidden">
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Navigation</p>
+                <div className="space-y-2">
+                  {headerNavigation.map((item, index) =>
+                    item.children.length > 0 ? (
+                      <Accordion key={`${item.label}:${index}`} type="single" collapsible className="rounded-lg border border-gray-100 px-4">
+                        <AccordionItem value={`mobile-nav-${index}`} className="border-b-0">
+                          <AccordionTrigger className="py-3 text-sm font-medium text-slate-900 hover:no-underline">
+                            {item.label}
+                          </AccordionTrigger>
+                          <AccordionContent className="space-y-2 pb-3">
+                            {item.url ? (
+                              <button
+                                type="button"
+                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50 hover:text-primary"
+                                onClick={() => handleSiteNavigation(item.url, item.openInNewTab)}
+                              >
+                                进入 {item.label}
+                              </button>
+                            ) : null}
+                            {item.children.map((child) => (
+                              <button
+                                key={`${item.label}:${child.label}:${child.url}`}
+                                type="button"
+                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50 hover:text-primary"
+                                onClick={() => handleSiteNavigation(child.url, child.openInNewTab)}
+                              >
+                                {child.label}
+                              </button>
+                            ))}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    ) : isExternalSiteUrl(item.url) || item.openInNewTab ? (
+                      <a
+                        key={`${item.label}:${item.url}`}
+                        href={item.url}
+                        target={item.openInNewTab ? '_blank' : undefined}
+                        rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
+                        className="block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                      >
+                        {item.label}
+                      </a>
+                    ) : (
+                      <NavLink
+                        key={`${item.label}:${item.url}`}
+                        to={item.url}
+                        className={({ isActive }) =>
+                          cn(
+                            'block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium transition',
+                            isActive ? 'border-primary/20 bg-primary/5 text-primary' : 'text-slate-900 hover:bg-gray-50 hover:text-primary'
+                          )
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
                     )
-                  }
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
+                  )}
+                </div>
+
+                {!isAuthenticated ? (
+                  <div className="flex gap-2 border-t border-gray-100 pt-3 sm:hidden">
+                    <Button variant="ghost" asChild className="flex-1">
+                      <Link to="/login">登录</Link>
+                    </Button>
+                    <Button asChild className="flex-1">
+                      <Link to="/register">注册</Link>
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </Container>
       </header>
 

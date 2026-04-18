@@ -43,10 +43,20 @@ export interface SiteFooterLinkInput {
   openInNewTab?: boolean;
 }
 
+export interface SiteNavigationChildInput extends SiteFooterLinkInput {}
+
+export interface SiteNavigationItemInput {
+  label: string;
+  url?: string;
+  openInNewTab?: boolean;
+  children?: SiteNavigationChildInput[];
+}
+
 export interface SiteSettingsInput {
   siteName?: string;
   logoUrl?: string;
   faviconUrl?: string;
+  headerNavigation?: SiteNavigationItemInput[];
   footerCopyright?: string;
   footerLinks?: SiteFooterLinkInput[];
 }

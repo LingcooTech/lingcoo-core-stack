@@ -55,7 +55,7 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     contextCards: [],
     heroActions: [
       { label: '查看授权', href: '/access', tone: 'primary' },
-      { label: '部署管理', href: '/deploy', tone: 'secondary' }
+      { label: '应用中心', href: '/', tone: 'secondary' }
     ]
   },
   deploy: {

@@ -214,6 +214,15 @@ export interface SiteFooterLink {
   openInNewTab: boolean;
 }
 
+export interface SiteNavigationChild extends SiteFooterLink {}
+
+export interface SiteNavigationItem {
+  label: string;
+  url: string;
+  openInNewTab: boolean;
+  children: SiteNavigationChild[];
+}
+
 export interface SiteSettingsOverview {
   configured: boolean;
   source: 'database' | 'none';
@@ -221,6 +230,7 @@ export interface SiteSettingsOverview {
     siteName: string;
     logoUrl: string;
     faviconUrl: string;
+    headerNavigation: SiteNavigationItem[];
     footerCopyright: string;
     footerLinks: SiteFooterLink[];
   };

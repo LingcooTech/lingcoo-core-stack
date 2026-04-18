@@ -43,6 +43,7 @@ export interface CreateDeploymentPayload {
 
 export interface DeploymentWizardProps {
   options: DeployableAppOption[];
+  initialAppCode?: string;
   onCreateDeployment: (payload: CreateDeploymentPayload) => Promise<{ id: string }>;
   onIssueToken: (params: {
     deploymentId: string;
@@ -89,6 +90,7 @@ function getBooleanFieldValue(draft: DeploymentDraft, field: DeliveryManifestFie
 
 export function DeploymentWizard({
   options,
+  initialAppCode,
   onCreateDeployment,
   onIssueToken,
   creating,
@@ -145,6 +147,19 @@ export function DeploymentWizard({
       setLabel(`${selectedApp.appName} Production`);
     }
   }, [selectedApp, label]);
+
+  useEffect(() => {
+    if (!initialAppCode) {
+      return;
+    }
+
+    if (!options.some((option) => option.appCode === initialAppCode)) {
+      return;
+    }
+
+    setSelectedAppCode((current) => current || initialAppCode);
+    setStep((current) => (current === 1 ? 2 : current));
+  }, [initialAppCode, options]);
 
   useEffect(() => {
     setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
