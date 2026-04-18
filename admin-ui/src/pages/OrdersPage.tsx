@@ -148,11 +148,11 @@ export function OrdersPage() {
   const detail: OrderDetail | undefined = orderDetailQuery.data;
 
   return (
-    <div>
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">订单管理</h1>
+    <div className="space-y-4">
+      <div className="px-6 pt-5">
+        <h1 className="text-[2rem] font-semibold tracking-tight text-slate-900">订单管理</h1>
       </div>
-      <div className="px-6 pb-6 space-y-4">
+      <div className="px-6 pb-6 space-y-3.5">
         <FilterBar
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
@@ -184,7 +184,7 @@ export function OrdersPage() {
           ]}
         />
 
-        <div className="rounded-lg border border-border bg-white overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
           <DataTable
             columns={orderColumns}
             data={orders}
@@ -205,7 +205,7 @@ export function OrdersPage() {
 
         {/* Order Detail Panel */}
         {selectedOrderNo && (
-          <div className="rounded-lg border border-border bg-white p-5 space-y-5">
+          <div className="space-y-4 rounded-xl border border-border bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">订单详情: {selectedOrderNo}</h3>
               <Button size="sm" variant="outline" onClick={() => reconcileMutation.mutate(selectedOrderNo)} disabled={reconcileMutation.isPending}>

@@ -65,6 +65,19 @@ export interface AdminCommandItem {
   shortcut?: string;
 }
 
+export function resolveAdminSection(pathname: string): AdminSectionKey | undefined {
+  const matches = (Object.entries(adminSectionMeta) as Array<[AdminSectionKey, AdminSectionMeta]>).filter(
+    ([, meta]) => pathname === meta.href || pathname.startsWith(`${meta.href}/`),
+  );
+
+  if (matches.length === 0) {
+    return undefined;
+  }
+
+  matches.sort((left, right) => right[1].href.length - left[1].href.length);
+  return matches[0]?.[0];
+}
+
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   dashboard: {
     groupLabel: '概览',

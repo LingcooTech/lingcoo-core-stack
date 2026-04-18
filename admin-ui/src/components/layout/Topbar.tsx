@@ -2,17 +2,14 @@ import { ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CommandPalette } from '@/components/shared/CommandPalette';
-import { adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
+import { adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
 import { cn } from '@/lib/utils';
 
 export function Topbar() {
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  const currentSection = Object.entries(adminSectionMeta).find(
-    ([, meta]) => meta.href === location.pathname || location.pathname.startsWith(meta.href + '/')
-  )?.[0] as AdminSectionKey | undefined;
-
+  const currentSection = resolveAdminSection(location.pathname);
   const section = currentSection ? adminSectionMeta[currentSection] : null;
 
   return (

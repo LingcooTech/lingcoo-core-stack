@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/lib/auth';
-import { adminNavigationGroups, adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
+import { adminNavigationGroups, adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
 import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { cn, getInitials } from '@/lib/utils';
 
@@ -42,9 +42,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   });
   const siteName = getSiteDisplayName(siteSettings);
 
-  const currentSection = Object.entries(adminSectionMeta).find(
-    ([, meta]) => meta.href === location.pathname || location.pathname.startsWith(meta.href + '/')
-  )?.[0] as AdminSectionKey | undefined;
+  const currentSection = resolveAdminSection(location.pathname);
 
   return (
     <aside
@@ -101,9 +99,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Nav */}
       <ScrollArea className="flex-1 px-2">
         {adminNavigationGroups.map((group) => (
-          <div key={group.label} className="mb-3">
+          <div key={group.label} className="mb-2.5">
             {!collapsed && (
-              <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
                 {group.label}
               </p>
             )}
@@ -116,7 +114,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   to={meta.href}
                   title={collapsed ? meta.navTitle : undefined}
                   className={cn(
-                    'relative mb-1 flex min-h-[48px] items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all',
+                    'relative mb-1 flex min-h-[46px] items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all',
                     'text-sm font-semibold no-underline',
                     isActive
                       ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
@@ -155,8 +153,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               className={cn(
-                'w-full rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50',
-                collapsed ? 'flex items-center justify-center p-2.5' : 'flex items-center gap-3 px-3 py-3',
+                'w-full rounded-2xl border border-slate-200/90 bg-white/95 text-left shadow-sm transition hover:border-slate-300 hover:bg-white',
+                collapsed ? 'flex items-center justify-center p-2.5' : 'flex items-center gap-3 px-3 py-2.5',
               )}
               title={collapsed ? (user?.email ?? '管理员') : undefined}
             >
