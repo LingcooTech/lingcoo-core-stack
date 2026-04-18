@@ -36,12 +36,9 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
               )}
               <div>
                 <p className="text-sm font-semibold tracking-tight text-gray-900">{siteName}</p>
-                <p className="text-xs text-gray-500">应用发现、购买授权与交付入口</p>
+                <p className="text-xs text-gray-500">购买、授权与部署入口</p>
               </div>
             </div>
-            <p className="max-w-xl text-sm leading-7 text-gray-600">
-              统一承接应用发现、购买、授权和部署交付，让用户侧体验与后台配置保持一致。
-            </p>
           </div>
 
           <div className="space-y-3">
@@ -89,7 +86,6 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
 
         <div className="mt-8 flex flex-col gap-2 border-t border-gray-200 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
           <p>{copyrightText}</p>
-          <p>页脚菜单、品牌 Logo 与 favicon 均可在管理后台系统设置中维护。</p>
         </div>
       </Container>
     </footer>

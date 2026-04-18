@@ -449,7 +449,6 @@ export function AccountCenterPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-4xl font-semibold tracking-tight text-gray-900">个人中心</h1>
-        <p className="text-sm text-gray-500">管理资料、安全、订单与已购应用。</p>
       </div>
 
       <Tabs

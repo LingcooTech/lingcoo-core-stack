@@ -93,7 +93,7 @@ export function UserShell() {
                   </div>
                 )}
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Consumer Portal</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">用户中心</p>
                   <p className="text-base font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
@@ -213,7 +213,7 @@ export function UserShell() {
                     <DropdownMenuLabel className="px-2 py-2">
                       <div className="space-y-0.5">
                         <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
-                        <p className="text-[11px] text-muted-foreground">账户菜单</p>
+                        <p className="text-[11px] text-muted-foreground">账户</p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -342,7 +342,50 @@ export function UserShell() {
                   )}
                 </div>
 
-                {!isAuthenticated ? (
+                {isAuthenticated ? (
+                  <div className="space-y-2 border-t border-gray-100 pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">账户</p>
+                    <div className="grid gap-2">
+                      <button
+                        type="button"
+                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                        onClick={() => navigate('/account?tab=profile')}
+                      >
+                        个人中心
+                      </button>
+                      <button
+                        type="button"
+                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                        onClick={() => navigate('/account?tab=orders')}
+                      >
+                        我的订单
+                      </button>
+                      <button
+                        type="button"
+                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                        onClick={() => navigate('/account?tab=apps')}
+                      >
+                        我的应用
+                      </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                          onClick={() => navigate('/admin')}
+                        >
+                          管理后台
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                        onClick={logout}
+                      >
+                        退出登录
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <div className="flex gap-2 border-t border-gray-100 pt-3 sm:hidden">
                     <Button variant="ghost" asChild className="flex-1">
                       <Link to="/login">登录</Link>
@@ -351,7 +394,7 @@ export function UserShell() {
                       <Link to="/register">注册</Link>
                     </Button>
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
           ) : null}
