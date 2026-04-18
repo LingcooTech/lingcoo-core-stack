@@ -1,10 +1,29 @@
-import { ChevronsLeft, ChevronsRight, LogOut } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CircleHelp,
+  LogOut,
+  Settings,
+  UserCircle2,
+} from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getPublicSiteSettings } from '@/api/settings';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/lib/auth';
 import { adminNavigationGroups, adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
+import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { cn, getInitials } from '@/lib/utils';
 
 interface SidebarProps {
@@ -14,7 +33,14 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { data: siteSettings } = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000,
+  });
+  const siteName = getSiteDisplayName(siteSettings);
 
   const currentSection = Object.entries(adminSectionMeta).find(
     ([, meta]) => meta.href === location.pathname || location.pathname.startsWith(meta.href + '/')
@@ -28,14 +54,30 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Brand */}
-      <div className={cn('px-4 pt-5 pb-4 flex-shrink-0', collapsed ? 'space-y-3' : 'flex items-center gap-3')}>
+      <div
+        className={cn(
+          'group/brand relative px-4 pt-5 pb-4 flex-shrink-0',
+          collapsed ? 'space-y-0' : 'flex items-center gap-3',
+        )}
+      >
         <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'min-w-0')}>
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center text-white text-sm font-semibold shadow-sm shadow-primary/20">
-            FD
+          <div className="flex-shrink-0">
+            {siteSettings?.logoUrl ? (
+              <img
+                src={siteSettings.logoUrl}
+                alt={siteName}
+                className="h-10 w-10 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-500 text-sm font-semibold text-white shadow-sm shadow-primary/20">
+                {getInitials(siteName)}
+              </div>
+            )}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-base font-semibold tracking-tight text-foreground leading-tight">fd-core-stack</p>
+              <p className="truncate text-base font-semibold tracking-tight text-foreground leading-tight">{siteName}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Admin Console</p>
             </div>
           )}
         </div>
@@ -44,8 +86,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           variant="ghost"
           size="icon"
           className={cn(
-            'h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900',
-            collapsed ? 'mx-auto flex' : 'ml-auto flex-shrink-0',
+            'h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+            collapsed
+              ? 'absolute right-3 top-1/2 -translate-y-1/2 opacity-0 shadow-sm transition-opacity duration-150 group-hover/brand:opacity-100'
+              : 'ml-auto flex-shrink-0',
           )}
           onClick={onToggle}
           aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
@@ -72,18 +116,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   to={meta.href}
                   title={collapsed ? meta.navTitle : undefined}
                   className={cn(
-                    'mb-1 flex min-h-[48px] items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all',
+                    'relative mb-1 flex min-h-[48px] items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-all',
                     'text-sm font-semibold no-underline',
                     isActive
-                      ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
                       : 'border-transparent text-slate-600 hover:bg-white hover:border-slate-200 hover:text-slate-900 hover:shadow-sm'
                   )}
                 >
+                  {isActive && !collapsed ? (
+                    <span className="absolute left-1.5 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full bg-white/70" />
+                  ) : null}
                   <span
                     className={cn(
                       'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold border transition-colors',
                       isActive
-                        ? 'bg-sky-600 border-sky-600 text-white shadow-sm'
+                        ? 'bg-white/10 border-white/10 text-white shadow-sm'
                         : 'bg-white border-slate-200 text-slate-500'
                     )}
                   >
@@ -103,24 +150,86 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* User */}
       <div className="flex-shrink-0 border-t border-border p-3">
-        <div
-          className={cn(
-            'flex items-center gap-2.5 rounded-md p-2 hover:bg-white transition-colors cursor-pointer',
-            collapsed ? 'justify-center' : ''
-          )}
-          onClick={logout}
-          title="退出登录"
-        >
-          <Avatar className="w-8 h-8 flex-shrink-0">
-            <AvatarFallback className="text-xs">{getInitials(user?.email)}</AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <>
-              <span className="text-xs font-bold text-foreground truncate flex-1">{user?.email ?? '管理员'}</span>
-              <LogOut className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-            </>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'w-full rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50',
+                collapsed ? 'flex items-center justify-center p-2.5' : 'flex items-center gap-3 px-3 py-3',
+              )}
+              title={collapsed ? (user?.email ?? '管理员') : undefined}
+            >
+              <Avatar className="h-9 w-9 flex-shrink-0">
+                <AvatarFallback className="text-xs">{getInitials(user?.email)}</AvatarFallback>
+              </Avatar>
+              {!collapsed ? (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? '管理员'}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </>
+              ) : null}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align={collapsed ? 'start' : 'end'}
+            side="top"
+            className="w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg"
+          >
+            <DropdownMenuLabel className="px-3 py-3 text-left">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="text-xs">{getInitials(user?.email)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? '管理员'}</p>
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                navigate('/account?tab=profile');
+              }}
+            >
+              <UserCircle2 className="h-4 w-4" />
+              个人资料
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                navigate('/admin/settings');
+              }}
+            >
+              <Settings className="h-4 w-4" />
+              设置
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                window.open('/docs', '_blank', 'noopener,noreferrer');
+              }}
+            >
+              <CircleHelp className="h-4 w-4" />
+              帮助
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                logout();
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              退出登录
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   );

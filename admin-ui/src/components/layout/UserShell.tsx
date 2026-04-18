@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, X } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
 
 import type { SiteNavigationItem } from '@/api/types';
+import { getCurrentUser } from '@/api/auth';
 import { getPublicSiteSettings } from '@/api/settings';
 import { Container } from '@/components/layout/Container';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
@@ -49,8 +50,20 @@ export function UserShell() {
     queryFn: getPublicSiteSettings,
     staleTime: 5 * 60_000
   });
+  const { data: currentUserData } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser,
+    enabled: isAuthenticated,
+    staleTime: 60_000
+  });
   const siteName = getSiteDisplayName(siteSettings);
   const headerNavigation = getSiteHeaderNavigation(siteSettings);
+  const currentUser = currentUserData?.user ?? null;
+  const accountName =
+    currentUser?.displayName?.trim() ||
+    user?.email?.split('@')[0]?.trim() ||
+    '个人账户';
+  const accountEmail = currentUser?.email || user?.email || '';
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -197,70 +210,112 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="relative rounded-full border border-gray-200/90 bg-white p-1 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 pl-1.5 pr-2 py-1 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-7 w-7">
-                        <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(accountName)}</AvatarFallback>
                       </Avatar>
-                      <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-gray-900 text-white">
-                        <ChevronDown className="h-2.5 w-2.5" />
+                      <span className="hidden max-w-[96px] truncate text-[13px] font-medium text-slate-900 sm:block">
+                        {accountName}
+                      </span>
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
+                        <ChevronDown className="h-3.5 w-3.5" />
                       </span>
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuLabel className="px-2 py-2">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
-                        <p className="text-[11px] text-muted-foreground">账户</p>
+                  <DropdownMenuContent
+                    align="end"
+                    sideOffset={10}
+                    className="w-[320px] rounded-[24px] border border-slate-200 bg-white p-0 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)]"
+                  >
+                    <DropdownMenuLabel className="px-0 py-0">
+                      <div className="relative rounded-t-[24px] bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-5 py-5">
+                        <button
+                          type="button"
+                          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            navigate('/account?tab=profile');
+                          }}
+                          aria-label="打开账户设置"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </button>
+                        <div className="flex flex-col items-center text-center">
+                          <Avatar className="h-20 w-20 ring-4 ring-white/80 shadow-sm">
+                            <AvatarFallback className="text-lg">{getInitials(accountName)}</AvatarFallback>
+                          </Avatar>
+                          <p className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{accountName}</p>
+                          {accountEmail ? (
+                            <p className="mt-1 text-sm text-slate-600">{accountEmail}</p>
+                          ) : null}
+                        </div>
                       </div>
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        navigate('/account?tab=profile');
-                      }}
-                    >
-                      个人中心
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        navigate('/account?tab=orders');
-                      }}
-                    >
-                      我的订单
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        navigate('/account?tab=apps');
-                      }}
-                    >
-                      我的应用
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {isAdmin ? (
+                    <div className="px-3 py-3">
+                      <div className="space-y-1">
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/account?tab=profile');
+                          }}
+                        >
+                          <UserCircle2 className="h-4 w-4 text-slate-500" />
+                          个人资料
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/account?tab=orders');
+                          }}
+                        >
+                          <ShoppingBag className="h-4 w-4 text-slate-500" />
+                          我的订单
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/account?tab=apps');
+                          }}
+                        >
+                          <Package2 className="h-4 w-4 text-slate-500" />
+                          我的应用
+                        </DropdownMenuItem>
+                      </div>
+
+                      <DropdownMenuSeparator className="my-3" />
+
+                      {isAdmin ? (
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/admin');
+                          }}
+                        >
+                          <LayoutDashboard className="h-4 w-4 text-slate-500" />
+                          管理后台
+                        </DropdownMenuItem>
+                      ) : null}
+
+                      <DropdownMenuSeparator className="my-3" />
+
                       <DropdownMenuItem
+                        className="rounded-2xl px-3 py-3 text-[15px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
                         onSelect={(event) => {
                           event.preventDefault();
-                          navigate('/admin');
+                          logout();
                         }}
                       >
-                        <LayoutDashboard className="h-4 w-4" />
-                        管理后台
+                        <LogOut className="h-4 w-4" />
+                        退出登录
                       </DropdownMenuItem>
-                    ) : null}
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        logout();
-                      }}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      退出
-                    </DropdownMenuItem>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
@@ -344,44 +399,82 @@ export function UserShell() {
                 {isAuthenticated ? (
                   <div className="space-y-2 border-t border-gray-100 pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">账户</p>
-                    <div className="grid gap-2">
-                      <button
-                        type="button"
-                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
-                        onClick={() => navigate('/account?tab=profile')}
-                      >
-                        个人中心
-                      </button>
-                      <button
-                        type="button"
-                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
-                        onClick={() => navigate('/account?tab=orders')}
-                      >
-                        我的订单
-                      </button>
-                      <button
-                        type="button"
-                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
-                        onClick={() => navigate('/account?tab=apps')}
-                      >
-                        我的应用
-                      </button>
-                      {isAdmin ? (
+                    <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+                      <div className="relative bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-4 py-4">
                         <button
                           type="button"
-                          className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
-                          onClick={() => navigate('/admin')}
+                          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
+                          onClick={() => navigate('/account?tab=profile')}
+                          aria-label="打开账户设置"
                         >
-                          管理后台
+                          <Settings className="h-4 w-4" />
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="block rounded-lg border border-gray-100 px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
-                        onClick={logout}
-                      >
-                        退出登录
-                      </button>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-14 w-14 ring-4 ring-white/80 shadow-sm">
+                            <AvatarFallback className="text-sm">{getInitials(accountName)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-semibold tracking-tight text-slate-900">{accountName}</p>
+                            {accountEmail ? (
+                              <p className="mt-1 truncate text-sm text-slate-600">{accountEmail}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 px-3 py-3">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/account?tab=profile')}
+                        >
+                          <UserCircle2 className="h-4 w-4 text-slate-500" />
+                          个人资料
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/account?tab=orders')}
+                        >
+                          <ShoppingBag className="h-4 w-4 text-slate-500" />
+                          我的订单
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/account?tab=apps')}
+                        >
+                          <Package2 className="h-4 w-4 text-slate-500" />
+                          我的应用
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/account?tab=profile')}
+                        >
+                          <Settings className="h-4 w-4 text-slate-500" />
+                          设置
+                        </button>
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                            onClick={() => navigate('/admin')}
+                          >
+                            <LayoutDashboard className="h-4 w-4 text-slate-500" />
+                            管理后台
+                          </button>
+                        ) : null}
+                        <div className="mx-1 border-t border-slate-100" />
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-rose-600 transition hover:bg-rose-50"
+                          onClick={logout}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          退出登录
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
