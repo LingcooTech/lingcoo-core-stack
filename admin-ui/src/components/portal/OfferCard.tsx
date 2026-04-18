@@ -37,11 +37,11 @@ export function OfferCard({
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={onSelect}
-      className={`rounded-lg border p-6 text-left transition-all duration-300 ${
+      className={`rounded-2xl border p-6 text-left transition-all duration-300 ${
         selected
           ? 'border-primary bg-blue-50/70 shadow-lg shadow-blue-500/10 ring-1 ring-primary/10'
           : interactive
-            ? 'border-gray-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-gray-900/5'
+            ? 'border-gray-200 bg-white shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/8'
             : 'border-gray-200 bg-white'
       }`}
     >
@@ -56,7 +56,7 @@ export function OfferCard({
         </div>
         <div className="text-right">
           <p className="text-3xl font-semibold tracking-tight text-gray-900">{formatAmount(offer.priceAmount, offer.currency)}</p>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{formatInterval(offer.interval)}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">{formatInterval(offer.interval)}</p>
         </div>
       </div>
       {features.length ? (

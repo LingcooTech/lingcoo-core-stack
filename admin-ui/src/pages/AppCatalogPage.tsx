@@ -161,8 +161,7 @@ export function AppCatalogPage() {
   ].filter((item) => item.show);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="space-y-6">
+    <div className="space-y-8">
         <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/">
             <ArrowLeft className="mr-1 h-4 w-4" />
@@ -170,15 +169,15 @@ export function AppCatalogPage() {
           </Link>
         </Button>
 
-        <section className="w-full -mx-4 sm:-mx-6 lg:-mx-8 border-b border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white px-4 sm:px-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white shadow-sm shadow-slate-900/5">
           {app.coverUrl ? (
             <div
-              className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.06]"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.08]"
               style={{ backgroundImage: `url(${app.coverUrl})` }}
             />
           ) : null}
 
-          <div className="relative grid gap-8 py-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
+          <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
             <div className="space-y-6">
               <div className="grid gap-5 md:grid-cols-[128px,minmax(0,1fr)]">
                 <div className="flex justify-center md:justify-start">
@@ -186,7 +185,7 @@ export function AppCatalogPage() {
                     <img
                       src={app.iconUrl}
                       alt={app.name}
-                      className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain shadow-lg"
+                      className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-lg"
                     />
                   ) : (
                     <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
@@ -250,20 +249,20 @@ export function AppCatalogPage() {
           </div>
         </section>
 
-        <section className="py-2">
+        <section className="py-1">
           <div className="flex flex-col gap-8 lg:flex-row">
             <div className="min-w-0 flex-1 lg:max-w-[calc(100%-320px-2rem)]">
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex gap-8 overflow-x-auto" aria-label="Tabs">
+              <div className="rounded-2xl border border-gray-200 bg-white p-2 shadow-sm shadow-slate-900/5">
+                <nav className="flex gap-2 overflow-x-auto" aria-label="Tabs">
                   {visibleTabs.map((tab) => (
                     <button
                       key={tab.key}
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
-                      className={`shrink-0 border-b-2 px-1 pb-4 text-sm font-medium transition-colors ${
+                      className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         activeTab === tab.key
-                          ? 'border-blue-500 text-blue-600'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                       }`}
                     >
                       {tab.label}
@@ -281,7 +280,7 @@ export function AppCatalogPage() {
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
                       <p className="text-sm leading-7 text-gray-600">
                         {app.description || app.tagline || '该应用暂未提供详细介绍。'}
                       </p>
@@ -293,7 +292,7 @@ export function AppCatalogPage() {
                   hasHighlights ? (
                     <div className="grid gap-4 md:grid-cols-2">
                       {app.highlights.map((highlight, index) => (
-                        <div key={index} className="rounded-xl border border-gray-200 bg-gray-50 p-6">
+                        <div key={index} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
                           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
                             {highlight.icon || '✦'}
                           </div>
@@ -320,7 +319,7 @@ export function AppCatalogPage() {
                         href={screenshot.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group overflow-hidden rounded-2xl border border-gray-200 bg-white transition-colors hover:border-sky-200"
+                        className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm shadow-slate-900/5 transition-colors hover:border-sky-200 hover:shadow-lg hover:shadow-slate-900/8"
                       >
                         <div className="aspect-[16/10] overflow-hidden bg-gray-100">
                           <img
@@ -403,7 +402,7 @@ export function AppCatalogPage() {
                       {resourceCards.map((resource) => {
                         const isInternal = resource.url.startsWith('/');
                         const card = (
-                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 transition-colors hover:border-blue-200 hover:bg-blue-50/40">
+                          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5 transition-colors hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-lg hover:shadow-slate-900/8">
                             <div className="flex items-center gap-2">
                               <Badge className="bg-white text-gray-700 hover:bg-white">
                                 {resource.typeLabel}
@@ -447,7 +446,7 @@ export function AppCatalogPage() {
 
             <aside className="w-full shrink-0 lg:w-80">
               <div className="space-y-5 lg:sticky lg:top-24">
-                <div className="rounded-xl bg-gray-50 p-5">
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">应用信息</h3>
                   <dl className="mt-4 space-y-3 text-sm">
                     {[
@@ -467,7 +466,6 @@ export function AppCatalogPage() {
             </aside>
           </div>
         </section>
-      </div>
 
       <AppPurchaseDialog
         appCode={app.code}

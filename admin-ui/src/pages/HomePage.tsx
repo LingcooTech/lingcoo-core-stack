@@ -79,21 +79,20 @@ export function HomePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="space-y-10">
+    <div className="space-y-12">
       <section className="space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">Hot Apps</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">热门应用</h1>
+            <p className="text-sm font-medium text-gray-500">精选推荐</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">热门应用</h1>
           </div>
 
           {hotApps.length > 1 ? (
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="icon" onClick={() => moveHotIndex(-1)}>
+              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => moveHotIndex(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button type="button" variant="outline" size="icon" onClick={() => moveHotIndex(1)}>
+              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => moveHotIndex(1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -122,10 +121,10 @@ export function HomePage() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <div
-                className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
+          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm shadow-slate-900/5">
+            <div
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
               >
                 {hotApps.map((app) => {
                   const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
@@ -142,13 +141,13 @@ export function HomePage() {
                         ) : null}
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
-                        <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[128px,minmax(0,1fr),220px]">
+                        <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[144px,minmax(0,1fr),240px]">
                           <div className="flex justify-center xl:justify-start">
                             {app.iconUrl ? (
                               <img
                                 src={app.iconUrl}
                                 alt={app.name}
-                                className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain shadow-md"
+                                className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-md"
                               />
                             ) : (
                               <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
@@ -186,7 +185,7 @@ export function HomePage() {
                             </div>
                           </div>
 
-                          <div className="rounded-xl border border-gray-200 bg-white/90 p-5 shadow-sm">
+                          <div className="rounded-2xl border border-gray-200 bg-white/95 p-6 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">起始价格</p>
                             <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
                               {priceLabel}
@@ -226,7 +225,6 @@ export function HomePage() {
       <section className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm text-gray-500">当前筛选结果共 {filteredApps.length} 个应用</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
               应用列表
             </h2>
@@ -289,7 +287,6 @@ export function HomePage() {
           </div>
         )}
       </section>
-      </div>
     </div>
   );
 }

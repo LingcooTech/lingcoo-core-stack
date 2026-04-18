@@ -16,7 +16,7 @@ import { OrderCard } from '@/components/portal/OrderCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
@@ -189,7 +189,6 @@ function AccountProfileTab() {
                       <FormControl>
                         <Input placeholder="请输入用户名" {...field} />
                       </FormControl>
-                      <FormDescription>可选，用于页面展示。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -235,7 +234,6 @@ function AccountProfileTab() {
                       <FormControl>
                         <Input type="password" autoComplete="new-password" {...field} />
                       </FormControl>
-                      <FormDescription>至少 8 位，且不能与当前密码相同。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

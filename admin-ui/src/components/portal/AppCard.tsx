@@ -23,7 +23,7 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
       <img
         src={app.iconUrl}
         alt={app.name}
-        className="h-24 w-24 rounded-[22%] border border-gray-100 bg-white object-contain shadow-sm"
+        className="h-24 w-24 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-sm"
       />
     );
   }
@@ -41,7 +41,13 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
   return (
     <div className="relative overflow-hidden p-6">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
+      {app.coverUrl ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-cover bg-center opacity-[0.08]"
+          style={{ backgroundImage: `url(${app.coverUrl})` }}
+        />
+      ) : null}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
       <div className="relative flex flex-col items-center text-center">
         <div className="mb-5 flex justify-center">
@@ -62,7 +68,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
         </h3>
 
         <p className="mb-5 min-h-[44px] line-clamp-2 text-sm leading-6 text-gray-500">
-          {app.tagline || app.description || '统一展示应用价值、方案和后续交付入口。'}
+          {app.tagline || app.description || '应用详情暂未补充。'}
         </p>
 
         <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
@@ -81,9 +87,6 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           >
             {priceLabel}
           </p>
-          <p className="text-xs text-gray-400">
-            {activeOffers.length > 1 ? '支持多个套餐选择' : activeOffers.length === 1 ? '当前仅有一个套餐' : '暂无上架中的售卖方案'}
-          </p>
         </div>
       </div>
     </div>
@@ -92,7 +95,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-gray-300 hover:shadow-md',
+    'group overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/8',
     className,
   );
 
