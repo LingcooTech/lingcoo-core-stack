@@ -3,6 +3,7 @@ import MDEditor from '@uiw/react-md-editor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 
+import { AppEditAppDetailCard } from './AppEditAppDetailCard';
 import { AppEditFaqCard } from './AppEditFaqCard';
 import { AppEditHighlightsCard } from './AppEditHighlightsCard';
 import { AppEditLinksCard } from './AppEditLinksCard';
@@ -58,6 +59,11 @@ export function AppEditContentTab({
       />
 
       <AppEditFaqCard faq={form.faq} onChange={(value) => setField('faq', value)} />
+
+      <AppEditAppDetailCard
+        value={form.appDetail}
+        onChange={(value) => setField('appDetail', value)}
+      />
 
       <AppEditLinksCard
         links={form.links}

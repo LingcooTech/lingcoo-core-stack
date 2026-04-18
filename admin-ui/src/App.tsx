@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
@@ -60,6 +61,43 @@ function SiteAppearanceSync() {
   }, [data?.faviconUrl]);
 
   return null;
+}
+
+function SiteSettingsBootstrap({ children }: { children: ReactNode }) {
+  const siteSettingsQuery = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000,
+  });
+
+  useEffect(() => {
+    syncDocumentFavicon(siteSettingsQuery.data?.faviconUrl);
+  }, [siteSettingsQuery.data?.faviconUrl]);
+
+  if (siteSettingsQuery.isLoading && !siteSettingsQuery.data) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_24%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_48%,#f7f9fc_100%)]">
+        <div className="mx-auto flex min-h-screen max-w-6xl items-start justify-center px-4 pt-24 sm:px-6">
+          <div className="w-full max-w-xl rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-sm shadow-slate-900/5 backdrop-blur">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+                <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function ProtectedUserRoute() {
@@ -131,9 +169,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SiteAppearanceSync />
-        <RouterProvider router={router} />
-        <Toaster position="top-right" richColors />
+        <SiteSettingsBootstrap>
+          <SiteAppearanceSync />
+          <RouterProvider router={router} />
+          <Toaster position="top-right" richColors />
+        </SiteSettingsBootstrap>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -27,7 +27,7 @@ export function Container({
     full: 'max-w-full',
   };
 
-  const paddingClasses = 'px-4 sm:px-6 md:px-8 xl:px-6';
+  const paddingClasses = 'px-4 sm:px-5 md:px-6 xl:px-6';
 
   return (
     <Component className={cn(sizeClasses[size], 'mx-auto', paddingClasses, className)}>

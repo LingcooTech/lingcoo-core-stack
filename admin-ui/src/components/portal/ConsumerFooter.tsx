@@ -19,18 +19,18 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
 
   return (
     <footer className="border-t border-gray-200 bg-[#f8fafc]">
-      <Container className="py-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
-          <div className="space-y-4">
+      <Container className="py-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
               {siteSettings?.logoUrl ? (
                 <img
                   src={siteSettings.logoUrl}
                   alt={siteName}
-                  className="h-11 w-11 rounded-lg border border-gray-200 bg-white object-contain p-1 shadow-sm"
+                  className="h-10 w-10 rounded-2xl border border-gray-200 bg-white object-contain p-1.5 shadow-sm"
                 />
               ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-slate-900 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/10">
                   {getInitials(siteName)}
                 </div>
               )}
@@ -83,7 +83,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-gray-200 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-gray-200 pt-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
           <p>{copyrightText}</p>
         </div>
       </Container>

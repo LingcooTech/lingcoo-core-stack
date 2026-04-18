@@ -23,13 +23,13 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
       <img
         src={app.iconUrl}
         alt={app.name}
-        className="h-24 w-24 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-sm"
+        className="h-20 w-20 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-sm"
       />
     );
   }
 
   return (
-    <div className="flex h-24 w-24 items-center justify-center rounded-[22%] bg-gray-50 text-2xl font-semibold text-gray-400 shadow-sm">
+    <div className="flex h-20 w-20 items-center justify-center rounded-[22%] bg-gray-50 text-2xl font-semibold text-gray-400 shadow-sm">
       {getInitials(app.name)}
     </div>
   );
@@ -40,7 +40,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
   const priceLabel = formatOfferStartingPriceLabel(activeOffers);
 
   return (
-    <div className="relative overflow-hidden p-6">
+    <div className="relative overflow-hidden p-5">
       {app.coverUrl ? (
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-cover bg-center opacity-[0.08]"
@@ -50,11 +50,11 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
       <div className="relative flex flex-col items-center text-center">
-        <div className="mb-5 flex justify-center">
+        <div className="mb-4 flex justify-center">
           <AppIdentity app={app} />
         </div>
 
-        <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+        <div className="mb-2.5 flex flex-wrap items-center justify-center gap-2">
           {app.category ? (
             <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
           ) : null}
@@ -63,15 +63,15 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           </Badge>
         </div>
 
-        <h3 className="mb-2 line-clamp-1 text-lg font-bold text-gray-900 transition-colors group-hover:text-blue-600">
+        <h3 className="mb-1.5 line-clamp-1 text-base font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
           {app.name}
         </h3>
 
-        <p className="mb-5 min-h-[44px] line-clamp-2 text-sm leading-6 text-gray-500">
+        <p className="mb-4 min-h-[40px] line-clamp-2 text-sm leading-6 text-gray-500">
           {app.tagline || app.description || '应用详情暂未补充。'}
         </p>
 
-        <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
             {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
           </span>
@@ -81,7 +81,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">起始价格</p>
           <p
             className={cn(
-              'text-xl font-bold',
+              'text-lg font-semibold',
               priceLabel === '免费' ? 'text-green-600' : 'text-gray-900',
             )}
           >
@@ -95,7 +95,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'group overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/8',
+    'group overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/8',
     className,
   );
 

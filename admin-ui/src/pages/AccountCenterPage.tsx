@@ -152,15 +152,15 @@ function AccountProfileTab() {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">登录邮箱</p>
           <p className="mt-2 break-all text-sm font-semibold text-gray-900">{currentUser.email}</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">账户角色</p>
           <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.role === 'admin' ? '管理员' : '普通用户'}</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
           <p className="text-sm font-medium text-gray-500">邮箱验证</p>
           <div className="mt-2">
             <Badge variant={currentUser.emailVerified ? 'default' : 'secondary'}>
@@ -305,9 +305,9 @@ function AccountOrdersTab() {
           { label: '已支付', value: String(paidOrders.length) },
           { label: '待同步', value: String(pendingOrders.length) }
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
             <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
           </div>
         ))}
       </div>
@@ -388,9 +388,9 @@ function AccountAppsTab() {
           { label: '激活授权', value: String(activeItems.length) },
           { label: '可部署应用', value: String(deployableCount) }
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
             <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
           </div>
         ))}
       </div>
@@ -448,9 +448,9 @@ export function AccountCenterPage() {
   const currentTab = normalizeAccountTab(searchParams.get('tab'));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight text-gray-900">个人中心</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">个人中心</h1>
       </div>
 
       <Tabs
@@ -458,7 +458,7 @@ export function AccountCenterPage() {
         onValueChange={(nextValue) => setSearchParams({ tab: normalizeAccountTab(nextValue) })}
         className="space-y-5"
       >
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
           <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
             <TabsTrigger value="profile" className="min-w-[108px] rounded-md">
               个人资料

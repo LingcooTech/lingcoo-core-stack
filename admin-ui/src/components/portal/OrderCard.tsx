@@ -17,13 +17,13 @@ export function OrderCard({
 }) {
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
-      <CardHeader className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-xl tracking-tight">{order.app?.name ?? '未命名产品'}</CardTitle>
             <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>{order.status}</Badge>
           </div>
-          <CardDescription className="text-sm leading-7">
+          <CardDescription className="text-sm leading-6">
             订单号 {order.orderNo} · {order.plan?.name ?? '未命名套餐'} · {order.provider ?? '未指定渠道'}
           </CardDescription>
           <div className="flex flex-wrap gap-2">
@@ -35,9 +35,9 @@ export function OrderCard({
             </span>
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-5 py-4 text-left sm:min-w-[180px] sm:text-right">
+        <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 text-left sm:min-w-[170px] sm:text-right">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Order Total</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{formatAmount(order.amount, order.currency)}</p>
+          <p className="mt-1.5 text-2xl font-semibold tracking-tight text-gray-900">{formatAmount(order.amount, order.currency)}</p>
           <p className="mt-1 text-xs text-muted-foreground">Checkout：{order.checkoutSession?.sessionCode ?? '—'}</p>
         </div>
       </CardHeader>

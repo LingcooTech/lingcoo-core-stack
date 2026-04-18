@@ -79,8 +79,8 @@ export function HomePage() {
   };
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-5">
+    <div className="space-y-8">
+      <section className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">热门应用</h1>
@@ -99,11 +99,11 @@ export function HomePage() {
         </div>
 
         {isLoading ? (
-          <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white p-8">
+          <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white p-6">
             <div className="h-8 w-44 animate-pulse rounded bg-gray-100" />
             <div className="mt-4 h-5 w-2/3 animate-pulse rounded bg-gray-100" />
-            <div className="mt-8 grid gap-4 md:grid-cols-[120px,minmax(0,1fr),180px]">
-              <div className="h-28 w-28 animate-pulse rounded-[22%] bg-gray-100" />
+            <div className="mt-6 grid gap-4 md:grid-cols-[112px,minmax(0,1fr),180px]">
+              <div className="h-24 w-24 animate-pulse rounded-[22%] bg-gray-100" />
               <div className="space-y-4">
                 <div className="h-5 w-40 animate-pulse rounded bg-gray-100" />
                 <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
@@ -119,7 +119,7 @@ export function HomePage() {
             description="当前还没有可展示的热门应用。"
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm shadow-slate-900/5">
             <div
               className="flex transition-transform duration-500 ease-out"
@@ -140,16 +140,16 @@ export function HomePage() {
                         ) : null}
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
 
-                        <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[144px,minmax(0,1fr),240px]">
+                        <div className="relative grid gap-6 p-5 md:p-6 xl:grid-cols-[132px,minmax(0,1fr),220px]">
                           <div className="flex justify-center xl:justify-start">
                             {app.iconUrl ? (
                               <img
                                 src={app.iconUrl}
                                 alt={app.name}
-                                className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-md"
+                                className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-md"
                               />
                             ) : (
-                              <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
+                              <div className="flex h-28 w-28 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
                                 {getInitials(app.name)}
                               </div>
                             )}
@@ -167,14 +167,14 @@ export function HomePage() {
                               </Badge>
                             </div>
 
-                            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-gray-900">
+                            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900">
                               {app.name}
                             </h2>
-                            <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600">
+                            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-gray-600">
                               {app.tagline || app.description || '高质量应用入口。'}
                             </p>
 
-                            <div className="mt-6 flex flex-wrap justify-center gap-3 xl:justify-start">
+                            <div className="mt-5 flex flex-wrap justify-center gap-3 xl:justify-start">
                               <Button asChild>
                                 <Link to={`/apps/${app.code}`}>查看详情</Link>
                               </Button>
@@ -184,9 +184,9 @@ export function HomePage() {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-gray-200 bg-white/95 p-6 shadow-sm">
+                          <div className="rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-sm">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">起始价格</p>
-                            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">
+                            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
                               {priceLabel}
                             </p>
                             <p className="mt-2 text-sm leading-6 text-gray-500">
@@ -221,7 +221,7 @@ export function HomePage() {
         )}
       </section>
 
-      <section className="space-y-6">
+      <section className="space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
@@ -230,7 +230,7 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="flex gap-8 overflow-x-auto pb-1">
+        <div className="flex gap-4 overflow-x-auto pb-1">
           <button
             type="button"
             onClick={() => setActiveCategory('')}
@@ -261,14 +261,14 @@ export function HomePage() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-6">
-                <div className="mx-auto h-24 w-24 animate-pulse rounded-[22%] bg-gray-100" />
-                <div className="mx-auto mt-5 h-4 w-24 animate-pulse rounded bg-gray-100" />
+              <div key={index} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-5">
+                <div className="mx-auto h-20 w-20 animate-pulse rounded-[22%] bg-gray-100" />
+                <div className="mx-auto mt-4 h-4 w-24 animate-pulse rounded bg-gray-100" />
                 <div className="mx-auto mt-4 h-4 w-40 animate-pulse rounded bg-gray-100" />
                 <div className="mx-auto mt-2 h-4 w-32 animate-pulse rounded bg-gray-100" />
-                <div className="mx-auto mt-6 h-8 w-28 animate-pulse rounded bg-gray-100" />
+                <div className="mx-auto mt-5 h-8 w-28 animate-pulse rounded bg-gray-100" />
               </div>
             ))}
           </div>
@@ -279,7 +279,7 @@ export function HomePage() {
             description="当前筛选条件下还没有应用，请切换分类后再查看。"
           />
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {filteredApps.map((app) => (
               <AppCard key={app.id} app={app} href={`/apps/${app.code}`} className="h-full" />
             ))}

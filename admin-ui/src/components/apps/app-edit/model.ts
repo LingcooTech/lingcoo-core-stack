@@ -9,6 +9,12 @@ import type {
   PlanSummary,
 } from '@/api/types';
 import { getAppDeliveryMode, type DeliveryMode } from '@/lib/app-delivery';
+import {
+  EMPTY_APP_DETAIL_PROFILE,
+  getAppDetailProfile,
+  hasAppDetailProfileContent,
+  type AppPurchaseType,
+} from '@/lib/app-detail';
 
 export type AppEditTabKey = 'basics' | 'content' | 'plans' | 'offers' | 'delivery';
 export type EditableRecordStatus = 'active' | 'inactive' | 'cancelled' | 'expired';
@@ -60,6 +66,31 @@ export interface EditableOffer {
   isDefault: boolean;
 }
 
+export interface EditableAppSubscriptionPlan {
+  id: string;
+  period: string;
+  price: string;
+  description: string;
+}
+
+export interface EditableAppDetail {
+  developer: string;
+  version: string;
+  updateDate: string;
+  size: string;
+  platformsText: string;
+  languages: string;
+  systemRequirements: string;
+  technicalNotes: string;
+  purchaseType: AppPurchaseType;
+  price: string;
+  purchaseUrl: string;
+  usageInstructions: string;
+  trialDays: string;
+  notes: string;
+  subscriptionPlans: EditableAppSubscriptionPlan[];
+}
+
 export interface FormState {
   appCode: string;
   name: string;
@@ -75,6 +106,7 @@ export interface FormState {
   screenshots: AppScreenshot[];
   faq: AppFaq[];
   links: AppLink[];
+  appDetail: EditableAppDetail;
 }
 
 export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
@@ -124,6 +156,23 @@ export const EMPTY_FORM_STATE: FormState = {
   screenshots: [],
   faq: [],
   links: [],
+  appDetail: {
+    developer: '',
+    version: '',
+    updateDate: '',
+    size: '',
+    platformsText: '',
+    languages: '',
+    systemRequirements: '',
+    technicalNotes: '',
+    purchaseType: 'free',
+    price: '',
+    purchaseUrl: '',
+    usageInstructions: '',
+    trialDays: '',
+    notes: '',
+    subscriptionPlans: [],
+  },
 };
 
 function normalizeMetaRecord(value: unknown) {
@@ -194,6 +243,8 @@ export function createDraftId(prefix: string) {
 }
 
 export function createFormState(app: AppWithDetails): FormState {
+  const detail = getAppDetailProfile(app);
+
   return {
     appCode: app.code,
     name: app.name,
@@ -209,6 +260,28 @@ export function createFormState(app: AppWithDetails): FormState {
     screenshots: app.screenshots?.length ? app.screenshots.map((item) => ({ ...item })) : [],
     faq: app.faq?.length ? app.faq.map((item) => ({ ...item })) : [],
     links: app.links?.length ? app.links.map((item) => ({ ...item })) : [],
+    appDetail: {
+      developer: detail.developer,
+      version: detail.version,
+      updateDate: detail.updateDate,
+      size: detail.size,
+      platformsText: detail.platforms.join(', '),
+      languages: detail.languages,
+      systemRequirements: detail.systemRequirements,
+      technicalNotes: detail.technicalNotes,
+      purchaseType: detail.purchaseType,
+      price: detail.price,
+      purchaseUrl: detail.purchaseUrl,
+      usageInstructions: detail.usageInstructions,
+      trialDays: detail.trialDays > 0 ? String(detail.trialDays) : '',
+      notes: detail.notes,
+      subscriptionPlans: detail.subscriptionPlans.map((plan) => ({
+        id: createDraftId('app_plan'),
+        period: plan.period,
+        price: plan.price,
+        description: plan.description,
+      })),
+    },
   };
 }
 
@@ -495,12 +568,45 @@ export function buildSaveRequest(
   delete meta.checkoutPlanCode;
   delete meta.checkoutOffers;
   delete meta.checkoutDefaultOfferCode;
+  const normalizedPlatforms = form.appDetail.platformsText
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const parsedTrialDays = Number.parseInt(form.appDetail.trialDays.trim() || '0', 10);
+  const appDetail = {
+    developer: form.appDetail.developer.trim(),
+    version: form.appDetail.version.trim(),
+    updateDate: form.appDetail.updateDate.trim(),
+    size: form.appDetail.size.trim(),
+    platforms: normalizedPlatforms,
+    languages: form.appDetail.languages.trim(),
+    systemRequirements: form.appDetail.systemRequirements.trim(),
+    technicalNotes: form.appDetail.technicalNotes.trim(),
+    purchaseType: form.appDetail.purchaseType,
+    price: form.appDetail.price.trim(),
+    purchaseUrl: form.appDetail.purchaseUrl.trim(),
+    usageInstructions: form.appDetail.usageInstructions.trim(),
+    trialDays: Number.isFinite(parsedTrialDays) && parsedTrialDays > 0 ? parsedTrialDays : 0,
+    notes: form.appDetail.notes.trim(),
+    subscriptionPlans: form.appDetail.subscriptionPlans
+      .map((plan) => ({
+        period: plan.period.trim(),
+        price: plan.price.trim(),
+        description: plan.description.trim(),
+      }))
+      .filter((plan) => plan.period || plan.price || plan.description),
+  };
   meta.deliveryMode = form.deliveryMode;
   meta.deploymentPolicy = {
     ...normalizeMetaRecord(meta.deploymentPolicy),
     domainBindingSource: deploymentPolicy.domainBindingSource,
     maxActiveDeployments: deploymentPolicy.maxActiveDeployments,
   };
+  if (hasAppDetailProfileContent({ ...EMPTY_APP_DETAIL_PROFILE, ...appDetail })) {
+    meta.appDetail = appDetail;
+  } else {
+    delete meta.appDetail;
+  }
 
   return {
     appCode: normalizedAppCode,

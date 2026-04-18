@@ -166,10 +166,10 @@ export function DeploymentsPage() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-4xl font-semibold tracking-tight text-gray-900">部署管理</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">部署管理</h1>
           {initialDeployApp ? <Badge variant="secondary">{initialDeployApp.appName}</Badge> : null}
         </div>
         <p className="text-sm text-gray-500">
@@ -200,9 +200,9 @@ export function DeploymentsPage() {
               { label: '激活部署', value: String(activeDeployments.length) },
               { label: '已签发 Token', value: String(tokenReadyDeployments.length) }
             ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
                 <p className="text-sm font-medium text-gray-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
               </div>
             ))}
           </div>

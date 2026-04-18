@@ -23,6 +23,7 @@ import {
   getPrimaryWebsiteLink,
   getPreferredOffer,
 } from '@/lib/app-catalog-ui';
+import { getAppDetailProfile, splitMultilineText } from '@/lib/app-detail';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { useAuth } from '@/lib/auth';
 import { formatTime, getInitials } from '@/lib/utils';
@@ -116,6 +117,7 @@ export function AppCatalogPage() {
   }
 
   const app = data.app;
+  const appDetail = getAppDetailProfile(app);
   const isDeployable = getAppDeliveryMode(app) === 'one_click';
   const hasHighlights = app.highlights.length > 0;
   const hasScreenshots = app.screenshots.length > 0;
@@ -127,11 +129,30 @@ export function AppCatalogPage() {
   const websiteLink = getPrimaryWebsiteLink(app.links);
   const primaryDownloadLink = getPrimaryDownloadLink(app.links);
   const hasDirectAccess = !isDeployable && (websiteLinks.length > 0 || downloadLinks.length > 0);
-  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : hasDirectAccess ? '免费使用' : priceRangeLabel;
+  const primarySubscriptionPlan = appDetail.subscriptionPlans[0] ?? null;
+  const fallbackPriceLabel =
+    appDetail.purchaseType === 'free'
+      ? '免费'
+      : appDetail.purchaseType === 'onsite_subscription' && primarySubscriptionPlan?.price
+        ? primarySubscriptionPlan.price
+        : appDetail.price || (hasDirectAccess ? '免费使用' : '即将开放');
+  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : fallbackPriceLabel;
   const heroPriceDescription =
     offers.length > 1
       ? `${offers.length} 个套餐，购买时选择`
-      : preferredOffer?.title ?? (hasDirectAccess ? '可直接在线使用或下载' : '暂无可购买方案');
+      : preferredOffer?.title ??
+        (appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl
+          ? '站外购买，跳转至外部购买页'
+          : appDetail.purchaseType === 'onsite_subscription' && primarySubscriptionPlan?.period
+            ? `${primarySubscriptionPlan.period} 方案起售`
+            : hasDirectAccess
+              ? '可直接在线使用或下载'
+              : '暂无可购买方案');
+  const systemRequirements = splitMultilineText(appDetail.systemRequirements);
+  const languages = splitMultilineText(appDetail.languages);
+  const technicalNotes = appDetail.technicalNotes.trim();
+  const usageInstructions = appDetail.usageInstructions.trim();
+  const notes = appDetail.notes.trim();
 
   const resourceCards = [
     ...(app.links ?? []).map((link) => ({
@@ -173,12 +194,19 @@ export function AppCatalogPage() {
     { key: 'intro' as const, label: '应用介绍', show: true },
     { key: 'features' as const, label: '功能特性', show: hasHighlights },
     { key: 'screenshots' as const, label: '应用截图', show: hasScreenshots },
-    { key: 'pricing' as const, label: '套餐价格', show: offers.length > 0 },
+    {
+      key: 'pricing' as const,
+      label: '套餐价格',
+      show:
+        offers.length > 0 ||
+        appDetail.subscriptionPlans.length > 0 ||
+        (appDetail.purchaseType !== 'free' && Boolean(appDetail.price || appDetail.purchaseUrl)),
+    },
     { key: 'support' as const, label: 'FAQ / 资源', show: hasFaq || resourceCards.length > 0 },
   ].filter((item) => item.show);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
         <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/">
             <ArrowLeft className="mr-1 h-4 w-4" />
@@ -186,7 +214,7 @@ export function AppCatalogPage() {
           </Link>
         </Button>
 
-        <section className="relative overflow-hidden rounded-3xl border border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white shadow-sm shadow-slate-900/5">
+        <section className="relative overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white shadow-sm shadow-slate-900/5">
           {app.coverUrl ? (
             <div
               className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.08]"
@@ -194,25 +222,25 @@ export function AppCatalogPage() {
             />
           ) : null}
 
-          <div className="relative grid gap-8 p-6 md:p-8 xl:grid-cols-[minmax(0,1fr),320px] xl:items-start">
-            <div className="space-y-6">
-              <div className="grid gap-5 md:grid-cols-[128px,minmax(0,1fr)]">
+          <div className="relative grid gap-6 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr),300px] xl:items-start">
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-[112px,minmax(0,1fr)]">
                 <div className="flex justify-center md:justify-start">
                   {app.iconUrl ? (
                     <img
                       src={app.iconUrl}
                       alt={app.name}
-                      className="h-32 w-32 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-lg"
+                      className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-lg"
                     />
                   ) : (
-                    <div className="flex h-32 w-32 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
+                    <div className="flex h-28 w-28 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-lg">
                       {getInitials(app.name)}
                     </div>
                   )}
                 </div>
 
                 <div className="min-w-0 text-center md:text-left">
-                  <div className="mb-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                  <div className="mb-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                     {app.category ? (
                       <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
                     ) : null}
@@ -229,39 +257,67 @@ export function AppCatalogPage() {
                     ) : null}
                   </div>
 
-                  <h1 className="text-3xl font-semibold tracking-tight text-gray-900 md:text-4xl">
+                  <h1 className="text-2xl font-semibold tracking-tight text-gray-900 md:text-[2rem]">
                     {app.name}
                   </h1>
-                  <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 md:text-lg">
+                  <p className="mt-3 max-w-3xl text-[15px] leading-7 text-gray-600 md:text-base">
                     {app.tagline || app.description || '该应用暂未提供简介。'}
                   </p>
+
+                  {(appDetail.developer || appDetail.updateDate) ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-gray-500 md:justify-start">
+                      {appDetail.developer ? <span>{appDetail.developer}</span> : null}
+                      {appDetail.developer && appDetail.updateDate ? <span className="text-gray-300">•</span> : null}
+                      {appDetail.updateDate ? <span>更新于 {appDetail.updateDate}</span> : null}
+                    </div>
+                  ) : null}
+
+                  {appDetail.platforms.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                      {appDetail.platforms.map((platform) => (
+                        <Badge key={platform} className="bg-white text-gray-700 hover:bg-white">
+                          {platform}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
 
             <aside className="w-full xl:justify-self-end">
-              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="text-center">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">价格</p>
-                  <p className="mt-3 text-4xl font-bold text-gray-900">{heroPriceLabel}</p>
-                  <p className="mt-2 text-sm text-gray-500">
+                  <p className="mt-2 text-3xl font-bold text-gray-900">{heroPriceLabel}</p>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
                     {heroPriceDescription}
                   </p>
+                  {appDetail.trialDays > 0 && offers.length === 0 ? (
+                    <p className="mt-2 text-xs text-emerald-600">支持 {appDetail.trialDays} 天免费试用</p>
+                  ) : null}
                 </div>
 
                 {offers.length > 0 ? (
-                  <Button className="mt-5 h-11 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
+                  <Button className="mt-4 h-10 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
                     立即购买
                   </Button>
+                ) : appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl ? (
+                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
+                    <a href={appDetail.purchaseUrl} target="_blank" rel="noopener noreferrer">
+                      前往购买
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
                 ) : websiteLink ? (
-                  <Button className="mt-5 h-11 w-full rounded-xl" asChild>
+                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
                     <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
                       {getAccessLinkLabel(websiteLink)}
                       <ArrowUpRight className="h-4 w-4" />
                     </a>
                   </Button>
                 ) : primaryDownloadLink ? (
-                  <Button className="mt-5 h-11 w-full rounded-xl" asChild>
+                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
                     <a href={primaryDownloadLink.url} target="_blank" rel="noopener noreferrer">
                       {getAccessLinkLabel(primaryDownloadLink)}
                       <Download className="h-4 w-4" />
@@ -283,7 +339,7 @@ export function AppCatalogPage() {
                 ) : null}
 
                 {primaryDownloadLink ? (
-                  <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
+                  <Button variant="outline" className="mt-2.5 h-10 w-full rounded-xl" asChild>
                     <a href={primaryDownloadLink.url} target="_blank" rel="noopener noreferrer">
                       {getAccessLinkLabel(primaryDownloadLink)}
                       <Download className="h-4 w-4" />
@@ -302,8 +358,8 @@ export function AppCatalogPage() {
         </section>
 
         <section className="py-1">
-          <div className="flex flex-col gap-8 lg:flex-row">
-            <div className="min-w-0 flex-1 lg:max-w-[calc(100%-320px-2rem)]">
+          <div className="flex flex-col gap-6 lg:flex-row">
+            <div className="min-w-0 flex-1 lg:max-w-[calc(100%-300px-1.5rem)]">
               <div className="rounded-2xl border border-gray-200 bg-white p-2 shadow-sm shadow-slate-900/5">
                 <nav className="flex gap-2 overflow-x-auto" aria-label="Tabs">
                   {visibleTabs.map((tab) => (
@@ -323,10 +379,10 @@ export function AppCatalogPage() {
                 </nav>
               </div>
 
-              <div className="pt-6">
+              <div className="pt-5">
                 {activeTab === 'intro' ? (
                   hasContent ? (
-                    <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
+                    <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed prose-p:text-[15px]">
                       <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                         {app.content}
                       </ReactMarkdown>
@@ -344,11 +400,11 @@ export function AppCatalogPage() {
                   hasHighlights ? (
                     <div className="grid gap-4 md:grid-cols-2">
                       {app.highlights.map((highlight, index) => (
-                        <div key={index} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                        <div key={index} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
                             {highlight.icon || '✦'}
                           </div>
-                          <h3 className="mt-4 text-lg font-semibold text-gray-900">{highlight.title}</h3>
+                          <h3 className="mt-3 text-base font-semibold text-gray-900">{highlight.title}</h3>
                           <p className="mt-2 text-sm leading-6 text-gray-600">{highlight.description}</p>
                         </div>
                       ))}
@@ -381,7 +437,7 @@ export function AppCatalogPage() {
                           />
                         </div>
                         {screenshot.caption ? (
-                          <div className="border-t border-gray-100 px-5 py-4 text-sm text-gray-500">
+                          <div className="border-t border-gray-100 px-4 py-3 text-sm text-gray-500">
                             {screenshot.caption}
                           </div>
                         ) : null}
@@ -398,13 +454,7 @@ export function AppCatalogPage() {
               ) : null}
 
               {activeTab === 'pricing' ? (
-                offers.length === 0 ? (
-                  <EmptyState
-                    icon={CreditCard}
-                    title="暂无可购买的套餐"
-                    description="该应用目前没有上架中的价格方案，请稍后再来查看。"
-                  />
-                ) : (
+                offers.length > 0 ? (
                   <div className="grid gap-4">
                     {offers.map((offer) => (
                       <OfferCard
@@ -414,6 +464,41 @@ export function AppCatalogPage() {
                       />
                     ))}
                   </div>
+                ) : appDetail.subscriptionPlans.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {appDetail.subscriptionPlans.map((plan, index) => (
+                      <div
+                        key={`${plan.period}-${plan.price}-${index}`}
+                        className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-base font-semibold text-gray-900">{plan.period || '未命名周期'}</h3>
+                          <p className="text-base font-semibold text-gray-900">{plan.price || '价格待定'}</p>
+                        </div>
+                        {plan.description ? (
+                          <p className="mt-2 text-sm leading-6 text-gray-600">{plan.description}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
+                    <p className="text-sm leading-7 text-gray-600">
+                      当前应用采用站外购买方式{appDetail.price ? `，参考价格为 ${appDetail.price}` : ''}。你可以通过下方按钮跳转到外部购买页面。
+                    </p>
+                    <Button className="mt-4 rounded-xl" asChild>
+                      <a href={appDetail.purchaseUrl} target="_blank" rel="noopener noreferrer">
+                        前往购买
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon={CreditCard}
+                    title="暂无可购买的套餐"
+                    description="该应用目前没有上架中的价格方案，请稍后再来查看。"
+                  />
                 )
               ) : null}
 
@@ -496,15 +581,20 @@ export function AppCatalogPage() {
               </div>
             </div>
 
-            <aside className="w-full shrink-0 lg:w-80">
-              <div className="space-y-5 lg:sticky lg:top-24">
-                <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5">
+            <aside className="w-full shrink-0 lg:w-[300px]">
+              <div className="space-y-4 lg:sticky lg:top-20">
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">应用信息</h3>
                   <dl className="mt-4 space-y-3 text-sm">
                     {[
                       { label: '类型', value: getAppTypeLabel(app.type) },
                       { label: '分类', value: app.category || '未设置' },
                       { label: '状态', value: getAppStatusLabel(app.status) },
+                      { label: '开发者', value: appDetail.developer || '未设置' },
+                      { label: '版本', value: appDetail.version || '未设置' },
+                      { label: '更新日期', value: appDetail.updateDate || formatTime(app.updatedAt) },
+                      { label: '大小', value: appDetail.size || '未设置' },
+                      { label: '语言', value: languages.length ? languages.join(' / ') : '未设置' },
                       { label: '更新时间', value: formatTime(app.updatedAt) },
                     ].map((item) => (
                       <div key={item.label} className="flex items-start justify-between gap-4">
@@ -514,6 +604,72 @@ export function AppCatalogPage() {
                     ))}
                   </dl>
                 </div>
+
+                {systemRequirements.length > 0 ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">系统要求</h3>
+                    <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                      {systemRequirements.map((requirement) => (
+                        <li key={requirement} className="flex items-start gap-2">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500" />
+                          <span>{requirement}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {technicalNotes ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">技术说明</h3>
+                    <div className="prose prose-sm mt-3 max-w-none text-gray-600">
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                        {technicalNotes}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ) : null}
+
+                {appDetail.purchaseType === 'onsite_subscription' && appDetail.subscriptionPlans.length > 0 ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">订阅套餐</h3>
+                    <div className="mt-3 space-y-3">
+                      {appDetail.subscriptionPlans.map((plan, index) => (
+                        <div key={`${plan.period}-${plan.price}-${index}`} className="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-gray-900">{plan.period || '未命名周期'}</p>
+                            <p className="text-sm font-semibold text-gray-900">{plan.price || '价格待定'}</p>
+                          </div>
+                          {plan.description ? (
+                            <p className="mt-1 text-xs leading-5 text-gray-500">{plan.description}</p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {usageInstructions ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">使用说明</h3>
+                    <div className="prose prose-sm mt-3 max-w-none text-gray-600">
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                        {usageInstructions}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ) : null}
+
+                {notes ? (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm shadow-slate-900/5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900">注意事项</h3>
+                    <div className="prose prose-sm mt-3 max-w-none text-gray-600">
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
+                        {notes}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </aside>
           </div>

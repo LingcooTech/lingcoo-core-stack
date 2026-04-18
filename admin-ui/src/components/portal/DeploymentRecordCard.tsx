@@ -35,10 +35,10 @@ export function DeploymentRecordCard({
 }) {
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
-      <CardHeader className="space-y-3">
+      <CardHeader className="space-y-2.5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-xl tracking-tight">{deployment.label}</CardTitle>
+            <CardTitle className="text-lg tracking-tight">{deployment.label}</CardTitle>
             <CardDescription>
               {deployment.app?.name ?? deployment.app?.code ?? 'Unknown App'}
             </CardDescription>
@@ -55,7 +55,7 @@ export function DeploymentRecordCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3.5">
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onEdit(deployment)}>
             编辑配置
@@ -84,7 +84,7 @@ export function DeploymentRecordCard({
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50/85 p-5">
+        <div className="rounded-lg border border-gray-200 bg-gray-50/85 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold tracking-tight text-slate-900">Deploy Token</p>

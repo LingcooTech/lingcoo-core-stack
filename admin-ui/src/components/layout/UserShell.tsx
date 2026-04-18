@@ -75,31 +75,30 @@ export function UserShell() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.10),_transparent_24%),linear-gradient(180deg,#f9fbff_0%,#f2f6fb_42%,#f8fafc_100%)]">
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm shadow-sm">
-        <Container className="py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 flex-1 lg:max-w-[240px]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
+      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/88 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+        <Container className="py-2.5">
+          <div className="flex min-h-[52px] items-center justify-between gap-4">
+            <div className="min-w-0 flex-1 lg:max-w-[220px]">
               <Link to="/" className="flex items-center gap-3">
                 {siteSettings?.logoUrl ? (
                   <img
                     src={siteSettings.logoUrl}
                     alt={siteName}
-                    className="h-11 w-11 rounded-lg border border-gray-200 bg-white object-contain p-1 shadow-sm"
+                    className="h-10 w-10 rounded-2xl border border-gray-200/90 bg-white object-contain p-1.5 shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
                     {getInitials(siteName)}
                   </div>
                 )}
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-500">用户中心</p>
-                  <p className="text-base font-semibold tracking-tight text-gray-900">{siteName}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
             </div>
 
-            <nav className="hidden flex-1 items-center justify-center gap-6 lg:flex" aria-label="主导航">
+            <nav className="hidden flex-1 items-center justify-center gap-5 lg:flex" aria-label="主导航">
               {headerNavigation.map((item) => {
                 const isActive = hasActiveNavigationItem(item, location.pathname);
 
@@ -110,7 +109,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className={cn(
-                            'inline-flex items-center gap-1 text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
+                            'inline-flex items-center gap-1 text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
                             isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                           )}
                         >
@@ -156,7 +155,7 @@ export function UserShell() {
                       target={item.openInNewTab ? '_blank' : undefined}
                       rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
                       className={cn(
-                        'text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
+                        'text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
                         isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )}
                     >
@@ -171,7 +170,7 @@ export function UserShell() {
                     to={item.url}
                     className={({ isActive: currentActive }) =>
                       cn(
-                        'text-[15px] font-normal whitespace-nowrap transition-colors duration-200',
+                        'text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
                         currentActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )
                     }
@@ -182,12 +181,12 @@ export function UserShell() {
               })}
             </nav>
 
-            <div className="flex items-center justify-end gap-2 lg:w-1/5">
+            <div className="flex flex-1 items-center justify-end gap-2 lg:max-w-[220px]">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="h-9 w-9 rounded-full lg:hidden"
                 onClick={() => setMobileMenuOpen((current) => !current)}
                 aria-label={mobileMenuOpen ? '关闭导航菜单' : '打开导航菜单'}
               >
@@ -198,10 +197,10 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="relative rounded-full border border-gray-200 bg-white p-1.5 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="relative rounded-full border border-gray-200/90 bg-white p-1 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
-                      <Avatar className="h-9 w-9">
+                      <Avatar className="h-8 w-8">
                         <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
                       </Avatar>
                       <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-gray-900 text-white">
@@ -281,7 +280,7 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-lg shadow-slate-900/5 lg:hidden">
+            <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-lg shadow-slate-900/5 lg:hidden">
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">导航</p>
                 <div className="space-y-2">
@@ -403,7 +402,7 @@ export function UserShell() {
 
       {isAuthenticated && user && !user.emailVerified ? (
         <div className="border-b border-amber-200 bg-amber-50/90">
-          <Container className="flex items-center justify-between gap-4 py-3 text-sm">
+          <Container className="flex items-center justify-between gap-4 py-2.5 text-sm">
             <div>
               <p className="font-bold text-amber-900">邮箱尚未验证</p>
               <p className="text-amber-800/80">请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。</p>
@@ -415,7 +414,7 @@ export function UserShell() {
         </div>
       ) : null}
 
-      <Container as="main" className="py-10">
+      <Container as="main" className="py-6">
         <Outlet />
       </Container>
 
