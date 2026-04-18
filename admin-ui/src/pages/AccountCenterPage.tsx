@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileSearch, KeyRound, LoaderCircle, Mail, RefreshCw, ShieldCheck, Sparkles, UserCircle2, Wallet } from 'lucide-react';
+import { FileSearch, KeyRound, LoaderCircle, UserCircle2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
@@ -129,7 +129,7 @@ function AccountProfileTab() {
 
   if (currentUserQuery.isLoading) {
     return (
-      <Card className="rounded-lg border-gray-200/80 bg-white/95">
+      <Card className="rounded-xl border-gray-200 bg-white">
         <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
           <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
           正在加载个人资料...
@@ -149,75 +149,30 @@ function AccountProfileTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr),360px]">
-        <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
-          <CardContent className="space-y-6 p-6">
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Profile</p>
-              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">个人资料</h2>
-              <p className="text-sm leading-7 text-gray-600">
-                在这里维护用户名、查看当前邮箱与账号状态，并处理密码修改或邮箱找回。
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">当前邮箱</p>
-                <p className="mt-2 break-all text-sm font-semibold text-gray-900">{currentUser.email}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">身份角色</p>
-                <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.role === 'admin' ? '管理员' : '普通用户'}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">邮箱验证</p>
-                <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.emailVerified ? '已验证' : '待验证'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4">
-          {[
-            {
-              icon: ShieldCheck,
-              title: '账号安全',
-              desc: '修改密码会立即生效，后续登录将使用新密码。'
-            },
-            {
-              icon: Mail,
-              title: '找回密码',
-              desc: '如果忘记当前密码，可以直接向当前绑定邮箱发送找回密码邮件。'
-            },
-            {
-              icon: CheckCircle2,
-              title: '资料同步',
-              desc: '用户名更新后会同步到当前账户资料，便于后续展示和识别。'
-            }
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
-                    <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-500">登录邮箱</p>
+          <p className="mt-2 break-all text-sm font-semibold text-gray-900">{currentUser.email}</p>
         </div>
-      </section>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-500">账户角色</p>
+          <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.role === 'admin' ? '管理员' : '普通用户'}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-500">邮箱验证</p>
+          <div className="mt-2">
+            <Badge variant={currentUser.emailVerified ? 'default' : 'secondary'}>
+              {currentUser.emailVerified ? '已验证' : '待验证'}
+            </Badge>
+          </div>
+        </div>
+      </div>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+        <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-xl tracking-tight">编辑个人资料</CardTitle>
+            <CardTitle className="text-xl tracking-tight">个人资料</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...profileForm}>
@@ -234,26 +189,11 @@ function AccountProfileTab() {
                       <FormControl>
                         <Input placeholder="请输入用户名" {...field} />
                       </FormControl>
-                      <FormDescription>用于个人中心和后续页面展示，可留空。</FormDescription>
+                      <FormDescription>可选，用于页面展示。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">登录邮箱</p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.email}</p>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">验证状态</p>
-                    <div className="mt-2">
-                      <Badge variant={currentUser.emailVerified ? 'default' : 'secondary'}>
-                        {currentUser.emailVerified ? '已验证' : '待验证'}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
 
                 <Button type="submit" disabled={updateProfileMutation.isPending}>
                   {updateProfileMutation.isPending ? '保存中...' : '保存个人资料'}
@@ -263,7 +203,7 @@ function AccountProfileTab() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+        <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl tracking-tight">密码与安全</CardTitle>
           </CardHeader>
@@ -295,7 +235,7 @@ function AccountProfileTab() {
                       <FormControl>
                         <Input type="password" autoComplete="new-password" {...field} />
                       </FormControl>
-                      <FormDescription>至少 8 位，并且不能与当前密码相同。</FormDescription>
+                      <FormDescription>至少 8 位，且不能与当前密码相同。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -322,13 +262,10 @@ function AccountProfileTab() {
 
             <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/70 p-4">
               <p className="text-sm font-semibold text-gray-900">忘记当前密码？</p>
-              <p className="mt-1 text-sm leading-7 text-gray-600">
-                可以直接向当前登录邮箱发送找回密码邮件，随后按邮件验证码重置密码。
-              </p>
               <Button
                 type="button"
                 variant="outline"
-                className="mt-4"
+                className="mt-3"
                 disabled={sendResetEmailMutation.isPending}
                 onClick={() => sendResetEmailMutation.mutate()}
               >
@@ -360,72 +297,33 @@ function AccountOrdersTab() {
   const orders = ordersQuery.data?.items ?? [];
   const paidOrders = orders.filter((order) => order.status === 'paid');
   const pendingOrders = orders.filter((order) => order.status !== 'paid');
-  const paidTotal = paidOrders.reduce((sum, order) => sum + order.amount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: '全部订单', value: String(orders.length), note: '当前账户全部支付记录' },
-          { label: '已支付', value: String(paidOrders.length), note: '已完成付款的订单' },
-          { label: '待同步', value: String(pendingOrders.length), note: '可手动同步支付状态' }
+          { label: '全部订单', value: String(orders.length) },
+          { label: '已支付', value: String(paidOrders.length) },
+          { label: '待同步', value: String(pendingOrders.length) }
         ].map((item) => (
-          <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{item.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-            <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
           </div>
         ))}
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        {[
-          {
-            icon: Wallet,
-            title: '累计支付',
-            value: paidTotal > 0 ? formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY') : '¥0.00',
-            note: '已支付订单金额汇总'
-          },
-          {
-            icon: RefreshCw,
-            title: '状态同步',
-            value: pendingOrders.length > 0 ? `${pendingOrders.length} 笔待处理` : '全部完成',
-            note: '支付渠道返回后可以在这里补做同步'
-          },
-          {
-            icon: CheckCircle2,
-            title: '授权链路',
-            value: paidOrders.length > 0 ? '已打通' : '待建立',
-            note: '支付成功后继续进入授权与部署链路'
-          }
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-              <CardContent className="flex items-start gap-4 p-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{item.title}</p>
-                  <p className="text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                  <p className="text-sm leading-7 text-gray-600">{item.note}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </section>
-
       <section className="space-y-5">
-        <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Order Timeline</p>
-          <h2 className="text-3xl font-semibold tracking-tight text-gray-900">我的订单</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">我的订单</h2>
+          <p className="text-sm text-gray-500">
+            已支付 {paidOrders.length} 笔，累计 {formatAmount(paidOrders.reduce((sum, order) => sum + order.amount, 0), paidOrders[0]?.currency ?? 'CNY')}
+          </p>
         </div>
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="rounded-lg border-gray-200/80 bg-white/95">
+            <Card className="rounded-xl border-gray-200 bg-white">
               <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
                 <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
                 正在加载订单记录...
@@ -478,72 +376,28 @@ function AccountAppsTab() {
   }
 
   const activeItems = items.filter((item) => item.status === 'active');
+  const deployableCount = summary.filter((entry) => {
+    const app = appByCode.get(entry.appCode);
+    return Boolean(app && getAppDeliveryMode(app) === 'one_click');
+  }).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          {
-            label: '已购应用',
-            value: String(summary.length),
-            note: '当前账户下已产生授权摘要的应用'
-          },
-          {
-            label: '激活授权',
-            value: String(activeItems.length),
-            note: '正在生效中的 entitlement 记录'
-          },
-          {
-            label: '解锁能力',
-            value: String(summary.reduce((count, entry) => count + entry.featureCodes.length, 0)),
-            note: '用于应用使用和一键部署'
-          }
+          { label: '已购应用', value: String(summary.length) },
+          { label: '激活授权', value: String(activeItems.length) },
+          { label: '可部署应用', value: String(deployableCount) }
         ].map((item) => (
-          <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{item.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-            <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
           </div>
         ))}
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        {[
-          {
-            icon: ShieldCheck,
-            title: '授权状态',
-            desc: '优先回答哪些产品已解锁，以及当前是否可以继续使用。'
-          },
-          {
-            icon: Sparkles,
-            title: '能力可见性',
-            desc: '每个已购产品会直接展示已解锁能力，避免用户看不懂套餐价值。'
-          },
-          {
-            icon: KeyRound,
-            title: '部署入口',
-            desc: '支持一键部署的应用会在卡片底部直接提供开始部署入口。'
-          }
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-              <CardContent className="flex items-start gap-4 p-5">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
-                  <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </section>
-
       {entitlementsQuery.isLoading ? (
-        <Card className="rounded-lg border-gray-200/80 bg-white/95">
+        <Card className="rounded-xl border-gray-200 bg-white">
           <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载已购应用...
@@ -557,10 +411,7 @@ function AccountAppsTab() {
         />
       ) : (
         <section className="space-y-5">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Purchased Products</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">我的应用</h2>
-          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">我的应用</h2>
           <div className="grid gap-5 lg:grid-cols-2">
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
@@ -596,20 +447,17 @@ export function AccountCenterPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Account Center</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">个人中心</h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
-          集中维护个人资料、密码安全、订单记录与已购应用。用户侧的资料与购买链路都从这里统一承接。
-        </p>
-      </section>
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight text-gray-900">个人中心</h1>
+        <p className="text-sm text-gray-500">管理资料、安全、订单与已购应用。</p>
+      </div>
 
       <Tabs
         value={currentTab}
         onValueChange={(nextValue) => setSearchParams({ tab: normalizeAccountTab(nextValue) })}
         className="space-y-5"
       >
-        <div className="rounded-lg border border-gray-200/80 bg-white/95 p-4 shadow-sm shadow-gray-900/5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
             <TabsTrigger value="profile" className="min-w-[108px] rounded-md">
               个人资料

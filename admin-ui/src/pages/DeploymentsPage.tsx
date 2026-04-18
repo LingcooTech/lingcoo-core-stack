@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, LoaderCircle, Rocket, ServerCog, ShieldCheck } from 'lucide-react';
+import { Boxes, LoaderCircle, Rocket } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -10,9 +10,9 @@ import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types'
 import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, updateDeployment } from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
-import { DeployableAppCard } from '@/components/portal/DeployableAppCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
 
@@ -161,83 +161,26 @@ export function DeploymentsPage() {
   const initialDeployAppCode = deployableApps.some((option) => option.appCode === requestedAppCode)
     ? requestedAppCode
     : undefined;
+  const initialDeployApp = initialDeployAppCode
+    ? deployableApps.find((option) => option.appCode === initialDeployAppCode) ?? null
+    : null;
 
   return (
-    <div className="space-y-10">
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployments</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">部署管理</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
-            购买后的真正产品体验不应该在订单页终止。部署页需要把“哪些应用可以继续交付、当前有哪些 deployment、哪一个 token 最近签发”
-            这些信息讲清楚，并把创建 deployment 的动作做成产品级入口。
-          </p>
-
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                label: '可部署应用',
-                value: String(deployableApps.length),
-                note: '已购且支持 one-click delivery 的应用'
-              },
-              {
-                label: '激活部署',
-                value: String(activeDeployments.length),
-                note: '当前仍在运行中的 deployment 记录'
-              },
-              {
-                label: '已签发 Token',
-                value: String(tokenReadyDeployments.length),
-                note: '最近至少签发过一次安装令牌'
-              }
-            ].map((item) => (
-              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
-              </div>
-            ))}
-          </div>
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-4xl font-semibold tracking-tight text-gray-900">部署管理</h1>
+          {initialDeployApp ? <Badge variant="secondary">{initialDeployApp.appName}</Badge> : null}
         </div>
-
-        <div className="grid gap-4">
-          {[
-            {
-              icon: Rocket,
-              title: '持续交付',
-              desc: '部署页要让用户感受到购买之后仍有明确的安装与交付流程，而不是孤立的技术表单。'
-            },
-            {
-              icon: ShieldCheck,
-              title: '授权承接部署',
-              desc: '只有当前账户下已解锁的一键部署应用，才会继续进入这里的 deployment 流程。'
-            },
-            {
-              icon: ServerCog,
-              title: '服务器配置显式化',
-              desc: 'deployment 不是一堆字段，而是一个面向安装路径、域名、token 和交付状态的完整记录。'
-            }
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
-                    <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
+        <p className="text-sm text-gray-500">
+          {initialDeployApp
+            ? `正在为 ${initialDeployApp.appName} 创建部署记录。`
+            : '选择支持一键部署的应用并完成部署配置。'}
+        </p>
+      </div>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
-        <Card className="rounded-lg border-gray-200/80 bg-white/95">
+        <Card className="rounded-xl border-gray-200 bg-white">
           <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载部署数据...
@@ -247,36 +190,29 @@ export function DeploymentsPage() {
         <EmptyState
           icon={Boxes}
           title="暂无可部署的应用"
-          description="购买已启用一键部署的应用后，即可在此创建部署记录并进行安装配置。"
+          description="购买支持一键部署的应用后，即可在这里开始部署。"
         />
       ) : (
         <>
-          <section className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployable Apps</p>
-              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">可继续交付的应用</h2>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-2">
-              {deployableApps.map((option) => {
-                const app = apps.find((item) => item.code === option.appCode);
-                if (!app) {
-                  return null;
-                }
-                return (
-                  <DeployableAppCard
-                    key={option.appCode}
-                    app={app}
-                    featureCount={option.featureCount}
-                  />
-                );
-              })}
-            </div>
-          </section>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: '可部署应用', value: String(deployableApps.length) },
+              { label: '激活部署', value: String(activeDeployments.length) },
+              { label: '已签发 Token', value: String(tokenReadyDeployments.length) }
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-gray-500">{item.label}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
 
           <section className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployment Wizard</p>
-              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">创建部署记录</h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-semibold tracking-tight text-gray-900">开始部署</h2>
+              {!initialDeployApp ? (
+                <p className="text-sm text-gray-500">未预选应用时，可在向导第一步选择应用。</p>
+              ) : null}
             </div>
             <DeploymentWizard
               options={deployableApps}
@@ -292,14 +228,11 @@ export function DeploymentsPage() {
             <EmptyState
               icon={Rocket}
               title="还没有部署记录"
-              description="选择一个已购应用，创建部署记录后即可签发安装令牌并完成一键部署。"
+              description="创建部署记录后即可签发安装令牌并完成一键部署。"
             />
           ) : (
             <section className="space-y-5">
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Deployment Records</p>
-                <h2 className="text-3xl font-semibold tracking-tight text-gray-900">现有部署记录</h2>
-              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-gray-900">部署记录</h2>
               <div className="grid gap-4">
                 {deployments.map((deployment) => (
                   <DeploymentRecordCard
