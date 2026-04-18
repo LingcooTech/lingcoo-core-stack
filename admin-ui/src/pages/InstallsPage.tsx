@@ -91,7 +91,6 @@ export function InstallsPage() {
     <div>
       <div className="p-6">
         <h1 className="text-2xl font-semibold tracking-tight">安装实例</h1>
-        <p className="text-sm text-muted-foreground mt-1">查看应用安装记录与设备信息</p>
       </div>
       <div className="px-6 pb-6 space-y-4">
         <FilterBar

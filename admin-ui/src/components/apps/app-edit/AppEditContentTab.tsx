@@ -59,11 +59,15 @@ export function AppEditContentTab({
 
       <AppEditFaqCard faq={form.faq} onChange={(value) => setField('faq', value)} />
 
-      <AppEditLinksCard links={form.links} onChange={(value) => setField('links', value)} />
+      <AppEditLinksCard
+        links={form.links}
+        deliveryMode={form.deliveryMode}
+        onChange={(value) => setField('links', value)}
+      />
 
       <AppEditSaveBar
         title="保存展示内容"
-        description="保存 Markdown 正文、亮点、截图、FAQ 和相关链接。"
+        description="保存 Markdown 正文、亮点、截图、FAQ 以及访问与下载入口。"
         isSaving={isSaving}
         disabled={saveDisabled}
         onSave={onSave}

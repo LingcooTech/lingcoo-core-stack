@@ -1,16 +1,11 @@
-import { ExternalLink, Menu, Search } from 'lucide-react';
+import { ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { adminSectionMeta, type AdminSectionKey } from '@/lib/foundation';
 import { cn } from '@/lib/utils';
 
-interface TopbarProps {
-  onToggleSidebar: () => void;
-}
-
-export function Topbar({ onToggleSidebar }: TopbarProps) {
+export function Topbar() {
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
@@ -25,15 +20,6 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
       <header className="sticky top-0 z-20 flex min-h-[64px] items-center justify-between gap-4 border-b border-border bg-white/80 px-5 backdrop-blur-sm flex-shrink-0">
         {/* Left */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button
-            variant="outline"
-            size="icon"
-            className="flex-shrink-0 h-9 w-9 rounded-md"
-            onClick={onToggleSidebar}
-          >
-            <Menu className="w-4 h-4" />
-          </Button>
-
           <button
             type="button"
             onClick={() => setCommandOpen(true)}

@@ -293,7 +293,7 @@ export function AppPurchaseDialog({
                     {websiteUrl ? (
                       <Button variant="outline" className="rounded-2xl" asChild>
                         <a href={websiteUrl} target="_blank" rel="noopener noreferrer">
-                          演示地址
+                          在线使用
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       </Button>

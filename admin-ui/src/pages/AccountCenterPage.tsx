@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
+import { getAccessLinks } from '@/lib/app-catalog-ui';
 import { formatAmount } from '@/lib/utils';
 
 const accountTabValues = ['profile', 'orders', 'apps'] as const;
@@ -420,6 +421,8 @@ function AccountAppsTab() {
                 app && getAppDeliveryMode(app) === 'one_click'
                   ? `/deploy?app=${encodeURIComponent(entry.appCode)}`
                   : undefined;
+              const accessLinks =
+                app && getAppDeliveryMode(app) !== 'one_click' ? getAccessLinks(app.links) : [];
 
               return (
                 <EntitlementProductCard
@@ -429,6 +432,7 @@ function AccountAppsTab() {
                   relatedApps={relatedApps}
                   items={relatedItems}
                   deploymentHref={deploymentHref}
+                  accessLinks={accessLinks}
                 />
               );
             })}

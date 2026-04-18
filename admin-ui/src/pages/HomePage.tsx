@@ -83,8 +83,7 @@ export function HomePage() {
       <section className="space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">精选推荐</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">热门应用</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">热门应用</h1>
           </div>
 
           {hotApps.length > 1 ? (
@@ -225,7 +224,7 @@ export function HomePage() {
       <section className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+            <h2 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
               应用列表
             </h2>
           </div>

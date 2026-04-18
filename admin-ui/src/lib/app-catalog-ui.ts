@@ -136,3 +136,42 @@ export function getLinkTypeLabel(type: AppLink['type']) {
       return '链接';
   }
 }
+
+export function getLinksByType(
+  links: AppLink[] | null | undefined,
+  type: AppLink['type'],
+) {
+  return (links ?? []).filter((link) => link.type === type && link.url.trim());
+}
+
+export function getAccessLinks(links: AppLink[] | null | undefined) {
+  return [
+    ...getLinksByType(links, 'website'),
+    ...getLinksByType(links, 'download'),
+  ];
+}
+
+export function getPrimaryWebsiteLink(links: AppLink[] | null | undefined) {
+  return getLinksByType(links, 'website')[0] ?? null;
+}
+
+export function getPrimaryDownloadLink(links: AppLink[] | null | undefined) {
+  return getLinksByType(links, 'download')[0] ?? null;
+}
+
+export function getAccessLinkLabel(link: Pick<AppLink, 'label' | 'type'>) {
+  const label = link.label.trim();
+  if (label) {
+    return label;
+  }
+
+  if (link.type === 'website') {
+    return '在线使用';
+  }
+
+  if (link.type === 'download') {
+    return '下载应用';
+  }
+
+  return '访问链接';
+}

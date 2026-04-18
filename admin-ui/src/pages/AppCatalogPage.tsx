@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronDown, CreditCard, LoaderCircle } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronDown, CreditCard, Download, LoaderCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -13,12 +13,17 @@ import { OfferCard } from '@/components/portal/OfferCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  getAccessLinkLabel,
   formatOfferRangeLabel,
   getAppStatusLabel,
   getAppTypeLabel,
+  getLinksByType,
   getLinkTypeLabel,
+  getPrimaryDownloadLink,
+  getPrimaryWebsiteLink,
   getPreferredOffer,
 } from '@/lib/app-catalog-ui';
+import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { useAuth } from '@/lib/auth';
 import { formatTime, getInitials } from '@/lib/utils';
 
@@ -111,12 +116,22 @@ export function AppCatalogPage() {
   }
 
   const app = data.app;
+  const isDeployable = getAppDeliveryMode(app) === 'one_click';
   const hasHighlights = app.highlights.length > 0;
   const hasScreenshots = app.screenshots.length > 0;
   const hasContent = Boolean(app.content && app.content.trim().length > 0);
   const hasFaq = app.faq.length > 0;
   const hasAiTranslateWorkflowResources = app.code === 'ai_translate_workflow';
-  const websiteLink = app.links.find((item) => item.type === 'website');
+  const websiteLinks = getLinksByType(app.links, 'website');
+  const downloadLinks = getLinksByType(app.links, 'download');
+  const websiteLink = getPrimaryWebsiteLink(app.links);
+  const primaryDownloadLink = getPrimaryDownloadLink(app.links);
+  const hasDirectAccess = !isDeployable && (websiteLinks.length > 0 || downloadLinks.length > 0);
+  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : hasDirectAccess ? '免费使用' : priceRangeLabel;
+  const heroPriceDescription =
+    offers.length > 1
+      ? `${offers.length} 个套餐，购买时选择`
+      : preferredOffer?.title ?? (hasDirectAccess ? '可直接在线使用或下载' : '暂无可购买方案');
 
   const resourceCards = [
     ...(app.links ?? []).map((link) => ({
@@ -128,11 +143,13 @@ export function AppCatalogPage() {
           : link.type === 'support'
             ? '进入支持入口与帮助说明'
             : link.type === 'website'
-              ? '访问官网或产品主页'
+              ? !isDeployable
+                ? '打开在线入口并立即使用'
+                : '访问官网或产品主页'
               : link.type === 'download'
                 ? '获取下载与安装入口'
                 : '外部资源链接',
-      typeLabel: getLinkTypeLabel(link.type),
+      typeLabel: link.type === 'website' && !isDeployable ? '在线使用' : getLinkTypeLabel(link.type),
     })),
     ...(hasAiTranslateWorkflowResources
       ? [
@@ -226,23 +243,58 @@ export function AppCatalogPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="text-center">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">价格</p>
-                  <p className="mt-3 text-4xl font-bold text-gray-900">{priceRangeLabel}</p>
+                  <p className="mt-3 text-4xl font-bold text-gray-900">{heroPriceLabel}</p>
                   <p className="mt-2 text-sm text-gray-500">
-                    {offers.length > 1 ? `${offers.length} 个套餐，购买时选择` : preferredOffer?.title ?? '暂无可购买方案'}
+                    {heroPriceDescription}
                   </p>
                 </div>
 
-                <Button className="mt-5 h-11 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
-                  立即购买
-                </Button>
-
-                {websiteLink ? (
-                  <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
+                {offers.length > 0 ? (
+                  <Button className="mt-5 h-11 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
+                    立即购买
+                  </Button>
+                ) : websiteLink ? (
+                  <Button className="mt-5 h-11 w-full rounded-xl" asChild>
                     <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
-                      演示地址
+                      {getAccessLinkLabel(websiteLink)}
                       <ArrowUpRight className="h-4 w-4" />
                     </a>
                   </Button>
+                ) : primaryDownloadLink ? (
+                  <Button className="mt-5 h-11 w-full rounded-xl" asChild>
+                    <a href={primaryDownloadLink.url} target="_blank" rel="noopener noreferrer">
+                      {getAccessLinkLabel(primaryDownloadLink)}
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : (
+                  <Button className="mt-5 h-11 w-full rounded-xl" disabled>
+                    暂未提供访问入口
+                  </Button>
+                )}
+
+                {websiteLink && offers.length > 0 ? (
+                  <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
+                    <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
+                      在线使用
+                      <ArrowUpRight className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+
+                {primaryDownloadLink ? (
+                  <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
+                    <a href={primaryDownloadLink.url} target="_blank" rel="noopener noreferrer">
+                      {getAccessLinkLabel(primaryDownloadLink)}
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </Button>
+                ) : null}
+
+                {!offers.length && downloadLinks.length > 1 ? (
+                  <p className="mt-3 text-center text-xs text-gray-500">
+                    另有 {downloadLinks.length - 1} 个下载渠道，可在下方资源区查看。
+                  </p>
                 ) : null}
               </div>
             </aside>

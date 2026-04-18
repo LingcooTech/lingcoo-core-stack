@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
+import { getAccessLinks } from '@/lib/app-catalog-ui';
 
 export function MyAccessPage() {
   const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
@@ -85,6 +86,7 @@ export function MyAccessPage() {
               );
               const isDeployable = Boolean(app && getAppDeliveryMode(app) === 'one_click');
               const deploymentHref = isDeployable ? `/deploy?app=${encodeURIComponent(entry.appCode)}` : undefined;
+              const accessLinks = app && !isDeployable ? getAccessLinks(app.links) : [];
 
               return (
                 <EntitlementProductCard
@@ -94,6 +96,7 @@ export function MyAccessPage() {
                   relatedApps={relatedApps}
                   items={relatedItems}
                   deploymentHref={deploymentHref}
+                  accessLinks={accessLinks}
                 />
               );
             })}

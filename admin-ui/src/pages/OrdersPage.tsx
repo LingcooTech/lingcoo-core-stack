@@ -151,7 +151,6 @@ export function OrdersPage() {
     <div>
       <div className="p-6">
         <h1 className="text-2xl font-semibold tracking-tight">订单管理</h1>
-        <p className="text-sm text-muted-foreground mt-1">查看订单详情、支付记录与补单操作</p>
       </div>
       <div className="px-6 pb-6 space-y-4">
         <FilterBar

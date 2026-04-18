@@ -237,8 +237,7 @@ export function AppsPage() {
     <div className="space-y-5 p-6">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">Resources</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">应用列表</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">应用列表</h1>
         </div>
 
         <Button asChild>

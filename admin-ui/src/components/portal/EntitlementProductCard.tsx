@@ -1,10 +1,11 @@
-import { Boxes, KeyRound, Rocket } from 'lucide-react';
+import { ArrowUpRight, Boxes, Download, KeyRound, Rocket } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import type { HydratedEntitlement } from '@/api/types';
+import type { AppLink, HydratedEntitlement } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAccessLinkLabel } from '@/lib/app-catalog-ui';
 import { formatTime } from '@/lib/utils';
 
 function formatFeatureName(name: string): string {
@@ -20,14 +21,18 @@ export function EntitlementProductCard({
   featureNames,
   relatedApps,
   items,
-  deploymentHref
+  deploymentHref,
+  accessLinks,
 }: {
   productName: string;
   featureNames: string[];
   relatedApps: string[];
   items: HydratedEntitlement[];
   deploymentHref?: string;
+  accessLinks?: AppLink[];
 }) {
+  const visibleAccessLinks = (accessLinks ?? []).filter((link) => link.url.trim());
+
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-3">
@@ -89,14 +94,33 @@ export function EntitlementProductCard({
           ))}
         </div>
 
-        {deploymentHref ? (
-          <div className="flex justify-end border-t border-gray-100 pt-4">
-            <Button asChild className="rounded-lg">
-              <Link to={deploymentHref}>
-                开始部署
-                <Rocket className="h-4 w-4" />
-              </Link>
-            </Button>
+        {deploymentHref || visibleAccessLinks.length ? (
+          <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
+            {visibleAccessLinks.map((link, index) => (
+              <Button
+                key={`${link.type}-${link.url}-${index}`}
+                asChild
+                variant={link.type === 'website' ? 'default' : 'outline'}
+                className="rounded-lg"
+              >
+                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                  {getAccessLinkLabel(link)}
+                  {link.type === 'download' ? (
+                    <Download className="h-4 w-4" />
+                  ) : (
+                    <ArrowUpRight className="h-4 w-4" />
+                  )}
+                </a>
+              </Button>
+            ))}
+            {deploymentHref ? (
+              <Button asChild className="rounded-lg">
+                <Link to={deploymentHref}>
+                  开始部署
+                  <Rocket className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </CardContent>
