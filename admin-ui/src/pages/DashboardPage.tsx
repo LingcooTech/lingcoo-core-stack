@@ -31,10 +31,10 @@ export function DashboardPage() {
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
 
   const quickLinks = [
-    { label: '支付配置', desc: '微信 / 支付宝通道', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '应用管理', desc: '注册与管理应用', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
-    { label: '授权管理', desc: '发放 / 撤销授权', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
-    { label: '订单管理', desc: '订单与支付记录', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
+    { label: '支付配置', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
+    { label: '应用管理', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
+    { label: '授权管理', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
+    { label: '订单管理', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
   ];
 
   return (
@@ -42,10 +42,10 @@ export function DashboardPage() {
       <SectionHeader sectionKey="dashboard" />
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} sublabel="应用总数" loading={appsResult.isLoading} />
-          <MetricCard label="活跃 Secret" value={activeSecrets.length} sublabel="有效密钥" loading={appsResult.isLoading} />
-          <MetricCard label="已支付订单" value={paidOrders.length} sublabel={`最近 ${orders.length} 条`} loading={ordersResult.isLoading} />
-          <MetricCard label="待处理订单" value={pendingOrders.length} sublabel="pending / processing" loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
+          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} />
+          <MetricCard label="活跃密钥" value={activeSecrets.length} loading={appsResult.isLoading} />
+          <MetricCard label="已支付订单" value={paidOrders.length} loading={ordersResult.isLoading} />
+          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>
 
         <div>
@@ -80,10 +80,7 @@ export function DashboardPage() {
                   <div className={`w-9 h-9 rounded-md flex items-center justify-center ${link.color}`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{link.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{link.desc}</p>
-                  </div>
+                  <p className="text-sm font-semibold text-foreground">{link.label}</p>
                   <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                 </Link>
               );
@@ -128,13 +125,11 @@ export function DashboardPage() {
 function MetricCard({
   label,
   value,
-  sublabel,
   loading,
   tone = 'neutral'
 }: {
   label: string;
   value: number;
-  sublabel: string;
   loading?: boolean;
   tone?: 'ok' | 'warn' | 'neutral';
 }) {
@@ -155,7 +150,6 @@ function MetricCard({
             >
               {value}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{sublabel}</p>
           </>
         )}
       </CardContent>
@@ -184,9 +178,9 @@ function PaymentStatusCard({
         {loading ? (
           <div className="h-3 w-20 mt-1 rounded bg-muted animate-pulse" />
         ) : config ? (
-          <p className="text-xs text-muted-foreground mt-0.5">来源: {config.source}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{config.source}</p>
         ) : (
-          <p className="text-xs text-muted-foreground mt-0.5">未找到配置</p>
+          <p className="text-xs text-muted-foreground mt-0.5">未配置</p>
         )}
       </div>
       {loading ? (

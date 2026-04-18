@@ -34,7 +34,6 @@ export function Sidebar({ collapsed }: SidebarProps) {
         {!collapsed && (
           <div className="min-w-0">
             <p className="text-base font-semibold tracking-tight text-foreground leading-tight">fd-core-stack</p>
-            <p className="text-xs text-muted-foreground">管理后台</p>
           </div>
         )}
       </div>
@@ -76,9 +75,6 @@ export function Sidebar({ collapsed }: SidebarProps) {
                   {!collapsed && (
                     <span className="min-w-0">
                       <span className="block text-[13px] font-semibold leading-tight">{meta.navTitle}</span>
-                      <span className="block text-xs text-muted-foreground font-medium mt-0.5 leading-snug">
-                        {meta.navNote}
-                      </span>
                     </span>
                   )}
                 </Link>

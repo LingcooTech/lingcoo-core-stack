@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { verifyEmail, resendVerification } from '@/api/auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
@@ -53,9 +53,7 @@ export function VerifyEmailPage() {
       <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">验证邮箱</CardTitle>
-          <CardDescription>
-            我们已向 {user?.email ?? '您的邮箱'} 发送了 6 位数字验证码
-          </CardDescription>
+          <p className="text-sm text-muted-foreground">{user?.email ?? '您的邮箱'}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>

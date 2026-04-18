@@ -70,10 +70,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   <span className="flex-shrink-0 w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground">
                     {item.icon}
                   </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-bold">{item.label}</span>
-                    <span className="block text-xs text-muted-foreground truncate">{item.note}</span>
-                  </span>
+                  <span className="flex-1 min-w-0 text-sm font-bold">{item.label}</span>
                   {item.shortcut && (
                     <kbd className="flex-shrink-0 text-[10px] font-mono bg-muted border border-border rounded px-1.5 py-0.5">
                       {item.shortcut}

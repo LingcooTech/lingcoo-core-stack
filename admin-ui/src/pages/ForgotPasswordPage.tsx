@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { forgotPassword, resetPassword } from '@/api/auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
@@ -66,9 +66,6 @@ export function ForgotPasswordPage() {
       <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">找回密码</CardTitle>
-          <CardDescription>
-            先输入账号邮箱获取 6 位验证码，再设置新密码。验证码有效期为 10 分钟。
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <Form {...requestForm}>

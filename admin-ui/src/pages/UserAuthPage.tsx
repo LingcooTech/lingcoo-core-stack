@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { login, register } from '@/api/auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
@@ -58,11 +58,6 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
       <Card className="w-full border-gray-200/80">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">{mode === 'register' ? '创建用户账号' : '登录用户中心'}</CardTitle>
-          <CardDescription>
-            {mode === 'register'
-              ? '注册后即可管理订单、授权，并进入后续的系统部署流程。'
-              : '登录后可继续支付、查看订单、管理已购产品与授权。'}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

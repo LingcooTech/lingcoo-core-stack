@@ -33,7 +33,7 @@ import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -747,10 +747,7 @@ export function SettingsPage() {
         <Tabs defaultValue="site" className="max-w-5xl space-y-5">
           <div className="rounded-lg border border-border bg-white p-6 shadow-sm">
             <div className="space-y-3">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
-                <p className="mt-1 text-sm text-muted-foreground">把站点展示、SMTP、云存储和 AI Hub 分组管理，减少长页面滚动。</p>
-              </div>
+              <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
               <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
                 <TabsTrigger value="site" className="min-w-[108px] rounded-md">
                   品牌与页脚
@@ -775,12 +772,7 @@ export function SettingsPage() {
                   <StatusPill tone={siteData?.configured ? 'ok' : 'neutral'} label={siteData?.configured ? '品牌设置已自定义' : '使用默认站点展示'} />
                   <StatusPill tone={siteData?.source === 'database' ? 'ok' : 'neutral'} label={`来源: ${siteData?.source === 'database' ? '数据库' : '默认值'}`} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">品牌与页脚</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    维护用户侧 header / footer 展示、favicon 与页脚菜单链接。保存后用户侧界面会直接读取这组公开配置。
-                  </p>
-                </div>
+                <h2 className="text-lg font-semibold text-foreground">品牌与页脚</h2>
               </div>
 
               {siteLoading ? (
@@ -802,7 +794,6 @@ export function SettingsPage() {
                             <FormControl>
                               <Input placeholder="FD Stack" {...field} />
                             </FormControl>
-                            <FormDescription>用于用户侧 Header / Footer 的品牌名称展示。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -817,9 +808,6 @@ export function SettingsPage() {
                             <FormControl>
                               <Input placeholder="© {year} FutureDecade. All rights reserved." {...field} />
                             </FormControl>
-                            <FormDescription>
-                              支持使用 <code>{'{year}'}</code> 占位符自动替换为当前年份。
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -844,7 +832,6 @@ export function SettingsPage() {
                                 dialogDescription="支持从七牛云已有图片中选择，或直接上传新的站点 Logo。"
                               />
                             </FormControl>
-                            <FormDescription>会显示在用户侧顶部导航与页脚品牌区。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -867,7 +854,6 @@ export function SettingsPage() {
                                 dialogDescription="建议上传方形透明背景图标，保存后会同步到浏览器标签页图标。"
                               />
                             </FormControl>
-                            <FormDescription>支持 SVG / PNG / ICO 或其他可公开访问的图标链接。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -876,12 +862,7 @@ export function SettingsPage() {
 
                     <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground">顶部导航菜单</h3>
-                          <p className="text-sm text-muted-foreground">
-                            桌面端按一级菜单展示；如果配置二级菜单，则桌面端显示下拉菜单，移动端显示汉堡菜单折叠项。
-                          </p>
-                        </div>
+                        <h3 className="text-sm font-semibold text-foreground">顶部导航菜单</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -911,7 +892,6 @@ export function SettingsPage() {
                                   placeholder="/ or https://...，有二级菜单时可留空"
                                   {...siteForm.register(`headerNavigation.${index}.url`)}
                                 />
-                                <p className="text-xs text-muted-foreground">如果当前一级菜单只作为下拉入口，可不填链接。</p>
                                 <p className="text-xs text-destructive">
                                   {siteForm.formState.errors.headerNavigation?.[index]?.url?.message}
                                 </p>
@@ -941,10 +921,7 @@ export function SettingsPage() {
 
                             <div className="mt-4 space-y-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-4">
                               <div className="flex items-center justify-between gap-4">
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">二级下拉菜单</p>
-                                  <p className="text-sm text-muted-foreground">为空时按普通一级菜单渲染；有内容时桌面端显示下拉。</p>
-                                </div>
+                                <p className="text-sm font-semibold text-foreground">二级下拉菜单</p>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -1014,11 +991,7 @@ export function SettingsPage() {
                                     </div>
                                   ))}
                                 </div>
-                              ) : (
-                                <div className="rounded-lg border border-dashed border-border bg-white px-4 py-5 text-sm text-muted-foreground">
-                                  当前没有二级菜单，一级菜单会直接作为普通导航链接显示。
-                                </div>
-                              )}
+                              ) : null}
                             </div>
 
                             {typeof siteForm.formState.errors.headerNavigation?.[index]?.message === 'string' ? (
@@ -1029,11 +1002,6 @@ export function SettingsPage() {
                           </div>
                         ))}
 
-                        {!headerNavigation.length ? (
-                          <div className="rounded-lg border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
-                            当前没有自定义顶部导航。你可以新增一级菜单，并为其中任意项补充二级下拉菜单。
-                          </div>
-                        ) : null}
                         {typeof siteForm.formState.errors.headerNavigation?.message === 'string' ? (
                           <p className="text-sm text-destructive">{siteForm.formState.errors.headerNavigation.message}</p>
                         ) : null}
@@ -1042,10 +1010,7 @@ export function SettingsPage() {
 
                     <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground">Footer 菜单链接</h3>
-                          <p className="text-sm text-muted-foreground">支持站内路径、完整 URL、`mailto:` 与 `tel:`。最多保留 12 项。</p>
-                        </div>
+                        <h3 className="text-sm font-semibold text-foreground">Footer 菜单链接</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1107,11 +1072,6 @@ export function SettingsPage() {
                           </div>
                         ))}
 
-                        {!siteLinkFields.length ? (
-                          <div className="rounded-lg border border-dashed border-border bg-white px-4 py-6 text-sm text-muted-foreground">
-                            当前没有自定义 footer 链接。你可以新增常用入口，或直接点击“重置”恢复默认菜单。
-                          </div>
-                        ) : null}
                         {typeof siteForm.formState.errors.footerLinks?.message === 'string' ? (
                           <p className="text-sm text-destructive">{siteForm.formState.errors.footerLinks.message}</p>
                         ) : null}
@@ -1142,12 +1102,7 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
                   />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    用于注册验证码、邮箱验证和找回密码邮件。数据库配置会优先生效，并覆盖环境变量读取结果。
-                  </p>
-                </div>
+                <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
               </div>
 
               {smtpLoading ? (
@@ -1221,7 +1176,6 @@ export function SettingsPage() {
                             <FormControl>
                               <Input type="email" placeholder="noreply@example.com" {...field} />
                             </FormControl>
-                            <FormDescription>留空时会回退到环境变量或默认值。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1242,7 +1196,6 @@ export function SettingsPage() {
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>密码会加密存储在数据库中。</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1256,10 +1209,7 @@ export function SettingsPage() {
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
-                          <div>
-                            <FormLabel className="cursor-pointer">启用 SSL/TLS</FormLabel>
-                            <FormDescription>465 端口通常启用，587 端口通常关闭并由服务器升级连接。</FormDescription>
-                          </div>
+                          <FormLabel className="cursor-pointer">启用 SSL/TLS</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -1274,12 +1224,7 @@ export function SettingsPage() {
                     </div>
 
                     <div className="rounded-lg border border-border bg-gray-50/70 p-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
-                        <p className="text-sm text-muted-foreground">
-                          使用当前表单中的 SMTP 参数发送一封测试邮件，不会自动保存本页改动。
-                        </p>
-                      </div>
+                      <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
                       <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <Input
                           type="email"
@@ -1325,12 +1270,7 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
                   />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    用于应用图标、封面和截图的直接上传与图片选择。保存后，应用编辑页会出现云存储上传/选择入口。
-                  </p>
-                </div>
+                <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
               </div>
 
               {qiniuLoading ? (
@@ -1385,7 +1325,6 @@ export function SettingsPage() {
                             <FormControl>
                               <Input placeholder="https://cdn.example.com" {...field} />
                             </FormControl>
-                            <FormDescription>用于图片预览和把已选图片 URL 回填到应用表单。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1399,7 +1338,6 @@ export function SettingsPage() {
                             <FormControl>
                               <Input placeholder="https://upload.qiniup.com" {...field} />
                             </FormControl>
-                            <FormDescription>大多数标准 Bucket 维持默认值即可。</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1415,7 +1353,6 @@ export function SettingsPage() {
                           <FormControl>
                             <Input placeholder="apps" {...field} />
                           </FormControl>
-                          <FormDescription>例如填 `apps`，上传文件时会自动落到 `apps/...` 目录下。</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1435,7 +1372,6 @@ export function SettingsPage() {
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>Secret Key 会加密存储在数据库中。</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1475,12 +1411,7 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
                   />
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-foreground">AI API Hub</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    先接入 OpenRouter 作为第一个模型 Provider。后续新增其他服务商时，继续沿用同一套 Hub 结构和接口。
-                  </p>
-                </div>
+                <h2 className="text-lg font-semibold text-foreground">AI API Hub</h2>
               </div>
 
               {openrouterLoading ? (
@@ -1498,12 +1429,7 @@ export function SettingsPage() {
                     className="space-y-5"
                   >
                     <div className="rounded-lg border border-border bg-gray-50/70 p-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-foreground">OpenRouter Provider</h3>
-                        <p className="text-sm text-muted-foreground">
-                          管理员这里只需要填写 API Key。API 地址、Referer 和标题由系统自动管理；先测试连接，再拉取模型列表并选择默认模型即可。
-                        </p>
-                      </div>
+                      <h3 className="text-sm font-semibold text-foreground">OpenRouter</h3>
                     </div>
 
                     <FormField
@@ -1520,7 +1446,6 @@ export function SettingsPage() {
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>API Key 会加密存储在数据库中，由中台统一代理模型调用。</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1562,8 +1487,8 @@ export function SettingsPage() {
                           />
                         </div>
                         {openrouterConnectionResult.sampleModels.length ? (
-                          <div className="mt-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sample Models</p>
+                        <div className="mt-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">示例模型</p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {openrouterConnectionResult.sampleModels.map((item) => (
                                 <span key={item} className="rounded-full border border-border bg-gray-50 px-3 py-1 text-xs text-muted-foreground">
@@ -1578,12 +1503,7 @@ export function SettingsPage() {
 
                     <div className="space-y-4 rounded-lg border border-border bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground">默认模型</h3>
-                          <p className="text-sm text-muted-foreground">
-                            拉取到模型列表后，在这里选择 OpenRouter 的默认模型。
-                          </p>
-                        </div>
+                        <h3 className="text-sm font-semibold text-foreground">默认模型</h3>
                         {openrouterModelsLoaded ? (
                           <StatusPill tone={openrouterModels.length ? 'info' : 'neutral'} label={`${openrouterModels.length} 个模型`} />
                         ) : null}
@@ -1598,7 +1518,7 @@ export function SettingsPage() {
                             <Select value={field.value || '__unset__'} onValueChange={(value) => field.onChange(value === '__unset__' ? '' : value)}>
                               <FormControl>
                                 <SelectTrigger disabled={previewOpenRouterModelsMutation.isPending || (!openrouterModels.length && !field.value)}>
-                                  <SelectValue placeholder={openrouterModels.length ? '选择默认模型' : '请先保存 API Key 或拉取模型列表'} />
+                                  <SelectValue placeholder={openrouterModels.length ? '选择默认模型' : '先拉取模型列表'} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -1613,11 +1533,6 @@ export function SettingsPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <FormDescription>
-                              {openrouterModels.length
-                                ? '选择后点击“保存 OpenRouter 配置”即可持久化到中台。'
-                                : '当前还没有可选模型。先点击“测试连接”或“拉取模型列表”。'}
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1632,52 +1547,38 @@ export function SettingsPage() {
                             </div>
                             <StatusPill tone="info" label={selectedOpenRouterModel.modality || 'text'} />
                           </div>
-                          {selectedOpenRouterModel.description ? (
-                            <p className="mt-3 text-sm text-muted-foreground">{selectedOpenRouterModel.description}</p>
-                          ) : null}
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Context</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">上下文</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens</p>
                             </div>
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Max Output</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">最大输出</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)} tokens</p>
                             </div>
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Prompt Pricing</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输入价格</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.promptPricing)}</p>
                             </div>
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Completion Pricing</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输出价格</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.completionPricing)}</p>
                             </div>
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Input Modalities</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输入模态</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.inputModalities)}</p>
                             </div>
                             <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Output Modalities</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输出模态</p>
                               <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.outputModalities)}</p>
                             </div>
                           </div>
-                        </div>
-                      ) : openrouterModelsLoaded ? (
-                        <div className="rounded-lg border border-dashed border-border bg-gray-50/50 px-4 py-5 text-sm text-muted-foreground">
-                          {openrouterModels.length
-                            ? '模型列表已加载，但你还没有选择默认模型。'
-                            : '当前配置下没有拉取到模型列表，请检查 API Key。'}
                         </div>
                       ) : null}
                     </div>
 
                     <div className="space-y-4 rounded-lg border border-border bg-white p-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">模型对话测试</h3>
-                        <p className="text-sm text-muted-foreground">
-                          使用当前表单中的 OpenRouter 配置直接发一条测试消息，确认模型调用链和默认模型是否正常。
-                        </p>
-                      </div>
+                      <h3 className="text-sm font-semibold text-foreground">模型测试</h3>
                       <Textarea
                         value={openrouterTestMessage}
                         onChange={(event) => setOpenrouterTestMessage(event.target.value)}
@@ -1707,17 +1608,12 @@ export function SettingsPage() {
                             <div className="space-y-3 p-4 text-sm">
                               <p className="whitespace-pre-wrap leading-6 text-foreground">{openrouterChatResult.content}</p>
                               {openrouterChatResult.finishReason ? (
-                                <p className="text-xs text-muted-foreground">Finish reason: {openrouterChatResult.finishReason}</p>
+                                <p className="text-xs text-muted-foreground">结束原因：{openrouterChatResult.finishReason}</p>
                               ) : null}
                             </div>
                           </ScrollArea>
                         </div>
                       ) : null}
-                    </div>
-
-                    <div className="rounded-lg border border-dashed border-border bg-gray-50/60 p-4 text-sm text-muted-foreground">
-                      OpenRouter 官方 API 地址已固定为 <span className="font-mono text-foreground">{OPENROUTER_DEFAULT_BASE_URL}</span>。
-                      `HTTP-Referer` 和 `X-Title` 会由系统自动补齐，管理员不需要手动填写高级设置。
                     </div>
                   </form>
                 </Form>

@@ -36,7 +36,6 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
               )}
               <div>
                 <p className="text-sm font-semibold tracking-tight text-gray-900">{siteName}</p>
-                <p className="text-xs text-gray-500">购买、授权与部署入口</p>
               </div>
             </div>
           </div>
