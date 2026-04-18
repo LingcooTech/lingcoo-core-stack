@@ -69,10 +69,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   dashboard: {
     groupLabel: '概览',
     navTitle: '仪表盘',
-    navNote: '系统概况与快捷入口',
+    navNote: '关键指标与快捷操作',
     icon: 'DB',
     title: '管理后台',
-    lead: '查看系统关键指标、支付通道状态和最近订单。',
+    lead: '查看关键指标、支付状态和最近订单。',
     href: '/admin',
     contextCards: [
       { label: '模式', value: '资源管理', note: '统一管理商品、交易、客户和运维资源。' },
@@ -88,10 +88,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   apps: {
     groupLabel: '应用管理',
     navTitle: '应用管理',
-    navNote: '应用、功能、定价与上架配置',
+    navNote: '应用与上架配置',
     icon: 'AP',
     title: '应用管理',
-    lead: '管理应用信息、功能定义、定价方案和上架配置。',
+    lead: '维护应用信息、功能与定价。',
     href: '/admin/apps',
     contextCards: [
       { label: '用途', value: '应用配置', note: '应用是授权和交易的核心单元。' },
@@ -107,10 +107,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   secrets: {
     groupLabel: '应用管理',
     navTitle: '应用密钥',
-    navNote: '生成与管理 API 密钥',
+    navNote: 'API 密钥管理',
     icon: 'SK',
     title: '应用密钥',
-    lead: '为应用生成 API 密钥，管理密钥生命周期。',
+    lead: '生成、查看和停用应用密钥。',
     href: '/admin/secrets',
     contextCards: [
       { label: '用途', value: '身份认证', note: '应用通过密钥访问中台 API。' },
@@ -126,10 +126,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   orders: {
     groupLabel: '交易管理',
     navTitle: '订单管理',
-    navNote: '订单查询与补单操作',
+    navNote: '订单查询与同步',
     icon: 'OD',
     title: '订单管理',
-    lead: '查看订单详情、支付记录，处理异常订单。',
+    lead: '查看订单、支付记录和异常状态。',
     href: '/admin/orders',
     contextCards: [
       { label: '用途', value: '交易追踪', note: '订单连接支付与授权的完整链路。' },
@@ -145,10 +145,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   payments: {
     groupLabel: '交易管理',
     navTitle: '支付配置',
-    navNote: '微信支付、支付宝通道',
+    navNote: '支付通道配置',
     icon: 'PM',
     title: '支付配置',
-    lead: '配置微信支付和支付宝的通道凭证与参数。',
+    lead: '配置微信支付和支付宝参数。',
     href: '/admin/payments',
     contextCards: [
       { label: '用途', value: '通道配置', note: '配置支付通道后即可在售卖方案中使用。' },
@@ -164,10 +164,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   settings: {
     groupLabel: '运维',
     navTitle: '系统设置',
-    navNote: 'SMTP、云存储与 AI Hub',
+    navNote: '邮件、存储与 AI',
     icon: 'ST',
     title: '系统设置',
-    lead: '维护邮件发送、云存储和 AI API Hub 等系统级配置，支撑认证邮件、媒体上传与模型服务接入。',
+    lead: '维护邮件、云存储和 AI 配置。',
     href: '/admin/settings',
     contextCards: [
       { label: '用途', value: '平台基础能力', note: '认证邮件、媒体存储和 AI Provider 都在这里统一维护。' },
@@ -183,10 +183,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   users: {
     groupLabel: '客户管理',
     navTitle: '用户管理',
-    navNote: '用户账号、角色与状态管理',
+    navNote: '账号与角色管理',
     icon: 'US',
     title: '用户管理',
-    lead: '查看和管理所有注册用户，修改角色和状态。',
+    lead: '查看用户并调整角色、状态。',
     href: '/admin/users',
     contextCards: [
       { label: '用途', value: '用户管理', note: '管理用户账号、角色和状态。' },
@@ -202,10 +202,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   licenses: {
     groupLabel: '客户管理',
     navTitle: '授权管理',
-    navNote: '发放与撤销用户授权',
+    navNote: '用户授权管理',
     icon: 'LC',
     title: '授权管理',
-    lead: '手动发放授权、查看授权记录、撤销失效授权。',
+    lead: '发放、查看和撤销授权。',
     href: '/admin/licenses',
     contextCards: [
       { label: '用途', value: '授权管理', note: '授权是用户使用产品功能的凭证。' },
@@ -221,10 +221,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   installs: {
     groupLabel: '客户管理',
     navTitle: '安装实例',
-    navNote: '应用安装记录与设备信息',
+    navNote: '安装记录与设备信息',
     icon: 'IN',
     title: '安装实例',
-    lead: '查看应用的安装记录、设备信息和使用状态。',
+    lead: '查看安装记录和设备信息。',
     href: '/admin/installs',
     contextCards: [
       { label: '用途', value: '实例追踪', note: '跟踪应用的实际安装和使用情况。' },
@@ -240,10 +240,10 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   observability: {
     groupLabel: '运维',
     navTitle: '事件日志',
-    navNote: '事件流与支付回调记录',
+    navNote: '事件与回调日志',
     icon: 'EV',
     title: '事件日志',
-    lead: '查看系统事件流和支付回调记录，用于排查和审计。',
+    lead: '查看系统事件和支付回调。',
     href: '/admin/observability',
     contextCards: [
       { label: '用途', value: '事件审计', note: '记录关键业务操作和支付回调。' },

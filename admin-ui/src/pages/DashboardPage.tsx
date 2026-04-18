@@ -41,7 +41,6 @@ export function DashboardPage() {
     <div>
       <SectionHeader sectionKey="dashboard" />
       <div className="p-6 space-y-6">
-        {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard label="接入应用" value={apps.length} sublabel="应用总数" loading={appsResult.isLoading} />
           <MetricCard label="活跃 Secret" value={activeSecrets.length} sublabel="有效密钥" loading={appsResult.isLoading} />
@@ -49,9 +48,8 @@ export function DashboardPage() {
           <MetricCard label="待处理订单" value={pendingOrders.length} sublabel="pending / processing" loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
         </div>
 
-        {/* Payment Status */}
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">支付通道状态</h2>
+          <h2 className="mb-3 text-base font-semibold text-foreground">支付通道</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PaymentStatusCard
               name="微信支付"
@@ -68,9 +66,8 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Links */}
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">快速入口</h2>
+          <h2 className="mb-3 text-base font-semibold text-foreground">快捷入口</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickLinks.map((link) => {
               const Icon = link.icon;
@@ -78,7 +75,7 @@ export function DashboardPage() {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="group flex flex-col gap-3 p-4 rounded-lg border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all no-underline"
+                  className="group flex flex-col gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all no-underline"
                 >
                   <div className={`w-9 h-9 rounded-md flex items-center justify-center ${link.color}`}>
                     <Icon className="w-5 h-5" />
@@ -94,16 +91,15 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Orders */}
         {orders.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">最近订单</h2>
+              <h2 className="text-base font-semibold text-foreground">最近订单</h2>
               <Link to="/admin/orders" className="text-xs font-bold text-primary hover:underline">
                 查看全部 →
               </Link>
             </div>
-            <div className="rounded-lg border border-border bg-white overflow-hidden">
+            <div className="rounded-xl border border-border bg-white overflow-hidden">
               {orders.slice(0, 5).map((order, idx) => (
                 <div
                   key={order.orderNo}
@@ -145,7 +141,7 @@ function MetricCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -181,7 +177,7 @@ function PaymentStatusCard({
   return (
     <Link
       to={href}
-      className="flex items-center justify-between gap-3 p-4 rounded-lg border border-border bg-white hover:border-primary/30 transition-colors no-underline"
+      className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 transition-colors no-underline"
     >
       <div>
         <p className="text-sm font-semibold text-foreground">{name}</p>

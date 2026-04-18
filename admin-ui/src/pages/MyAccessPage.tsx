@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Boxes, KeyRound, LoaderCircle, ShieldCheck, Sparkles } from 'lucide-react';
+import { KeyRound, LoaderCircle } from 'lucide-react';
 
 import { listApps } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
@@ -34,82 +34,33 @@ export function MyAccessPage() {
 
   const activeItems = items.filter((item) => item.status === 'active');
 
+  const deployableCount = summary.filter((entry) => {
+    const app = appByCode.get(entry.appCode);
+    return Boolean(app && getAppDeliveryMode(app) === 'one_click');
+  }).length;
+
   return (
-    <div className="space-y-10">
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Entitlements</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">我的应用</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
-            这里应该像正式产品后台里的“已购产品与能力中心”，而不是简单的数据回显。
-            用户会在这里确认自己买到了什么、当前解锁了哪些能力、哪些应用已经可以继续使用或部署。
-          </p>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight text-gray-900">我的应用</h1>
+        <p className="text-sm text-gray-500">查看已购应用和可用能力。</p>
+      </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                label: '已购应用',
-                value: String(summary.length),
-                note: '当前账户下已产生授权摘要的应用'
-              },
-              {
-                label: '激活授权',
-                value: String(activeItems.length),
-                note: '正在生效中的 entitlement 记录'
-              },
-              {
-                label: '解锁能力',
-                value: String(summary.reduce((count, entry) => count + entry.featureCodes.length, 0)),
-                note: '用于 WordPress、Notion、部署等后续入口'
-              }
-            ].map((item) => (
-              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
-              </div>
-            ))}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: '已购应用', value: String(summary.length) },
+          { label: '激活授权', value: String(activeItems.length) },
+          { label: '可部署应用', value: String(deployableCount) }
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{item.label}</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
           </div>
-        </div>
-
-        <div className="grid gap-4">
-          {[
-            {
-              icon: ShieldCheck,
-              title: '授权状态',
-              desc: '当前页面优先回答“哪些产品已解锁”，而不是先展示底层表字段。'
-            },
-            {
-              icon: Sparkles,
-              title: '能力可见性',
-              desc: '解锁的能力项应该直接可见，便于用户理解当前套餐到底打开了什么。'
-            },
-            {
-              icon: Boxes,
-              title: '后续入口',
-              desc: '购买后的真正下一步通常是继续使用、继续部署，而不是停留在订单页。'
-            }
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold tracking-tight text-gray-900">{item.title}</p>
-                    <p className="text-sm leading-7 text-gray-600">{item.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
+        ))}
+      </div>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="rounded-lg border-gray-200/80 bg-white/95">
+        <Card className="rounded-xl border-gray-200 bg-white">
           <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载授权状态...
@@ -123,10 +74,7 @@ export function MyAccessPage() {
         />
       ) : (
         <section className="space-y-5">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Purchased Products</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">已购产品与能力</h2>
-          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">已购产品</h2>
           <div className="grid gap-5 lg:grid-cols-2">
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
