@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -62,42 +62,9 @@ export function HomePage() {
     }
   }, [activeHotIndex, hotApps.length]);
 
-  const moveHotIndex = (direction: -1 | 1) => {
-    if (!hotApps.length) {
-      return;
-    }
-    setActiveHotIndex((current) => {
-      const next = current + direction;
-      if (next < 0) {
-        return hotApps.length - 1;
-      }
-      if (next >= hotApps.length) {
-        return 0;
-      }
-      return next;
-    });
-  };
-
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">热门应用</h1>
-          </div>
-
-          {hotApps.length > 1 ? (
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => moveHotIndex(-1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => moveHotIndex(1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
         {isLoading ? (
           <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white p-6">
             <div className="h-8 w-44 animate-pulse rounded bg-gray-100" />
@@ -194,42 +161,34 @@ export function HomePage() {
                             </p>
                           </div>
                         </div>
+
+                        {hotApps.length > 1 ? (
+                          <div className="flex justify-center gap-2 pb-5">
+                            {hotApps.map((_, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                aria-label={`切换到第 ${index + 1} 个应用`}
+                                onClick={() => setActiveHotIndex(index)}
+                                className={cn(
+                                  'h-2.5 rounded-full transition-all',
+                                  index === activeHotIndex ? 'w-10 bg-sky-600' : 'w-2.5 bg-gray-300',
+                                )}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </article>
                   );
                 })}
               </div>
             </div>
-
-            {hotApps.length > 1 ? (
-              <div className="flex justify-center gap-2">
-                {hotApps.map((app, index) => (
-                  <button
-                    key={app.id}
-                    type="button"
-                    aria-label={`切换到 ${app.name}`}
-                    onClick={() => setActiveHotIndex(index)}
-                    className={cn(
-                      'h-2.5 rounded-full transition-all',
-                      index === activeHotIndex ? 'w-10 bg-sky-600' : 'w-2.5 bg-gray-300',
-                    )}
-                  />
-                ))}
-              </div>
-            ) : null}
           </div>
         )}
       </section>
 
       <section className="space-y-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-              应用列表
-            </h2>
-          </div>
-        </div>
-
         <div className="flex gap-4 overflow-x-auto pb-1">
           <button
             type="button"

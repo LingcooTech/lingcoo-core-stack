@@ -16,6 +16,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
   const copyrightText = resolveFooterCopyright(
     siteSettings?.footerCopyright?.trim() || '© {year} FutureDecade. All rights reserved.'
   );
+  const filingInfo = siteSettings?.filingInfo?.trim() || '';
 
   return (
     <footer className="border-t border-gray-200 bg-[#f8fafc]">
@@ -85,6 +86,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
 
         <div className="mt-6 flex flex-col gap-2 border-t border-gray-200 pt-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
           <p>{copyrightText}</p>
+          {filingInfo ? <p className="sm:text-right">{filingInfo}</p> : null}
         </div>
       </Container>
     </footer>

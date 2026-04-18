@@ -99,6 +99,7 @@ const siteSchema = z.object({
   faviconUrl: optionalSiteLinkField,
   headerNavigation: z.array(siteNavigationItemSchema).max(12, '顶部导航最多保留 12 项'),
   footerCopyright: z.string().trim().min(1, '请输入页脚版权').max(255, '页脚版权不能超过 255 个字符'),
+  filingInfo: z.string().trim().max(255, '备案信息不能超过 255 个字符'),
   footerLinks: z.array(siteLinkSchema).max(12, '最多保留 12 个页脚链接')
 });
 
@@ -169,6 +170,7 @@ function buildSitePayload(values: SiteValues) {
       }))
     })),
     footerCopyright: values.footerCopyright.trim(),
+    filingInfo: values.filingInfo.trim(),
     footerLinks: values.footerLinks.map((item) => ({
       label: item.label.trim(),
       url: item.url.trim(),
@@ -313,6 +315,7 @@ export function SettingsPage() {
       faviconUrl: '',
       headerNavigation: [],
       footerCopyright: '© {year} FutureDecade. All rights reserved.',
+      filingInfo: '',
       footerLinks: []
     }
   });
@@ -428,6 +431,7 @@ export function SettingsPage() {
       faviconUrl: siteData.values.faviconUrl,
       headerNavigation: siteData.values.headerNavigation,
       footerCopyright: siteData.values.footerCopyright,
+      filingInfo: siteData.values.filingInfo,
       footerLinks: siteData.values.footerLinks
     });
   }, [siteData, siteForm]);
@@ -506,13 +510,14 @@ export function SettingsPage() {
       qc.setQueryData(['system-settings', 'site'], result);
       qc.setQueryData(['public-site-settings'], result.values);
       siteForm.reset({
-        siteName: result.values.siteName,
-        logoUrl: result.values.logoUrl,
-        faviconUrl: result.values.faviconUrl,
-        headerNavigation: result.values.headerNavigation,
-        footerCopyright: result.values.footerCopyright,
-        footerLinks: result.values.footerLinks
-      });
+      siteName: result.values.siteName,
+      logoUrl: result.values.logoUrl,
+      faviconUrl: result.values.faviconUrl,
+      headerNavigation: result.values.headerNavigation,
+      footerCopyright: result.values.footerCopyright,
+      filingInfo: result.values.filingInfo,
+      footerLinks: result.values.footerLinks
+    });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
   });
@@ -813,6 +818,20 @@ export function SettingsPage() {
                         )}
                       />
                     </div>
+
+                    <FormField
+                      control={siteForm.control}
+                      name="filingInfo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>备案信息</FormLabel>
+                          <FormControl>
+                            <Input placeholder="例如：浙ICP备12345678号-1" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="grid gap-6 lg:grid-cols-2">
                       <FormField

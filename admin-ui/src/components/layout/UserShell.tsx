@@ -77,28 +77,28 @@ export function UserShell() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
       <header className="sticky top-0 z-30 border-b border-white/70 bg-white/88 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
-        <Container className="py-2.5">
-          <div className="flex min-h-[52px] items-center justify-between gap-4">
+        <Container className="py-1.5">
+          <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
-              <Link to="/" className="flex items-center gap-3">
+              <Link to="/" className="flex items-center gap-2.5">
                 {siteSettings?.logoUrl ? (
                   <img
                     src={siteSettings.logoUrl}
                     alt={siteName}
-                    className="h-10 w-10 rounded-2xl border border-gray-200/90 bg-white object-contain p-1.5 shadow-sm"
+                    className="h-9 w-9 rounded-2xl border border-gray-200/90 bg-white object-contain p-1.5 shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-[13px] font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
                     {getInitials(siteName)}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold tracking-tight text-gray-900">{siteName}</p>
+                  <p className="truncate text-[14px] font-semibold tracking-tight text-gray-900">{siteName}</p>
                 </div>
               </Link>
             </div>
 
-            <nav className="hidden flex-1 items-center justify-center gap-5 lg:flex" aria-label="主导航">
+            <nav className="hidden flex-1 items-center justify-center gap-4 lg:flex" aria-label="主导航">
               {headerNavigation.map((item) => {
                 const isActive = hasActiveNavigationItem(item, location.pathname);
 
@@ -109,7 +109,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className={cn(
-                            'inline-flex items-center gap-1 text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
+                            'inline-flex items-center gap-1 text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
                             isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                           )}
                         >
@@ -155,7 +155,7 @@ export function UserShell() {
                       target={item.openInNewTab ? '_blank' : undefined}
                       rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
                       className={cn(
-                        'text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
+                        'text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
                         isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )}
                     >
@@ -170,7 +170,7 @@ export function UserShell() {
                     to={item.url}
                     className={({ isActive: currentActive }) =>
                       cn(
-                        'text-[14px] font-medium whitespace-nowrap transition-colors duration-200',
+                        'text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
                         currentActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
                       )
                     }
@@ -186,11 +186,11 @@ export function UserShell() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 rounded-full lg:hidden"
+                className="h-8 w-8 rounded-full lg:hidden"
                 onClick={() => setMobileMenuOpen((current) => !current)}
                 aria-label={mobileMenuOpen ? '关闭导航菜单' : '打开导航菜单'}
               >
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </Button>
               {isAuthenticated ? (
                 <DropdownMenu>
@@ -200,7 +200,7 @@ export function UserShell() {
                       className="relative rounded-full border border-gray-200/90 bg-white p-1 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-7 w-7">
                         <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
                       </Avatar>
                       <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-gray-900 text-white">

@@ -58,6 +58,7 @@ export interface SiteSettingsInput {
   faviconUrl?: string;
   headerNavigation?: SiteNavigationItemInput[];
   footerCopyright?: string;
+  filingInfo?: string;
   footerLinks?: SiteFooterLinkInput[];
 }
 

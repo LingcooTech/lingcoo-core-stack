@@ -248,6 +248,7 @@ export interface SiteSettingsOverview {
     faviconUrl: string;
     headerNavigation: SiteNavigationItem[];
     footerCopyright: string;
+    filingInfo: string;
     footerLinks: SiteFooterLink[];
   };
 }

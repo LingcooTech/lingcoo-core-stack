@@ -123,6 +123,7 @@ export const siteSettingsSchema = z.object({
   faviconUrl: optionalSitePathOrUrl,
   headerNavigation: z.array(siteNavigationItemSchema).max(12).optional(),
   footerCopyright: optionalTrimmedString(255),
+  filingInfo: optionalTrimmedString(255),
   footerLinks: z.array(siteFooterLinkSchema).max(12).optional()
 });
 

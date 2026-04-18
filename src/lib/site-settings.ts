@@ -27,6 +27,7 @@ export type SiteSettings = {
   faviconUrl: string;
   headerNavigation: SiteNavigationItem[];
   footerCopyright: string;
+  filingInfo: string;
   footerLinks: SiteFooterLink[];
 };
 
@@ -184,6 +185,7 @@ function buildDefaultSiteSettings(env: AppEnv): SiteSettings {
     faviconUrl: '',
     headerNavigation: cloneHeaderNavigation(DEFAULT_HEADER_NAVIGATION),
     footerCopyright: DEFAULT_COPYRIGHT,
+    filingInfo: '',
     footerLinks: cloneFooterLinks(DEFAULT_FOOTER_LINKS)
   };
 }
@@ -224,6 +226,7 @@ export class SiteSettingsService {
       faviconUrl: normalizeSiteUrl(raw.faviconUrl),
       headerNavigation: headerNavigation.length ? cloneHeaderNavigation(headerNavigation) : cloneHeaderNavigation(defaults.headerNavigation),
       footerCopyright: normalizeString(raw.footerCopyright).slice(0, 255) || defaults.footerCopyright,
+      filingInfo: normalizeString(raw.filingInfo).slice(0, 255),
       footerLinks: cloneFooterLinks(footerLinks)
     };
   }
@@ -265,6 +268,7 @@ export class SiteSettingsService {
         }>;
       }>;
       footerCopyright?: string;
+      filingInfo?: string;
       footerLinks?: Array<{
         label: string;
         url: string;
