@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileSearch, LoaderCircle, RefreshCw, Wallet } from 'lucide-react';
+import { FileSearch, LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { listMyOrders, syncMyOrder } from '@/api/user';
@@ -29,92 +29,35 @@ export function MyOrdersPage() {
   const paidTotal = paidOrders.reduce((sum, order) => sum + order.amount, 0);
 
   return (
-    <div className="space-y-10">
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr),360px]">
-        <div className="rounded-lg border border-gray-200/80 bg-white/92 p-8 shadow-sm shadow-gray-900/5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Orders</p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">订单记录</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-gray-600">
-            这里不只是历史账单列表，而是用户确认支付状态、回看套餐、判断授权同步是否正常的主入口。
-            页面结构应该优先表达“已支付、待同步、累计金额”这些用户真正关心的信息。
-          </p>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-4xl font-semibold tracking-tight text-gray-900">订单记录</h1>
+      </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {[
-              {
-                label: '全部订单',
-                value: String(orders.length),
-                note: '当前账户下的全部支付记录'
-              },
-              {
-                label: '已支付',
-                value: String(paidOrders.length),
-                note: '已完成付款并通常已进入授权链路'
-              },
-              {
-                label: '待同步',
-                value: String(pendingOrders.length),
-                note: '可手动点击同步订单状态'
-              }
-            ].map((item) => (
-              <div key={item.label} className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{item.label}</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">{item.note}</p>
-              </div>
-            ))}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: '全部订单', value: String(orders.length) },
+          { label: '已支付', value: String(paidOrders.length) },
+          { label: '待同步', value: String(pendingOrders.length) }
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{item.label}</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
           </div>
-        </div>
-
-        <div className="grid gap-4">
-          {[
-            {
-              icon: Wallet,
-              title: '累计支付',
-              value: paidTotal > 0 ? formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY') : '¥0.00',
-              note: '已支付订单金额汇总'
-            },
-            {
-              icon: RefreshCw,
-              title: '状态同步',
-              value: pendingOrders.length > 0 ? `${pendingOrders.length} 笔待处理` : '全部完成',
-              note: '支付渠道返回后可在这里补做同步'
-            },
-            {
-              icon: CheckCircle2,
-              title: '授权链路',
-              value: paidOrders.length > 0 ? '已打通' : '待建立',
-              note: '支付成功后会继续进入应用授权与部署链路'
-            }
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <Card key={item.title} className="border-gray-200/80 bg-white/92 shadow-sm shadow-gray-900/5">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{item.title}</p>
-                    <p className="text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                    <p className="text-sm leading-7 text-gray-600">{item.note}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
+        ))}
+      </div>
 
       <section className="space-y-5">
-        <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Order Timeline</p>
-          <h2 className="text-3xl font-semibold tracking-tight text-gray-900">全部订单</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">全部订单</h2>
+          <p className="text-sm text-gray-500">
+            已支付 {paidOrders.length} 笔，累计 {formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY')}
+          </p>
         </div>
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="rounded-lg border-gray-200/80 bg-white/95">
+            <Card className="rounded-xl border-gray-200 bg-white">
               <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
                 <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
                 正在加载订单记录...
