@@ -283,6 +283,61 @@ export class AuthService {
     return { reset: true };
   }
 
+  async updateCurrentUser(userId: string, input: { displayName?: string | null }) {
+    const repository = new AuthRepository(this.db);
+    const user = await repository.findUserById(userId);
+
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+
+    const updatedUser = await repository.updateUser(userId, {
+      displayName: input.displayName
+    });
+
+    if (!updatedUser) {
+      throw httpError(500, 'Failed to update user profile');
+    }
+
+    await new EventService(this.db).capture({
+      userId,
+      eventName: 'auth.profile_updated',
+      properties: {
+        displayName: updatedUser.displayName
+      }
+    });
+
+    return updatedUser;
+  }
+
+  async changePassword(
+    userId: string,
+    input: { currentPassword: string; newPassword: string }
+  ) {
+    const repository = new AuthRepository(this.db);
+    const user = await repository.findUserById(userId);
+
+    if (!user) {
+      throw httpError(404, 'User not found');
+    }
+
+    const credential = await repository.findPasswordCredentialByUserId(userId);
+    if (!credential || !verifyPassword(input.currentPassword, credential.passwordHash)) {
+      throw httpError(400, 'Current password is incorrect');
+    }
+
+    await repository.updatePasswordCredential(userId, hashPassword(input.newPassword));
+    await repository.deletePasswordResetCodes(userId);
+
+    await new EventService(this.db).capture({
+      userId,
+      eventName: 'auth.password_changed',
+      properties: {}
+    });
+
+    return { changed: true };
+  }
+
   async getUserById(userId: string) {
     const user = await new AuthRepository(this.db).findUserById(userId);
 

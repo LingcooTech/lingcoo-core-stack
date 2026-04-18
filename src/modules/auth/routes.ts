@@ -2,10 +2,12 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import { buildEmailRateLimitKey, buildUserRateLimitKey } from '../../lib/rate-limit';
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  updateCurrentUserSchema,
   verifyEmailSchema
 } from './schemas';
 import { AuthService } from './service';
@@ -101,6 +103,26 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         emailVerified: user.emailVerified
       }
     };
+  });
+
+  app.patch('/v1/me', { preHandler: app.authenticate }, async (request) => {
+    const payload = updateCurrentUserSchema.parse(request.body);
+    const user = await new AuthService(app.db, app.appEnv).updateCurrentUser(request.user.sub, payload);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        emailVerified: user.emailVerified
+      }
+    };
+  });
+
+  app.post('/v1/me/change-password', { preHandler: app.authenticate }, async (request) => {
+    const payload = changePasswordSchema.parse(request.body);
+    return new AuthService(app.db, app.appEnv).changePassword(request.user.sub, payload);
   });
 
   app.post('/v1/auth/verify-email', { preHandler: app.authenticate }, async (request) => {

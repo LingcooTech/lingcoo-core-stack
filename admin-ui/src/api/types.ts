@@ -70,6 +70,14 @@ export interface AuthResponse {
   };
 }
 
+export interface CurrentUserProfile {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  emailVerified: boolean;
+}
+
 export interface VerifyEmailResponse {
   verified: boolean;
   user: { id: string; email: string; displayName: string | null; role: string; emailVerified: boolean };
@@ -86,6 +94,14 @@ export interface ForgotPasswordResponse {
 
 export interface ResetPasswordResponse {
   reset: boolean;
+}
+
+export interface UpdateCurrentUserResponse {
+  user: CurrentUserProfile;
+}
+
+export interface ChangePasswordResponse {
+  changed: boolean;
 }
 
 export interface AdminUser {

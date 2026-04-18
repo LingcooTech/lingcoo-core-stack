@@ -3,9 +3,7 @@ import type { PublicSiteSettings, SiteNavigationItem } from '@/api/types';
 export const PUBLIC_SITE_SETTINGS_QUERY_KEY = ['public-site-settings'] as const;
 export const DEFAULT_FAVICON_HREF = '/favicon.svg';
 export const DEFAULT_HEADER_NAVIGATION: SiteNavigationItem[] = [
-  { label: '应用中心', url: '/', openInNewTab: false, children: [] },
-  { label: '订单记录', url: '/orders', openInNewTab: false, children: [] },
-  { label: '我的应用', url: '/access', openInNewTab: false, children: [] }
+  { label: '应用中心', url: '/', openInNewTab: false, children: [] }
 ];
 
 export function isExternalSiteUrl(url: string) {

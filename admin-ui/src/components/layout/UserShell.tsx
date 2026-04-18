@@ -10,7 +10,7 @@ import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   getNormalizedInternalPath,
   getSiteDisplayName,
@@ -207,6 +207,38 @@ export function UserShell() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel className="px-2 py-2">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
+                        <p className="text-[11px] text-muted-foreground">个人中心入口</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        navigate('/account?tab=profile');
+                      }}
+                    >
+                      个人中心
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        navigate('/account?tab=orders');
+                      }}
+                    >
+                      我的订单
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        navigate('/account?tab=apps');
+                      }}
+                    >
+                      我的应用
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {isAdmin ? (
                       <DropdownMenuItem
                         onSelect={(event) => {

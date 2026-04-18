@@ -207,7 +207,7 @@ export class AuthRepository {
 
   async updateUser(
     userId: string,
-    input: { displayName?: string; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }
+    input: { displayName?: string | null; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }
   ) {
     const set: Record<string, unknown> = { updatedAt: new Date() };
     if (input.displayName !== undefined) set.displayName = input.displayName;

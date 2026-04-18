@@ -17,6 +17,7 @@ import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
+import { AccountCenterPage } from '@/pages/AccountCenterPage';
 import { AppCatalogPage } from '@/pages/AppCatalogPage';
 import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
@@ -29,8 +30,6 @@ import { HomePage } from '@/pages/HomePage';
 import { InstallsPage } from '@/pages/InstallsPage';
 import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
-import { MyAccessPage } from '@/pages/MyAccessPage';
-import { MyOrdersPage } from '@/pages/MyOrdersPage';
 import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
@@ -67,7 +66,7 @@ function ProtectedUserRoute() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
   return <Outlet />;
 }
@@ -97,8 +96,9 @@ const router = createBrowserRouter(
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedUserRoute />}>
-          <Route path="/orders" element={<MyOrdersPage />} />
-          <Route path="/access" element={<MyAccessPage />} />
+          <Route path="/account" element={<AccountCenterPage />} />
+          <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
+          <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
           <Route path="/deploy" element={<DeploymentsPage />} />
         </Route>
       </Route>

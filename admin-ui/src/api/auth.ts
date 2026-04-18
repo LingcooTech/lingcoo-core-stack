@@ -2,9 +2,12 @@ import { apiClient, setToken } from './client';
 import type {
   AuthResponse,
   BootstrapStatus,
+  ChangePasswordResponse,
+  CurrentUserProfile,
   ForgotPasswordResponse,
   ResendVerificationResponse,
   ResetPasswordResponse,
+  UpdateCurrentUserResponse,
   VerifyEmailResponse
 } from './types';
 
@@ -33,14 +36,26 @@ export async function register(email: string, password: string): Promise<AuthRes
 export async function getCurrentUser() {
   return apiClient<{
     authenticated: boolean;
-    user: {
-      id: string;
-      email: string;
-      displayName: string | null;
-      role: string;
-      emailVerified: boolean;
-    };
+    user: CurrentUserProfile;
   }>('/v1/me');
+}
+
+export async function updateCurrentUser(displayName: string): Promise<UpdateCurrentUserResponse> {
+  return apiClient<UpdateCurrentUserResponse>('/v1/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ displayName })
+  });
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<ChangePasswordResponse> {
+  return apiClient<ChangePasswordResponse>('/v1/me/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+  });
 }
 
 export async function verifyEmail(code: string): Promise<VerifyEmailResponse> {
