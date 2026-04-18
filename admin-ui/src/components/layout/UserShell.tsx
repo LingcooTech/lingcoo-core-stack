@@ -40,6 +40,15 @@ function hasActiveNavigationItem(item: SiteNavigationItem, pathname: string) {
   return isActiveSiteUrl(item.url, pathname) || item.children.some((child) => isActiveSiteUrl(child.url, pathname));
 }
 
+function desktopNavItemClass(isActive: boolean) {
+  return cn(
+    'inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-all duration-200',
+    isActive
+      ? 'bg-white text-slate-900 shadow-sm'
+      : 'text-gray-600 hover:bg-white/80 hover:text-slate-900',
+  );
+}
+
 export function UserShell() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,7 +120,7 @@ export function UserShell() {
               </Link>
             </div>
 
-            <nav className="hidden flex-1 items-center justify-center gap-4 lg:flex" aria-label="主导航">
+            <nav className="hidden flex-1 items-center justify-center gap-1.5 lg:flex" aria-label="主导航">
               {headerNavigation.map((item) => {
                 const isActive = hasActiveNavigationItem(item, location.pathname);
 
@@ -121,19 +130,21 @@ export function UserShell() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className={cn(
-                            'inline-flex items-center gap-1 text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
-                            isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
-                          )}
+                          className={desktopNavItemClass(isActive)}
                         >
                           {item.label}
                           <ChevronDown className="h-4 w-4" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="center" className="w-56">
+                      <DropdownMenuContent
+                        align="center"
+                        sideOffset={10}
+                        className="w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_48px_-24px_rgba(15,23,42,0.24)]"
+                      >
                         {item.url ? (
                           <>
                             <DropdownMenuItem
+                              className="rounded-xl px-3 py-2.5 text-[14px]"
                               onSelect={(event) => {
                                 event.preventDefault();
                                 handleSiteNavigation(item.url, item.openInNewTab);
@@ -147,6 +158,7 @@ export function UserShell() {
                         {item.children.map((child) => (
                           <DropdownMenuItem
                             key={`${item.label}:${child.label}:${child.url}`}
+                            className="rounded-xl px-3 py-2.5 text-[14px]"
                             onSelect={(event) => {
                               event.preventDefault();
                               handleSiteNavigation(child.url, child.openInNewTab);
@@ -167,10 +179,7 @@ export function UserShell() {
                       href={item.url}
                       target={item.openInNewTab ? '_blank' : undefined}
                       rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
-                      className={cn(
-                        'text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
-                        isActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
-                      )}
+                      className={desktopNavItemClass(isActive)}
                     >
                       {item.label}
                     </a>
@@ -182,10 +191,7 @@ export function UserShell() {
                     key={`${item.label}:${item.url}`}
                     to={item.url}
                     className={({ isActive: currentActive }) =>
-                      cn(
-                        'text-[13px] font-medium whitespace-nowrap transition-colors duration-200',
-                        currentActive ? 'text-primary' : 'text-gray-600 hover:text-primary'
-                      )
+                      desktopNavItemClass(currentActive)
                     }
                   >
                     {item.label}
@@ -320,13 +326,13 @@ export function UserShell() {
                 </DropdownMenu>
               ) : (
                 <>
-                  <Button variant="ghost" asChild className="hidden sm:inline-flex">
+                  <Button variant="ghost" asChild className="hidden h-9 rounded-full px-4 sm:inline-flex">
                     <Link to="/login">
                       <LogIn className="h-4 w-4" />
                       登录
                     </Link>
                   </Button>
-                  <Button asChild className="hidden sm:inline-flex">
+                  <Button asChild className="hidden h-9 rounded-full px-4 sm:inline-flex">
                     <Link to="/register">注册</Link>
                   </Button>
                 </>
