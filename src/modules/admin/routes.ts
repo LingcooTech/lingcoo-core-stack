@@ -77,6 +77,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/apps/ai-translate-workflow/privacy', sendSPA);
   app.get('/apps/ai-translate-workflow/support', sendSPA);
   app.get('/apps/:appCode', sendSPA);
+  app.get('/content', sendSPA);
+  app.get('/content/:slug', sendSPA);
   app.get('/login', sendSPA);
   app.get('/register', sendSPA);
   app.get('/verify-email', sendSPA);
@@ -91,6 +93,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/apps', sendSPA);
   app.get('/admin/apps/new', sendSPA);
   app.get('/admin/apps/:appCode/edit', sendSPA);
+  app.get('/admin/content', sendSPA);
+  app.get('/admin/content/new', sendSPA);
+  app.get('/admin/content/:contentId/edit', sendSPA);
   app.get('/admin/secrets', sendSPA);
   app.get('/admin/orders', sendSPA);
   app.get('/admin/delivery', sendSPA);

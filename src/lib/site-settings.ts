@@ -41,10 +41,12 @@ const SITE_SETTINGS_KEY = 'system.site.presentation';
 const DEFAULT_SITE_NAME = 'FD Stack';
 const DEFAULT_COPYRIGHT = '© {year} FutureDecade. All rights reserved.';
 const DEFAULT_HEADER_NAVIGATION: SiteNavigationItem[] = [
-  { label: '应用中心', url: '/', openInNewTab: false, children: [] }
+  { label: '应用中心', url: '/', openInNewTab: false, children: [] },
+  { label: '内容中心', url: '/content', openInNewTab: false, children: [] }
 ];
 const DEFAULT_FOOTER_LINKS: SiteFooterLink[] = [
   { label: '应用中心', url: '/', openInNewTab: false },
+  { label: '内容中心', url: '/content', openInNewTab: false },
   { label: '我的订单', url: '/orders', openInNewTab: false },
   { label: '我的应用', url: '/access', openInNewTab: false },
   { label: '隐私政策', url: '/apps/ai-translate-workflow/privacy', openInNewTab: false },

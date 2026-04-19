@@ -4,6 +4,7 @@ import { appModule } from './app';
 import { authModule } from './auth';
 import { billingModule } from './billing';
 import { checkoutModule } from './checkout';
+import { contentModule } from './content';
 import { deploymentModule } from './deployment';
 import { eventModule } from './event';
 import { installModule } from './install';
@@ -18,6 +19,7 @@ export const appModules: AppModule[] = [
   adminModule,
   aiModule,
   appModule,
+  contentModule,
   installModule,
   deploymentModule,
   checkoutModule,

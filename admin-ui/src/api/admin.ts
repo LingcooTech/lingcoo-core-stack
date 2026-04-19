@@ -4,6 +4,8 @@ import type {
   AdminUpdateUserInput,
   AdminUserDetail,
   AdminUsersResponse,
+  ContentItem,
+  ContentListResponse,
   EntitlementsResponse,
   EventsResponse,
   GrantEntitlementInput,
@@ -27,6 +29,11 @@ export interface AdminOrderListParams extends AdminListParams {
   provider?: 'wechat_pay' | 'alipay';
 }
 
+export interface AdminContentListParams extends AdminListParams {
+  status?: 'draft' | 'published' | 'archived';
+  sourceType?: 'manual' | 'wordpress' | 'notion' | 'wechat';
+}
+
 function buildQueryString<T extends object>(params: T | undefined) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -40,6 +47,92 @@ function buildQueryString<T extends object>(params: T | undefined) {
 export async function listOrders(params: AdminOrderListParams = {}): Promise<OrdersResponse> {
   const qs = buildQueryString(params);
   return apiClient<OrdersResponse>(`/v1/admin/orders${qs ? `?${qs}` : ''}`);
+}
+
+export async function listContent(params: AdminContentListParams = {}): Promise<ContentListResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<ContentListResponse>(`/v1/admin/content${qs ? `?${qs}` : ''}`);
+}
+
+export async function getContent(contentId: string): Promise<ContentItem> {
+  return apiClient<ContentItem>(`/v1/admin/content/${encodeURIComponent(contentId)}`);
+}
+
+export async function createContent(payload: {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  content: string;
+  coverUrl?: string;
+  authorName?: string;
+  status: 'draft' | 'published' | 'archived';
+  sourceType?: 'manual' | 'wordpress' | 'notion' | 'wechat';
+  sourceId?: string;
+  sourceUrl?: string;
+  publishedAt?: string;
+  meta?: Record<string, unknown>;
+}): Promise<ContentItem> {
+  return apiClient<ContentItem>('/v1/admin/content', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateContent(contentId: string, payload: {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  content: string;
+  coverUrl?: string;
+  authorName?: string;
+  status: 'draft' | 'published' | 'archived';
+  sourceType?: 'manual' | 'wordpress' | 'notion' | 'wechat';
+  sourceId?: string;
+  sourceUrl?: string;
+  publishedAt?: string;
+  meta?: Record<string, unknown>;
+}): Promise<ContentItem> {
+  return apiClient<ContentItem>(`/v1/admin/content/${encodeURIComponent(contentId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function importWordPressContent(payload: {
+  siteUrl: string;
+  postUrl?: string;
+  postId?: string;
+  slug?: string;
+  username?: string;
+  appPassword?: string;
+  status?: 'draft' | 'published';
+}): Promise<ContentItem> {
+  return apiClient<ContentItem>('/v1/admin/content/import/wordpress', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function importNotionContent(payload: {
+  apiToken: string;
+  pageUrl?: string;
+  pageId?: string;
+  status?: 'draft' | 'published';
+}): Promise<ContentItem> {
+  return apiClient<ContentItem>('/v1/admin/content/import/notion', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function importWechatContent(payload: {
+  url: string;
+  status?: 'draft' | 'published';
+}): Promise<ContentItem> {
+  return apiClient<ContentItem>('/v1/admin/content/import/wechat', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function getOrderDetail(orderNo: string): Promise<OrderDetail> {

@@ -438,6 +438,27 @@ export interface AppSecretCreated {
   expiresAt: string | null;
 }
 
+export interface ContentItem {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  content: string;
+  coverUrl: string | null;
+  authorName: string | null;
+  sourceType: 'manual' | 'wordpress' | 'notion' | 'wechat';
+  sourceId: string | null;
+  sourceUrl: string | null;
+  status: 'draft' | 'published' | 'archived';
+  publishedAt: string | null;
+  importedAt: string | null;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContentListResponse extends PaginatedResponse<ContentItem> {}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export interface CheckoutSessionSummary {

@@ -1,6 +1,7 @@
 export type AdminSectionKey =
   | 'dashboard'
   | 'apps'
+  | 'content'
   | 'secrets'
   | 'orders'
   | 'payments'
@@ -116,6 +117,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     ],
     pageDataScopes: ['apps', 'plans'],
     commandAliases: ['apps', 'applications', '应用管理', '应用', '产品', '套餐']
+  },
+  content: {
+    groupLabel: '内容管理',
+    navTitle: '内容管理',
+    navNote: '',
+    icon: 'CT',
+    title: '内容管理',
+    lead: '',
+    href: '/admin/content',
+    contextCards: [
+      { label: '用途', value: '内容运营', note: '统一管理文章、教程、观点和导入内容。' },
+      { label: '来源', value: '多源导入', note: '支持 WordPress、Notion 与微信公众号内容导入。' }
+    ],
+    heroActions: [
+      { label: '内容管理', href: '/admin/content', tone: 'primary' },
+      { label: '应用管理', href: '/admin/apps', tone: 'secondary' }
+    ],
+    pageDataScopes: ['operations'],
+    commandAliases: ['content', 'cms', 'blog', 'posts', '文章', '内容', '内容管理', '教程']
   },
   secrets: {
     groupLabel: '应用管理',
@@ -274,6 +294,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
   { label: '应用管理', items: ['apps'] },
+  { label: '内容管理', items: ['content'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
   { label: '运维', items: ['settings', 'observability'] }

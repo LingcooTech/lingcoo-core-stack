@@ -24,6 +24,9 @@ import { AppEditPage } from '@/pages/AppEditPage';
 import { AppsPage } from '@/pages/AppsPage';
 import { AiTranslateWorkflowPrivacyPage } from '@/pages/AiTranslateWorkflowPrivacyPage';
 import { AiTranslateWorkflowSupportPage } from '@/pages/AiTranslateWorkflowSupportPage';
+import { ContentDetailPage } from '@/pages/ContentDetailPage';
+import { ContentEditPage } from '@/pages/ContentEditPage';
+import { ContentHubPage } from '@/pages/ContentHubPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -31,6 +34,7 @@ import { HomePage } from '@/pages/HomePage';
 import { InstallsPage } from '@/pages/InstallsPage';
 import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { ContentPage } from '@/pages/ContentPage';
 import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
@@ -129,6 +133,8 @@ const router = createBrowserRouter(
         <Route path="/apps/ai-translate-workflow/privacy" element={<AiTranslateWorkflowPrivacyPage />} />
         <Route path="/apps/ai-translate-workflow/support" element={<AiTranslateWorkflowSupportPage />} />
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
+        <Route path="/content" element={<ContentHubPage />} />
+        <Route path="/content/:slug" element={<ContentDetailPage />} />
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -148,6 +154,9 @@ const router = createBrowserRouter(
           <Route path="/admin/apps" element={<AppsPage />} />
           <Route path="/admin/apps/new" element={<AppEditPage />} />
           <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
+          <Route path="/admin/content" element={<ContentPage />} />
+          <Route path="/admin/content/new" element={<ContentEditPage />} />
+          <Route path="/admin/content/:contentId/edit" element={<ContentEditPage />} />
           <Route path="/admin/secrets" element={<SecretsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
