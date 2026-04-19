@@ -4,11 +4,15 @@ import {
   ChevronsLeft,
   ChevronsRight,
   CircleHelp,
+  LayoutDashboard,
   LogOut,
+  Package2,
   Settings,
+  ShoppingBag,
   UserCircle2,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '@/api/auth';
 import { getPublicSiteSettings } from '@/api/settings';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -40,7 +44,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     queryFn: getPublicSiteSettings,
     staleTime: 5 * 60_000,
   });
+  const { data: currentUserData } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser,
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
   const siteName = getSiteDisplayName(siteSettings);
+  const currentUser = currentUserData?.user ?? null;
+  const accountName =
+    currentUser?.displayName?.trim() ||
+    user?.email?.split('@')[0]?.trim() ||
+    '管理员账户';
+  const accountEmail = currentUser?.email || user?.email || '';
 
   const currentSection = resolveAdminSection(location.pathname);
 
@@ -159,12 +175,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               title={collapsed ? (user?.email ?? '管理员') : undefined}
             >
               <Avatar className="h-9 w-9 flex-shrink-0">
-                <AvatarFallback className="text-xs">{getInitials(user?.email)}</AvatarFallback>
+                <AvatarFallback className="text-xs">{getInitials(accountName)}</AvatarFallback>
               </Avatar>
               {!collapsed ? (
                 <>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? '管理员'}</p>
+                    <p className="truncate text-sm font-semibold text-slate-900">{accountName}</p>
+                    {accountEmail ? (
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{accountEmail}</p>
+                    ) : null}
                     <p className="mt-0.5 text-xs text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -175,57 +194,116 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <DropdownMenuContent
             align={collapsed ? 'start' : 'end'}
             side="top"
-            className="w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg"
+            className="w-[300px] rounded-[24px] border border-slate-200 bg-white p-0 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)]"
           >
-            <DropdownMenuLabel className="px-3 py-3 text-left">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="text-xs">{getInitials(user?.email)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900">{user?.email ?? '管理员'}</p>
-                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
+            <DropdownMenuLabel className="px-0 py-0">
+              <div className="relative rounded-t-[24px] bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-5 py-5">
+                <button
+                  type="button"
+                  className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    navigate('/admin/settings');
+                  }}
+                  aria-label="打开设置"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+                <div className="flex flex-col items-center text-center">
+                  <Avatar className="h-[72px] w-[72px] ring-4 ring-white/80 shadow-sm">
+                    <AvatarFallback className="text-lg">{getInitials(accountName)}</AvatarFallback>
+                  </Avatar>
+                  <p className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{accountName}</p>
+                  {accountEmail ? (
+                    <p className="mt-1 text-sm text-slate-600">{accountEmail}</p>
+                  ) : null}
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                navigate('/account?tab=profile');
-              }}
-            >
-              <UserCircle2 className="h-4 w-4" />
-              个人资料
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                navigate('/admin/settings');
-              }}
-            >
-              <Settings className="h-4 w-4" />
-              设置
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                window.open('/docs', '_blank', 'noopener,noreferrer');
-              }}
-            >
-              <CircleHelp className="h-4 w-4" />
-              帮助
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                logout();
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-              退出登录
-            </DropdownMenuItem>
+            <div className="px-3 py-3">
+              <div className="space-y-1">
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/account?tab=profile');
+                  }}
+                >
+                  <UserCircle2 className="h-4 w-4 text-slate-500" />
+                  个人资料
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/account?tab=orders');
+                  }}
+                >
+                  <ShoppingBag className="h-4 w-4 text-slate-500" />
+                  我的订单
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/account?tab=apps');
+                  }}
+                >
+                  <Package2 className="h-4 w-4 text-slate-500" />
+                  我的应用
+                </DropdownMenuItem>
+              </div>
+
+              <DropdownMenuSeparator className="my-3" />
+
+              <div className="space-y-1">
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/admin');
+                  }}
+                >
+                  <LayoutDashboard className="h-4 w-4 text-slate-500" />
+                  后台首页
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/admin/settings');
+                  }}
+                >
+                  <Settings className="h-4 w-4 text-slate-500" />
+                  设置
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    window.open('/docs', '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <CircleHelp className="h-4 w-4 text-slate-500" />
+                  帮助
+                </DropdownMenuItem>
+              </div>
+
+              <DropdownMenuSeparator className="my-3" />
+
+              <DropdownMenuItem
+                className="rounded-2xl px-3 py-3 text-[15px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
+                onSelect={(event) => {
+                  event.preventDefault();
+                  logout();
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                退出登录
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
