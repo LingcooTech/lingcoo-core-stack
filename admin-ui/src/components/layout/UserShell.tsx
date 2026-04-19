@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
+import { Bell, ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
 
 import type { SiteNavigationItem } from '@/api/types';
 import { getCurrentUser } from '@/api/auth';
 import { getPublicSiteSettings } from '@/api/settings';
+import { getMyNotificationUnreadCount } from '@/api/user';
 import { Container } from '@/components/layout/Container';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -65,9 +66,17 @@ export function UserShell() {
     enabled: isAuthenticated,
     staleTime: 60_000
   });
+  const { data: unreadNotificationData } = useQuery({
+    queryKey: ['my-notifications', 'unread-count'],
+    queryFn: getMyNotificationUnreadCount,
+    enabled: isAuthenticated,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
   const siteName = getSiteDisplayName(siteSettings);
   const headerNavigation = getSiteHeaderNavigation(siteSettings);
   const currentUser = currentUserData?.user ?? null;
+  const unreadNotificationCount = unreadNotificationData?.unreadCount ?? 0;
   const accountName =
     currentUser?.displayName?.trim() ||
     user?.email?.split('@')[0]?.trim() ||
@@ -212,6 +221,23 @@ export function UserShell() {
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </Button>
               {isAuthenticated ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="relative hidden h-9 w-9 rounded-full border border-slate-200 bg-white/80 text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900 lg:inline-flex"
+                  onClick={() => navigate('/account?tab=notifications')}
+                  aria-label="打开消息通知"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadNotificationCount > 0 ? (
+                    <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                    </span>
+                  ) : null}
+                </Button>
+              ) : null}
+              {isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -262,6 +288,16 @@ export function UserShell() {
                     </DropdownMenuLabel>
                     <div className="px-3 py-3">
                       <div className="space-y-1">
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/account?tab=notifications');
+                          }}
+                        >
+                          <Bell className="h-4 w-4 text-slate-500" />
+                          消息通知
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           className="rounded-2xl px-3 py-3 text-[15px]"
                           onSelect={(event) => {
@@ -429,6 +465,19 @@ export function UserShell() {
                       </div>
 
                       <div className="space-y-1 px-3 py-3">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/account?tab=notifications')}
+                        >
+                          <Bell className="h-4 w-4 text-slate-500" />
+                          消息通知
+                          {unreadNotificationCount > 0 ? (
+                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                              {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                            </span>
+                          ) : null}
+                        </button>
                         <button
                           type="button"
                           className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"

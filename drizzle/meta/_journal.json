@@ -113,6 +113,13 @@
       "when": 1776596400000,
       "tag": "0015_doc_spaces_and_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1776668400000,
+      "tag": "0016_notifications",
+      "breakpoints": true
     }
   ]
 }

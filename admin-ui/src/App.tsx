@@ -145,6 +145,7 @@ const router = createBrowserRouter(
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedUserRoute />}>
           <Route path="/account" element={<AccountCenterPage />} />
+          <Route path="/notifications" element={<Navigate to="/account?tab=notifications" replace />} />
           <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
           <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
           <Route path="/deploy" element={<DeploymentsPage />} />

@@ -6,6 +6,9 @@ import type {
   DeploymentsResponse,
   EntitlementsResponse,
   IssueDeploymentTokenResult,
+  NotificationItem,
+  NotificationUnreadCount,
+  NotificationsResponse,
   OrdersResponse,
   DeploymentSummary,
   ReconcileResponse,
@@ -23,6 +26,44 @@ export async function syncMyOrder(orderNo: string) {
 
 export async function listMyEntitlements(): Promise<EntitlementsResponse> {
   return apiClient<EntitlementsResponse>('/v1/entitlements/me');
+}
+
+export async function listMyNotifications(params: {
+  limit?: number;
+  offset?: number;
+  status?: 'unread' | 'read' | 'archived';
+  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system';
+} = {}): Promise<NotificationsResponse> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    const normalized = String(value).trim();
+    if (!normalized) continue;
+    qs.set(key, normalized);
+  }
+  return apiClient<NotificationsResponse>(`/v1/notifications/me${qs.toString() ? `?${qs.toString()}` : ''}`);
+}
+
+export async function getMyNotificationUnreadCount(): Promise<NotificationUnreadCount> {
+  return apiClient<NotificationUnreadCount>('/v1/notifications/me/unread-count');
+}
+
+export async function markNotificationRead(notificationId: string): Promise<NotificationItem> {
+  return apiClient<NotificationItem>(`/v1/notifications/${encodeURIComponent(notificationId)}/read`, {
+    method: 'POST'
+  });
+}
+
+export async function markAllNotificationsRead(): Promise<{ updatedCount: number }> {
+  return apiClient<{ updatedCount: number }>('/v1/notifications/read-all', {
+    method: 'POST'
+  });
+}
+
+export async function archiveNotification(notificationId: string): Promise<NotificationItem> {
+  return apiClient<NotificationItem>(`/v1/notifications/${encodeURIComponent(notificationId)}/archive`, {
+    method: 'POST'
+  });
 }
 
 export async function createCheckoutSession(payload: {

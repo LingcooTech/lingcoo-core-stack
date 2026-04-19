@@ -11,6 +11,7 @@ import { eventModule } from './event';
 import { installModule } from './install';
 import { licenseModule } from './license';
 import { moduleNames } from './names';
+import { notificationsModule } from './notifications';
 import { systemModule } from './system';
 import type { AppModule } from './types';
 
@@ -22,6 +23,7 @@ export const appModules: AppModule[] = [
   appModule,
   contentModule,
   docsModule,
+  notificationsModule,
   installModule,
   deploymentModule,
   checkoutModule,

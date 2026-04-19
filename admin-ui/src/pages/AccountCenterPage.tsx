@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileSearch, KeyRound, LoaderCircle, UserCircle2 } from 'lucide-react';
+import { Bell, BellRing, FileSearch, KeyRound, LoaderCircle, UserCircle2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
@@ -9,10 +9,19 @@ import { z } from 'zod';
 
 import { listApps } from '@/api/apps';
 import { changePassword, forgotPassword, getCurrentUser, updateCurrentUser } from '@/api/auth';
-import { listMyEntitlements, listMyOrders, syncMyOrder } from '@/api/user';
+import {
+  archiveNotification,
+  listMyEntitlements,
+  listMyNotifications,
+  listMyOrders,
+  markAllNotificationsRead,
+  markNotificationRead,
+  syncMyOrder,
+} from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { OrderCard } from '@/components/portal/OrderCard';
+import { StatusPill } from '@/components/shared/StatusPill';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,9 +30,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
-import { formatAmount } from '@/lib/utils';
+import { cn, formatAmount, formatTime } from '@/lib/utils';
 
-const accountTabValues = ['profile', 'orders', 'apps'] as const;
+const accountTabValues = ['profile', 'notifications', 'orders', 'apps'] as const;
 type AccountTab = typeof accountTabValues[number];
 
 const profileSchema = z.object({
@@ -350,6 +359,183 @@ function AccountOrdersTab() {
   );
 }
 
+function notificationTone(level: 'info' | 'success' | 'warning' | 'error') {
+  if (level === 'success') return 'ok' as const;
+  if (level === 'warning') return 'warn' as const;
+  if (level === 'error') return 'danger' as const;
+  return 'info' as const;
+}
+
+function notificationCategoryLabel(category: 'account' | 'billing' | 'license' | 'deployment' | 'system') {
+  switch (category) {
+    case 'account':
+      return '账户';
+    case 'billing':
+      return '账单';
+    case 'license':
+      return '授权';
+    case 'deployment':
+      return '部署';
+    case 'system':
+    default:
+      return '系统';
+  }
+}
+
+function AccountNotificationsTab() {
+  const qc = useQueryClient();
+  const notificationsQuery = useQuery({
+    queryKey: ['my-notifications', { limit: 100 }],
+    queryFn: () => listMyNotifications({ limit: 100 }),
+  });
+
+  const notifications = notificationsQuery.data?.items ?? [];
+  const unreadCount = notifications.filter((item) => item.status === 'unread').length;
+
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
+        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '标记已读失败'),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: markAllNotificationsRead,
+    onSuccess: async (result) => {
+      toast.success(`已标记 ${result.updatedCount} 条通知为已读`);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
+        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '全部已读失败'),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveNotification,
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
+        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '归档通知失败'),
+  });
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: '全部通知', value: String(notifications.length) },
+          { label: '未读', value: String(unreadCount) },
+          { label: '已归档', value: String(notifications.filter((item) => item.status === 'archived').length) },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">{item.label}</p>
+            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-gray-900">消息通知</h2>
+            <p className="text-sm text-gray-500">集中查看与你的账户、订单、授权和部署相关的系统通知。</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => markAllReadMutation.mutate()}
+            disabled={markAllReadMutation.isPending || unreadCount === 0}
+          >
+            全部标记已读
+          </Button>
+        </div>
+
+        {notificationsQuery.isLoading ? (
+          <Card className="rounded-xl border-gray-200 bg-white">
+            <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
+              <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+              正在加载通知...
+            </CardContent>
+          </Card>
+        ) : notifications.length === 0 ? (
+          <EmptyState
+            icon={Bell}
+            title="暂无通知"
+            description="当前还没有与你相关的系统通知。"
+          />
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((item) => (
+              <Card
+                key={item.id}
+                className={cn(
+                  'rounded-xl border-gray-200 bg-white shadow-sm transition',
+                  item.status === 'unread' ? 'border-sky-200 bg-sky-50/30' : '',
+                )}
+              >
+                <CardContent className="space-y-3 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.status === 'unread' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                            <BellRing className="h-3 w-3" />
+                            未读
+                          </span>
+                        ) : null}
+                        <StatusPill tone={notificationTone(item.level)} label={notificationCategoryLabel(item.category)} />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-slate-900">{item.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">{item.body}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500">{formatTime(item.createdAt)}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {item.ctaLabel && item.ctaUrl ? (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={item.ctaUrl}>{item.ctaLabel}</a>
+                      </Button>
+                    ) : null}
+                    {item.status === 'unread' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => markReadMutation.mutate(item.id)}
+                        disabled={markReadMutation.isPending}
+                      >
+                        标记已读
+                      </Button>
+                    ) : null}
+                    {item.status !== 'archived' ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => archiveMutation.mutate(item.id)}
+                        disabled={archiveMutation.isPending}
+                      >
+                        归档
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function AccountAppsTab() {
   const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
@@ -463,6 +649,9 @@ export function AccountCenterPage() {
             <TabsTrigger value="profile" className="min-w-[108px] rounded-md">
               个人资料
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="min-w-[108px] rounded-md">
+              消息通知
+            </TabsTrigger>
             <TabsTrigger value="orders" className="min-w-[108px] rounded-md">
               我的订单
             </TabsTrigger>
@@ -474,6 +663,9 @@ export function AccountCenterPage() {
 
         <TabsContent value="profile" className="mt-0">
           <AccountProfileTab />
+        </TabsContent>
+        <TabsContent value="notifications" className="mt-0">
+          <AccountNotificationsTab />
         </TabsContent>
         <TabsContent value="orders" className="mt-0">
           <AccountOrdersTab />

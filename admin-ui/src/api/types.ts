@@ -782,6 +782,32 @@ export interface EntitlementsResponse extends PaginatedResponse<HydratedEntitlem
   }>;
 }
 
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  category: 'account' | 'billing' | 'license' | 'deployment' | 'system';
+  level: 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  body: string;
+  ctaLabel: string | null;
+  ctaUrl: string | null;
+  status: 'unread' | 'read' | 'archived';
+  sourceEventId: string | null;
+  sourceEventName: string | null;
+  dedupeKey: string | null;
+  meta: Record<string, unknown>;
+  readAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationsResponse extends PaginatedResponse<NotificationItem> {}
+
+export interface NotificationUnreadCount {
+  unreadCount: number;
+}
+
 export interface GrantEntitlementInput {
   userEmail: string;
   planCode: string;
