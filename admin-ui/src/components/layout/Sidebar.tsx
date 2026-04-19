@@ -283,7 +283,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   className="rounded-2xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    window.open('/docs', '_blank', 'noopener,noreferrer');
+                    window.open('/api-docs', '_blank', 'noopener,noreferrer');
                   }}
                 >
                   <CircleHelp className="h-4 w-4 text-slate-500" />

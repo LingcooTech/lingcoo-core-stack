@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 import type {
+  AdminDocSpaceDetail,
+  AdminDocSpaceListResponse,
   AdminResetPasswordResult,
   AdminUpdateUserInput,
   AdminUserDetail,
@@ -47,6 +49,89 @@ function buildQueryString<T extends object>(params: T | undefined) {
 export async function listOrders(params: AdminOrderListParams = {}): Promise<OrdersResponse> {
   const qs = buildQueryString(params);
   return apiClient<OrdersResponse>(`/v1/admin/orders${qs ? `?${qs}` : ''}`);
+}
+
+export async function listDocSpaces(params: { search?: string } = {}): Promise<AdminDocSpaceListResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<AdminDocSpaceListResponse>(`/v1/admin/docs/spaces${qs ? `?${qs}` : ''}`);
+}
+
+export async function getDocSpace(spaceId: string): Promise<AdminDocSpaceDetail> {
+  return apiClient<AdminDocSpaceDetail>(`/v1/admin/docs/spaces/${encodeURIComponent(spaceId)}`);
+}
+
+export async function createDocSpace(payload: {
+  slug: string;
+  title: string;
+  description?: string;
+  iconUrl?: string;
+  type: 'product' | 'app' | 'internal';
+  appId?: string;
+  sortOrder: number;
+  status: 'active' | 'hidden' | 'archived';
+  meta?: Record<string, unknown>;
+}) {
+  return apiClient('/v1/admin/docs/spaces', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateDocSpace(spaceId: string, payload: {
+  slug: string;
+  title: string;
+  description?: string;
+  iconUrl?: string;
+  type: 'product' | 'app' | 'internal';
+  appId?: string;
+  sortOrder: number;
+  status: 'active' | 'hidden' | 'archived';
+  meta?: Record<string, unknown>;
+}) {
+  return apiClient(`/v1/admin/docs/spaces/${encodeURIComponent(spaceId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getDocPage(pageId: string) {
+  return apiClient(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`);
+}
+
+export async function createDocPage(payload: {
+  spaceId: string;
+  parentId?: string;
+  slug: string;
+  title: string;
+  summary?: string;
+  content: string;
+  sortOrder: number;
+  status: 'draft' | 'published' | 'archived';
+  publishedAt?: string;
+  meta?: Record<string, unknown>;
+}) {
+  return apiClient('/v1/admin/docs/pages', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateDocPage(pageId: string, payload: {
+  spaceId: string;
+  parentId?: string;
+  slug: string;
+  title: string;
+  summary?: string;
+  content: string;
+  sortOrder: number;
+  status: 'draft' | 'published' | 'archived';
+  publishedAt?: string;
+  meta?: Record<string, unknown>;
+}) {
+  return apiClient(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function listContent(params: AdminContentListParams = {}): Promise<ContentListResponse> {

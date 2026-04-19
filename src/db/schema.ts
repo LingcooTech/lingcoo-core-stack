@@ -37,6 +37,9 @@ export const paymentAttemptStatusEnum = pgEnum('payment_attempt_status', [
 ]);
 export const contentSourceEnum = pgEnum('content_source', ['manual', 'wordpress', 'notion', 'wechat']);
 export const contentStatusEnum = pgEnum('content_status', ['draft', 'published', 'archived']);
+export const docSpaceTypeEnum = pgEnum('doc_space_type', ['product', 'app', 'internal']);
+export const docSpaceStatusEnum = pgEnum('doc_space_status', ['active', 'hidden', 'archived']);
+export const docPageStatusEnum = pgEnum('doc_page_status', ['draft', 'published', 'archived']);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -105,6 +108,55 @@ export const contentItems = pgTable(
     sourceTypeSourceIdIdx: index('content_items_source_type_source_id_idx').on(table.sourceType, table.sourceId),
     statusPublishedAtIdx: index('content_items_status_published_at_idx').on(table.status, table.publishedAt),
     sourceUrlIdx: index('content_items_source_url_idx').on(table.sourceUrl)
+  })
+);
+
+export const docSpaces = pgTable(
+  'doc_spaces',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 160 }).notNull().unique(),
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description'),
+    iconUrl: varchar('icon_url', { length: 500 }),
+    type: docSpaceTypeEnum('type').notNull().default('product'),
+    appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: docSpaceStatusEnum('status').notNull().default('active'),
+    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    appIdx: index('doc_spaces_app_id_idx').on(table.appId),
+    statusSortIdx: index('doc_spaces_status_sort_idx').on(table.status, table.sortOrder)
+  })
+);
+
+export const docPages = pgTable(
+  'doc_pages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => docSpaces.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): any => docPages.id, { onDelete: 'cascade' }),
+    slug: varchar('slug', { length: 160 }).notNull(),
+    path: varchar('path', { length: 500 }).notNull(),
+    title: varchar('title', { length: 200 }).notNull(),
+    summary: text('summary'),
+    content: text('content').notNull().default(''),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: docPageStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (table) => ({
+    spacePathUniqueIdx: uniqueIndex('doc_pages_space_path_unique_idx').on(table.spaceId, table.path),
+    spaceParentSortIdx: index('doc_pages_space_parent_sort_idx').on(table.spaceId, table.parentId, table.sortOrder),
+    statusPublishedIdx: index('doc_pages_status_published_idx').on(table.status, table.publishedAt)
   })
 );
 

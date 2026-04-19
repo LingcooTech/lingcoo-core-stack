@@ -106,6 +106,13 @@
       "when": 1776510000000,
       "tag": "0014_content_items",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1776596400000,
+      "tag": "0015_doc_spaces_and_pages",
+      "breakpoints": true
     }
   ]
 }

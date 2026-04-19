@@ -170,7 +170,7 @@ export async function buildApp(env: AppEnv) {
     }
   });
   await app.register(swaggerUi, {
-    routePrefix: '/docs'
+    routePrefix: '/api-docs'
   });
 
   for (const module of appModules) {

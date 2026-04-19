@@ -494,6 +494,78 @@ export interface ContentItem {
 
 export interface ContentListResponse extends PaginatedResponse<ContentItem> {}
 
+export interface DocSpace {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  iconUrl: string | null;
+  type: 'product' | 'app' | 'internal';
+  appId: string | null;
+  sortOrder: number;
+  status: 'active' | 'hidden' | 'archived';
+  meta: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocPage {
+  id: string;
+  spaceId: string;
+  parentId: string | null;
+  slug: string;
+  path: string;
+  title: string;
+  summary: string | null;
+  content: string;
+  sortOrder: number;
+  status: 'draft' | 'published' | 'archived';
+  publishedAt: string | null;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocPageTreeNode {
+  id: string;
+  parentId: string | null;
+  slug: string;
+  path: string;
+  title: string;
+  summary: string | null;
+  status: 'draft' | 'published' | 'archived';
+  sortOrder: number;
+  children: DocPageTreeNode[];
+}
+
+export interface AdminDocSpaceListResponse {
+  items: Array<DocSpace & { pageCount: number }>;
+}
+
+export interface AdminDocSpaceDetail {
+  space: DocSpace;
+  pages: DocPage[];
+  tree: DocPageTreeNode[];
+}
+
+export interface PublicDocSpaceListResponse {
+  items: Array<DocSpace & { pageCount: number }>;
+}
+
+export interface PublicDocSpaceDetail {
+  space: DocSpace;
+  tree: DocPageTreeNode[];
+  defaultPath: string | null;
+}
+
+export interface PublicDocPageDetail {
+  space: DocSpace;
+  tree: DocPageTreeNode[];
+  page: DocPage;
+  previousPage: DocPageTreeNode | null;
+  nextPage: DocPageTreeNode | null;
+}
+
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export interface CheckoutSessionSummary {

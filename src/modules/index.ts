@@ -6,6 +6,7 @@ import { billingModule } from './billing';
 import { checkoutModule } from './checkout';
 import { contentModule } from './content';
 import { deploymentModule } from './deployment';
+import { docsModule } from './docs';
 import { eventModule } from './event';
 import { installModule } from './install';
 import { licenseModule } from './license';
@@ -20,6 +21,7 @@ export const appModules: AppModule[] = [
   aiModule,
   appModule,
   contentModule,
+  docsModule,
   installModule,
   deploymentModule,
   checkoutModule,

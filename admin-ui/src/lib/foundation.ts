@@ -2,6 +2,7 @@ export type AdminSectionKey =
   | 'dashboard'
   | 'apps'
   | 'content'
+  | 'docs'
   | 'secrets'
   | 'orders'
   | 'payments'
@@ -94,7 +95,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     ],
     heroActions: [
       { label: '资源总览', href: '/admin', tone: 'primary' },
-      { label: 'API 文档', href: '/docs', tone: 'secondary', external: true, shortcut: 'docs' }
+      { label: 'API 文档', href: '/api-docs', tone: 'secondary', external: true, shortcut: 'docs' }
     ],
     pageDataScopes: ['paymentSettings', 'apps', 'plans', 'operations', 'observability'],
     commandAliases: ['dashboard', 'overview', '总览', '仪表盘', '控制台']
@@ -136,6 +137,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     ],
     pageDataScopes: ['operations'],
     commandAliases: ['content', 'cms', 'blog', 'posts', '文章', '内容', '内容管理', '教程']
+  },
+  docs: {
+    groupLabel: '文档管理',
+    navTitle: '文档管理',
+    navNote: '',
+    icon: 'DK',
+    title: '文档管理',
+    lead: '',
+    href: '/admin/docs',
+    contextCards: [
+      { label: '用途', value: '产品文档', note: '维护 fd-core-stack 与各应用的结构化文档空间。' },
+      { label: '结构', value: '空间 + 页面树', note: '支持左侧目录、页面层级和逐页发布。' }
+    ],
+    heroActions: [
+      { label: '文档管理', href: '/admin/docs', tone: 'primary' },
+      { label: '内容管理', href: '/admin/content', tone: 'secondary' }
+    ],
+    pageDataScopes: ['operations'],
+    commandAliases: ['docs', 'documents', 'knowledge base', '文档', '文档管理', '帮助中心']
   },
   secrets: {
     groupLabel: '应用管理',
@@ -295,6 +315,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
   { label: '应用管理', items: ['apps'] },
   { label: '内容管理', items: ['content'] },
+  { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs'] },
   { label: '运维', items: ['settings', 'observability'] }
@@ -316,7 +337,7 @@ export const adminCommandItems: AdminCommandItem[] = [
     id: 'global:docs',
     label: 'API 文档',
     note: '查看 API 文档和调试入口',
-    href: '/docs',
+    href: '/api-docs',
     icon: 'DC',
     group: '快捷入口',
     external: true,

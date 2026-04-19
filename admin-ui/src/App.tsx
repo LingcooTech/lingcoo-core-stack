@@ -27,6 +27,9 @@ import { AiTranslateWorkflowSupportPage } from '@/pages/AiTranslateWorkflowSuppo
 import { ContentDetailPage } from '@/pages/ContentDetailPage';
 import { ContentEditPage } from '@/pages/ContentEditPage';
 import { ContentHubPage } from '@/pages/ContentHubPage';
+import { DocsHubPage } from '@/pages/DocsHubPage';
+import { DocsPage } from '@/pages/DocsPage';
+import { DocsSpacePage } from '@/pages/DocsSpacePage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { DeploymentsPage } from '@/pages/DeploymentsPage';
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
@@ -135,6 +138,9 @@ const router = createBrowserRouter(
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
         <Route path="/content" element={<ContentHubPage />} />
         <Route path="/content/:slug" element={<ContentDetailPage />} />
+        <Route path="/docs" element={<DocsHubPage />} />
+        <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
+        <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -157,6 +163,7 @@ const router = createBrowserRouter(
           <Route path="/admin/content" element={<ContentPage />} />
           <Route path="/admin/content/new" element={<ContentEditPage />} />
           <Route path="/admin/content/:contentId/edit" element={<ContentEditPage />} />
+          <Route path="/admin/docs" element={<DocsPage />} />
           <Route path="/admin/secrets" element={<SecretsPage />} />
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
