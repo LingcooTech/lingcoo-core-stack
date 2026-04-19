@@ -14,6 +14,7 @@ import {
 import { Toaster } from 'sonner';
 
 import { getPublicSiteSettings } from '@/api/settings';
+import { DocsShell } from '@/components/layout/DocsShell';
 import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
@@ -138,9 +139,6 @@ const router = createBrowserRouter(
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
         <Route path="/content" element={<ContentHubPage />} />
         <Route path="/content/:slug" element={<ContentDetailPage />} />
-        <Route path="/docs" element={<DocsHubPage />} />
-        <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
-        <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
         <Route path="/login" element={<UserAuthPage mode="login" />} />
         <Route path="/register" element={<UserAuthPage mode="register" />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -151,6 +149,11 @@ const router = createBrowserRouter(
           <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
           <Route path="/deploy" element={<DeploymentsPage />} />
         </Route>
+      </Route>
+      <Route element={<DocsShell />}>
+        <Route path="/docs" element={<DocsHubPage />} />
+        <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
+        <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
       </Route>
       <Route path="/admin/login" element={<LoginPage />} />
       <Route element={<ProtectedAdminRoute />}>
