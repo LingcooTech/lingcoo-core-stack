@@ -34,27 +34,14 @@ export const upsertContentSchema = z.object({
 });
 
 export const importWordPressContentSchema = z.object({
-  siteUrl: z.string().trim().url(),
-  postUrl: z.string().trim().url().optional(),
-  postId: z.union([z.string().trim(), z.number().int()]).optional(),
-  slug: optionalTrimmedString(160),
-  username: optionalTrimmedString(255),
-  appPassword: optionalTrimmedString(255),
+  postUrl: z.string().trim().url(),
   status: z.enum(['draft', 'published']).default('draft')
-}).refine(
-  (value) => Boolean(value.postUrl || value.postId || value.slug),
-  '请至少提供 WordPress 文章 URL、文章 ID 或 slug 之一'
-);
+});
 
 export const importNotionContentSchema = z.object({
-  apiToken: z.string().trim().min(1).max(255),
-  pageUrl: z.string().trim().url().optional(),
-  pageId: optionalTrimmedString(64),
+  pageUrl: z.string().trim().url(),
   status: z.enum(['draft', 'published']).default('draft')
-}).refine(
-  (value) => Boolean(value.pageUrl || value.pageId),
-  '请至少提供 Notion 页面 URL 或页面 ID'
-);
+});
 
 export const importWechatContentSchema = z.object({
   url: z.string().trim().url().refine((value) => value.includes('mp.weixin.qq.com'), '请输入有效的微信公众号文章链接'),

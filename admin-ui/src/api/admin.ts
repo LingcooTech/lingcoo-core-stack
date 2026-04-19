@@ -99,12 +99,7 @@ export async function updateContent(contentId: string, payload: {
 }
 
 export async function importWordPressContent(payload: {
-  siteUrl: string;
-  postUrl?: string;
-  postId?: string;
-  slug?: string;
-  username?: string;
-  appPassword?: string;
+  postUrl: string;
   status?: 'draft' | 'published';
 }): Promise<ContentItem> {
   return apiClient<ContentItem>('/v1/admin/content/import/wordpress', {
@@ -114,9 +109,7 @@ export async function importWordPressContent(payload: {
 }
 
 export async function importNotionContent(payload: {
-  apiToken: string;
-  pageUrl?: string;
-  pageId?: string;
+  pageUrl: string;
   status?: 'draft' | 'published';
 }): Promise<ContentItem> {
   return apiClient<ContentItem>('/v1/admin/content/import/notion', {

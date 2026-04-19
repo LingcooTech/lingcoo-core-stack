@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
+import { ContentImportSettingsService } from '../../lib/content-import-settings';
 import {
   contentListQuerySchema,
   contentIdParamsSchema,
@@ -46,13 +47,31 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/admin/content/import/wordpress', { preHandler: app.requireAdmin }, async (request, reply) => {
     const payload = importWordPressContentSchema.parse(request.body);
-    const item = await new ContentService(app.db).importFromWordPress(payload, request.user.sub);
+    const settings = await new ContentImportSettingsService(app.db, app.appEnv).getRuntimeSettings();
+    const item = await new ContentService(app.db).importFromWordPress(
+      {
+        siteUrl: settings?.wordpress.siteUrl || '',
+        postUrl: payload.postUrl,
+        username: settings?.wordpress.username,
+        appPassword: settings?.wordpress.appPassword,
+        status: payload.status,
+      },
+      request.user.sub,
+    );
     return reply.status(201).send(item);
   });
 
   app.post('/v1/admin/content/import/notion', { preHandler: app.requireAdmin }, async (request, reply) => {
     const payload = importNotionContentSchema.parse(request.body);
-    const item = await new ContentService(app.db).importFromNotion(payload, request.user.sub);
+    const settings = await new ContentImportSettingsService(app.db, app.appEnv).getRuntimeSettings();
+    const item = await new ContentService(app.db).importFromNotion(
+      {
+        apiToken: settings?.notion.apiToken || '',
+        pageUrl: payload.pageUrl,
+        status: payload.status,
+      },
+      request.user.sub,
+    );
     return reply.status(201).send(item);
   });
 

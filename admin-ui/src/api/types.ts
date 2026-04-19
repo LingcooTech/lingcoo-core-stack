@@ -288,6 +288,41 @@ export interface OpenRouterTestConnectionResult {
   sampleModels: string[];
 }
 
+export interface ContentImportSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'none';
+  values: {
+    wordpress: {
+      siteUrl: string;
+      username: string;
+    };
+    notion: Record<string, never>;
+  };
+  secrets: {
+    wordpress: {
+      appPassword: PaymentProviderSecretStatus;
+    };
+    notion: {
+      apiToken: PaymentProviderSecretStatus;
+    };
+  };
+}
+
+export interface ContentImportWordPressTestResult {
+  ok: boolean;
+  provider: 'wordpress';
+  siteUrl: string;
+  mode: 'authenticated' | 'public';
+  account: string | null;
+}
+
+export interface ContentImportNotionTestResult {
+  ok: boolean;
+  provider: 'notion';
+  workspace: string | null;
+  userName: string | null;
+}
+
 export interface AiModelSummary {
   id: string;
   name: string;

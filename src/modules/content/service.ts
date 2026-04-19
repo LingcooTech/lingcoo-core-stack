@@ -471,8 +471,29 @@ export class ContentService {
     },
     actorUserId: string,
   ) {
-    const siteUrl = input.siteUrl.replace(/\/+$/, '');
-    const auth = basicAuthHeader(input.username, input.appPassword);
+    const derivedSiteUrl = input.postUrl
+      ? (() => {
+          try {
+            const url = new URL(input.postUrl);
+            return `${url.protocol}//${url.host}`;
+          } catch {
+            return '';
+          }
+        })()
+      : '';
+    const siteUrl = (input.siteUrl || derivedSiteUrl).replace(/\/+$/, '');
+    if (!siteUrl) {
+      throw new Error('WordPress 站点地址未配置');
+    }
+    const normalizedConfiguredSiteUrl = input.siteUrl.replace(/\/+$/, '');
+    const auth =
+      normalizedConfiguredSiteUrl &&
+      derivedSiteUrl &&
+      normalizedConfiguredSiteUrl === derivedSiteUrl
+        ? basicAuthHeader(input.username, input.appPassword)
+        : !normalizedConfiguredSiteUrl
+          ? basicAuthHeader(input.username, input.appPassword)
+          : undefined;
     const postId = input.postId ? String(input.postId).trim() : '';
     const explicitSlug = normalizeString(input.slug);
     const urlSlug = input.postUrl ? parseWordPressSlugFromUrl(input.postUrl) : '';

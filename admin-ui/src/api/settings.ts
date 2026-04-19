@@ -3,6 +3,9 @@ import type {
   AiChatCompletionResult,
   AiProviderListResponse,
   AiProviderModelsResponse,
+  ContentImportNotionTestResult,
+  ContentImportSettingsOverview,
+  ContentImportWordPressTestResult,
   PublicSiteSettings,
   QiniuSettingsOverview,
   QiniuTestConnectionResult,
@@ -80,6 +83,17 @@ export interface OpenRouterChatPreviewInput extends OpenRouterSettingsInput {
   maxTokens?: number;
 }
 
+export interface ContentImportSettingsInput {
+  wordpress?: {
+    siteUrl?: string;
+    username?: string;
+    appPassword?: string;
+  };
+  notion?: {
+    apiToken?: string;
+  };
+}
+
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {
   return apiClient<SmtpSettingsOverview>('/v1/admin/system-settings/smtp');
 }
@@ -141,6 +155,41 @@ export async function clearSiteSettings(): Promise<void> {
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
   return apiClient<PublicSiteSettings>('/v1/system/site-settings');
+}
+
+export async function getContentImportSettings(): Promise<ContentImportSettingsOverview> {
+  return apiClient<ContentImportSettingsOverview>('/v1/admin/system-settings/content-import');
+}
+
+export async function upsertContentImportSettings(payload: ContentImportSettingsInput): Promise<ContentImportSettingsOverview> {
+  return apiClient<ContentImportSettingsOverview>('/v1/admin/system-settings/content-import', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function clearContentImportSettings(): Promise<void> {
+  await apiClient('/v1/admin/system-settings/content-import', { method: 'DELETE' });
+}
+
+export async function testWordPressImportSettings(payload: {
+  siteUrl?: string;
+  username?: string;
+  appPassword?: string;
+}): Promise<ContentImportWordPressTestResult> {
+  return apiClient<ContentImportWordPressTestResult>('/v1/admin/system-settings/content-import/wordpress/test', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function testNotionImportSettings(payload: {
+  apiToken?: string;
+}): Promise<ContentImportNotionTestResult> {
+  return apiClient<ContentImportNotionTestResult>('/v1/admin/system-settings/content-import/notion/test', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function getAiProviders(): Promise<AiProviderListResponse> {

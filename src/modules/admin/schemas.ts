@@ -127,6 +127,27 @@ export const siteSettingsSchema = z.object({
   footerLinks: z.array(siteFooterLinkSchema).max(12).optional()
 });
 
+export const contentImportSettingsSchema = z.object({
+  wordpress: z.object({
+    siteUrl: optionalSitePathOrUrl.refine((value) => !value || /^https?:\/\//i.test(value), '请输入有效的 WordPress 站点 URL'),
+    username: optionalTrimmedString(255),
+    appPassword: optionalTrimmedString(255),
+  }).optional(),
+  notion: z.object({
+    apiToken: optionalTrimmedString(255),
+  }).optional(),
+});
+
+export const contentImportWordPressTestSchema = z.object({
+  siteUrl: optionalSitePathOrUrl.refine((value) => !value || /^https?:\/\//i.test(value), '请输入有效的 WordPress 站点 URL'),
+  username: optionalTrimmedString(255),
+  appPassword: optionalTrimmedString(255),
+});
+
+export const contentImportNotionTestSchema = z.object({
+  apiToken: optionalTrimmedString(255),
+});
+
 export const qiniuTestConnectionSchema = qiniuSettingsSchema;
 
 export const qiniuListImagesQuerySchema = z.object({

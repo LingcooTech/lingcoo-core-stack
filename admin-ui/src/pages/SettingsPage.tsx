@@ -7,10 +7,12 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import {
+  clearContentImportSettings,
   clearOpenRouterSettings,
   clearQiniuSettings,
   clearSiteSettings,
   clearSmtpSettings,
+  getContentImportSettings,
   getAiProviders,
   getOpenRouterSettings,
   getQiniuSettings,
@@ -19,14 +21,23 @@ import {
   previewOpenRouterChatCompletion,
   previewOpenRouterModels,
   sendSmtpTestEmail,
+  testNotionImportSettings,
+  testWordPressImportSettings,
   testOpenRouterSettings,
   testQiniuSettings,
+  upsertContentImportSettings,
   upsertOpenRouterSettings,
   upsertQiniuSettings,
   upsertSiteSettings,
   upsertSmtpSettings
 } from '@/api/settings';
-import type { AiChatCompletionResult, AiModelSummary, OpenRouterTestConnectionResult } from '@/api/types';
+import type {
+  AiChatCompletionResult,
+  AiModelSummary,
+  ContentImportNotionTestResult,
+  ContentImportWordPressTestResult,
+  OpenRouterTestConnectionResult,
+} from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { QiniuImageField } from '@/components/shared/QiniuImageField';
 import { SectionHeader } from '@/components/shared/SectionHeader';
@@ -35,6 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -111,6 +123,13 @@ const openrouterSchema = z.object({
   defaultModel: z.string().optional()
 });
 
+const contentImportSchema = z.object({
+  wordpressSiteUrl: optionalUrlField,
+  wordpressUsername: z.string().optional(),
+  wordpressAppPassword: z.string().optional(),
+  notionApiToken: z.string().optional(),
+});
+
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
 const testSubjectSchema = z.string().trim().min(1, '请输入测试邮件主题').max(200, '主题不能超过 200 个字符');
 const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').max(10_000, '正文不能超过 10000 个字符');
@@ -119,6 +138,7 @@ type SmtpValues = z.infer<typeof smtpSchema>;
 type QiniuValues = z.infer<typeof qiniuSchema>;
 type SiteValues = z.infer<typeof siteSchema>;
 type OpenRouterValues = z.infer<typeof openrouterSchema>;
+type ContentImportValues = z.infer<typeof contentImportSchema>;
 
 function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
   const host = values.host?.trim();
@@ -195,6 +215,24 @@ function buildOpenRouterPayload(values: OpenRouterValues, options: { includeApiK
   };
 }
 
+function buildContentImportPayload(values: ContentImportValues, options: { includeWordPressPassword: boolean; includeNotionToken: boolean }) {
+  const wordpressSiteUrl = values.wordpressSiteUrl?.trim();
+  const wordpressUsername = values.wordpressUsername?.trim();
+  const wordpressAppPassword = values.wordpressAppPassword?.trim();
+  const notionApiToken = values.notionApiToken?.trim();
+
+  return {
+    wordpress: {
+      ...(wordpressSiteUrl ? { siteUrl: wordpressSiteUrl } : {}),
+      ...(wordpressUsername ? { username: wordpressUsername } : {}),
+      ...(options.includeWordPressPassword && wordpressAppPassword ? { appPassword: wordpressAppPassword } : {}),
+    },
+    notion: {
+      ...(options.includeNotionToken && notionApiToken ? { apiToken: notionApiToken } : {}),
+    },
+  };
+}
+
 function sourceLabel(source: 'database' | 'env' | 'none') {
   if (source === 'database') {
     return '数据库';
@@ -247,6 +285,7 @@ export function SettingsPage() {
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
   const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
   const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
+  const [clearContentImportOpen, setClearContentImportOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
   const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
   const [testBody, setTestBody] = useState(
@@ -255,6 +294,8 @@ export function SettingsPage() {
   const [openrouterModels, setOpenrouterModels] = useState<AiModelSummary[]>([]);
   const [openrouterModelsLoaded, setOpenrouterModelsLoaded] = useState(false);
   const [openrouterConnectionResult, setOpenrouterConnectionResult] = useState<OpenRouterTestConnectionResult | null>(null);
+  const [wordpressConnectionResult, setWordpressConnectionResult] = useState<ContentImportWordPressTestResult | null>(null);
+  const [notionConnectionResult, setNotionConnectionResult] = useState<ContentImportNotionTestResult | null>(null);
   const [openrouterTestMessage, setOpenrouterTestMessage] = useState('Hello, translate this to Chinese.');
   const [openrouterChatResult, setOpenrouterChatResult] = useState<AiChatCompletionResult | null>(null);
 
@@ -271,6 +312,11 @@ export function SettingsPage() {
   const { data: siteData, isLoading: siteLoading } = useQuery({
     queryKey: ['system-settings', 'site'],
     queryFn: getSiteSettings
+  });
+
+  const { data: contentImportData, isLoading: contentImportLoading } = useQuery({
+    queryKey: ['system-settings', 'content-import'],
+    queryFn: getContentImportSettings
   });
 
   const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
@@ -390,6 +436,16 @@ export function SettingsPage() {
     }
   });
 
+  const contentImportForm = useForm<ContentImportValues>({
+    resolver: zodResolver(contentImportSchema),
+    defaultValues: {
+      wordpressSiteUrl: '',
+      wordpressUsername: '',
+      wordpressAppPassword: '',
+      notionApiToken: '',
+    }
+  });
+
   useEffect(() => {
     if (!smtpData) {
       return;
@@ -435,6 +491,19 @@ export function SettingsPage() {
       footerLinks: siteData.values.footerLinks
     });
   }, [siteData, siteForm]);
+
+  useEffect(() => {
+    if (!contentImportData) {
+      return;
+    }
+
+    contentImportForm.reset({
+      wordpressSiteUrl: contentImportData.values.wordpress.siteUrl,
+      wordpressUsername: contentImportData.values.wordpress.username,
+      wordpressAppPassword: '',
+      notionApiToken: '',
+    });
+  }, [contentImportData, contentImportForm]);
 
   useEffect(() => {
     if (!openrouterData) {
@@ -533,6 +602,51 @@ export function SettingsPage() {
       ]);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败')
+  });
+
+  const saveContentImportMutation = useMutation({
+    mutationFn: upsertContentImportSettings,
+    onSuccess: (result) => {
+      toast.success('内容导入配置已保存');
+      qc.setQueryData(['system-settings', 'content-import'], result);
+      contentImportForm.reset({
+        wordpressSiteUrl: result.values.wordpress.siteUrl,
+        wordpressUsername: result.values.wordpress.username,
+        wordpressAppPassword: '',
+        notionApiToken: '',
+      });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+  });
+
+  const clearContentImportMutation = useMutation({
+    mutationFn: clearContentImportSettings,
+    onSuccess: async () => {
+      toast.success('数据库中的内容导入配置已清空');
+      setClearContentImportOpen(false);
+      setWordpressConnectionResult(null);
+      setNotionConnectionResult(null);
+      await qc.invalidateQueries({ queryKey: ['system-settings', 'content-import'] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+  });
+
+  const testWordPressImportMutation = useMutation({
+    mutationFn: testWordPressImportSettings,
+    onSuccess: (result) => {
+      setWordpressConnectionResult(result);
+      toast.success(`WordPress 连接成功：${result.mode === 'authenticated' ? '已认证' : '公开访问'}`);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+  });
+
+  const testNotionImportMutation = useMutation({
+    mutationFn: testNotionImportSettings,
+    onSuccess: (result) => {
+      setNotionConnectionResult(result);
+      toast.success('Notion 连接成功');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
   });
 
   const saveQiniuMutation = useMutation({
@@ -744,6 +858,19 @@ export function SettingsPage() {
 
   const configuredAiProviders = aiProvidersData?.items.filter((item) => item.configured).length ?? (openrouterData?.configured ? 1 : 0);
   const totalAiProviders = aiProvidersData?.items.length ?? 1;
+  const handleTestWordPressImport = contentImportForm.handleSubmit((values) => {
+    testWordPressImportMutation.mutate({
+      siteUrl: values.wordpressSiteUrl?.trim(),
+      username: values.wordpressUsername?.trim(),
+      appPassword: values.wordpressAppPassword?.trim(),
+    });
+  });
+
+  const handleTestNotionImport = contentImportForm.handleSubmit((values) => {
+    testNotionImportMutation.mutate({
+      apiToken: values.notionApiToken?.trim(),
+    });
+  });
 
   return (
     <div>
@@ -762,6 +889,9 @@ export function SettingsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="qiniu" className="min-w-[108px] rounded-md">
                   七牛云
+                </TabsTrigger>
+                <TabsTrigger value="content" className="min-w-[108px] rounded-md">
+                  内容导入
                 </TabsTrigger>
                 <TabsTrigger value="ai" className="min-w-[108px] rounded-md">
                   AI Hub
@@ -1413,6 +1543,107 @@ export function SettingsPage() {
             </div>
           </TabsContent>
 
+          <TabsContent value="content" className="mt-0">
+            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                  <StatusPill tone={contentImportData?.configured ? 'ok' : 'neutral'} label={contentImportData?.configured ? '导入配置已保存' : '尚未配置导入连接'} />
+                  <StatusPill tone={contentImportData?.source === 'database' ? 'ok' : 'neutral'} label={`来源: ${contentImportData?.source === 'database' ? '数据库' : '未配置'}`} />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">内容导入连接</h2>
+              </div>
+
+              {contentImportLoading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, index) => (
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...contentImportForm}>
+                  <form
+                    onSubmit={contentImportForm.handleSubmit((values) =>
+                      saveContentImportMutation.mutate(
+                        buildContentImportPayload(values, {
+                          includeWordPressPassword: Boolean(contentImportForm.formState.dirtyFields.wordpressAppPassword),
+                          includeNotionToken: Boolean(contentImportForm.formState.dirtyFields.notionApiToken),
+                        })
+                      )
+                    )}
+                    className="space-y-6"
+                  >
+                    <div className="grid gap-6 xl:grid-cols-2">
+                      <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-semibold text-foreground">WordPress</h3>
+                          <p className="text-xs text-muted-foreground">用于内容管理页面按文章 URL 导入 WordPress 文章。</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>站点 URL</Label>
+                          <Input placeholder="https://your-site.com" {...contentImportForm.register('wordpressSiteUrl')} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>用户名</Label>
+                          <Input placeholder="可选，用于受保护 REST API" {...contentImportForm.register('wordpressUsername')} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>应用密码</Label>
+                          <Input type="password" placeholder="可选" {...contentImportForm.register('wordpressAppPassword')} />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" onClick={handleTestWordPressImport} disabled={testWordPressImportMutation.isPending}>
+                            {testWordPressImportMutation.isPending ? '测试中...' : '测试连接'}
+                          </Button>
+                          {wordpressConnectionResult ? (
+                            <StatusPill
+                              tone="ok"
+                              label={
+                                wordpressConnectionResult.mode === 'authenticated'
+                                  ? `已认证: ${wordpressConnectionResult.account ?? '当前账户'}`
+                                  : '公开访问可用'
+                              }
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-semibold text-foreground">Notion</h3>
+                          <p className="text-xs text-muted-foreground">用于内容管理页面按页面 URL 导入 Notion 页面。</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>API Token</Label>
+                          <Input type="password" placeholder="secret_xxx / ntn_xxx" {...contentImportForm.register('notionApiToken')} />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" onClick={handleTestNotionImport} disabled={testNotionImportMutation.isPending}>
+                            {testNotionImportMutation.isPending ? '测试中...' : '测试连接'}
+                          </Button>
+                          {notionConnectionResult ? (
+                            <StatusPill
+                              tone="ok"
+                              label={notionConnectionResult.workspace || notionConnectionResult.userName || '连接成功'}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" disabled={saveContentImportMutation.isPending}>
+                        {saveContentImportMutation.isPending ? '保存中...' : '保存内容导入配置'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={clearContentImportMutation.isPending} onClick={() => setClearContentImportOpen(true)}>
+                        清空配置
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="ai" className="mt-0">
             <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
               <div className="space-y-3">
@@ -1684,6 +1915,14 @@ export function SettingsPage() {
         confirmVariant="destructive"
         isConfirming={clearOpenRouterMutation.isPending}
         onConfirm={() => clearOpenRouterMutation.mutate()}
+      />
+      <ConfirmActionDialog
+        open={clearContentImportOpen}
+        onOpenChange={setClearContentImportOpen}
+        title="清空内容导入配置"
+        description="这会删除数据库中的 WordPress / Notion 导入连接配置。之后内容管理页将无法直接导入对应内容，直到重新配置。"
+        confirmText={clearContentImportMutation.isPending ? '清空中...' : '确认清空'}
+        onConfirm={() => clearContentImportMutation.mutate()}
       />
     </div>
   );

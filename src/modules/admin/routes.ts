@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { DeliverySettingsService } from '../../lib/delivery-settings';
+import { ContentImportSettingsService } from '../../lib/content-import-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { QiniuSettingsService } from '../../lib/qiniu-settings';
 import { SiteSettingsService } from '../../lib/site-settings';
@@ -19,6 +20,9 @@ import {
   adminListOrdersQuerySchema,
   adminListUsersQuerySchema,
   adminUpdateUserSchema,
+  contentImportNotionTestSchema,
+  contentImportSettingsSchema,
+  contentImportWordPressTestSchema,
   adminUserIdParamsSchema,
   adminUpsertDeliverySettingsSchema,
   adminOrderParamsSchema,
@@ -127,6 +131,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/system-settings/site', { preHandler: app.requireAdmin }, async () => {
     return new SiteSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async () => {
+    return new ContentImportSettingsService(app.db, app.appEnv).getOverview();
   });
 
   app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
@@ -245,6 +253,26 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.delete('/v1/admin/system-settings/site', { preHandler: app.requireAdmin }, async () => {
     await new SiteSettingsService(app.db, app.appEnv).clearSettings();
     return { ok: true };
+  });
+
+  app.put('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = contentImportSettingsSchema.parse(request.body);
+    return new ContentImportSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  });
+
+  app.delete('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async () => {
+    await new ContentImportSettingsService(app.db, app.appEnv).clearSettings();
+    return { ok: true };
+  });
+
+  app.post('/v1/admin/system-settings/content-import/wordpress/test', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = contentImportWordPressTestSchema.parse(request.body);
+    return new ContentImportSettingsService(app.db, app.appEnv).testWordPressConnection(payload);
+  });
+
+  app.post('/v1/admin/system-settings/content-import/notion/test', { preHandler: app.requireAdmin }, async (request) => {
+    const payload = contentImportNotionTestSchema.parse(request.body);
+    return new ContentImportSettingsService(app.db, app.appEnv).testNotionConnection(payload);
   });
 
   app.get('/v1/admin/media/qiniu/images', { preHandler: app.requireAdmin }, async (request) => {

@@ -54,18 +54,11 @@ export function ContentPage() {
   const deferredSearch = useDeferredValue(search);
 
   const [wpForm, setWpForm] = useState({
-    siteUrl: '',
     postUrl: '',
-    postId: '',
-    slug: '',
-    username: '',
-    appPassword: '',
     status: 'draft' as 'draft' | 'published',
   });
   const [notionForm, setNotionForm] = useState({
-    apiToken: '',
     pageUrl: '',
-    pageId: '',
     status: 'draft' as 'draft' | 'published',
   });
   const [wechatForm, setWechatForm] = useState({
@@ -226,17 +219,9 @@ export function ContentPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 WordPress</CardTitle>
-              <CardDescription>支持站点 URL + 文章 URL/ID/slug，用户名和应用密码可选。</CardDescription>
+              <CardDescription>系统会使用“系统设置”中的 WordPress 连接配置，这里只需输入文章 URL。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>站点 URL</Label>
-                <Input
-                  placeholder="https://your-site.com"
-                  value={wpForm.siteUrl}
-                  onChange={(event) => setWpForm((prev) => ({ ...prev, siteUrl: event.target.value }))}
-                />
-              </div>
               <div className="space-y-2">
                 <Label>文章 URL</Label>
                 <Input
@@ -244,43 +229,6 @@ export function ContentPage() {
                   value={wpForm.postUrl}
                   onChange={(event) => setWpForm((prev) => ({ ...prev, postUrl: event.target.value }))}
                 />
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>文章 ID</Label>
-                  <Input
-                    placeholder="123"
-                    value={wpForm.postId}
-                    onChange={(event) => setWpForm((prev) => ({ ...prev, postId: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>slug</Label>
-                  <Input
-                    placeholder="hello-world"
-                    value={wpForm.slug}
-                    onChange={(event) => setWpForm((prev) => ({ ...prev, slug: event.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>用户名</Label>
-                  <Input
-                    placeholder="可选"
-                    value={wpForm.username}
-                    onChange={(event) => setWpForm((prev) => ({ ...prev, username: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>应用密码</Label>
-                  <Input
-                    type="password"
-                    placeholder="可选"
-                    value={wpForm.appPassword}
-                    onChange={(event) => setWpForm((prev) => ({ ...prev, appPassword: event.target.value }))}
-                  />
-                </div>
               </div>
               <div className="space-y-2">
                 <Label>导入状态</Label>
@@ -312,32 +260,15 @@ export function ContentPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 Notion</CardTitle>
-              <CardDescription>填写 Notion API Token，并提供页面 URL 或页面 ID。</CardDescription>
+              <CardDescription>系统会使用“系统设置”中的 Notion Token，这里只需输入页面 URL。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>API Token</Label>
-                <Input
-                  type="password"
-                  placeholder="secret_xxx / ntn_xxx"
-                  value={notionForm.apiToken}
-                  onChange={(event) => setNotionForm((prev) => ({ ...prev, apiToken: event.target.value }))}
-                />
-              </div>
               <div className="space-y-2">
                 <Label>页面 URL</Label>
                 <Input
                   placeholder="https://www.notion.so/..."
                   value={notionForm.pageUrl}
                   onChange={(event) => setNotionForm((prev) => ({ ...prev, pageUrl: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>页面 ID</Label>
-                <Input
-                  placeholder="1a2b3c4d..."
-                  value={notionForm.pageId}
-                  onChange={(event) => setNotionForm((prev) => ({ ...prev, pageId: event.target.value }))}
                 />
               </div>
               <div className="space-y-2">
