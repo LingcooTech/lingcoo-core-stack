@@ -178,6 +178,7 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
       };
     case 'ticket.created': {
       const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
+      const appCode = normalizeString(properties.appCode);
       return {
         userId: event.userId,
         category: 'ticket',
@@ -189,6 +190,10 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventId: event.id,
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
+        meta: {
+          ticketNo,
+          ...(appCode ? { appCode } : {}),
+        },
       };
     }
     case 'ticket.admin_replied': {
@@ -204,6 +209,9 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventId: event.id,
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
+        meta: {
+          ticketNo,
+        },
       };
     }
     case 'ticket.resolved': {
@@ -219,6 +227,9 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventId: event.id,
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
+        meta: {
+          ticketNo,
+        },
       };
     }
     case 'ticket.closed': {
@@ -234,6 +245,9 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventId: event.id,
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
+        meta: {
+          ticketNo,
+        },
       };
     }
     default:

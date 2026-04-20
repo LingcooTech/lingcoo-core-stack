@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, BellRing, FileSearch, KeyRound, LoaderCircle, UserCircle2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -9,8 +9,10 @@ import { z } from 'zod';
 
 import { listApps } from '@/api/apps';
 import { changePassword, forgotPassword, getCurrentUser, updateCurrentUser } from '@/api/auth';
+import type { NotificationItem, NotificationUnreadCount, NotificationsResponse } from '@/api/types';
 import {
   archiveNotification,
+  getMyTicket,
   listMyEntitlements,
   listMyNotifications,
   listMyOrders,
@@ -18,6 +20,7 @@ import {
   markNotificationRead,
   syncMyOrder,
 } from '@/api/user';
+import { NotificationDetailDialog } from '@/components/account/NotificationDetailDialog';
 import { AccountTicketsTab } from '@/components/account/AccountTicketsTab';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
@@ -389,11 +392,31 @@ function notificationCategoryLabel(
   }
 }
 
+function extractNotificationTicketNo(item: NotificationItem) {
+  const ticketNo = item.meta?.ticketNo;
+  if (typeof ticketNo === 'string' && ticketNo.trim()) {
+    return ticketNo.trim();
+  }
+
+  const matched = `${item.title}\n${item.body}`.match(/\bTK-\d{8}-[A-Z0-9]{6}\b/);
+  return matched?.[0] ?? null;
+}
+
 function AccountNotificationsTab() {
   const qc = useQueryClient();
+  const notificationsQueryKey = ['my-notifications', { limit: 100 }] as const;
+  const unreadCountQueryKey = ['my-notifications', 'unread-count'] as const;
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const notificationsQuery = useQuery({
-    queryKey: ['my-notifications', { limit: 100 }],
+    queryKey: notificationsQueryKey,
     queryFn: () => listMyNotifications({ limit: 100 }),
+  });
+  const selectedTicketNo =
+    selectedNotification?.category === 'ticket' ? extractNotificationTicketNo(selectedNotification) : null;
+  const ticketDetailQuery = useQuery({
+    queryKey: ['notification-ticket-detail', selectedTicketNo],
+    queryFn: () => getMyTicket(selectedTicketNo!),
+    enabled: Boolean(selectedTicketNo),
   });
 
   const notifications = notificationsQuery.data?.items ?? [];
@@ -401,13 +424,86 @@ function AccountNotificationsTab() {
 
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: async () => {
+    onMutate: async (notificationId) => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
-        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+        qc.cancelQueries({ queryKey: notificationsQueryKey }),
+        qc.cancelQueries({ queryKey: unreadCountQueryKey }),
+      ]);
+
+      const previousNotifications = qc.getQueryData<NotificationsResponse>(notificationsQueryKey);
+      const previousUnreadCount = qc.getQueryData<NotificationUnreadCount>(unreadCountQueryKey);
+      const target = previousNotifications?.items.find((item) => item.id === notificationId) ?? null;
+
+      if (target?.status === 'unread') {
+        const now = new Date().toISOString();
+
+        qc.setQueryData<NotificationsResponse>(notificationsQueryKey, (current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === notificationId
+                ? {
+                    ...item,
+                    status: 'read',
+                    readAt: now,
+                    updatedAt: now,
+                  }
+                : item
+            ),
+          };
+        });
+
+        qc.setQueryData<NotificationUnreadCount>(unreadCountQueryKey, (current) =>
+          current
+            ? {
+                unreadCount: Math.max(0, current.unreadCount - 1),
+              }
+            : current
+        );
+
+        setSelectedNotification((current) =>
+          current?.id === notificationId
+            ? {
+                ...current,
+                status: 'read',
+                readAt: now,
+                updatedAt: now,
+              }
+            : current
+        );
+      }
+
+      return {
+        previousNotifications,
+        previousUnreadCount,
+      };
+    },
+    onSuccess: async (result) => {
+      setSelectedNotification((current) => (current?.id === result.id ? result : current));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: notificationsQueryKey }),
+        qc.invalidateQueries({ queryKey: unreadCountQueryKey }),
       ]);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '标记已读失败'),
+    onError: (err, _variables, context) => {
+      if (context?.previousNotifications) {
+        qc.setQueryData(notificationsQueryKey, context.previousNotifications);
+      }
+      if (context?.previousUnreadCount) {
+        qc.setQueryData(unreadCountQueryKey, context.previousUnreadCount);
+      }
+      toast.error(err instanceof Error ? err.message : '标记已读失败');
+    },
+    onSettled: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: notificationsQueryKey }),
+        qc.invalidateQueries({ queryKey: unreadCountQueryKey }),
+      ]);
+    },
   });
 
   const markAllReadMutation = useMutation({
@@ -415,8 +511,8 @@ function AccountNotificationsTab() {
     onSuccess: async (result) => {
       toast.success(`已标记 ${result.updatedCount} 条通知为已读`);
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
-        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+        qc.invalidateQueries({ queryKey: notificationsQueryKey }),
+        qc.invalidateQueries({ queryKey: unreadCountQueryKey }),
       ]);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '全部已读失败'),
@@ -426,12 +522,19 @@ function AccountNotificationsTab() {
     mutationFn: archiveNotification,
     onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['my-notifications'] }),
-        qc.invalidateQueries({ queryKey: ['my-notifications', 'unread-count'] }),
+        qc.invalidateQueries({ queryKey: notificationsQueryKey }),
+        qc.invalidateQueries({ queryKey: unreadCountQueryKey }),
       ]);
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '归档通知失败'),
   });
+
+  const openNotificationDetail = (item: NotificationItem) => {
+    setSelectedNotification(item);
+    if (item.status === 'unread') {
+      markReadMutation.mutate(item.id);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -507,21 +610,9 @@ function AccountNotificationsTab() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {item.ctaLabel && item.ctaUrl ? (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={item.ctaUrl}>{item.ctaLabel}</a>
-                      </Button>
-                    ) : null}
-                    {item.status === 'unread' ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => markReadMutation.mutate(item.id)}
-                        disabled={markReadMutation.isPending}
-                      >
-                        标记已读
-                      </Button>
-                    ) : null}
+                    <Button variant="outline" size="sm" onClick={() => openNotificationDetail(item)}>
+                      查看详情
+                    </Button>
                     {item.status !== 'archived' ? (
                       <Button
                         variant="ghost"
@@ -538,6 +629,18 @@ function AccountNotificationsTab() {
             ))}
           </div>
         )}
+
+        <NotificationDetailDialog
+          notification={selectedNotification}
+          ticketDetail={ticketDetailQuery.data}
+          isTicketLoading={ticketDetailQuery.isLoading}
+          ticketErrorMessage={ticketDetailQuery.error instanceof Error ? ticketDetailQuery.error.message : null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedNotification(null);
+            }
+          }}
+        />
       </section>
     </div>
   );
