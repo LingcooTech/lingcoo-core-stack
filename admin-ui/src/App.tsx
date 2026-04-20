@@ -40,6 +40,7 @@ import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { ContentPage } from '@/pages/ContentPage';
 import { ObservabilityPage } from '@/pages/ObservabilityPage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { PaymentsPage } from '@/pages/PaymentsPage';
 import { SecretsPage } from '@/pages/SecretsPage';
@@ -175,6 +176,7 @@ const router = createBrowserRouter(
           <Route path="/admin/licenses" element={<LicensesPage />} />
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/installs" element={<InstallsPage />} />
+          <Route path="/admin/notifications" element={<NotificationsPage />} />
           <Route path="/admin/delivery" element={<Navigate to="/admin/apps" replace />} />
           <Route path="/admin/observability" element={<ObservabilityPage />} />
           <Route path="/admin/operations" element={<Navigate to="/admin/orders" replace />} />

@@ -10,6 +10,7 @@ export type AdminSectionKey =
   | 'users'
   | 'licenses'
   | 'installs'
+  | 'notifications'
   | 'observability';
 
 export type AdminSectionDataScope =
@@ -290,6 +291,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['operations'],
     commandAliases: ['installs', 'installations', '安装', '安装实例']
   },
+  notifications: {
+    groupLabel: '客户管理',
+    navTitle: '通知管理',
+    navNote: '',
+    icon: 'NT',
+    title: '通知管理',
+    lead: '',
+    href: '/admin/notifications',
+    contextCards: [
+      { label: '用途', value: '消息中心', note: '查看系统发出的用户通知，并向全站用户发布公告。' },
+      { label: '方式', value: '站内通知', note: '公告会直接进入用户账户的消息通知中心。' }
+    ],
+    heroActions: [
+      { label: '通知管理', href: '/admin/notifications', tone: 'primary' },
+      { label: '用户管理', href: '/admin/users', tone: 'secondary' }
+    ],
+    pageDataScopes: ['operations'],
+    commandAliases: ['notifications', 'announcements', 'broadcast', '通知', '公告', '通知管理']
+  },
   observability: {
     groupLabel: '运维',
     navTitle: '事件日志',
@@ -317,7 +337,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '内容管理', items: ['content'] },
   { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
-  { label: '客户管理', items: ['users', 'licenses', 'installs'] },
+  { label: '客户管理', items: ['users', 'licenses', 'installs', 'notifications'] },
   { label: '运维', items: ['settings', 'observability'] }
 ];
 

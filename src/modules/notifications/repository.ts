@@ -1,6 +1,6 @@
-import { and, count, desc, eq } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm';
 
-import { notifications } from '../../db/schema';
+import { notifications, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class NotificationsRepository {
@@ -9,6 +9,14 @@ export class NotificationsRepository {
   async insert(input: typeof notifications.$inferInsert) {
     const [item] = await this.db.insert(notifications).values(input).returning();
     return item;
+  }
+
+  async insertMany(inputs: Array<typeof notifications.$inferInsert>) {
+    if (inputs.length === 0) {
+      return [];
+    }
+
+    return this.db.insert(notifications).values(inputs).returning();
   }
 
   async findByDedupeKey(dedupeKey: string) {
@@ -56,6 +64,81 @@ export class NotificationsRepository {
         .select({ count: count() })
         .from(notifications)
         .where(where)
+    ]);
+
+    return {
+      items,
+      total: Number(totalResult[0]?.count ?? 0),
+    };
+  }
+
+  async listForAdmin(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: 'unread' | 'read' | 'archived';
+    category?: string;
+  }) {
+    const conditions: SQL[] = [];
+
+    if (query.status) {
+      conditions.push(eq(notifications.status, query.status));
+    }
+
+    if (query.category) {
+      conditions.push(eq(notifications.category, query.category));
+    }
+
+    if (query.search) {
+      const pattern = `%${query.search}%`;
+      conditions.push(
+        or(
+          ilike(notifications.title, pattern),
+          ilike(notifications.body, pattern),
+          ilike(notifications.sourceEventName, pattern),
+          ilike(users.email, pattern),
+          ilike(users.displayName, pattern),
+        )!,
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [items, totalResult] = await Promise.all([
+      this.db
+        .select({
+          id: notifications.id,
+          userId: notifications.userId,
+          category: notifications.category,
+          level: notifications.level,
+          title: notifications.title,
+          body: notifications.body,
+          ctaLabel: notifications.ctaLabel,
+          ctaUrl: notifications.ctaUrl,
+          status: notifications.status,
+          sourceEventId: notifications.sourceEventId,
+          sourceEventName: notifications.sourceEventName,
+          dedupeKey: notifications.dedupeKey,
+          meta: notifications.meta,
+          readAt: notifications.readAt,
+          archivedAt: notifications.archivedAt,
+          createdAt: notifications.createdAt,
+          updatedAt: notifications.updatedAt,
+          userEmail: users.email,
+          userDisplayName: users.displayName,
+          userStatus: users.status,
+        })
+        .from(notifications)
+        .leftJoin(users, eq(notifications.userId, users.id))
+        .where(where)
+        .orderBy(desc(notifications.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      this.db
+        .select({ count: count() })
+        .from(notifications)
+        .leftJoin(users, eq(notifications.userId, users.id))
+        .where(where),
     ]);
 
     return {

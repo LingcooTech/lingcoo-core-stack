@@ -785,7 +785,7 @@ export interface EntitlementsResponse extends PaginatedResponse<HydratedEntitlem
 export interface NotificationItem {
   id: string;
   userId: string;
-  category: 'account' | 'billing' | 'license' | 'deployment' | 'system';
+  category: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
   level: 'info' | 'success' | 'warning' | 'error';
   title: string;
   body: string;
@@ -806,6 +806,20 @@ export interface NotificationsResponse extends PaginatedResponse<NotificationIte
 
 export interface NotificationUnreadCount {
   unreadCount: number;
+}
+
+export interface AdminNotificationItem extends NotificationItem {
+  user: (UserSummary & { status: string | null }) | null;
+}
+
+export interface AdminNotificationsResponse extends PaginatedResponse<AdminNotificationItem> {}
+
+export interface PublishAnnouncementResult {
+  broadcastId: string;
+  recipientCount: number;
+  title: string;
+  level: 'info' | 'success' | 'warning' | 'error';
+  createdAt: string;
 }
 
 export interface GrantEntitlementInput {

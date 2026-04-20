@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type {
+  AdminNotificationsResponse,
   AdminDocSpaceDetail,
   AdminDocSpaceListResponse,
   AdminResetPasswordResult,
@@ -15,6 +16,7 @@ import type {
   InstallsResponse,
   OrderDetail,
   OrdersResponse,
+  PublishAnnouncementResult,
   ReconcileResponse,
   RevokeEntitlementResult,
   WebhooksResponse
@@ -34,6 +36,11 @@ export interface AdminOrderListParams extends AdminListParams {
 export interface AdminContentListParams extends AdminListParams {
   status?: 'draft' | 'published' | 'archived';
   sourceType?: 'manual' | 'wordpress' | 'notion' | 'wechat';
+}
+
+export interface AdminNotificationListParams extends AdminListParams {
+  status?: 'unread' | 'read' | 'archived';
+  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
 }
 
 function buildQueryString<T extends object>(params: T | undefined) {
@@ -254,6 +261,26 @@ export async function listEvents(params: AdminListParams = {}): Promise<EventsRe
 export async function listBillingWebhooks(params: AdminListParams = {}): Promise<WebhooksResponse> {
   const qs = buildQueryString(params);
   return apiClient<WebhooksResponse>(`/v1/admin/billing-webhooks${qs ? `?${qs}` : ''}`);
+}
+
+export async function listAdminNotifications(
+  params: AdminNotificationListParams = {},
+): Promise<AdminNotificationsResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<AdminNotificationsResponse>(`/v1/admin/notifications${qs ? `?${qs}` : ''}`);
+}
+
+export async function publishAnnouncement(payload: {
+  title: string;
+  body: string;
+  level?: 'info' | 'success' | 'warning' | 'error';
+  ctaLabel?: string;
+  ctaUrl?: string;
+}): Promise<PublishAnnouncementResult> {
+  return apiClient<PublishAnnouncementResult>('/v1/admin/notifications/announcements', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function listUsers(params: { limit?: number; offset?: number; search?: string; role?: string; status?: string }): Promise<AdminUsersResponse> {

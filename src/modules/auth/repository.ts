@@ -35,6 +35,19 @@ export class AuthRepository {
     return this.db.select().from(users).where(inArray(users.id, userIds));
   }
 
+  async listActiveUsers() {
+    return this.db
+      .select({
+        id: users.id,
+        email: users.email,
+        displayName: users.displayName,
+        status: users.status,
+      })
+      .from(users)
+      .where(eq(users.status, 'active'))
+      .orderBy(desc(users.createdAt));
+  }
+
   async createUser(input: { email: string; displayName?: string; role?: 'user' | 'admin' }) {
     const [user] = await this.db
       .insert(users)

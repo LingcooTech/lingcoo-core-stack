@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import type { DbClient } from '../../db/types';
 import { httpError } from '../../lib/errors';
+import { AuthRepository } from '../auth/repository';
 import { NotificationsRepository } from './repository';
 
-type NotificationCategory = 'account' | 'billing' | 'license' | 'deployment' | 'system';
+type NotificationCategory = 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
 type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
 
 type EventProjectionInput = {
@@ -229,6 +232,98 @@ export class NotificationsService {
       total: result.total,
       limit: query.limit,
       offset: query.offset,
+    };
+  }
+
+  async listAdminNotifications(query: {
+    limit: number;
+    offset: number;
+    search?: string;
+    status?: 'unread' | 'read' | 'archived';
+    category?: NotificationCategory;
+  }) {
+    const result = await this.repository.listForAdmin(query);
+    return {
+      items: result.items.map((item) => ({
+        id: item.id,
+        userId: item.userId,
+        category: item.category,
+        level: item.level,
+        title: item.title,
+        body: item.body,
+        ctaLabel: item.ctaLabel,
+        ctaUrl: item.ctaUrl,
+        status: item.status,
+        sourceEventId: item.sourceEventId,
+        sourceEventName: item.sourceEventName,
+        dedupeKey: item.dedupeKey,
+        meta: item.meta,
+        readAt: item.readAt,
+        archivedAt: item.archivedAt,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        user: item.userId
+          ? {
+              id: item.userId,
+              email: item.userEmail ?? '',
+              displayName: item.userDisplayName ?? null,
+              status: item.userStatus ?? null,
+            }
+          : null,
+      })),
+      total: result.total,
+      limit: query.limit,
+      offset: query.offset,
+    };
+  }
+
+  async publishAnnouncement(
+    input: {
+      title: string;
+      body: string;
+      level: NotificationLevel;
+      ctaLabel?: string;
+      ctaUrl?: string;
+    },
+    actorUserId: string,
+  ) {
+    const recipients = await new AuthRepository(this.db).listActiveUsers();
+    if (recipients.length === 0) {
+      throw httpError(400, 'No active users available for announcement delivery');
+    }
+
+    const now = new Date();
+    const broadcastId = randomUUID();
+
+    await this.repository.insertMany(
+      recipients.map((user) => ({
+        userId: user.id,
+        category: 'announcement',
+        level: input.level,
+        title: input.title,
+        body: input.body,
+        ctaLabel: input.ctaLabel ?? null,
+        ctaUrl: input.ctaUrl ?? null,
+        status: 'unread',
+        sourceEventId: null,
+        sourceEventName: 'admin.announcement_published',
+        dedupeKey: `announcement:${broadcastId}:${user.id}`,
+        meta: {
+          broadcastId,
+          actorUserId,
+          audience: 'active_users',
+        },
+        createdAt: now,
+        updatedAt: now,
+      })),
+    );
+
+    return {
+      broadcastId,
+      recipientCount: recipients.length,
+      title: input.title,
+      level: input.level,
+      createdAt: now,
     };
   }
 

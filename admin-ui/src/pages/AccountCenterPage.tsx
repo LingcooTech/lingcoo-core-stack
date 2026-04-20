@@ -366,10 +366,14 @@ function notificationTone(level: 'info' | 'success' | 'warning' | 'error') {
   return 'info' as const;
 }
 
-function notificationCategoryLabel(category: 'account' | 'billing' | 'license' | 'deployment' | 'system') {
+function notificationCategoryLabel(
+  category: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement',
+) {
   switch (category) {
     case 'account':
       return '账户';
+    case 'announcement':
+      return '公告';
     case 'billing':
       return '账单';
     case 'license':

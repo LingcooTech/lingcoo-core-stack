@@ -32,7 +32,7 @@ export async function listMyNotifications(params: {
   limit?: number;
   offset?: number;
   status?: 'unread' | 'read' | 'archived';
-  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system';
+  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
 } = {}): Promise<NotificationsResponse> {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
