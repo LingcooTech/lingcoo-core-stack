@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
+import { Bell, ChevronDown, CircleHelp, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
 
 import type { SiteNavigationItem } from '@/api/types';
 import { getCurrentUser } from '@/api/auth';
@@ -328,6 +328,16 @@ export function UserShell() {
                           <Package2 className="h-4 w-4 text-slate-500" />
                           我的应用
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="rounded-2xl px-3 py-3 text-[15px]"
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            navigate('/tickets');
+                          }}
+                        >
+                          <CircleHelp className="h-4 w-4 text-slate-500" />
+                          我的工单
+                        </DropdownMenuItem>
                       </div>
 
                       <DropdownMenuSeparator className="my-3" />
@@ -501,6 +511,14 @@ export function UserShell() {
                         >
                           <Package2 className="h-4 w-4 text-slate-500" />
                           我的应用
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          onClick={() => navigate('/tickets')}
+                        >
+                          <CircleHelp className="h-4 w-4 text-slate-500" />
+                          我的工单
                         </button>
                         <button
                           type="button"

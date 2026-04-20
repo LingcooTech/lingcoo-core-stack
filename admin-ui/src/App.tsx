@@ -28,6 +28,7 @@ import { AiTranslateWorkflowSupportPage } from '@/pages/AiTranslateWorkflowSuppo
 import { ContentDetailPage } from '@/pages/ContentDetailPage';
 import { ContentEditPage } from '@/pages/ContentEditPage';
 import { ContentHubPage } from '@/pages/ContentHubPage';
+import { CreateTicketPage } from '@/pages/CreateTicketPage';
 import { DocsHubPage } from '@/pages/DocsHubPage';
 import { DocsPage } from '@/pages/DocsPage';
 import { DocsSpacePage } from '@/pages/DocsSpacePage';
@@ -38,6 +39,7 @@ import { HomePage } from '@/pages/HomePage';
 import { InstallsPage } from '@/pages/InstallsPage';
 import { LicensesPage } from '@/pages/LicensesPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { MyTicketsPage } from '@/pages/MyTicketsPage';
 import { ContentPage } from '@/pages/ContentPage';
 import { ObservabilityPage } from '@/pages/ObservabilityPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
@@ -150,6 +152,8 @@ const router = createBrowserRouter(
           <Route path="/notifications" element={<Navigate to="/account?tab=notifications" replace />} />
           <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
           <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
+          <Route path="/tickets" element={<MyTicketsPage />} />
+          <Route path="/tickets/new" element={<CreateTicketPage />} />
           <Route path="/deploy" element={<DeploymentsPage />} />
         </Route>
       </Route>

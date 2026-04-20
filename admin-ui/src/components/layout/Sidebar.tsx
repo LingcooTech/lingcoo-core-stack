@@ -254,6 +254,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Package2 className="h-4 w-4 text-slate-500" />
                   我的应用
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    navigate('/tickets');
+                  }}
+                >
+                  <CircleHelp className="h-4 w-4 text-slate-500" />
+                  我的工单
+                </DropdownMenuItem>
               </div>
 
               <DropdownMenuSeparator className="my-3" />

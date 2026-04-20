@@ -90,9 +90,12 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/register', sendSPA);
   app.get('/verify-email', sendSPA);
   app.get('/forgot-password', sendSPA);
+  app.get('/account', sendSPA);
   app.get('/notifications', sendSPA);
   app.get('/orders', sendSPA);
   app.get('/access', sendSPA);
+  app.get('/tickets', sendSPA);
+  app.get('/tickets/new', sendSPA);
   app.get('/deploy', sendSPA);
   app.get('/admin', sendSPA);
   app.get('/admin/login', sendSPA);

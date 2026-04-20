@@ -684,7 +684,7 @@ export function AccountCenterPage() {
           <AccountAppsTab />
         </TabsContent>
         <TabsContent value="tickets" className="mt-0">
-          <AccountTicketsTab defaultAppCode={searchParams.get('appCode')} />
+          <AccountTicketsTab />
         </TabsContent>
       </Tabs>
     </div>

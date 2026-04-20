@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
-import { listApps } from '@/api/apps';
-import { closeMyTicket, createMyTicket, getMyTicket, listMyTickets, replyMyTicket } from '@/api/user';
+import { closeMyTicket, getMyTicket, listMyTickets, replyMyTicket } from '@/api/user';
 import type { HydratedSupportTicket, SupportTicketDetail, SupportTicketMessage } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterBar } from '@/components/shared/FilterBar';
@@ -11,9 +11,6 @@ import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn, formatTime } from '@/lib/utils';
 
@@ -240,7 +237,7 @@ function TicketDetailPanel({
   );
 }
 
-export function AccountTicketsTab({ defaultAppCode }: { defaultAppCode?: string | null }) {
+export function AccountTicketsTab() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('__all__');
@@ -248,24 +245,7 @@ export function AccountTicketsTab({ defaultAppCode }: { defaultAppCode?: string 
   const [page, setPage] = useState(1);
   const [selectedTicketNo, setSelectedTicketNo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
-  const [createForm, setCreateForm] = useState({
-    appCode: defaultAppCode?.trim() || '',
-    orderNo: '',
-    extensionInstallId: '',
-    category: 'other' as HydratedSupportTicket['category'],
-    priority: 'normal' as HydratedSupportTicket['priority'],
-    subject: '',
-    body: ''
-  });
   const deferredSearch = useDeferredValue(search);
-
-  useEffect(() => {
-    if (!defaultAppCode?.trim()) {
-      return;
-    }
-
-    setCreateForm((prev) => (prev.appCode ? prev : { ...prev, appCode: defaultAppCode.trim() }));
-  }, [defaultAppCode]);
 
   useEffect(() => {
     setPage(1);
@@ -288,12 +268,6 @@ export function AccountTicketsTab({ defaultAppCode }: { defaultAppCode?: string 
     [categoryFilter, deferredSearch, page, statusFilter]
   );
 
-  const appsQuery = useQuery({
-    queryKey: ['catalog-apps'],
-    queryFn: listApps,
-    staleTime: 5 * 60_000
-  });
-
   const ticketsQuery = useQuery({
     queryKey: ['my-tickets', ticketQuery],
     queryFn: () => listMyTickets(ticketQuery)
@@ -303,26 +277,6 @@ export function AccountTicketsTab({ defaultAppCode }: { defaultAppCode?: string 
     queryKey: ['my-ticket-detail', selectedTicketNo],
     queryFn: () => getMyTicket(selectedTicketNo!),
     enabled: Boolean(selectedTicketNo)
-  });
-
-  const createMutation = useMutation({
-    mutationFn: createMyTicket,
-    onSuccess: async (result) => {
-      toast.success(`工单已创建：${result.ticket.ticketNo}`);
-      setCreateForm((prev) => ({
-        ...prev,
-        orderNo: '',
-        extensionInstallId: '',
-        subject: '',
-        body: '',
-        category: 'other',
-        priority: 'normal'
-      }));
-      setSelectedTicketNo(result.ticket.ticketNo);
-      await qc.invalidateQueries({ queryKey: ['my-tickets'] });
-      await qc.invalidateQueries({ queryKey: ['my-ticket-detail', result.ticket.ticketNo] });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '创建工单失败')
   });
 
   const replyMutation = useMutation({
@@ -412,160 +366,21 @@ export function AccountTicketsTab({ defaultAppCode }: { defaultAppCode?: string 
     }
   ];
 
-  const appOptions = appsQuery.data?.items ?? [];
   const selectedDetail = ticketDetailQuery.data;
 
   return (
     <div className="space-y-5">
-      <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl tracking-tight">提交新工单</CardTitle>
-          <CardDescription>
-            把订单号、安装实例 ID、复现步骤和报错信息写完整，后面处理会快很多。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>关联应用</Label>
-              <Select
-                value={createForm.appCode || '__none__'}
-                onValueChange={(value) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    appCode: value === '__none__' ? '' : value
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="选择应用" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">不关联应用</SelectItem>
-                  {appOptions.map((app) => (
-                    <SelectItem key={app.id} value={app.code}>
-                      {app.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>订单号</Label>
-              <Input
-                value={createForm.orderNo}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, orderNo: event.target.value }))}
-                placeholder="可选，例如 FD202604200001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>安装实例 ID</Label>
-              <Input
-                value={createForm.extensionInstallId}
-                onChange={(event) =>
-                  setCreateForm((prev) => ({ ...prev, extensionInstallId: event.target.value }))
-                }
-                placeholder="可选，例如浏览器扩展安装 ID"
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>分类</Label>
-                <Select
-                  value={createForm.category}
-                  onValueChange={(value) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      category: value as HydratedSupportTicket['category']
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="billing">账单</SelectItem>
-                    <SelectItem value="access">授权</SelectItem>
-                    <SelectItem value="install">安装</SelectItem>
-                    <SelectItem value="deployment">部署</SelectItem>
-                    <SelectItem value="bug">缺陷</SelectItem>
-                    <SelectItem value="feature">功能</SelectItem>
-                    <SelectItem value="account">账户</SelectItem>
-                    <SelectItem value="other">其他</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>优先级</Label>
-                <Select
-                  value={createForm.priority}
-                  onValueChange={(value) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      priority: value as HydratedSupportTicket['priority']
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">低</SelectItem>
-                    <SelectItem value="normal">普通</SelectItem>
-                    <SelectItem value="high">高</SelectItem>
-                    <SelectItem value="urgent">紧急</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>标题</Label>
-            <Input
-              value={createForm.subject}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, subject: event.target.value }))}
-              placeholder="一句话说明问题，例如：支付成功但 Pro 未开通"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>问题描述</Label>
-            <Textarea
-              value={createForm.body}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, body: event.target.value }))}
-              rows={6}
-              placeholder="请描述复现步骤、报错文案、你已经尝试过的排查动作"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={() =>
-                createMutation.mutate({
-                  appCode: createForm.appCode || undefined,
-                  orderNo: createForm.orderNo.trim() || undefined,
-                  extensionInstallId: createForm.extensionInstallId.trim() || undefined,
-                  category: createForm.category,
-                  priority: createForm.priority,
-                  subject: createForm.subject.trim(),
-                  body: createForm.body.trim()
-                })
-              }
-              disabled={
-                createMutation.isPending ||
-                !createForm.subject.trim() ||
-                !createForm.body.trim()
-              }
-            >
-              {createMutation.isPending ? '提交中...' : '提交工单'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">我的工单</p>
+            <p className="text-xs text-gray-500">查看处理进度、补充信息或关闭已处理完成的工单。</p>
+          </div>
+          <Button asChild>
+            <Link to="/tickets/new">发起新工单</Link>
+          </Button>
+        </div>
+
         <FilterBar
           searchValue={search}
           onSearchChange={setSearch}
