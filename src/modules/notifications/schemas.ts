@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const notificationCategorySchema = z.enum(['account', 'billing', 'license', 'deployment', 'system', 'announcement']);
+const notificationCategorySchema = z.enum(['account', 'billing', 'license', 'deployment', 'ticket', 'system', 'announcement']);
 const optionalCtaUrlSchema = z
   .union([z.string().trim().max(500), z.literal('')])
   .optional()

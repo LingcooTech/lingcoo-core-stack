@@ -29,6 +29,8 @@ function categoryLabel(category: AdminNotificationItem['category']) {
       return '账单';
     case 'deployment':
       return '部署';
+    case 'ticket':
+      return '工单';
     case 'license':
       return '授权';
     case 'system':
@@ -41,6 +43,7 @@ function categoryTone(category: AdminNotificationItem['category']) {
   if (category === 'announcement') return 'info' as const;
   if (category === 'billing' || category === 'license') return 'ok' as const;
   if (category === 'deployment') return 'warn' as const;
+  if (category === 'ticket') return 'warn' as const;
   return 'neutral' as const;
 }
 
@@ -338,6 +341,7 @@ export function NotificationsPage() {
                   { value: 'billing', label: '账单' },
                   { value: 'license', label: '授权' },
                   { value: 'deployment', label: '部署' },
+                  { value: 'ticket', label: '工单' },
                   { value: 'system', label: '系统' },
                 ],
               },

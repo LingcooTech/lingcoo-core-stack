@@ -112,6 +112,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/admin/operations', sendSPA);
   app.get('/admin/observability', sendSPA);
   app.get('/admin/notifications', sendSPA);
+  app.get('/admin/tickets', sendSPA);
   app.get('/admin/users', sendSPA);
   app.get('/admin/installs', sendSPA);
 

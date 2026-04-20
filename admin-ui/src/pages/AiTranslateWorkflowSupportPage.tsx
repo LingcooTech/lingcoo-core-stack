@@ -81,6 +81,9 @@ export function AiTranslateWorkflowSupportPage() {
             <Button variant="outline" asChild>
               <Link to="/orders">我的订单</Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/account?tab=tickets&appCode=ai-translate-workflow">提交工单</Link>
+            </Button>
           </div>
         </section>
       </div>
@@ -135,6 +138,9 @@ export function AiTranslateWorkflowSupportPage() {
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <Link to="/apps/ai-translate-workflow/privacy">隐私政策</Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/account?tab=tickets&appCode=ai-translate-workflow">提交工单</Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
                 <a href="mailto:contact@futuredecade.com">contact@futuredecade.com</a>

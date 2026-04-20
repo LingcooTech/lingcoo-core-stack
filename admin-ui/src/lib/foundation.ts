@@ -10,6 +10,7 @@ export type AdminSectionKey =
   | 'users'
   | 'licenses'
   | 'installs'
+  | 'tickets'
   | 'notifications'
   | 'observability';
 
@@ -291,6 +292,25 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: ['operations'],
     commandAliases: ['installs', 'installations', '安装', '安装实例']
   },
+  tickets: {
+    groupLabel: '客户管理',
+    navTitle: '工单管理',
+    navNote: '',
+    icon: 'TK',
+    title: '工单管理',
+    lead: '',
+    href: '/admin/tickets',
+    contextCards: [
+      { label: '用途', value: '问题处理', note: '集中处理订单、授权、安装和部署相关的用户问题。' },
+      { label: '方式', value: '站内会话', note: '用户在个人中心发起，管理员在后台统一跟进。' }
+    ],
+    heroActions: [
+      { label: '工单管理', href: '/admin/tickets', tone: 'primary' },
+      { label: '用户管理', href: '/admin/users', tone: 'secondary' }
+    ],
+    pageDataScopes: ['operations'],
+    commandAliases: ['tickets', 'support', 'helpdesk', '工单', '客服', '支持']
+  },
   notifications: {
     groupLabel: '客户管理',
     navTitle: '通知管理',
@@ -337,7 +357,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '内容管理', items: ['content'] },
   { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
-  { label: '客户管理', items: ['users', 'licenses', 'installs', 'notifications'] },
+  { label: '客户管理', items: ['users', 'licenses', 'installs', 'tickets', 'notifications'] },
   { label: '运维', items: ['settings', 'observability'] }
 ];
 

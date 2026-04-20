@@ -785,7 +785,7 @@ export interface EntitlementsResponse extends PaginatedResponse<HydratedEntitlem
 export interface NotificationItem {
   id: string;
   userId: string;
-  category: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
+  category: 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement';
   level: 'info' | 'success' | 'warning' | 'error';
   title: string;
   body: string;
@@ -821,6 +821,86 @@ export interface PublishAnnouncementResult {
   level: 'info' | 'success' | 'warning' | 'error';
   createdAt: string;
 }
+
+export interface SupportTicket {
+  id: string;
+  ticketNo: string;
+  userId: string;
+  appId: string | null;
+  orderId: string | null;
+  installId: string | null;
+  deploymentId: string | null;
+  category: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
+  subject: string;
+  assignedAdminUserId: string | null;
+  lastReplyAuthorType: 'user' | 'admin' | 'system';
+  lastActivityAt: string;
+  firstRespondedAt: string | null;
+  resolvedAt: string | null;
+  closedAt: string | null;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportTicketRelatedOrder {
+  id: string;
+  orderNo: string;
+  status: string;
+  subject: string;
+  amount: number;
+  currency: string;
+  createdAt: string;
+}
+
+export interface SupportTicketRelatedInstall {
+  id: string;
+  extensionInstallId: string;
+  status: string;
+  appVersion: string | null;
+  lastSeenAt: string | null;
+}
+
+export interface SupportTicketRelatedDeployment {
+  id: string;
+  label: string;
+  environment: string;
+  status: string;
+  primaryDomain: string | null;
+  adminDomain: string | null;
+  wsDomain: string | null;
+}
+
+export interface HydratedSupportTicket extends SupportTicket {
+  user: UserSummary | null;
+  app: AppSummary | null;
+  order: SupportTicketRelatedOrder | null;
+  install: SupportTicketRelatedInstall | null;
+  deployment: SupportTicketRelatedDeployment | null;
+  assignee: UserSummary | null;
+  messageCount: number;
+}
+
+export interface SupportTicketMessage {
+  id: string;
+  ticketId: string;
+  authorUserId: string | null;
+  authorType: 'user' | 'admin' | 'system';
+  isInternal: boolean;
+  body: string;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  author: UserSummary | null;
+}
+
+export interface SupportTicketDetail {
+  ticket: HydratedSupportTicket;
+  messages: SupportTicketMessage[];
+}
+
+export interface SupportTicketsResponse extends PaginatedResponse<HydratedSupportTicket> {}
 
 export interface GrantEntitlementInput {
   userEmail: string;

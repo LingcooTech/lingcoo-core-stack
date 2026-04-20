@@ -19,6 +19,8 @@ import type {
   PublishAnnouncementResult,
   ReconcileResponse,
   RevokeEntitlementResult,
+  SupportTicketDetail,
+  SupportTicketsResponse,
   WebhooksResponse
 } from './types';
 
@@ -40,7 +42,13 @@ export interface AdminContentListParams extends AdminListParams {
 
 export interface AdminNotificationListParams extends AdminListParams {
   status?: 'unread' | 'read' | 'archived';
-  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
+  category?: 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement';
+}
+
+export interface AdminTicketListParams extends AdminListParams {
+  status?: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
+  category?: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
 }
 
 function buildQueryString<T extends object>(params: T | undefined) {
@@ -233,6 +241,53 @@ export async function reconcileOrder(orderNo: string): Promise<ReconcileResponse
 export async function listInstalls(params: AdminListParams = {}): Promise<InstallsResponse> {
   const qs = buildQueryString(params);
   return apiClient<InstallsResponse>(`/v1/admin/installs${qs ? `?${qs}` : ''}`);
+}
+
+export async function listAdminTickets(params: AdminTicketListParams = {}): Promise<SupportTicketsResponse> {
+  const qs = buildQueryString(params);
+  return apiClient<SupportTicketsResponse>(`/v1/admin/tickets${qs ? `?${qs}` : ''}`);
+}
+
+export async function getAdminTicket(ticketNo: string): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/admin/tickets/${encodeURIComponent(ticketNo)}`);
+}
+
+export async function replyAdminTicket(payload: {
+  ticketNo: string;
+  body: string;
+  isInternal?: boolean;
+}): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/admin/tickets/${encodeURIComponent(payload.ticketNo)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({
+      body: payload.body,
+      isInternal: payload.isInternal ?? false
+    })
+  });
+}
+
+export async function assignAdminTicket(payload: {
+  ticketNo: string;
+  assignedAdminUserId: string | null;
+}): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/admin/tickets/${encodeURIComponent(payload.ticketNo)}/assign`, {
+    method: 'POST',
+    body: JSON.stringify({
+      assignedAdminUserId: payload.assignedAdminUserId
+    })
+  });
+}
+
+export async function updateAdminTicketStatus(payload: {
+  ticketNo: string;
+  status: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
+}): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/admin/tickets/${encodeURIComponent(payload.ticketNo)}/status`, {
+    method: 'POST',
+    body: JSON.stringify({
+      status: payload.status
+    })
+  });
 }
 
 export async function listEntitlements(params: AdminListParams = {}): Promise<EntitlementsResponse> {

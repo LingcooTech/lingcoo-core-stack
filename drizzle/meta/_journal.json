@@ -120,6 +120,13 @@
       "when": 1776668400000,
       "tag": "0016_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776672523203,
+      "tag": "0017_support_tickets",
+      "breakpoints": true
     }
   ]
 }

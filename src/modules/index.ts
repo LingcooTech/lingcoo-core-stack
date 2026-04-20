@@ -13,6 +13,7 @@ import { licenseModule } from './license';
 import { moduleNames } from './names';
 import { notificationsModule } from './notifications';
 import { systemModule } from './system';
+import { ticketModule } from './ticket';
 import type { AppModule } from './types';
 
 export const appModules: AppModule[] = [
@@ -24,6 +25,7 @@ export const appModules: AppModule[] = [
   contentModule,
   docsModule,
   notificationsModule,
+  ticketModule,
   installModule,
   deploymentModule,
   checkoutModule,

@@ -5,7 +5,7 @@ import { httpError } from '../../lib/errors';
 import { AuthRepository } from '../auth/repository';
 import { NotificationsRepository } from './repository';
 
-type NotificationCategory = 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
+type NotificationCategory = 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement';
 type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
 
 type EventProjectionInput = {
@@ -176,6 +176,66 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
       };
+    case 'ticket.created': {
+      const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
+      return {
+        userId: event.userId,
+        category: 'ticket',
+        level: 'info',
+        title: '工单已创建',
+        body: `${ticketNo} 已创建，我们会尽快处理。`,
+        ctaLabel: '查看工单',
+        ctaUrl: '/account?tab=tickets',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'ticket.admin_replied': {
+      const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
+      return {
+        userId: event.userId,
+        category: 'ticket',
+        level: 'info',
+        title: '工单有新回复',
+        body: `${ticketNo} 已收到客服回复。`,
+        ctaLabel: '查看工单',
+        ctaUrl: '/account?tab=tickets',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'ticket.resolved': {
+      const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
+      return {
+        userId: event.userId,
+        category: 'ticket',
+        level: 'success',
+        title: '工单已解决',
+        body: `${ticketNo} 已标记为已解决。`,
+        ctaLabel: '查看工单',
+        ctaUrl: '/account?tab=tickets',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'ticket.closed': {
+      const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
+      return {
+        userId: event.userId,
+        category: 'ticket',
+        level: 'info',
+        title: '工单已关闭',
+        body: `${ticketNo} 已关闭。`,
+        ctaLabel: '查看工单',
+        ctaUrl: '/account?tab=tickets',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
     default:
       return null;
   }

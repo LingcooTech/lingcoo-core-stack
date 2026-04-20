@@ -12,6 +12,8 @@ import type {
   OrdersResponse,
   DeploymentSummary,
   ReconcileResponse,
+  SupportTicketDetail,
+  SupportTicketsResponse,
 } from './types';
 
 export async function listMyOrders(): Promise<OrdersResponse> {
@@ -32,7 +34,7 @@ export async function listMyNotifications(params: {
   limit?: number;
   offset?: number;
   status?: 'unread' | 'read' | 'archived';
-  category?: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement';
+  category?: 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement';
 } = {}): Promise<NotificationsResponse> {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -62,6 +64,57 @@ export async function markAllNotificationsRead(): Promise<{ updatedCount: number
 
 export async function archiveNotification(notificationId: string): Promise<NotificationItem> {
   return apiClient<NotificationItem>(`/v1/notifications/${encodeURIComponent(notificationId)}/archive`, {
+    method: 'POST'
+  });
+}
+
+export async function listMyTickets(params: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  status?: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
+  category?: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+} = {}): Promise<SupportTicketsResponse> {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    const normalized = String(value).trim();
+    if (!normalized) continue;
+    qs.set(key, normalized);
+  }
+  return apiClient<SupportTicketsResponse>(`/v1/tickets/me${qs.toString() ? `?${qs.toString()}` : ''}`);
+}
+
+export async function createMyTicket(payload: {
+  appCode?: string;
+  orderNo?: string;
+  extensionInstallId?: string;
+  deploymentId?: string;
+  category: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  subject: string;
+  body: string;
+}): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>('/v1/tickets', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getMyTicket(ticketNo: string): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}`);
+}
+
+export async function replyMyTicket(ticketNo: string, body: string): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body })
+  });
+}
+
+export async function closeMyTicket(ticketNo: string): Promise<SupportTicketDetail> {
+  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}/close`, {
     method: 'POST'
   });
 }

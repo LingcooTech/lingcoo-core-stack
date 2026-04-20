@@ -18,6 +18,7 @@ import {
   markNotificationRead,
   syncMyOrder,
 } from '@/api/user';
+import { AccountTicketsTab } from '@/components/account/AccountTicketsTab';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { OrderCard } from '@/components/portal/OrderCard';
@@ -32,7 +33,7 @@ import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
 import { cn, formatAmount, formatTime } from '@/lib/utils';
 
-const accountTabValues = ['profile', 'notifications', 'orders', 'apps'] as const;
+const accountTabValues = ['profile', 'notifications', 'orders', 'apps', 'tickets'] as const;
 type AccountTab = typeof accountTabValues[number];
 
 const profileSchema = z.object({
@@ -367,7 +368,7 @@ function notificationTone(level: 'info' | 'success' | 'warning' | 'error') {
 }
 
 function notificationCategoryLabel(
-  category: 'account' | 'billing' | 'license' | 'deployment' | 'system' | 'announcement',
+  category: 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement',
 ) {
   switch (category) {
     case 'account':
@@ -380,6 +381,8 @@ function notificationCategoryLabel(
       return '授权';
     case 'deployment':
       return '部署';
+    case 'ticket':
+      return '工单';
     case 'system':
     default:
       return '系统';
@@ -662,6 +665,9 @@ export function AccountCenterPage() {
             <TabsTrigger value="apps" className="min-w-[108px] rounded-md">
               我的应用
             </TabsTrigger>
+            <TabsTrigger value="tickets" className="min-w-[108px] rounded-md">
+              我的工单
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -676,6 +682,9 @@ export function AccountCenterPage() {
         </TabsContent>
         <TabsContent value="apps" className="mt-0">
           <AccountAppsTab />
+        </TabsContent>
+        <TabsContent value="tickets" className="mt-0">
+          <AccountTicketsTab defaultAppCode={searchParams.get('appCode')} />
         </TabsContent>
       </Tabs>
     </div>
