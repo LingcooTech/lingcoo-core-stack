@@ -101,6 +101,7 @@
 
 /* 动画效果 */
 @layer utilities {
+  /* 淡入动画 */
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -113,9 +114,42 @@
   }
   
   .animate-fadeIn {
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn 0.3s ease-out;
   }
   
+  /* 从下方淡入 */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeInUp {
+    animation: fadeInUp 0.4s ease-out;
+  }
+  
+  /* 缩放淡入 */
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-scaleIn {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  /* 抖动动画 */
   @keyframes shake {
     0%, 100% {
       transform: translateX(0);
@@ -130,6 +164,107 @@
   
   .animate-shake {
     animation: shake 0.4s ease-in-out;
+  }
+  
+  /* 脉冲动画 */
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+  
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* 滑入动画 */
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .animate-slideInRight {
+    animation: slideInRight 0.3s ease-out;
+  }
+  
+  /* 弹跳动画 */
+  @keyframes bounce-subtle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-4px);
+    }
+  }
+  
+  .animate-bounce-subtle {
+    animation: bounce-subtle 0.6s ease-in-out;
+  }
+  
+  /* 旋转动画 */
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+  
+  /* 交错延迟 */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+  .stagger-6 { animation-delay: 300ms; }
+  
+  /* 波浪动画 */
+  @keyframes wave {
+    0% {
+      transform: translateX(-100%);
+    }
+    50% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  
+  .animate-wave {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .animate-wave::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.6),
+      transparent
+    );
+    animation: wave 1.6s linear 0.5s infinite;
   }
 }
 

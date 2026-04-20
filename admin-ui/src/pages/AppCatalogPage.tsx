@@ -214,7 +214,7 @@ export function AppCatalogPage() {
           </Link>
         </Button>
 
-        <section className="relative overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white shadow-sm shadow-slate-900/5">
+        <section className="relative overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-b from-slate-50 via-blue-50/50 to-white shadow-md">
           {app.coverUrl ? (
             <div
               className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.08]"

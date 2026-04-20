@@ -7,6 +7,7 @@ import type { AppWithDetails } from '@/api/types';
 import { listApps } from '@/api/apps';
 import { AppCard } from '@/components/portal/AppCard';
 import { EmptyState } from '@/components/portal/EmptyState';
+import { SkeletonAppCard } from '@/components/shared/Skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,7 +67,7 @@ export function HomePage() {
     <div className="space-y-8">
       <section className="space-y-4">
         {isLoading ? (
-          <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white p-6">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="h-8 w-44 animate-pulse rounded bg-gray-100" />
             <div className="mt-4 h-5 w-2/3 animate-pulse rounded bg-gray-100" />
             <div className="mt-6 grid gap-4 md:grid-cols-[112px,minmax(0,1fr),180px]">
@@ -87,7 +88,7 @@ export function HomePage() {
           />
         ) : (
           <div className="space-y-3">
-          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm shadow-slate-900/5">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md">
             <div
               className="flex transition-transform duration-500 ease-out"
               style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
@@ -101,11 +102,11 @@ export function HomePage() {
                       <div className="relative overflow-hidden">
                         {app.coverUrl ? (
                           <div
-                            className="absolute inset-0 bg-cover bg-center opacity-10"
+                            className="absolute inset-0 bg-cover bg-center opacity-8"
                             style={{ backgroundImage: `url(${app.coverUrl})` }}
                           />
                         ) : null}
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-50 via-blue-50/50 to-white" />
 
                         <div className="relative grid gap-6 p-5 md:p-6 xl:grid-cols-[132px,minmax(0,1fr),220px]">
                           <div className="flex justify-center xl:justify-start">
@@ -222,12 +223,12 @@ export function HomePage() {
         {isLoading ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-xl border border-gray-200 bg-white p-5">
-                <div className="mx-auto h-20 w-20 animate-pulse rounded-[22%] bg-gray-100" />
-                <div className="mx-auto mt-4 h-4 w-24 animate-pulse rounded bg-gray-100" />
-                <div className="mx-auto mt-4 h-4 w-40 animate-pulse rounded bg-gray-100" />
-                <div className="mx-auto mt-2 h-4 w-32 animate-pulse rounded bg-gray-100" />
-                <div className="mx-auto mt-5 h-8 w-28 animate-pulse rounded bg-gray-100" />
+              <div
+                key={index}
+                className="animate-fadeInUp"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <SkeletonAppCard />
               </div>
             ))}
           </div>
@@ -239,8 +240,14 @@ export function HomePage() {
           />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredApps.map((app) => (
-              <AppCard key={app.id} app={app} href={`/apps/${app.code}`} className="h-full" />
+            {filteredApps.map((app, index) => (
+              <div
+                key={app.id}
+                className="animate-fadeInUp"
+                style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
+              >
+                <AppCard app={app} href={`/apps/${app.code}`} className="h-full" />
+              </div>
             ))}
           </div>
         )}

@@ -194,10 +194,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <DropdownMenuContent
             align={collapsed ? 'start' : 'end'}
             side="top"
-            className="w-[300px] rounded-[24px] border border-slate-200 bg-white p-0 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)]"
+            className="w-[300px] rounded-xl border border-slate-200 bg-white p-0 shadow-lg"
           >
             <DropdownMenuLabel className="px-0 py-0">
-              <div className="relative rounded-t-[24px] bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-5 py-5">
+              <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-5 py-5">
                 <button
                   type="button"
                   className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"

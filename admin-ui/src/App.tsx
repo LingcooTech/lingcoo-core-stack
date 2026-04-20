@@ -90,7 +90,7 @@ function SiteSettingsBootstrap({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_24%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_48%,#f7f9fc_100%)]">
         <div className="mx-auto flex min-h-screen max-w-6xl items-start justify-center px-4 pt-24 sm:px-6">
-          <div className="w-full max-w-xl rounded-[28px] border border-white/70 bg-white/80 p-6 shadow-sm shadow-slate-900/5 backdrop-blur">
+          <div className="w-full max-w-xl rounded-2xl border border-white/70 bg-white/80 p-6 shadow-md backdrop-blur">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200" />
               <div className="min-w-0 flex-1 space-y-2">

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { archiveApp, listAppsAdmin, purgeAppConfiguration } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { SkeletonMetricCard } from '@/components/shared/Skeleton';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -249,29 +250,41 @@ export function AppsPage() {
       </header>
 
       <div className="grid gap-4 lg:grid-cols-4">
-        {[
-          { icon: Boxes, label: '应用总数', value: String(apps.length) },
-          { icon: Sparkles, label: '已上架', value: String(publishedCount) },
-          { icon: Archive, label: '已归档', value: String(archivedCount) },
-          { icon: CreditCard, label: '可售卖', value: String(activeOfferCount) },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className="rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-700">
-                  <Icon className="h-5 w-5" />
+        {isAppsLoading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} style={{ animationDelay: `${index * 50}ms` }}>
+              <SkeletonMetricCard />
+            </div>
+          ))
+        ) : (
+          [
+            { icon: Boxes, label: '应用总数', value: String(apps.length), color: 'from-blue-500 to-blue-600' },
+            { icon: Sparkles, label: '已上架', value: String(publishedCount), color: 'from-green-500 to-green-600' },
+            { icon: Archive, label: '已归档', value: String(archivedCount), color: 'from-amber-500 to-amber-600' },
+            { icon: CreditCard, label: '可售卖', value: String(activeOfferCount), color: 'from-purple-500 to-purple-600' },
+          ].map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <div 
+                key={item.label} 
+                className="rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md animate-fadeInUp"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+                  </div>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-white shadow-sm`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

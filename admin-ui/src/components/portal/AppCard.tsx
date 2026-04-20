@@ -47,7 +47,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           style={{ backgroundImage: `url(${app.coverUrl})` }}
         />
       ) : null}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-100 via-sky-50/80 to-white" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-50 via-blue-50/50 to-white" />
 
       <div className="relative flex flex-col items-center text-center">
         <div className="mb-4 flex justify-center">
@@ -63,7 +63,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           </Badge>
         </div>
 
-        <h3 className="mb-1.5 line-clamp-1 text-base font-semibold text-gray-900 transition-colors group-hover:text-blue-600">
+        <h3 className="mb-1.5 line-clamp-1 text-base font-semibold text-gray-900 transition-colors duration-200 group-hover:text-blue-600">
           {app.name}
         </h3>
 
@@ -95,7 +95,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'group overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-sm shadow-slate-900/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/8',
+    'group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
     className,
   );
 

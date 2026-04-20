@@ -259,10 +259,10 @@ export function UserShell() {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={10}
-                    className="w-[320px] rounded-[24px] border border-slate-200 bg-white p-0 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)]"
+                    className="w-[320px] rounded-xl border border-slate-200 bg-white p-0 shadow-lg"
                   >
                     <DropdownMenuLabel className="px-0 py-0">
-                      <div className="relative rounded-t-[24px] bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-5 py-5">
+                      <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-5 py-5">
                         <button
                           type="button"
                           className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
@@ -451,8 +451,8 @@ export function UserShell() {
                 {isAuthenticated ? (
                   <div className="space-y-2 border-t border-gray-100 pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">账户</p>
-                    <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-                      <div className="relative bg-[linear-gradient(180deg,#eef6e9_0%,#f7fbf4_100%)] px-4 py-4">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
                         <button
                           type="button"
                           className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"

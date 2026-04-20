@@ -51,7 +51,7 @@ export function ContentDetailPage() {
         </Link>
       </Button>
 
-      <header className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
+      <header className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
             <span>{item.authorName || '匿名作者'}</span>
@@ -63,7 +63,7 @@ export function ContentDetailPage() {
         </div>
       </header>
 
-      <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-p:leading-relaxed">
           <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
             {item.content}

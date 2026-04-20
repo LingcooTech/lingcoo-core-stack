@@ -39,7 +39,7 @@ export function ContentHubPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm shadow-slate-900/5">
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-medium text-sky-700">内容中心</p>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">文章、观点与教程</h1>

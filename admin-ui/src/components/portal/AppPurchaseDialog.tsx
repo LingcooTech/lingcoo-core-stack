@@ -170,7 +170,7 @@ export function AppPurchaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
-      <DialogContent className="max-w-3xl rounded-[24px] border-gray-200 p-0">
+      <DialogContent className="max-w-3xl rounded-xl border-gray-200 p-0">
         <DialogHeader className="border-b border-gray-200 px-6 py-5">
           <DialogTitle className="text-xl font-semibold text-gray-900">购买 {appName}</DialogTitle>
           <DialogDescription className="text-sm text-gray-500">
@@ -201,7 +201,7 @@ export function AppPurchaseDialog({
           </div>
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr),240px]">
-            <div className="rounded-[20px] border border-gray-200 bg-gray-50 p-5">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">当前套餐</p>
               <h3 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
                 {selectedOffer?.title ?? '暂无可购买方案'}
@@ -254,7 +254,7 @@ export function AppPurchaseDialog({
                           key={offer.code}
                           type="button"
                           onClick={() => setSelectedOfferCode(offer.code)}
-                          className={`rounded-[20px] border p-4 text-left transition-colors ${
+                          className={`rounded-xl border p-4 text-left transition-colors ${
                             selectedOffer?.code === offer.code
                               ? 'border-sky-200 bg-sky-50/70'
                               : 'border-gray-200 bg-white hover:border-gray-300'
@@ -360,7 +360,7 @@ export function AppPurchaseDialog({
             </>
           ) : (
             <div className="space-y-5">
-              <div className="rounded-[20px] border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
                 {publicSessionQuery.isLoading ? (
                   <div className="flex min-h-[220px] items-center justify-center">
                     <LoaderCircle className="h-8 w-8 animate-spin text-primary" />

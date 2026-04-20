@@ -42,10 +42,10 @@ export function DashboardPage() {
       <SectionHeader sectionKey="dashboard" />
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} />
-          <MetricCard label="活跃密钥" value={activeSecrets.length} loading={appsResult.isLoading} />
-          <MetricCard label="已支付订单" value={paidOrders.length} loading={ordersResult.isLoading} />
-          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} />
+          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} color="from-blue-500 to-blue-600" delay={0} />
+          <MetricCard label="活跃密钥" value={activeSecrets.length} loading={appsResult.isLoading} color="from-green-500 to-green-600" delay={50} />
+          <MetricCard label="已支付订单" value={paidOrders.length} loading={ordersResult.isLoading} color="from-purple-500 to-purple-600" delay={100} />
+          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} color="from-amber-500 to-amber-600" delay={150} />
         </div>
 
         <div>
@@ -69,19 +69,20 @@ export function DashboardPage() {
         <div>
           <h2 className="mb-3 text-base font-semibold text-foreground">快捷入口</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickLinks.map((link) => {
+            {quickLinks.map((link, index) => {
               const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="group flex flex-col gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 hover:shadow-sm transition-all no-underline"
+                  className="group flex flex-col gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 hover:shadow-md hover:-translate-y-1 transition-all duration-300 no-underline animate-fadeInUp"
+                  style={{ animationDelay: `${200 + index * 50}ms` }}
                 >
-                  <div className={`w-9 h-9 rounded-md flex items-center justify-center ${link.color}`}>
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${link.color} transition-transform duration-300 group-hover:scale-110`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <p className="text-sm font-semibold text-foreground">{link.label}</p>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
                 </Link>
               );
             })}
@@ -126,15 +127,19 @@ function MetricCard({
   label,
   value,
   loading,
-  tone = 'neutral'
+  tone = 'neutral',
+  color = 'from-gray-500 to-gray-600',
+  delay = 0
 }: {
   label: string;
   value: number;
   loading?: boolean;
   tone?: 'ok' | 'warn' | 'neutral';
+  color?: string;
+  delay?: number;
 }) {
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md animate-fadeInUp" style={{ animationDelay: `${delay}ms` }}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
@@ -142,7 +147,7 @@ function MetricCard({
         {loading ? (
           <div className="h-8 w-16 rounded bg-muted animate-pulse" />
         ) : (
-          <>
+          <div className="flex items-center justify-between">
             <p
               className={`text-2xl font-semibold tracking-tight ${
                 tone === 'warn' && value > 0 ? 'text-amber-600' : 'text-foreground'
@@ -150,7 +155,8 @@ function MetricCard({
             >
               {value}
             </p>
-          </>
+            <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${color} opacity-10`} />
+          </div>
         )}
       </CardContent>
     </Card>
