@@ -1013,6 +1013,18 @@ export interface DeploymentSummary {
   };
   currentWordpressAssetReleases: Record<string, string | null>;
   availableWordpressAssetReleases: Record<string, string | null>;
+  pendingAction: {
+    id: string;
+    kind: 'apply_runtime_images' | 'apply_wordpress_assets';
+    requestedAt: string | null;
+  } | null;
+  lastAction: {
+    id: string;
+    kind: 'apply_runtime_images' | 'apply_wordpress_assets';
+    status: 'completed' | 'failed';
+    message: string | null;
+    finishedAt: string | null;
+  } | null;
   deliveryValues: Record<string, string | boolean>;
   configuredSecretKeys: string[];
   domainBinding: {

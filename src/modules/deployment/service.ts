@@ -102,6 +102,8 @@ type DeploymentStatusReportPayload = {
   };
 };
 
+type DeploymentActionKind = 'apply_runtime_images' | 'apply_wordpress_assets';
+
 function normalizeObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
@@ -352,6 +354,8 @@ export class DeploymentService {
             null
         ])
       ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
+      const pendingAction = this.normalizeMeta(meta.pendingAction);
+      const lastAction = this.normalizeMeta(meta.lastAction);
 
       return {
         ...row,
@@ -362,6 +366,24 @@ export class DeploymentService {
         availableRuntimeImages,
         currentWordpressAssetReleases,
         availableWordpressAssetReleases,
+        pendingAction:
+          normalizeString(pendingAction.id).length > 0
+            ? {
+                id: normalizeString(pendingAction.id),
+                kind: normalizeString(pendingAction.kind) as DeploymentActionKind,
+                requestedAt: normalizeString(pendingAction.requestedAt) || null
+              }
+            : null,
+        lastAction:
+          normalizeString(lastAction.id).length > 0
+            ? {
+                id: normalizeString(lastAction.id),
+                kind: normalizeString(lastAction.kind) as DeploymentActionKind,
+                status: normalizeString(lastAction.status) || 'completed',
+                message: normalizeString(lastAction.message) || null,
+                finishedAt: normalizeString(lastAction.finishedAt) || null
+              }
+            : null,
         domainBinding: {
           sourceField: activeBindingSource,
           isLocked: isDomainLocked,
@@ -1055,6 +1077,14 @@ export class DeploymentService {
       this.env.PUBLIC_BASE_URL
     ).toString();
     envDefaults.FD_STACK_STATUS_REPORT_TOKEN = statusReportAuth.token;
+    envDefaults.FD_STACK_ACTION_PULL_URL = new URL(
+      '/v1/deployments/actions/pull',
+      this.env.PUBLIC_BASE_URL
+    ).toString();
+    envDefaults.FD_STACK_ACTION_COMPLETE_URL = new URL(
+      '/v1/deployments/actions/complete',
+      this.env.PUBLIC_BASE_URL
+    ).toString();
 
     return {
       installPath: installer.installPath,
@@ -1521,6 +1551,156 @@ export class DeploymentService {
         deploymentId: deployment.id
       }
     });
+
+    return { ok: true };
+  }
+
+  async requestDeploymentAction(input: {
+    deploymentId: string;
+    userId: string;
+    kind: DeploymentActionKind;
+  }) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+    if (!deployment || deployment.userId !== input.userId) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    const meta = this.normalizeMeta(deployment.meta);
+    const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
+
+    if (input.kind === 'apply_runtime_images') {
+      const hasAvailableRuntimeImage =
+        normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
+        normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
+      if (!hasAvailableRuntimeImage) {
+        throw httpError(409, 'No available runtime image update to apply');
+      }
+    }
+
+    if (input.kind === 'apply_wordpress_assets') {
+      const hasAvailableWordpressAssets =
+        Object.values(this.normalizeMeta(wordpressAssetsUpdate.available)).some(
+          (value) => normalizeString(value).length > 0
+        ) ||
+        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
+          (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+        );
+      if (!hasAvailableWordpressAssets) {
+        throw httpError(409, 'No available WordPress asset update to apply');
+      }
+    }
+
+    meta.pendingAction = {
+      id: `fdda_${randomBytes(12).toString('base64url')}`,
+      kind: input.kind,
+      requestedAt: new Date().toISOString(),
+      requestedByUserId: input.userId
+    };
+
+    const updated = await repository.updateDeployment(deployment.id, { meta });
+    if (!updated) {
+      throw httpError(500, 'Failed to queue deployment action');
+    }
+
+    return { ok: true };
+  }
+
+  async pullDeploymentAction(input: { deploymentId: string; token: string }) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+
+    if (!deployment) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    const meta = this.normalizeMeta(deployment.meta);
+    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
+    let expectedToken = '';
+
+    if (runtimeStatusReport.token) {
+      try {
+        const decrypted = decryptJson<{ token?: string }>(
+          runtimeStatusReport.token,
+          this.getEncryptionSecret()
+        );
+        expectedToken = normalizeString(decrypted.token);
+      } catch {
+        expectedToken = '';
+      }
+    }
+
+    if (!expectedToken || expectedToken !== input.token) {
+      throw httpError(401, 'Deployment action token is invalid');
+    }
+
+    const pendingAction = this.normalizeMeta(meta.pendingAction);
+    if (normalizeString(pendingAction.id).length === 0) {
+      return { action: null };
+    }
+
+    return {
+      action: {
+        id: normalizeString(pendingAction.id),
+        kind: normalizeString(pendingAction.kind),
+        requestedAt: normalizeString(pendingAction.requestedAt) || null
+      }
+    };
+  }
+
+  async completeDeploymentAction(input: {
+    deploymentId: string;
+    token: string;
+    actionId: string;
+    status: 'completed' | 'failed';
+    message?: string;
+  }) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+
+    if (!deployment) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    const meta = this.normalizeMeta(deployment.meta);
+    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
+    let expectedToken = '';
+
+    if (runtimeStatusReport.token) {
+      try {
+        const decrypted = decryptJson<{ token?: string }>(
+          runtimeStatusReport.token,
+          this.getEncryptionSecret()
+        );
+        expectedToken = normalizeString(decrypted.token);
+      } catch {
+        expectedToken = '';
+      }
+    }
+
+    if (!expectedToken || expectedToken !== input.token) {
+      throw httpError(401, 'Deployment action token is invalid');
+    }
+
+    const pendingAction = this.normalizeMeta(meta.pendingAction);
+    if (normalizeString(pendingAction.id) !== input.actionId) {
+      throw httpError(409, 'Deployment action does not match the current pending action');
+    }
+
+    meta.lastAction = {
+      id: normalizeString(pendingAction.id),
+      kind: normalizeString(pendingAction.kind),
+      status: input.status,
+      message: normalizeString(input.message),
+      finishedAt: new Date().toISOString()
+    };
+    delete meta.pendingAction;
+
+    const updated = await repository.updateDeployment(deployment.id, { meta });
+    if (!updated) {
+      throw httpError(500, 'Failed to complete deployment action');
+    }
 
     return { ok: true };
   }

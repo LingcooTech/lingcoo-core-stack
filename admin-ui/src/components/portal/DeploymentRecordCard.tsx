@@ -54,18 +54,31 @@ export function DeploymentRecordCard({
   issuedToken,
   issuing,
   deactivating,
+  applyingRuntimeUpdate,
+  applyingWordpressUpdate,
   onIssueToken,
   onEdit,
-  onDeactivate
+  onDeactivate,
+  onApplyRuntimeUpdate,
+  onApplyWordpressUpdate
 }: {
   deployment: DeploymentSummary;
   issuedToken?: IssueDeploymentTokenResult | null;
   issuing?: boolean;
   deactivating?: boolean;
+  applyingRuntimeUpdate?: boolean;
+  applyingWordpressUpdate?: boolean;
   onIssueToken: (deploymentId: string) => void;
   onEdit: (deployment: DeploymentSummary) => void;
   onDeactivate: (deployment: DeploymentSummary) => void;
+  onApplyRuntimeUpdate: (deployment: DeploymentSummary) => void;
+  onApplyWordpressUpdate: (deployment: DeploymentSummary) => void;
 }) {
+  const hasAvailableRuntimeUpdate =
+    Boolean(deployment.availableRuntimeImages.frontendImage) ||
+    Boolean(deployment.availableRuntimeImages.websocketImage);
+  const hasAvailableWordpressUpdate = Object.values(deployment.availableWordpressAssetReleases).some(Boolean);
+
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-2.5">
@@ -96,6 +109,28 @@ export function DeploymentRecordCard({
           <Button variant="outline" size="sm" className="rounded-lg" onClick={() => onEdit(deployment)}>
             编辑配置
           </Button>
+          {hasAvailableRuntimeUpdate ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => onApplyRuntimeUpdate(deployment)}
+              disabled={applyingRuntimeUpdate || Boolean(deployment.pendingAction)}
+            >
+              {applyingRuntimeUpdate ? '提交中...' : '应用前端更新'}
+            </Button>
+          ) : null}
+          {hasAvailableWordpressUpdate ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => onApplyWordpressUpdate(deployment)}
+              disabled={applyingWordpressUpdate || Boolean(deployment.pendingAction)}
+            >
+              {applyingWordpressUpdate ? '提交中...' : '应用 WP 资产更新'}
+            </Button>
+          ) : null}
           {deployment.status === 'active' ? (
             <Button variant="destructive" size="sm" className="rounded-lg" onClick={() => onDeactivate(deployment)} disabled={deactivating}>
               {deactivating ? '停用中...' : '停用 Deployment'}
@@ -158,6 +193,20 @@ export function DeploymentRecordCard({
           </div>
           {deployment.status !== 'active' ? (
             <p className="mt-3 text-xs text-amber-700">当前 deployment 已停用。需要重新使用时，请编辑后新建 deployment，或保留此记录仅作历史参考。</p>
+          ) : null}
+          {deployment.pendingAction ? (
+            <p className="mt-3 text-xs text-blue-700">
+              待执行动作：{deployment.pendingAction.kind === 'apply_runtime_images' ? '应用前端更新' : '应用 WP 资产更新'}
+              {deployment.pendingAction.requestedAt ? ` · ${formatTime(deployment.pendingAction.requestedAt)}` : ''}
+            </p>
+          ) : null}
+          {deployment.lastAction ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              最近动作：{deployment.lastAction.kind === 'apply_runtime_images' ? '前端更新' : 'WP 资产更新'} ·
+              {deployment.lastAction.status === 'completed' ? ' 已完成' : ' 失败'}
+              {deployment.lastAction.finishedAt ? ` · ${formatTime(deployment.lastAction.finishedAt)}` : ''}
+              {deployment.lastAction.message ? ` · ${deployment.lastAction.message}` : ''}
+            </p>
           ) : null}
           {deployment.domainBinding.isLocked ? (
             <p className="mt-3 text-xs text-muted-foreground">

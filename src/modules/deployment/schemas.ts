@@ -61,3 +61,20 @@ export const reportDeploymentStatusSchema = z.object({
     })
     .optional()
 });
+
+export const requestDeploymentActionSchema = z.object({
+  kind: z.enum(['apply_runtime_images', 'apply_wordpress_assets'])
+});
+
+export const pullDeploymentActionSchema = z.object({
+  deploymentId: z.string().uuid(),
+  token: z.string().trim().min(16).max(255)
+});
+
+export const completeDeploymentActionSchema = z.object({
+  deploymentId: z.string().uuid(),
+  token: z.string().trim().min(16).max(255),
+  actionId: z.string().trim().min(8).max(255),
+  status: z.enum(['completed', 'failed']),
+  message: z.string().trim().max(2000).optional()
+});

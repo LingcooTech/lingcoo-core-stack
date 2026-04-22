@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { listApps } from '@/api/apps';
 import { ApiError } from '@/api/client';
 import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
-import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, updateDeployment } from '@/api/user';
+import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, requestDeploymentAction, updateDeployment } from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
@@ -144,6 +144,30 @@ export function DeploymentsPage() {
     }
   });
 
+  const requestRuntimeUpdateMutation = useMutation({
+    mutationFn: (deploymentId: string) =>
+      requestDeploymentAction({ deploymentId, kind: 'apply_runtime_images' }),
+    onSuccess: () => {
+      toast.success('前端更新动作已提交，等待服务器拉取执行');
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '提交前端更新动作失败');
+    }
+  });
+
+  const requestWordpressUpdateMutation = useMutation({
+    mutationFn: (deploymentId: string) =>
+      requestDeploymentAction({ deploymentId, kind: 'apply_wordpress_assets' }),
+    onSuccess: () => {
+      toast.success('WP 资产更新动作已提交，等待服务器拉取执行');
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '提交 WP 资产更新动作失败');
+    }
+  });
+
   const handleWizardCreate = async (payload: Parameters<typeof createDeployment>[0]): Promise<{ id: string }> => {
     return await createDeploymentMutation.mutateAsync(payload);
   };
@@ -240,12 +264,26 @@ export function DeploymentsPage() {
                     deployment={deployment}
                     issuedToken={issuedToken}
                     issuing={issueTokenMutation.isPending && issueTokenMutation.variables?.deploymentId === deployment.id}
+                    applyingRuntimeUpdate={
+                      requestRuntimeUpdateMutation.isPending &&
+                      requestRuntimeUpdateMutation.variables === deployment.id
+                    }
+                    applyingWordpressUpdate={
+                      requestWordpressUpdateMutation.isPending &&
+                      requestWordpressUpdateMutation.variables === deployment.id
+                    }
                     deactivating={
                       deactivateDeploymentMutation.isPending &&
                       deactivateDeploymentMutation.variables?.deploymentId === deployment.id
                     }
                     onIssueToken={(deploymentId) => issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })}
                     onEdit={(target) => setEditingDeployment(target)}
+                    onApplyRuntimeUpdate={(target) => {
+                      requestRuntimeUpdateMutation.mutate(target.id);
+                    }}
+                    onApplyWordpressUpdate={(target) => {
+                      requestWordpressUpdateMutation.mutate(target.id);
+                    }}
                     onDeactivate={(target) => {
                       if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {
                         return;
