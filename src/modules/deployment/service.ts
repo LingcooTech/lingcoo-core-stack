@@ -53,6 +53,36 @@ const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<string, { envKey: string; kind: 'str
   wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
 };
 
+const WORDPRESS_ASSET_RELEASE_KEYS = [
+  'FD_THEME_RELEASE_TAG',
+  'FD_PAGE_COMPOSER_RELEASE_TAG',
+  'FD_ADMIN_UI_RELEASE_TAG',
+  'FD_MEMBER_RELEASE_TAG',
+  'FD_PAYMENT_RELEASE_TAG',
+  'FD_COMMERCE_RELEASE_TAG',
+  'FD_CONTENT_TYPES_RELEASE_TAG',
+  'FD_AI_ROUTER_RELEASE_TAG',
+  'FD_WEBSOCKET_PUSH_RELEASE_TAG',
+  'WPGRAPHQL_RELEASE_TAG',
+  'WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
+  'WPGRAPHQL_TAX_QUERY_REF'
+] as const;
+
+const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
+  'AVAILABLE_FD_THEME_RELEASE_TAG',
+  'AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG',
+  'AVAILABLE_FD_ADMIN_UI_RELEASE_TAG',
+  'AVAILABLE_FD_MEMBER_RELEASE_TAG',
+  'AVAILABLE_FD_PAYMENT_RELEASE_TAG',
+  'AVAILABLE_FD_COMMERCE_RELEASE_TAG',
+  'AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG',
+  'AVAILABLE_FD_AI_ROUTER_RELEASE_TAG',
+  'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG',
+  'AVAILABLE_WPGRAPHQL_RELEASE_TAG',
+  'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
+  'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF'
+] as const;
+
 function normalizeObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
@@ -231,13 +261,16 @@ export class DeploymentService {
       }
     }
 
-    return rows.map((row) => {
+    return Promise.all(rows.map(async (row) => {
       const app = appMap.get(row.appId) ?? null;
       const user = userMap.get(row.userId) ?? null;
       const token = latestTokenMap.get(row.id) ?? null;
       const deliveryValues = this.readDeploymentInputValues(row);
       const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
       const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
+      const meta = this.normalizeMeta(row.meta);
+      const runtimeUpdateMeta = this.normalizeMeta(meta.runtimeUpdate);
+      const wordpressAssetsMeta = this.normalizeMeta(meta.wordpressAssetsUpdate);
       const policy = app
         ? this.readDeploymentPolicy(app as DeploymentAppRecord)
         : { maxActiveDeployments: 1, domainBindingSource: 'none' as const };
@@ -251,12 +284,38 @@ export class DeploymentService {
         activeBindingSource !== 'none' &&
         Boolean(binding.boundDomain) &&
         currentBoundValue === binding.boundDomain;
+      const envDefaults = app
+        ? (await this.buildBootstrapPayload({
+            app: app as DeploymentAppRecord,
+            deployment: row
+          })).envDefaults
+        : {};
+      const currentRuntimeImages = {
+        frontendImage: normalizeString(envDefaults.FRONTEND_IMAGE) || null,
+        websocketImage: normalizeString(envDefaults.WEBSOCKET_IMAGE) || null
+      };
+      const availableRuntimeImages = {
+        frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
+        websocketImage: normalizeString(runtimeUpdateMeta.availableWebsocketImage) || null,
+        offeredAt: normalizeString(runtimeUpdateMeta.offeredAt) || null,
+        appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null
+      };
+      const currentWordpressAssetReleases = Object.fromEntries(
+        WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [key, normalizeString(envDefaults[key]) || null])
+      ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
+      const availableWordpressAssetReleases = Object.fromEntries(
+        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [key, normalizeString(wordpressAssetsMeta[key]) || null])
+      ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
 
       return {
         ...row,
         deliveryValues,
         configuredSecretKeys,
         updatePolicy,
+        currentRuntimeImages,
+        availableRuntimeImages,
+        currentWordpressAssetReleases,
+        availableWordpressAssetReleases,
         domainBinding: {
           sourceField: activeBindingSource,
           isLocked: isDomainLocked,
@@ -280,7 +339,7 @@ export class DeploymentService {
             }
           : null
       };
-    });
+    }));
   }
 
   private createPlainToken() {

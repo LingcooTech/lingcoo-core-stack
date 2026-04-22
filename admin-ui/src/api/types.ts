@@ -1001,6 +1001,18 @@ export interface DeploymentSummary {
   lastTokenIssuedAt: string | null;
   lastDeployedAt: string | null;
   updatePolicy: 'manual' | 'auto';
+  currentRuntimeImages: {
+    frontendImage: string | null;
+    websocketImage: string | null;
+  };
+  availableRuntimeImages: {
+    frontendImage: string | null;
+    websocketImage: string | null;
+    offeredAt: string | null;
+    appliedAt: string | null;
+  };
+  currentWordpressAssetReleases: Record<string, string | null>;
+  availableWordpressAssetReleases: Record<string, string | null>;
   deliveryValues: Record<string, string | boolean>;
   configuredSecretKeys: string[];
   domainBinding: {

@@ -4,6 +4,39 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatTime } from '@/lib/utils';
 
+function summarizeImageRef(value: string | null) {
+  if (!value) {
+    return '未配置';
+  }
+
+  const segments = value.split('/');
+  return segments[segments.length - 1] || value;
+}
+
+function summarizeWordpressReleaseMap(values: Record<string, string | null>) {
+  return [
+    `theme ${values.FD_THEME_RELEASE_TAG ?? '-'}`,
+    `composer ${values.FD_PAGE_COMPOSER_RELEASE_TAG ?? '-'}`,
+    `content-types ${values.FD_CONTENT_TYPES_RELEASE_TAG ?? '-'}`,
+    `wp-graphql ${values.WPGRAPHQL_RELEASE_TAG ?? '-'}`
+  ].join(' | ');
+}
+
+function summarizeAvailableWordpressReleaseMap(values: Record<string, string | null>) {
+  const highlights = [
+    values.AVAILABLE_FD_THEME_RELEASE_TAG,
+    values.AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG,
+    values.AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG,
+    values.AVAILABLE_WPGRAPHQL_RELEASE_TAG
+  ].filter(Boolean);
+
+  if (highlights.length === 0) {
+    return '无待应用版本';
+  }
+
+  return highlights.join(' | ');
+}
+
 function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
   switch (sourceField) {
     case 'adminDomain':
@@ -84,6 +117,22 @@ export function DeploymentRecordCard({
             }
           />
           <InfoLine label="镜像更新策略" value={deployment.updatePolicy === 'auto' ? '自动应用新镜像' : '仅记录可用镜像'} />
+          <InfoLine label="当前前端镜像" value={summarizeImageRef(deployment.currentRuntimeImages.frontendImage)} mono />
+          <InfoLine
+            label="可用前端镜像"
+            value={summarizeImageRef(deployment.availableRuntimeImages.frontendImage)}
+            mono
+          />
+          <InfoLine
+            label="当前 WP 资产版本"
+            value={summarizeWordpressReleaseMap(deployment.currentWordpressAssetReleases)}
+            mono
+          />
+          <InfoLine
+            label="可用 WP 资产版本"
+            value={summarizeAvailableWordpressReleaseMap(deployment.availableWordpressAssetReleases)}
+            mono
+          />
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
