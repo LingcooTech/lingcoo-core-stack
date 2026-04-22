@@ -168,6 +168,30 @@ export function DeploymentsPage() {
     }
   });
 
+  const ignoreRuntimeUpdateMutation = useMutation({
+    mutationFn: (deploymentId: string) =>
+      requestDeploymentAction({ deploymentId, kind: 'ignore_runtime_images' }),
+    onSuccess: () => {
+      toast.success('前端更新忽略动作已提交，等待服务器拉取执行');
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '提交忽略前端更新动作失败');
+    }
+  });
+
+  const ignoreWordpressUpdateMutation = useMutation({
+    mutationFn: (deploymentId: string) =>
+      requestDeploymentAction({ deploymentId, kind: 'ignore_wordpress_assets' }),
+    onSuccess: () => {
+      toast.success('WP 资产更新忽略动作已提交，等待服务器拉取执行');
+      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '提交忽略 WP 资产更新动作失败');
+    }
+  });
+
   const handleWizardCreate = async (payload: Parameters<typeof createDeployment>[0]): Promise<{ id: string }> => {
     return await createDeploymentMutation.mutateAsync(payload);
   };
@@ -272,6 +296,14 @@ export function DeploymentsPage() {
                       requestWordpressUpdateMutation.isPending &&
                       requestWordpressUpdateMutation.variables === deployment.id
                     }
+                    ignoringRuntimeUpdate={
+                      ignoreRuntimeUpdateMutation.isPending &&
+                      ignoreRuntimeUpdateMutation.variables === deployment.id
+                    }
+                    ignoringWordpressUpdate={
+                      ignoreWordpressUpdateMutation.isPending &&
+                      ignoreWordpressUpdateMutation.variables === deployment.id
+                    }
                     deactivating={
                       deactivateDeploymentMutation.isPending &&
                       deactivateDeploymentMutation.variables?.deploymentId === deployment.id
@@ -283,6 +315,12 @@ export function DeploymentsPage() {
                     }}
                     onApplyWordpressUpdate={(target) => {
                       requestWordpressUpdateMutation.mutate(target.id);
+                    }}
+                    onIgnoreRuntimeUpdate={(target) => {
+                      ignoreRuntimeUpdateMutation.mutate(target.id);
+                    }}
+                    onIgnoreWordpressUpdate={(target) => {
+                      ignoreWordpressUpdateMutation.mutate(target.id);
                     }}
                     onDeactivate={(target) => {
                       if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {

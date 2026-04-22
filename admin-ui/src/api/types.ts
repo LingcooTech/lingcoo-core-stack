@@ -1015,12 +1015,12 @@ export interface DeploymentSummary {
   availableWordpressAssetReleases: Record<string, string | null>;
   pendingAction: {
     id: string;
-    kind: 'apply_runtime_images' | 'apply_wordpress_assets';
+    kind: 'apply_runtime_images' | 'apply_wordpress_assets' | 'ignore_runtime_images' | 'ignore_wordpress_assets';
     requestedAt: string | null;
   } | null;
   lastAction: {
     id: string;
-    kind: 'apply_runtime_images' | 'apply_wordpress_assets';
+    kind: 'apply_runtime_images' | 'apply_wordpress_assets' | 'ignore_runtime_images' | 'ignore_wordpress_assets';
     status: 'completed' | 'failed';
     message: string | null;
     finishedAt: string | null;

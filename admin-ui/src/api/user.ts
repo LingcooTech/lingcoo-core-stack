@@ -210,7 +210,11 @@ export async function deactivateDeployment(payload: { deploymentId: string }): P
 
 export async function requestDeploymentAction(payload: {
   deploymentId: string;
-  kind: 'apply_runtime_images' | 'apply_wordpress_assets';
+  kind:
+    | 'apply_runtime_images'
+    | 'apply_wordpress_assets'
+    | 'ignore_runtime_images'
+    | 'ignore_wordpress_assets';
 }): Promise<{ ok: true }> {
   return apiClient<{ ok: true }>(`/v1/deployments/${encodeURIComponent(payload.deploymentId)}/actions`, {
     method: 'POST',

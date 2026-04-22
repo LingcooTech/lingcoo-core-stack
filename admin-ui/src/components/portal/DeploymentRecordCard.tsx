@@ -2,7 +2,7 @@ import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types'
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatTime } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
 
 function summarizeImageRef(value: string | null) {
   if (!value) {
@@ -13,28 +13,78 @@ function summarizeImageRef(value: string | null) {
   return segments[segments.length - 1] || value;
 }
 
-function summarizeWordpressReleaseMap(values: Record<string, string | null>) {
-  return [
-    `theme ${values.FD_THEME_RELEASE_TAG ?? '-'}`,
-    `composer ${values.FD_PAGE_COMPOSER_RELEASE_TAG ?? '-'}`,
-    `content-types ${values.FD_CONTENT_TYPES_RELEASE_TAG ?? '-'}`,
-    `wp-graphql ${values.WPGRAPHQL_RELEASE_TAG ?? '-'}`
-  ].join(' | ');
+function getActionLabel(
+  kind:
+    | 'apply_runtime_images'
+    | 'apply_wordpress_assets'
+    | 'ignore_runtime_images'
+    | 'ignore_wordpress_assets'
+) {
+  switch (kind) {
+    case 'apply_runtime_images':
+      return '应用前端更新';
+    case 'apply_wordpress_assets':
+      return '应用 WP 资产更新';
+    case 'ignore_runtime_images':
+      return '忽略前端更新';
+    case 'ignore_wordpress_assets':
+      return '忽略 WP 资产更新';
+    default:
+      return '未知动作';
+  }
 }
 
-function summarizeAvailableWordpressReleaseMap(values: Record<string, string | null>) {
-  const highlights = [
-    values.AVAILABLE_FD_THEME_RELEASE_TAG,
-    values.AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG,
-    values.AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG,
-    values.AVAILABLE_WPGRAPHQL_RELEASE_TAG
-  ].filter(Boolean);
+function getRuntimeDiffRows(deployment: DeploymentSummary) {
+  const rows = [];
 
-  if (highlights.length === 0) {
-    return '无待应用版本';
+  if (
+    deployment.currentRuntimeImages.frontendImage !== deployment.availableRuntimeImages.frontendImage &&
+    deployment.availableRuntimeImages.frontendImage
+  ) {
+    rows.push({
+      label: 'Frontend',
+      current: summarizeImageRef(deployment.currentRuntimeImages.frontendImage),
+      next: summarizeImageRef(deployment.availableRuntimeImages.frontendImage)
+    });
   }
 
-  return highlights.join(' | ');
+  if (
+    deployment.currentRuntimeImages.websocketImage !== deployment.availableRuntimeImages.websocketImage &&
+    deployment.availableRuntimeImages.websocketImage
+  ) {
+    rows.push({
+      label: 'WebSocket',
+      current: summarizeImageRef(deployment.currentRuntimeImages.websocketImage),
+      next: summarizeImageRef(deployment.availableRuntimeImages.websocketImage)
+    });
+  }
+
+  return rows;
+}
+
+function getWordpressDiffRows(deployment: DeploymentSummary) {
+  const pairs: Array<[string, string, string]> = [
+    ['主题', 'FD_THEME_RELEASE_TAG', 'AVAILABLE_FD_THEME_RELEASE_TAG'],
+    ['Composer', 'FD_PAGE_COMPOSER_RELEASE_TAG', 'AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG'],
+    ['Admin UI', 'FD_ADMIN_UI_RELEASE_TAG', 'AVAILABLE_FD_ADMIN_UI_RELEASE_TAG'],
+    ['Member', 'FD_MEMBER_RELEASE_TAG', 'AVAILABLE_FD_MEMBER_RELEASE_TAG'],
+    ['Payment', 'FD_PAYMENT_RELEASE_TAG', 'AVAILABLE_FD_PAYMENT_RELEASE_TAG'],
+    ['Commerce', 'FD_COMMERCE_RELEASE_TAG', 'AVAILABLE_FD_COMMERCE_RELEASE_TAG'],
+    ['Content Types', 'FD_CONTENT_TYPES_RELEASE_TAG', 'AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG'],
+    ['AI Router', 'FD_AI_ROUTER_RELEASE_TAG', 'AVAILABLE_FD_AI_ROUTER_RELEASE_TAG'],
+    ['WS Push', 'FD_WEBSOCKET_PUSH_RELEASE_TAG', 'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG'],
+    ['WPGraphQL', 'WPGRAPHQL_RELEASE_TAG', 'AVAILABLE_WPGRAPHQL_RELEASE_TAG'],
+    ['JWT Auth', 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', 'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG'],
+    ['Tax Query', 'WPGRAPHQL_TAX_QUERY_REF', 'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF']
+  ];
+
+  return pairs
+    .map(([label, currentKey, availableKey]) => ({
+      label,
+      current: deployment.currentWordpressAssetReleases[currentKey] ?? null,
+      next: deployment.availableWordpressAssetReleases[availableKey] ?? null
+    }))
+    .filter((item) => item.next && item.current !== item.next);
 }
 
 function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
@@ -56,11 +106,15 @@ export function DeploymentRecordCard({
   deactivating,
   applyingRuntimeUpdate,
   applyingWordpressUpdate,
+  ignoringRuntimeUpdate,
+  ignoringWordpressUpdate,
   onIssueToken,
   onEdit,
   onDeactivate,
   onApplyRuntimeUpdate,
-  onApplyWordpressUpdate
+  onApplyWordpressUpdate,
+  onIgnoreRuntimeUpdate,
+  onIgnoreWordpressUpdate
 }: {
   deployment: DeploymentSummary;
   issuedToken?: IssueDeploymentTokenResult | null;
@@ -68,16 +122,22 @@ export function DeploymentRecordCard({
   deactivating?: boolean;
   applyingRuntimeUpdate?: boolean;
   applyingWordpressUpdate?: boolean;
+  ignoringRuntimeUpdate?: boolean;
+  ignoringWordpressUpdate?: boolean;
   onIssueToken: (deploymentId: string) => void;
   onEdit: (deployment: DeploymentSummary) => void;
   onDeactivate: (deployment: DeploymentSummary) => void;
   onApplyRuntimeUpdate: (deployment: DeploymentSummary) => void;
   onApplyWordpressUpdate: (deployment: DeploymentSummary) => void;
+  onIgnoreRuntimeUpdate: (deployment: DeploymentSummary) => void;
+  onIgnoreWordpressUpdate: (deployment: DeploymentSummary) => void;
 }) {
   const hasAvailableRuntimeUpdate =
     Boolean(deployment.availableRuntimeImages.frontendImage) ||
     Boolean(deployment.availableRuntimeImages.websocketImage);
   const hasAvailableWordpressUpdate = Object.values(deployment.availableWordpressAssetReleases).some(Boolean);
+  const runtimeDiffRows = getRuntimeDiffRows(deployment);
+  const wordpressDiffRows = getWordpressDiffRows(deployment);
 
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
@@ -120,6 +180,17 @@ export function DeploymentRecordCard({
               {applyingRuntimeUpdate ? '提交中...' : '应用前端更新'}
             </Button>
           ) : null}
+          {hasAvailableRuntimeUpdate ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => onIgnoreRuntimeUpdate(deployment)}
+              disabled={ignoringRuntimeUpdate || Boolean(deployment.pendingAction)}
+            >
+              {ignoringRuntimeUpdate ? '提交中...' : '忽略前端更新'}
+            </Button>
+          ) : null}
           {hasAvailableWordpressUpdate ? (
             <Button
               variant="outline"
@@ -129,6 +200,17 @@ export function DeploymentRecordCard({
               disabled={applyingWordpressUpdate || Boolean(deployment.pendingAction)}
             >
               {applyingWordpressUpdate ? '提交中...' : '应用 WP 资产更新'}
+            </Button>
+          ) : null}
+          {hasAvailableWordpressUpdate ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => onIgnoreWordpressUpdate(deployment)}
+              disabled={ignoringWordpressUpdate || Boolean(deployment.pendingAction)}
+            >
+              {ignoringWordpressUpdate ? '提交中...' : '忽略 WP 资产更新'}
             </Button>
           ) : null}
           {deployment.status === 'active' ? (
@@ -153,24 +235,26 @@ export function DeploymentRecordCard({
           />
           <InfoLine label="镜像更新策略" value={deployment.updatePolicy === 'auto' ? '自动应用新镜像' : '仅记录可用镜像'} />
           <InfoLine label="当前前端镜像" value={summarizeImageRef(deployment.currentRuntimeImages.frontendImage)} mono />
-          <InfoLine
-            label="可用前端镜像"
-            value={summarizeImageRef(deployment.availableRuntimeImages.frontendImage)}
-            mono
-          />
-          <InfoLine
-            label="当前 WP 资产版本"
-            value={summarizeWordpressReleaseMap(deployment.currentWordpressAssetReleases)}
-            mono
-          />
-          <InfoLine
-            label="可用 WP 资产版本"
-            value={summarizeAvailableWordpressReleaseMap(deployment.availableWordpressAssetReleases)}
-            mono
-          />
+          <InfoLine label="当前 WS 镜像" value={summarizeImageRef(deployment.currentRuntimeImages.websocketImage)} mono />
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
+
+        {runtimeDiffRows.length > 0 ? (
+          <DiffSection
+            title="前端更新差异"
+            rows={runtimeDiffRows}
+            offeredAt={deployment.availableRuntimeImages.offeredAt}
+          />
+        ) : null}
+
+        {wordpressDiffRows.length > 0 ? (
+          <DiffSection
+            title="WP 资产更新差异"
+            rows={wordpressDiffRows}
+            offeredAt={Object.values(deployment.availableWordpressAssetReleases).some(Boolean) ? null : null}
+          />
+        ) : null}
 
         <div className="rounded-lg border border-gray-200 bg-gray-50/85 p-4">
           <div className="flex items-center justify-between gap-4">
@@ -196,13 +280,13 @@ export function DeploymentRecordCard({
           ) : null}
           {deployment.pendingAction ? (
             <p className="mt-3 text-xs text-blue-700">
-              待执行动作：{deployment.pendingAction.kind === 'apply_runtime_images' ? '应用前端更新' : '应用 WP 资产更新'}
+              待执行动作：{getActionLabel(deployment.pendingAction.kind)}
               {deployment.pendingAction.requestedAt ? ` · ${formatTime(deployment.pendingAction.requestedAt)}` : ''}
             </p>
           ) : null}
           {deployment.lastAction ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              最近动作：{deployment.lastAction.kind === 'apply_runtime_images' ? '前端更新' : 'WP 资产更新'} ·
+              最近动作：{getActionLabel(deployment.lastAction.kind)} ·
               {deployment.lastAction.status === 'completed' ? ' 已完成' : ' 失败'}
               {deployment.lastAction.finishedAt ? ` · ${formatTime(deployment.lastAction.finishedAt)}` : ''}
               {deployment.lastAction.message ? ` · ${deployment.lastAction.message}` : ''}
@@ -249,6 +333,38 @@ function InfoLine({ label, value, mono }: { label: string; value: string; mono?:
     <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</p>
       <p className={`mt-1 text-sm text-slate-900 ${mono ? 'font-mono' : 'font-medium'}`}>{value}</p>
+    </div>
+  );
+}
+
+function DiffSection({
+  title,
+  rows,
+  offeredAt
+}: {
+  title: string;
+  rows: Array<{ label: string; current: string | null; next: string | null }>;
+  offeredAt?: string | null;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm font-semibold tracking-tight text-slate-900">{title}</p>
+        {offeredAt ? <span className="text-xs text-muted-foreground">{formatTime(offeredAt)}</span> : null}
+      </div>
+      <div className="mt-3 space-y-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="grid grid-cols-[110px,1fr,20px,1fr] items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{row.label}</span>
+            <span className="min-w-0 break-all font-mono text-xs text-slate-700">{row.current ?? '-'}</span>
+            <span className={cn('text-center text-xs text-gray-400')}>→</span>
+            <span className="min-w-0 break-all font-mono text-xs text-slate-900">{row.next ?? '-'}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

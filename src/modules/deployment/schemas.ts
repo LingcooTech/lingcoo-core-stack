@@ -63,7 +63,12 @@ export const reportDeploymentStatusSchema = z.object({
 });
 
 export const requestDeploymentActionSchema = z.object({
-  kind: z.enum(['apply_runtime_images', 'apply_wordpress_assets'])
+  kind: z.enum([
+    'apply_runtime_images',
+    'apply_wordpress_assets',
+    'ignore_runtime_images',
+    'ignore_wordpress_assets'
+  ])
 });
 
 export const pullDeploymentActionSchema = z.object({

@@ -102,7 +102,11 @@ type DeploymentStatusReportPayload = {
   };
 };
 
-type DeploymentActionKind = 'apply_runtime_images' | 'apply_wordpress_assets';
+type DeploymentActionKind =
+  | 'apply_runtime_images'
+  | 'apply_wordpress_assets'
+  | 'ignore_runtime_images'
+  | 'ignore_wordpress_assets';
 
 function normalizeObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -1570,16 +1574,16 @@ export class DeploymentService {
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
     const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
 
-    if (input.kind === 'apply_runtime_images') {
+    if (input.kind === 'apply_runtime_images' || input.kind === 'ignore_runtime_images') {
       const hasAvailableRuntimeImage =
         normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
         normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
       if (!hasAvailableRuntimeImage) {
-        throw httpError(409, 'No available runtime image update to apply');
+        throw httpError(409, 'No available runtime image update to process');
       }
     }
 
-    if (input.kind === 'apply_wordpress_assets') {
+    if (input.kind === 'apply_wordpress_assets' || input.kind === 'ignore_wordpress_assets') {
       const hasAvailableWordpressAssets =
         Object.values(this.normalizeMeta(wordpressAssetsUpdate.available)).some(
           (value) => normalizeString(value).length > 0
@@ -1588,7 +1592,7 @@ export class DeploymentService {
           (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
         );
       if (!hasAvailableWordpressAssets) {
-        throw httpError(409, 'No available WordPress asset update to apply');
+        throw httpError(409, 'No available WordPress asset update to process');
       }
     }
 
