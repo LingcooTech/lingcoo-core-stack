@@ -83,6 +83,25 @@ const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
   'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF'
 ] as const;
 
+type DeploymentStatusReportPayload = {
+  deploymentId: string;
+  token: string;
+  runtimeImages?: {
+    currentFrontendImage?: string | null;
+    currentWebsocketImage?: string | null;
+    availableFrontendImage?: string | null;
+    availableWebsocketImage?: string | null;
+    offeredAt?: string | null;
+    appliedAt?: string | null;
+  };
+  wordpressAssets?: {
+    current?: Record<string, string | null>;
+    available?: Record<string, string | null>;
+    offeredAt?: string | null;
+    appliedAt?: string | null;
+  };
+};
+
 function normalizeObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
@@ -206,6 +225,17 @@ function normalizeDeploymentRuntimeUpdatePolicy(value: unknown): DeploymentRunti
   return normalizeString(value) === 'auto' ? 'auto' : 'manual';
 }
 
+function pickStringRecord(values: Record<string, unknown>, keys: readonly string[]) {
+  const result: Record<string, string | null> = {};
+
+  for (const key of keys) {
+    const normalized = normalizeString(values[key]);
+    result[key] = normalized.length > 0 ? normalized : null;
+  }
+
+  return result;
+}
+
 export class DeploymentService {
   constructor(
     private readonly db: DbClient,
@@ -290,9 +320,15 @@ export class DeploymentService {
             deployment: row
           })).envDefaults
         : {};
+      const reportedCurrentRuntimeImages = {
+        frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
+        websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null
+      };
       const currentRuntimeImages = {
-        frontendImage: normalizeString(envDefaults.FRONTEND_IMAGE) || null,
-        websocketImage: normalizeString(envDefaults.WEBSOCKET_IMAGE) || null
+        frontendImage:
+          reportedCurrentRuntimeImages.frontendImage || normalizeString(envDefaults.FRONTEND_IMAGE) || null,
+        websocketImage:
+          reportedCurrentRuntimeImages.websocketImage || normalizeString(envDefaults.WEBSOCKET_IMAGE) || null
       };
       const availableRuntimeImages = {
         frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
@@ -301,10 +337,20 @@ export class DeploymentService {
         appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null
       };
       const currentWordpressAssetReleases = Object.fromEntries(
-        WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [key, normalizeString(envDefaults[key]) || null])
+        WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
+          key,
+          normalizeString(this.normalizeMeta(wordpressAssetsMeta.current)[key]) ||
+            normalizeString(envDefaults[key]) ||
+            null
+        ])
       ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
       const availableWordpressAssetReleases = Object.fromEntries(
-        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [key, normalizeString(wordpressAssetsMeta[key]) || null])
+        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
+          key,
+          normalizeString(this.normalizeMeta(wordpressAssetsMeta.available)[key]) ||
+            normalizeString(wordpressAssetsMeta[key]) ||
+            null
+        ])
       ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
 
       return {
@@ -346,10 +392,57 @@ export class DeploymentService {
     return `fddp_${randomBytes(24).toString('base64url')}`;
   }
 
+  private createStatusReportToken() {
+    return `fdsr_${randomBytes(24).toString('base64url')}`;
+  }
+
   private normalizeMeta(meta: unknown) {
     return meta && typeof meta === 'object' && !Array.isArray(meta)
       ? { ...(meta as Record<string, unknown>) }
       : {};
+  }
+
+  private async ensureDeploymentStatusReportAuth(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+  ) {
+    const meta = this.normalizeMeta(deployment?.meta);
+    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
+    let token = '';
+
+    if (runtimeStatusReport.token) {
+      try {
+        const decrypted = decryptJson<{ token?: string }>(
+          runtimeStatusReport.token,
+          this.getEncryptionSecret()
+        );
+        token = normalizeString(decrypted.token);
+      } catch {
+        token = '';
+      }
+    }
+
+    if (token.length > 0) {
+      return {
+        deployment,
+        token
+      };
+    }
+
+    token = this.createStatusReportToken();
+    meta.runtimeStatusReport = {
+      tokenHint: token.slice(-8),
+      token: encryptJson({ token }, this.getEncryptionSecret()),
+      updatedAt: new Date().toISOString()
+    };
+
+    const updated = await new DeploymentRepository(this.db).updateDeployment(deployment.id, {
+      meta
+    });
+
+    return {
+      deployment: updated ?? deployment,
+      token
+    };
   }
 
   private readDeliveryMode(app: DeploymentAppRecord) {
@@ -847,6 +940,8 @@ export class DeploymentService {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     token?: string;
   }) {
+    const statusReportAuth = await this.ensureDeploymentStatusReportAuth(input.deployment);
+    input.deployment = statusReportAuth.deployment;
     const manifest = this.readManifest(input.app);
     const appDefaults = this.readLegacyDeploymentDefaults(input.app);
     const policy = this.readDeploymentPolicy(input.app);
@@ -954,6 +1049,12 @@ export class DeploymentService {
     }
 
     const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
+    envDefaults.FD_STACK_DEPLOYMENT_ID = input.deployment.id;
+    envDefaults.FD_STACK_STATUS_REPORT_URL = new URL(
+      '/v1/deployments/status/report',
+      this.env.PUBLIC_BASE_URL
+    ).toString();
+    envDefaults.FD_STACK_STATUS_REPORT_TOKEN = statusReportAuth.token;
 
     return {
       installPath: installer.installPath,
@@ -1329,6 +1430,99 @@ export class DeploymentService {
         token
       })
     };
+  }
+
+  async reportDeploymentStatus(input: DeploymentStatusReportPayload) {
+    const repository = new DeploymentRepository(this.db);
+    const deployment = await repository.findDeploymentById(input.deploymentId);
+
+    if (!deployment) {
+      throw httpError(404, 'Deployment not found');
+    }
+
+    const meta = this.normalizeMeta(deployment.meta);
+    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
+    let expectedToken = '';
+
+    if (runtimeStatusReport.token) {
+      try {
+        const decrypted = decryptJson<{ token?: string }>(
+          runtimeStatusReport.token,
+          this.getEncryptionSecret()
+        );
+        expectedToken = normalizeString(decrypted.token);
+      } catch {
+        expectedToken = '';
+      }
+    }
+
+    if (!expectedToken || expectedToken !== input.token) {
+      throw httpError(401, 'Deployment status report token is invalid');
+    }
+
+    const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    if (input.runtimeImages) {
+      if (typeof input.runtimeImages.currentFrontendImage !== 'undefined') {
+        runtimeUpdate.currentFrontendImage = input.runtimeImages.currentFrontendImage ?? '';
+      }
+      if (typeof input.runtimeImages.currentWebsocketImage !== 'undefined') {
+        runtimeUpdate.currentWebsocketImage = input.runtimeImages.currentWebsocketImage ?? '';
+      }
+      if (typeof input.runtimeImages.availableFrontendImage !== 'undefined') {
+        runtimeUpdate.availableFrontendImage = input.runtimeImages.availableFrontendImage ?? '';
+      }
+      if (typeof input.runtimeImages.availableWebsocketImage !== 'undefined') {
+        runtimeUpdate.availableWebsocketImage = input.runtimeImages.availableWebsocketImage ?? '';
+      }
+      if (typeof input.runtimeImages.offeredAt !== 'undefined') {
+        runtimeUpdate.offeredAt = input.runtimeImages.offeredAt ?? '';
+      }
+      if (typeof input.runtimeImages.appliedAt !== 'undefined') {
+        runtimeUpdate.appliedAt = input.runtimeImages.appliedAt ?? '';
+      }
+    }
+    meta.runtimeUpdate = runtimeUpdate;
+
+    const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
+    if (input.wordpressAssets) {
+      if (typeof input.wordpressAssets.current !== 'undefined') {
+        wordpressAssetsUpdate.current = input.wordpressAssets.current ?? {};
+      }
+      if (typeof input.wordpressAssets.available !== 'undefined') {
+        wordpressAssetsUpdate.available = input.wordpressAssets.available ?? {};
+      }
+      if (typeof input.wordpressAssets.offeredAt !== 'undefined') {
+        wordpressAssetsUpdate.offeredAt = input.wordpressAssets.offeredAt ?? '';
+      }
+      if (typeof input.wordpressAssets.appliedAt !== 'undefined') {
+        wordpressAssetsUpdate.appliedAt = input.wordpressAssets.appliedAt ?? '';
+      }
+    }
+    meta.wordpressAssetsUpdate = wordpressAssetsUpdate;
+
+    meta.runtimeStatusReport = {
+      ...runtimeStatusReport,
+      lastReportedAt: new Date().toISOString()
+    };
+
+    const updated = await repository.updateDeployment(deployment.id, {
+      meta
+    });
+
+    if (!updated) {
+      throw httpError(500, 'Failed to store deployment status report');
+    }
+
+    await new EventService(this.db).capture({
+      userId: deployment.userId,
+      appId: deployment.appId,
+      eventName: 'deployment.status_reported',
+      properties: {
+        deploymentId: deployment.id
+      }
+    });
+
+    return { ok: true };
   }
 
   async deactivateDeployment(input: {

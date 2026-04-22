@@ -6,6 +6,7 @@ import {
   deploymentParamsSchema,
   exchangeDeploymentTokenSchema,
   issueDeploymentTokenSchema,
+  reportDeploymentStatusSchema,
   updateDeploymentSchema
 } from './schemas';
 
@@ -55,5 +56,10 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/deployments/bootstrap/exchange', async (request) => {
     const payload = exchangeDeploymentTokenSchema.parse(request.body);
     return new DeploymentService(app.db, app.appEnv).exchangeBootstrapToken(payload.token);
+  });
+
+  app.post('/v1/deployments/status/report', async (request) => {
+    const payload = reportDeploymentStatusSchema.parse(request.body);
+    return new DeploymentService(app.db, app.appEnv).reportDeploymentStatus(payload);
   });
 };
