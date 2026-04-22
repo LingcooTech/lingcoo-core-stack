@@ -1495,6 +1495,9 @@ export class DeploymentService {
     }
 
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    const hadAvailableRuntimeUpdate =
+      normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
+      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
     if (input.runtimeImages) {
       if (typeof input.runtimeImages.currentFrontendImage !== 'undefined') {
         runtimeUpdate.currentFrontendImage = input.runtimeImages.currentFrontendImage ?? '';
@@ -1516,8 +1519,17 @@ export class DeploymentService {
       }
     }
     meta.runtimeUpdate = runtimeUpdate;
+    const hasAvailableRuntimeUpdate =
+      normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
+      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
 
     const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
+    const previousWordpressAvailable = this.normalizeMeta(wordpressAssetsUpdate.available);
+    const hadAvailableWordpressUpdate =
+      Object.values(previousWordpressAvailable).some((value) => normalizeString(value).length > 0) ||
+      AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
+        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+      );
     if (input.wordpressAssets) {
       if (typeof input.wordpressAssets.current !== 'undefined') {
         wordpressAssetsUpdate.current = input.wordpressAssets.current ?? {};
@@ -1533,6 +1545,12 @@ export class DeploymentService {
       }
     }
     meta.wordpressAssetsUpdate = wordpressAssetsUpdate;
+    const currentWordpressAvailable = this.normalizeMeta(wordpressAssetsUpdate.available);
+    const hasAvailableWordpressUpdate =
+      Object.values(currentWordpressAvailable).some((value) => normalizeString(value).length > 0) ||
+      AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
+        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+      );
 
     meta.runtimeStatusReport = {
       ...runtimeStatusReport,
@@ -1555,6 +1573,28 @@ export class DeploymentService {
         deploymentId: deployment.id
       }
     });
+
+    if (!hadAvailableRuntimeUpdate && hasAvailableRuntimeUpdate) {
+      await new EventService(this.db).capture({
+        userId: deployment.userId,
+        appId: deployment.appId,
+        eventName: 'deployment.runtime_update_available',
+        properties: {
+          deploymentId: deployment.id
+        }
+      });
+    }
+
+    if (!hadAvailableWordpressUpdate && hasAvailableWordpressUpdate) {
+      await new EventService(this.db).capture({
+        userId: deployment.userId,
+        appId: deployment.appId,
+        eventName: 'deployment.wordpress_update_available',
+        properties: {
+          deploymentId: deployment.id
+        }
+      });
+    }
 
     return { ok: true };
   }
@@ -1607,6 +1647,16 @@ export class DeploymentService {
     if (!updated) {
       throw httpError(500, 'Failed to queue deployment action');
     }
+
+    await new EventService(this.db).capture({
+      userId: deployment.userId,
+      appId: deployment.appId,
+      eventName: 'deployment.action_requested',
+      properties: {
+        deploymentId: deployment.id,
+        kind: input.kind
+      }
+    });
 
     return { ok: true };
   }
@@ -1705,6 +1755,17 @@ export class DeploymentService {
     if (!updated) {
       throw httpError(500, 'Failed to complete deployment action');
     }
+
+    await new EventService(this.db).capture({
+      userId: deployment.userId,
+      appId: deployment.appId,
+      eventName: input.status === 'completed' ? 'deployment.action_completed' : 'deployment.action_failed',
+      properties: {
+        deploymentId: deployment.id,
+        kind: normalizeString(pendingAction.kind),
+        message: normalizeString(input.message)
+      }
+    });
 
     return { ok: true };
   }

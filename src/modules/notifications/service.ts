@@ -176,6 +176,102 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         sourceEventName: event.eventName,
         dedupeKey: `event:${event.id}`,
       };
+    case 'deployment.runtime_update_available':
+      return {
+        userId: event.userId,
+        category: 'deployment',
+        level: 'info',
+        title: '有新的前端更新可用',
+        body: '你的部署检测到了新的运行时镜像版本，可以选择立即应用或稍后处理。',
+        ctaLabel: '查看部署',
+        ctaUrl: '/deploy',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    case 'deployment.wordpress_update_available':
+      return {
+        userId: event.userId,
+        category: 'deployment',
+        level: 'info',
+        title: '有新的 WP 资产更新可用',
+        body: '你的部署检测到了新的主题、插件或 GraphQL 资产版本，可以选择立即应用或稍后处理。',
+        ctaLabel: '查看部署',
+        ctaUrl: '/deploy',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    case 'deployment.action_requested': {
+      const kind = normalizeString(properties.kind);
+      const title =
+        kind === 'apply_runtime_images'
+          ? '前端更新已排队'
+          : kind === 'apply_wordpress_assets'
+            ? 'WP 资产更新已排队'
+            : kind === 'ignore_runtime_images'
+              ? '前端更新忽略已排队'
+              : 'WP 资产忽略已排队';
+      return {
+        userId: event.userId,
+        category: 'deployment',
+        level: 'info',
+        title,
+        body: '服务器会在下一次轮询时执行这条部署动作。',
+        ctaLabel: '查看部署',
+        ctaUrl: '/deploy',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'deployment.action_completed': {
+      const kind = normalizeString(properties.kind);
+      const title =
+        kind === 'apply_runtime_images'
+          ? '前端更新已完成'
+          : kind === 'apply_wordpress_assets'
+            ? 'WP 资产更新已完成'
+            : kind === 'ignore_runtime_images'
+              ? '前端更新已忽略'
+              : 'WP 资产更新已忽略';
+      return {
+        userId: event.userId,
+        category: 'deployment',
+        level: 'success',
+        title,
+        body: '服务器已经执行并完成了这条部署动作。',
+        ctaLabel: '查看部署',
+        ctaUrl: '/deploy',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'deployment.action_failed': {
+      const kind = normalizeString(properties.kind);
+      const title =
+        kind === 'apply_runtime_images'
+          ? '前端更新失败'
+          : kind === 'apply_wordpress_assets'
+            ? 'WP 资产更新失败'
+            : kind === 'ignore_runtime_images'
+              ? '前端更新忽略失败'
+              : 'WP 资产更新忽略失败';
+      const message = normalizeString(properties.message);
+      return {
+        userId: event.userId,
+        category: 'deployment',
+        level: 'error',
+        title,
+        body: message || '服务器在执行部署动作时失败，请检查部署详情和服务器日志。',
+        ctaLabel: '查看部署',
+        ctaUrl: '/deploy',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
     case 'ticket.created': {
       const ticketNo = normalizeString(properties.ticketNo) || '当前工单';
       const appCode = normalizeString(properties.appCode);
