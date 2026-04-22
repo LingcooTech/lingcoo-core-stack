@@ -49,6 +49,9 @@ export function DeploymentRecordCard({
           <Badge variant="secondary">{deployment.environment}</Badge>
           {deployment.serverHost ? <Badge variant="secondary">{deployment.serverHost}</Badge> : null}
           {deployment.primaryDomain ? <Badge variant="outline">{deployment.primaryDomain}</Badge> : null}
+          <Badge variant={deployment.updatePolicy === 'auto' ? 'default' : 'secondary'}>
+            {deployment.updatePolicy === 'auto' ? '自动更新' : '手动更新'}
+          </Badge>
           {deployment.domainBinding.isLocked ? (
             <Badge variant="secondary">已绑定域名</Badge>
           ) : null}
@@ -80,6 +83,7 @@ export function DeploymentRecordCard({
                   : '未启用'
             }
           />
+          <InfoLine label="镜像更新策略" value={deployment.updatePolicy === 'auto' ? '自动应用新镜像' : '仅记录可用镜像'} />
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>

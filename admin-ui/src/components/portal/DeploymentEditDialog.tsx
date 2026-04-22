@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   buildManifestInputPayload,
   createDeploymentInputDraft,
@@ -106,6 +107,7 @@ export function DeploymentEditDialog({
     adminDomain?: string;
     wsDomain?: string;
     installPath?: string;
+    updatePolicy?: 'manual' | 'auto';
     values?: Record<string, string | boolean>;
     secrets?: Record<string, string>;
   }) => Promise<void>;
@@ -118,6 +120,7 @@ export function DeploymentEditDialog({
   const [adminDomain, setAdminDomain] = useState('');
   const [wsDomain, setWsDomain] = useState('');
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(createEditDraft(null, null));
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -154,6 +157,7 @@ export function DeploymentEditDialog({
       setAdminDomain('');
       setWsDomain('');
       setInstallPath(appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
+      setUpdatePolicy('manual');
       setDeploymentDraft(createEditDraft(manifest, null));
       setAdvancedOpen(false);
       return;
@@ -166,6 +170,7 @@ export function DeploymentEditDialog({
     setAdminDomain(deployment.adminDomain ?? '');
     setWsDomain(deployment.wsDomain ?? '');
     setInstallPath(deployment.installPath || appOption?.defaultInstallPath || '/opt/fd-headless-wp-system');
+    setUpdatePolicy(deployment.updatePolicy ?? 'manual');
     setDeploymentDraft(createEditDraft(manifest, deployment));
     setAdvancedOpen(Boolean(deployment.serverHost));
   }, [appOption?.defaultInstallPath, deployment, manifest]);
@@ -263,6 +268,7 @@ export function DeploymentEditDialog({
       adminDomain: adminDomain.trim() || undefined,
       wsDomain: wsDomain.trim() || undefined,
       installPath: installPath.trim() || undefined,
+      updatePolicy,
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets: Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined
     });
@@ -276,6 +282,7 @@ export function DeploymentEditDialog({
     onSave,
     primaryDomain,
     serverHost,
+    updatePolicy,
     validateInputs,
     wsDomain
   ]);
@@ -460,6 +467,24 @@ export function DeploymentEditDialog({
                       onChange={(event) => setInstallPath(event.target.value)}
                       placeholder={appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-update-policy">运行时镜像更新策略</Label>
+                    <Select
+                      value={updatePolicy}
+                      onValueChange={(value) => setUpdatePolicy(value as 'manual' | 'auto')}
+                    >
+                      <SelectTrigger id="edit-update-policy">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">手动更新</SelectItem>
+                        <SelectItem value="auto">自动更新</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      `manual` 只记录新镜像可用状态，不自动切换；`auto` 会在收到新镜像时直接应用。
+                    </p>
                   </div>
                 </div>
 

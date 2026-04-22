@@ -123,6 +123,7 @@ function normalizeSecretRecord(value: unknown) {
 }
 
 type DeploymentDomainBindingSource = 'none' | DeliveryManifestDomainSourceField;
+type DeploymentRuntimeUpdatePolicy = 'manual' | 'auto';
 
 const DOMAIN_BINDING_SOURCE_LABELS: Record<DeliveryManifestDomainSourceField, string> = {
   primaryDomain: '主域名',
@@ -169,6 +170,10 @@ function getDomainBindingSourceLabel(sourceField: DeploymentDomainBindingSource)
   }
 
   return DOMAIN_BINDING_SOURCE_LABELS[sourceField];
+}
+
+function normalizeDeploymentRuntimeUpdatePolicy(value: unknown): DeploymentRuntimeUpdatePolicy {
+  return normalizeString(value) === 'auto' ? 'auto' : 'manual';
 }
 
 export class DeploymentService {
@@ -232,6 +237,7 @@ export class DeploymentService {
       const token = latestTokenMap.get(row.id) ?? null;
       const deliveryValues = this.readDeploymentInputValues(row);
       const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
+      const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
       const policy = app
         ? this.readDeploymentPolicy(app as DeploymentAppRecord)
         : { maxActiveDeployments: 1, domainBindingSource: 'none' as const };
@@ -250,6 +256,7 @@ export class DeploymentService {
         ...row,
         deliveryValues,
         configuredSecretKeys,
+        updatePolicy,
         domainBinding: {
           sourceField: activeBindingSource,
           isLocked: isDomainLocked,
@@ -377,6 +384,14 @@ export class DeploymentService {
       boundDomain,
       boundAt
     };
+  }
+
+  private readDeploymentRuntimeUpdatePolicy(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+  ): DeploymentRuntimeUpdatePolicy {
+    const meta = this.normalizeMeta(deployment?.meta);
+    const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    return normalizeDeploymentRuntimeUpdatePolicy(runtimeUpdate.policy);
   }
 
   private readDeploymentInputValues(deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>) {
@@ -777,6 +792,7 @@ export class DeploymentService {
     const appDefaults = this.readLegacyDeploymentDefaults(input.app);
     const policy = this.readDeploymentPolicy(input.app);
     const binding = this.readDeploymentBinding(input.deployment);
+    const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(input.deployment);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
       input.app.code
     );
@@ -864,6 +880,7 @@ export class DeploymentService {
 
     const activeBindingSource =
       binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+    envDefaults.FD_RUNTIME_IMAGE_UPDATE_POLICY = updatePolicy;
     envDefaults.FD_DOMAIN_BINDING_SOURCE = activeBindingSource;
 
     if (activeBindingSource !== 'none') {
@@ -925,6 +942,7 @@ export class DeploymentService {
     adminDomain?: string;
     wsDomain?: string;
     installPath?: string;
+    updatePolicy?: DeploymentRuntimeUpdatePolicy;
     values?: DeliverySettingValues;
     secrets?: DeliverySettingSecrets;
   }) {
@@ -974,7 +992,10 @@ export class DeploymentService {
     }
 
     const deploymentMeta: Record<string, unknown> = {
-      appCode: selection.app.code
+      appCode: selection.app.code,
+      runtimeUpdate: {
+        policy: normalizeDeploymentRuntimeUpdatePolicy(input.updatePolicy)
+      }
     };
 
     if (Object.keys(deploymentValues).length > 0 || Object.keys(deploymentSecrets).length > 0) {
@@ -1025,6 +1046,7 @@ export class DeploymentService {
     adminDomain?: string;
     wsDomain?: string;
     installPath?: string;
+    updatePolicy?: DeploymentRuntimeUpdatePolicy;
     values?: DeliverySettingValues;
     secrets?: DeliverySettingSecrets;
   }) {
@@ -1080,6 +1102,12 @@ export class DeploymentService {
     });
 
     const nextMeta = this.normalizeMeta(deployment.meta);
+    const nextRuntimeUpdate = this.normalizeMeta(nextMeta.runtimeUpdate);
+    nextRuntimeUpdate.policy = normalizeDeploymentRuntimeUpdatePolicy(
+      typeof input.updatePolicy === 'string' ? input.updatePolicy : nextRuntimeUpdate.policy
+    );
+    nextMeta.runtimeUpdate = nextRuntimeUpdate;
+
     if (Object.keys(nextValues).length > 0 || Object.keys(nextSecrets).length > 0) {
       nextMeta.deliveryInputs = {
         values: nextValues,

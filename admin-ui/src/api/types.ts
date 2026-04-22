@@ -1000,6 +1000,7 @@ export interface DeploymentSummary {
   status: string;
   lastTokenIssuedAt: string | null;
   lastDeployedAt: string | null;
+  updatePolicy: 'manual' | 'auto';
   deliveryValues: Record<string, string | boolean>;
   configuredSecretKeys: string[];
   domainBinding: {

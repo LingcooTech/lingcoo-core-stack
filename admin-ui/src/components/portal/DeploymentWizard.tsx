@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   buildManifestInputPayload,
   createDeploymentInputDraft,
@@ -37,6 +38,7 @@ export interface CreateDeploymentPayload {
   adminDomain?: string;
   wsDomain?: string;
   installPath?: string;
+  updatePolicy?: 'manual' | 'auto';
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }
@@ -105,6 +107,7 @@ export function DeploymentWizard({
   const [adminDomain, setAdminDomain] = useState('');
   const [wsDomain, setWsDomain] = useState('');
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
     createWizardDraft(null),
   );
@@ -167,6 +170,7 @@ export function DeploymentWizard({
     setAdminDomain('');
     setWsDomain('');
     setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
+    setUpdatePolicy('manual');
     setAdvancedOpen(false);
   }, [selectedAppCode, selectedApp]);
 
@@ -262,6 +266,7 @@ export function DeploymentWizard({
       environment,
       serverHost: serverHost || undefined,
       installPath: installPath || undefined,
+      updatePolicy,
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets:
         Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined,
@@ -300,6 +305,7 @@ export function DeploymentWizard({
     primaryDomain,
     selectedAppCode,
     serverHost,
+    updatePolicy,
     validateManifestInputs,
     wsDomain,
   ]);
@@ -314,6 +320,7 @@ export function DeploymentWizard({
     setAdminDomain('');
     setWsDomain('');
     setInstallPath('/opt/fd-headless-wp-system');
+    setUpdatePolicy('manual');
     setDeploymentDraft(createWizardDraft(null));
     setAdvancedOpen(false);
     setTokenResult(null);
@@ -580,9 +587,9 @@ export function DeploymentWizard({
               </button>
               {advancedOpen && (
                 <div className="space-y-4 border-t border-border px-4 pb-4 pt-3">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-server">服务器 / Host</Label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="wizard-server">服务器 / Host</Label>
                       <Input
                         id="wizard-server"
                         value={serverHost}
@@ -598,6 +605,24 @@ export function DeploymentWizard({
                         onChange={(event) => setInstallPath(event.target.value)}
                         placeholder={selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-update-policy">运行时镜像更新策略</Label>
+                      <Select
+                        value={updatePolicy}
+                        onValueChange={(value) => setUpdatePolicy(value as 'manual' | 'auto')}
+                      >
+                        <SelectTrigger id="wizard-update-policy">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">手动更新</SelectItem>
+                          <SelectItem value="auto">自动更新</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        `manual` 只记录新镜像可用状态，不自动切换；`auto` 会在收到新镜像时直接应用。
+                      </p>
                     </div>
                   </div>
 

@@ -160,6 +160,7 @@ export async function createDeployment(payload: {
   adminDomain?: string;
   wsDomain?: string;
   installPath?: string;
+  updatePolicy?: 'manual' | 'auto';
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {
@@ -178,6 +179,7 @@ export async function updateDeployment(payload: {
   adminDomain?: string;
   wsDomain?: string;
   installPath?: string;
+  updatePolicy?: 'manual' | 'auto';
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {

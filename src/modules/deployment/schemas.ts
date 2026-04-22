@@ -9,6 +9,7 @@ export const createDeploymentSchema = z.object({
   adminDomain: z.string().trim().min(1).max(255).optional(),
   wsDomain: z.string().trim().min(1).max(255).optional(),
   installPath: z.string().trim().min(1).max(255).optional(),
+  updatePolicy: z.enum(['manual', 'auto']).optional(),
   values: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
   secrets: z.record(z.string(), z.string().trim().min(1).max(4096)).optional()
 });
@@ -21,6 +22,7 @@ export const updateDeploymentSchema = z.object({
   adminDomain: z.string().trim().min(1).max(255).optional(),
   wsDomain: z.string().trim().min(1).max(255).optional(),
   installPath: z.string().trim().min(1).max(255).optional(),
+  updatePolicy: z.enum(['manual', 'auto']).optional(),
   values: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
   secrets: z.record(z.string(), z.string().trim().min(1).max(4096)).optional()
 });
