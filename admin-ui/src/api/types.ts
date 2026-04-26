@@ -1028,9 +1028,11 @@ export interface DeploymentSummary {
     finishedAt: string | null;
   } | null;
   deliveryValues: Record<string, string | boolean>;
+  domainValues: Record<string, string>;
   configuredSecretKeys: string[];
   domainBinding: {
-    sourceField: 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+    sourceField: string;
+    sourceLabel: string | null;
     scope: 'registrable_domain' | 'exact_host';
     isLocked: boolean;
     boundDomain: string | null;

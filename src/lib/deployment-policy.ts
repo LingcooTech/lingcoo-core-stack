@@ -1,4 +1,4 @@
-export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+export type DeploymentDomainBindingSource = string;
 export type DeploymentDomainBindingMode = 'none' | 'lock_on_first_success';
 export type DeploymentDomainBindingScope = 'exact_host' | 'registrable_domain';
 
@@ -76,10 +76,7 @@ function normalizeMax(value: unknown) {
 
 function normalizeBindingSource(value: unknown): DeploymentDomainBindingSource {
   const normalized = normalizeString(value);
-  if (normalized === 'primaryDomain' || normalized === 'adminDomain' || normalized === 'wsDomain') {
-    return normalized;
-  }
-  return 'none';
+  return normalized && normalized !== 'none' ? normalized : 'none';
 }
 
 function normalizeBindingMode(value: unknown, source: DeploymentDomainBindingSource): DeploymentDomainBindingMode {

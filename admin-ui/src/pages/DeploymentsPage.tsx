@@ -39,10 +39,10 @@ function normalizeDeploymentPolicy(metaInput: unknown) {
         ? Number(rawMax)
         : Number.NaN;
   const source =
-    policy.domainBindingSource === 'primaryDomain' ||
-    policy.domainBindingSource === 'adminDomain' ||
-    policy.domainBindingSource === 'wsDomain'
-      ? policy.domainBindingSource
+    typeof policy.domainBindingSource === 'string' &&
+    policy.domainBindingSource.trim() &&
+    policy.domainBindingSource !== 'none'
+      ? policy.domainBindingSource.trim()
       : 'none';
   const mode =
     policy.domainBindingMode === 'lock_on_first_success' && source !== 'none'

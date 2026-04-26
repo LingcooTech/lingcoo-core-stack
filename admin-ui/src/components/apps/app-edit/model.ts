@@ -19,7 +19,7 @@ import {
 export type AppEditTabKey = 'basics' | 'content' | 'features' | 'plans' | 'offers' | 'delivery';
 export type EditableRecordStatus = 'active' | 'inactive' | 'cancelled' | 'expired';
 export type EditablePlanInterval = 'month' | 'year' | 'one_time';
-export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+export type DeploymentDomainBindingSource = string;
 export type DeploymentDomainBindingMode = 'none' | 'lock_on_first_success';
 export type DeploymentDomainBindingScope = 'registrable_domain' | 'exact_host';
 
@@ -200,10 +200,7 @@ export function createDeploymentPolicyDraft(metaInput?: unknown): DeploymentPoli
       : typeof rawMax === 'string' && rawMax.trim().length > 0
         ? Number(rawMax)
         : Number.NaN;
-  const normalizedSource =
-    source === 'primaryDomain' || source === 'adminDomain' || source === 'wsDomain'
-      ? source
-      : 'none';
+  const normalizedSource = source && source !== 'none' ? source : 'none';
   const normalizedMode =
     mode === 'lock_on_first_success' && normalizedSource !== 'none'
       ? 'lock_on_first_success'

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
+import type { DeliveryManifest } from '@/lib/app-delivery';
 
 import { AppEditSaveBar } from './AppEditSaveBar';
 import {
@@ -21,6 +22,7 @@ import {
 interface AppEditPlansTabProps {
   features: EditableFeature[];
   plans: EditablePlan[];
+  manifest: DeliveryManifest | null;
   updatePlan: EditablePlanUpdate;
   addPlan: () => void;
   removePlan: (planId: string) => void;
@@ -182,6 +184,7 @@ export function AppEditFeaturesTab({
 export function AppEditPlansTab({
   features,
   plans,
+  manifest,
   updatePlan,
   addPlan,
   removePlan,
@@ -189,6 +192,8 @@ export function AppEditPlansTab({
   saveDisabled,
   onSave,
 }: AppEditPlansTabProps) {
+  const domainSlots = manifest?.domainSlots ?? [];
+
   return (
     <TabsContent value="plans" className="space-y-6">
       <Card>
@@ -442,7 +447,7 @@ export function AppEditPlansTab({
                               domainBindingSource:
                                 value === 'lock_on_first_success' &&
                                 current.deploymentPolicy.domainBindingSource === 'none'
-                                  ? 'primaryDomain'
+                                  ? domainSlots[0]?.sourceField ?? 'none'
                                   : value === 'none'
                                     ? 'none'
                                     : current.deploymentPolicy.domainBindingSource,
@@ -480,11 +485,24 @@ export function AppEditPlansTab({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">未启用</SelectItem>
-                          <SelectItem value="primaryDomain">主域名</SelectItem>
-                          <SelectItem value="adminDomain">后台域名</SelectItem>
-                          <SelectItem value="wsDomain">WS 域名</SelectItem>
+                          {domainSlots.map((slot) => (
+                            <SelectItem key={`${slot.key}:${slot.sourceField}`} value={slot.sourceField}>
+                              {slot.label}
+                            </SelectItem>
+                          ))}
+                          {plan.deploymentPolicy.domainBindingSource !== 'none' &&
+                          !domainSlots.some((slot) => slot.sourceField === plan.deploymentPolicy.domainBindingSource) ? (
+                            <SelectItem value={plan.deploymentPolicy.domainBindingSource}>
+                              {plan.deploymentPolicy.domainBindingSource}
+                            </SelectItem>
+                          ) : null}
                         </SelectContent>
                       </Select>
+                      {domainSlots.length === 0 ? (
+                        <p className="text-xs text-amber-700">
+                          当前 manifest 没有声明 domainSlots，无法选择域名绑定槽位。
+                        </p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label>绑定粒度</Label>

@@ -162,6 +162,7 @@ export async function createDeployment(payload: {
   wsDomain?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
+  domainValues?: Record<string, string>;
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {
@@ -181,6 +182,7 @@ export async function updateDeployment(payload: {
   wsDomain?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
+  domainValues?: Record<string, string>;
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {

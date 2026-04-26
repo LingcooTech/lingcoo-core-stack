@@ -35,7 +35,7 @@ export interface DeployableAppOption {
     activeDeploymentCount: number;
     maxActiveDeployments: number;
     domainBindingMode: 'none' | 'lock_on_first_success';
-    domainBindingSource: 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+    domainBindingSource: string;
     domainBindingScope: 'registrable_domain' | 'exact_host';
     boundDomain: string | null;
   }>;
@@ -52,6 +52,7 @@ export interface CreateDeploymentPayload {
   wsDomain?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
+  domainValues?: Record<string, string>;
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }
@@ -116,10 +117,8 @@ export function DeploymentWizard({
   const [selectedEntitlementId, setSelectedEntitlementId] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
-  const [primaryDomain, setPrimaryDomain] = useState('');
   const [serverHost, setServerHost] = useState('');
-  const [adminDomain, setAdminDomain] = useState('');
-  const [wsDomain, setWsDomain] = useState('');
+  const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
@@ -189,9 +188,7 @@ export function DeploymentWizard({
     setSelectedEntitlementId(
       selectedApp?.entitlements.length === 1 ? selectedApp.entitlements[0].id : '',
     );
-    setPrimaryDomain('');
-    setAdminDomain('');
-    setWsDomain('');
+    setDomainValues({});
     setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
     setUpdatePolicy('manual');
     setAdvancedOpen(false);
@@ -231,11 +228,7 @@ export function DeploymentWizard({
 
     for (const slot of manifest.domainSlots) {
       const value =
-        slot.sourceField === 'primaryDomain'
-          ? primaryDomain
-          : slot.sourceField === 'adminDomain'
-            ? adminDomain
-            : wsDomain;
+        domainValues[slot.sourceField] ?? '';
       if (slot.required && !value.trim()) {
         toast.error(`${slot.label}不能为空`);
         return false;
@@ -272,7 +265,7 @@ export function DeploymentWizard({
     }
 
     return true;
-  }, [adminDomain, deploymentDraft, manifest, primaryDomain, userInputGroups, wsDomain]);
+  }, [deploymentDraft, domainValues, manifest, userInputGroups]);
 
   const handleCreate = useCallback(async () => {
     if (!selectedAppCode || !selectedEntitlementId || !label.trim()) {
@@ -292,20 +285,15 @@ export function DeploymentWizard({
       serverHost: serverHost || undefined,
       installPath: installPath || undefined,
       updatePolicy,
+      domainValues: Object.fromEntries(
+        Object.entries(domainValues)
+          .map(([key, value]) => [key, value.trim()])
+          .filter(([, value]) => value.length > 0),
+      ),
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets:
         Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined,
     };
-
-    if (primaryDomain.trim()) {
-      payload.primaryDomain = primaryDomain.trim();
-    }
-    if (adminDomain.trim()) {
-      payload.adminDomain = adminDomain.trim();
-    }
-    if (wsDomain.trim()) {
-      payload.wsDomain = wsDomain.trim();
-    }
 
     try {
       const result = await onCreateDeployment(payload);
@@ -320,20 +308,18 @@ export function DeploymentWizard({
       /* error handled by parent via toast */
     }
   }, [
-    adminDomain,
     deploymentDraft,
+    domainValues,
     environment,
     installPath,
     label,
     onCreateDeployment,
     onIssueToken,
-    primaryDomain,
     selectedAppCode,
     selectedEntitlementId,
     serverHost,
     updatePolicy,
     validateManifestInputs,
-    wsDomain,
   ]);
 
   const handleReset = useCallback(() => {
@@ -342,10 +328,8 @@ export function DeploymentWizard({
     setSelectedEntitlementId('');
     setLabel('');
     setEnvironment('production');
-    setPrimaryDomain('');
     setServerHost('');
-    setAdminDomain('');
-    setWsDomain('');
+    setDomainValues({});
     setInstallPath('/opt/fd-headless-wp-system');
     setUpdatePolicy('manual');
     setDeploymentDraft(createWizardDraft(null));
@@ -493,11 +477,9 @@ export function DeploymentWizard({
                   <p className="text-xs text-muted-foreground">
                     {selectedEntitlement.domainBindingMode === 'lock_on_first_success'
                       ? `首次成功部署后将锁定 ${
-                          selectedEntitlement.domainBindingSource === 'primaryDomain'
-                            ? '主域名'
-                            : selectedEntitlement.domainBindingSource === 'adminDomain'
-                              ? '后台域名'
-                              : 'WS 域名'
+                          manifest?.domainSlots.find(
+                            (slot) => slot.sourceField === selectedEntitlement.domainBindingSource,
+                          )?.label ?? selectedEntitlement.domainBindingSource
                         }（${
                           selectedEntitlement.domainBindingScope === 'exact_host'
                             ? '完整子域名'
@@ -533,22 +515,12 @@ export function DeploymentWizard({
             {manifest?.domainSlots.length ? (
               <div className="grid gap-4 md:grid-cols-3">
                 {manifest.domainSlots.map((slot) => {
-                  const value =
-                    slot.sourceField === 'primaryDomain'
-                      ? primaryDomain
-                      : slot.sourceField === 'adminDomain'
-                        ? adminDomain
-                        : wsDomain;
+                  const value = domainValues[slot.sourceField] ?? '';
                   const onChange = (nextValue: string) => {
-                    if (slot.sourceField === 'primaryDomain') {
-                      setPrimaryDomain(nextValue);
-                      return;
-                    }
-                    if (slot.sourceField === 'adminDomain') {
-                      setAdminDomain(nextValue);
-                      return;
-                    }
-                    setWsDomain(nextValue);
+                    setDomainValues((current) => ({
+                      ...current,
+                      [slot.sourceField]: nextValue,
+                    }));
                   };
 
                   return (

@@ -2,7 +2,7 @@ type DeliveryManifestValue = string | boolean;
 
 export type DeliveryManifestFieldScope = 'user_input' | 'preset';
 export type DeliveryManifestFieldType = 'text' | 'email' | 'boolean' | 'secret';
-export type DeliveryManifestDomainSourceField = 'primaryDomain' | 'adminDomain' | 'wsDomain';
+export type DeliveryManifestDomainSourceField = string;
 
 export interface DeliveryManifestInstaller {
   repoUrl: string;
@@ -159,22 +159,14 @@ function normalizeGroup(value: unknown): DeliveryManifestGroup | null {
   };
 }
 
-function normalizeDomainSourceField(value: unknown): DeliveryManifestDomainSourceField {
-  const normalized = normalizeString(value);
-  if (normalized === 'adminDomain' || normalized === 'wsDomain') {
-    return normalized;
-  }
-
-  return 'primaryDomain';
-}
-
 function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null {
   const raw = normalizeObject(value);
   const key = normalizeString(raw.key);
   const label = normalizeString(raw.label);
   const envKey = normalizeString(raw.envKey);
+  const sourceField = normalizeString(raw.sourceField) || key;
 
-  if (!key || !label || !envKey) {
+  if (!key || !label || !envKey || !sourceField) {
     return null;
   }
 
@@ -182,7 +174,7 @@ function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null 
     key,
     label,
     envKey,
-    sourceField: normalizeDomainSourceField(raw.sourceField),
+    sourceField,
     required: normalizeBoolean(raw.required) ?? false,
     placeholder: normalizeString(raw.placeholder) || undefined,
     description: normalizeString(raw.description) || undefined

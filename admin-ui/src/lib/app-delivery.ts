@@ -4,7 +4,7 @@ import type { DeliverySettingsOverview } from '@/api/types';
 export type DeliveryMode = 'none' | 'one_click';
 export type DeliveryManifestFieldScope = 'user_input' | 'preset';
 export type DeliveryManifestFieldType = 'text' | 'email' | 'boolean' | 'secret';
-export type DeliveryManifestDomainSourceField = 'primaryDomain' | 'adminDomain' | 'wsDomain';
+export type DeliveryManifestDomainSourceField = string;
 
 export interface DeliveryManifestSourceDraft {
   repoUrl: string;
@@ -178,11 +178,7 @@ function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null 
     return null;
   }
 
-  const sourceFieldRaw = normalizeString(raw.sourceField);
-  const sourceField: DeliveryManifestDomainSourceField =
-    sourceFieldRaw === 'adminDomain' || sourceFieldRaw === 'wsDomain'
-      ? sourceFieldRaw
-      : 'primaryDomain';
+  const sourceField = normalizeString(raw.sourceField) || key;
 
   return {
     key,

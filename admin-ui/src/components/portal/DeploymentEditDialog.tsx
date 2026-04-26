@@ -31,18 +31,6 @@ type DeploymentDraft = {
   secrets: Record<string, string>;
 };
 
-function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
-  switch (sourceField) {
-    case 'adminDomain':
-      return '后台域名';
-    case 'wsDomain':
-      return 'WS 域名';
-    case 'primaryDomain':
-    default:
-      return '主域名';
-  }
-}
-
 export interface DeploymentEditAppOption {
   appCode: string;
   appName: string;
@@ -108,6 +96,7 @@ export function DeploymentEditDialog({
     wsDomain?: string;
     installPath?: string;
     updatePolicy?: 'manual' | 'auto';
+    domainValues?: Record<string, string>;
     values?: Record<string, string | boolean>;
     secrets?: Record<string, string>;
   }) => Promise<void>;
@@ -116,9 +105,7 @@ export function DeploymentEditDialog({
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
   const [serverHost, setServerHost] = useState('');
-  const [primaryDomain, setPrimaryDomain] = useState('');
-  const [adminDomain, setAdminDomain] = useState('');
-  const [wsDomain, setWsDomain] = useState('');
+  const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(createEditDraft(null, null));
@@ -153,9 +140,7 @@ export function DeploymentEditDialog({
       setLabel('');
       setEnvironment('production');
       setServerHost('');
-      setPrimaryDomain('');
-      setAdminDomain('');
-      setWsDomain('');
+      setDomainValues({});
       setInstallPath(appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
       setUpdatePolicy('manual');
       setDeploymentDraft(createEditDraft(manifest, null));
@@ -166,9 +151,7 @@ export function DeploymentEditDialog({
     setLabel(deployment.label);
     setEnvironment(deployment.environment);
     setServerHost(deployment.serverHost ?? '');
-    setPrimaryDomain(deployment.primaryDomain ?? '');
-    setAdminDomain(deployment.adminDomain ?? '');
-    setWsDomain(deployment.wsDomain ?? '');
+    setDomainValues(deployment.domainValues ?? {});
     setInstallPath(deployment.installPath || appOption?.defaultInstallPath || '/opt/fd-headless-wp-system');
     setUpdatePolicy(deployment.updatePolicy ?? 'manual');
     setDeploymentDraft(createEditDraft(manifest, deployment));
@@ -207,12 +190,7 @@ export function DeploymentEditDialog({
 
     if (manifest) {
       for (const slot of manifest.domainSlots) {
-        const value =
-          slot.sourceField === 'primaryDomain'
-            ? primaryDomain
-            : slot.sourceField === 'adminDomain'
-              ? adminDomain
-              : wsDomain;
+        const value = domainValues[slot.sourceField] ?? '';
         if (slot.required && !value.trim()) {
           toast.error(`${slot.label}不能为空`);
           return false;
@@ -251,7 +229,7 @@ export function DeploymentEditDialog({
     }
 
     return true;
-  }, [adminDomain, deployment, deploymentDraft.secrets, deploymentDraft.values, label, manifest, primaryDomain, userInputGroups, wsDomain]);
+  }, [deployment, deploymentDraft.secrets, deploymentDraft.values, domainValues, label, manifest, userInputGroups]);
 
   const handleSave = useCallback(async () => {
     if (!deployment || !validateInputs()) {
@@ -264,27 +242,27 @@ export function DeploymentEditDialog({
       label: label.trim(),
       environment: environment.trim() || deployment.environment,
       serverHost: serverHost.trim() || undefined,
-      primaryDomain: primaryDomain.trim() || undefined,
-      adminDomain: adminDomain.trim() || undefined,
-      wsDomain: wsDomain.trim() || undefined,
+      domainValues: Object.fromEntries(
+        Object.entries(domainValues)
+          .map(([key, value]) => [key, value.trim()])
+          .filter(([, value]) => value.length > 0),
+      ),
       installPath: installPath.trim() || undefined,
       updatePolicy,
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets: Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined
     });
   }, [
-    adminDomain,
     deployment,
     deploymentDraft,
+    domainValues,
     environment,
     installPath,
     label,
     onSave,
-    primaryDomain,
     serverHost,
     updatePolicy,
-    validateInputs,
-    wsDomain
+    validateInputs
   ]);
 
   const hasAdvancedSection = advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
@@ -324,22 +302,12 @@ export function DeploymentEditDialog({
           {manifest?.domainSlots.length ? (
             <div className="grid gap-4 md:grid-cols-3">
               {manifest.domainSlots.map((slot) => {
-                const value =
-                  slot.sourceField === 'primaryDomain'
-                    ? primaryDomain
-                    : slot.sourceField === 'adminDomain'
-                      ? adminDomain
-                      : wsDomain;
+                const value = domainValues[slot.sourceField] ?? '';
                 const onChange = (nextValue: string) => {
-                  if (slot.sourceField === 'primaryDomain') {
-                    setPrimaryDomain(nextValue);
-                    return;
-                  }
-                  if (slot.sourceField === 'adminDomain') {
-                    setAdminDomain(nextValue);
-                    return;
-                  }
-                  setWsDomain(nextValue);
+                  setDomainValues((current) => ({
+                    ...current,
+                    [slot.sourceField]: nextValue,
+                  }));
                 };
 
                 return (
@@ -361,7 +329,7 @@ export function DeploymentEditDialog({
                       </p>
                     ) : bindingSourceField === slot.sourceField ? (
                       <p className="text-xs text-muted-foreground">
-                        启用域名绑定后，首次成功部署会锁定这个{getDomainSourceLabel(slot.sourceField)}。
+                        启用域名绑定后，首次成功部署会锁定这个{slot.label}。
                       </p>
                     ) : slot.description ? (
                       <p className="text-xs text-muted-foreground">{slot.description}</p>

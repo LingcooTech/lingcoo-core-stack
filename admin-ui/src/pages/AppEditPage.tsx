@@ -836,6 +836,7 @@ export function AppEditPage() {
           <AppEditPlansTab
             features={editableFeatures}
             plans={editablePlans}
+            manifest={manifest}
             updatePlan={updatePlan}
             addPlan={addPlan}
             removePlan={removePlan}

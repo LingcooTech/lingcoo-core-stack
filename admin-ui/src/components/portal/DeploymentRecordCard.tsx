@@ -88,18 +88,6 @@ function getWordpressDiffRows(deployment: DeploymentSummary) {
     .filter((item) => item.next && item.current !== item.next);
 }
 
-function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'wsDomain') {
-  switch (sourceField) {
-    case 'adminDomain':
-      return '后台域名';
-    case 'wsDomain':
-      return 'WS 域名';
-    case 'primaryDomain':
-    default:
-      return '主域名';
-  }
-}
-
 function getDomainScopeLabel(scope: 'registrable_domain' | 'exact_host') {
   return scope === 'exact_host' ? '完整子域名' : '根域名';
 }
@@ -143,6 +131,9 @@ export function DeploymentRecordCard({
   const hasAvailableWordpressUpdate = Object.values(deployment.availableWordpressAssetReleases).some(Boolean);
   const runtimeDiffRows = getRuntimeDiffRows(deployment);
   const wordpressDiffRows = getWordpressDiffRows(deployment);
+  const domainBindingLabel =
+    deployment.domainBinding.sourceLabel ??
+    (deployment.domainBinding.sourceField !== 'none' ? deployment.domainBinding.sourceField : '域名');
 
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
@@ -240,9 +231,9 @@ export function DeploymentRecordCard({
             label="域名绑定"
             value={
               deployment.domainBinding.isLocked
-                ? `${deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
+                ? `${domainBindingLabel}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                 : deployment.domainBinding.sourceField !== 'none'
-                  ? `启用，首次成功部署后锁定${getDomainSourceLabel(deployment.domainBinding.sourceField)}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
+                  ? `启用，首次成功部署后锁定${domainBindingLabel}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                   : '未启用'
             }
           />
@@ -307,7 +298,7 @@ export function DeploymentRecordCard({
           ) : null}
           {deployment.domainBinding.isLocked ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              当前{deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}已绑定为 {deployment.domainBinding.boundDomain ?? deployment.primaryDomain}。如需更换，需要提交工单处理。
+              当前{domainBindingLabel}已绑定为 {deployment.domainBinding.boundDomain ?? deployment.primaryDomain}。如需更换，需要提交工单处理。
             </p>
           ) : null}
 
