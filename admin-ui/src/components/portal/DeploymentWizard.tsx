@@ -27,10 +27,23 @@ export interface DeployableAppOption {
   featureCount: number;
   manifest: DeliveryManifest | null;
   defaultInstallPath: string;
+  entitlements: Array<{
+    id: string;
+    planCode: string;
+    planName: string;
+    expiresAt: string | null;
+    activeDeploymentCount: number;
+    maxActiveDeployments: number;
+    domainBindingMode: 'none' | 'lock_on_first_success';
+    domainBindingSource: 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+    domainBindingScope: 'registrable_domain' | 'exact_host';
+    boundDomain: string | null;
+  }>;
 }
 
 export interface CreateDeploymentPayload {
   appCode: string;
+  entitlementId: string;
   label: string;
   environment: string;
   serverHost?: string;
@@ -100,6 +113,7 @@ export function DeploymentWizard({
 }: DeploymentWizardProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedAppCode, setSelectedAppCode] = useState('');
+  const [selectedEntitlementId, setSelectedEntitlementId] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
   const [primaryDomain, setPrimaryDomain] = useState('');
@@ -118,6 +132,12 @@ export function DeploymentWizard({
   const selectedApp = useMemo(
     () => options.find((option) => option.appCode === selectedAppCode) ?? null,
     [options, selectedAppCode],
+  );
+  const selectedEntitlement = useMemo(
+    () =>
+      selectedApp?.entitlements.find((entitlement) => entitlement.id === selectedEntitlementId) ??
+      null,
+    [selectedApp, selectedEntitlementId],
   );
   const manifest = selectedApp?.manifest ?? null;
   const userInputGroups = useMemo(
@@ -166,6 +186,9 @@ export function DeploymentWizard({
 
   useEffect(() => {
     setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
+    setSelectedEntitlementId(
+      selectedApp?.entitlements.length === 1 ? selectedApp.entitlements[0].id : '',
+    );
     setPrimaryDomain('');
     setAdminDomain('');
     setWsDomain('');
@@ -176,6 +199,7 @@ export function DeploymentWizard({
 
   const handleSelectApp = useCallback((appCode: string) => {
     setSelectedAppCode(appCode);
+    setSelectedEntitlementId('');
     setLabel('');
   }, []);
 
@@ -251,7 +275,7 @@ export function DeploymentWizard({
   }, [adminDomain, deploymentDraft, manifest, primaryDomain, userInputGroups, wsDomain]);
 
   const handleCreate = useCallback(async () => {
-    if (!selectedAppCode || !label.trim()) {
+    if (!selectedAppCode || !selectedEntitlementId || !label.trim()) {
       return;
     }
 
@@ -262,6 +286,7 @@ export function DeploymentWizard({
     const manifestPayload = buildManifestInputPayload(deploymentDraft);
     const payload: CreateDeploymentPayload = {
       appCode: selectedAppCode,
+      entitlementId: selectedEntitlementId,
       label,
       environment,
       serverHost: serverHost || undefined,
@@ -304,6 +329,7 @@ export function DeploymentWizard({
     onIssueToken,
     primaryDomain,
     selectedAppCode,
+    selectedEntitlementId,
     serverHost,
     updatePolicy,
     validateManifestInputs,
@@ -313,6 +339,7 @@ export function DeploymentWizard({
   const handleReset = useCallback(() => {
     setStep(1);
     setSelectedAppCode('');
+    setSelectedEntitlementId('');
     setLabel('');
     setEnvironment('production');
     setPrimaryDomain('');
@@ -405,6 +432,9 @@ export function DeploymentWizard({
                         </Badge>
                         <span className="text-xs text-muted-foreground">{app.featureCount} 项能力</span>
                         <span className="text-xs text-muted-foreground">
+                          {app.entitlements.length} 个可用授权
+                        </span>
+                        <span className="text-xs text-muted-foreground">
                           {app.manifest ? 'Manifest 已同步' : 'Manifest 未同步'}
                         </span>
                       </div>
@@ -434,6 +464,48 @@ export function DeploymentWizard({
                 <p className="mt-1 text-sm text-amber-800">
                   请先在后台应用编辑页同步 `fd-delivery.manifest.json`，然后再创建部署记录。
                 </p>
+              </div>
+            ) : null}
+
+            {selectedApp ? (
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div>
+                  <p className="text-sm font-bold">选择部署授权 *</p>
+                  <p className="text-sm text-muted-foreground">
+                    一个授权实例独立计算部署上限和域名绑定；需要部署多个客户站点时，应购买多个授权。
+                  </p>
+                </div>
+                <Select value={selectedEntitlementId} onValueChange={setSelectedEntitlementId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择一个授权实例" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedApp.entitlements.map((entitlement) => (
+                      <SelectItem key={entitlement.id} value={entitlement.id}>
+                        {entitlement.planName} · 已用 {entitlement.activeDeploymentCount}/
+                        {entitlement.maxActiveDeployments} 个 active deployment
+                        {entitlement.boundDomain ? ` · 已绑定 ${entitlement.boundDomain}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedEntitlement ? (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedEntitlement.domainBindingMode === 'lock_on_first_success'
+                      ? `首次成功部署后将锁定 ${
+                          selectedEntitlement.domainBindingSource === 'primaryDomain'
+                            ? '主域名'
+                            : selectedEntitlement.domainBindingSource === 'adminDomain'
+                              ? '后台域名'
+                              : 'WS 域名'
+                        }（${
+                          selectedEntitlement.domainBindingScope === 'exact_host'
+                            ? '完整子域名'
+                            : '根域名'
+                        }）。`
+                      : '该授权不启用域名锁定。'}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -716,7 +788,14 @@ export function DeploymentWizard({
                 上一步
               </Button>
               <Button
-                disabled={!selectedAppCode || !label.trim() || !manifest || creating || issuing}
+                disabled={
+                  !selectedAppCode ||
+                  !selectedEntitlementId ||
+                  !label.trim() ||
+                  !manifest ||
+                  creating ||
+                  issuing
+                }
                 onClick={handleCreate}
               >
                 {creating || issuing ? '创建中...' : '创建部署'}

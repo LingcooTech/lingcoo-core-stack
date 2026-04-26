@@ -204,7 +204,8 @@ export class AppService {
           interval: plan.interval,
           priceAmount: plan.priceAmount,
           currency: plan.currency,
-          status: plan.status
+          status: plan.status,
+          meta: plan.meta
         })),
         features: appFeatures.map((f) => ({
           id: f.id,

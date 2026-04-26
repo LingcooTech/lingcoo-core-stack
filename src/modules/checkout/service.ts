@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 
 import type { DbClient } from '../../db/types';
 import { createCheckoutSessionCode, normalizePreparedPaymentToCheckoutAction } from '../../lib/checkout';
+import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { type AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { AppService } from '../app/service';
@@ -15,6 +16,12 @@ import { CheckoutRepository } from './repository';
 
 type SessionRecord = NonNullable<Awaited<ReturnType<CheckoutRepository['findSessionByCode']>>>;
 const AUTO_RECONCILE_STATUS_COOLDOWN_MS = 5_000;
+
+function normalizeMeta(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
 
 export class CheckoutService {
   constructor(
@@ -211,8 +218,10 @@ export class CheckoutService {
     });
     const { app, plan, offer } = selection;
 
-    if (plan.interval === 'one_time') {
-      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, app.id);
+    const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
+
+    if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
+      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, app.id, plan.id);
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }

@@ -19,6 +19,17 @@ import {
 export type AppEditTabKey = 'basics' | 'content' | 'plans' | 'offers' | 'delivery';
 export type EditableRecordStatus = 'active' | 'inactive' | 'cancelled' | 'expired';
 export type EditablePlanInterval = 'month' | 'year' | 'one_time';
+export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+export type DeploymentDomainBindingMode = 'none' | 'lock_on_first_success';
+export type DeploymentDomainBindingScope = 'registrable_domain' | 'exact_host';
+
+export interface DeploymentPolicyDraft {
+  maxActiveDeployments: number;
+  domainBindingMode: DeploymentDomainBindingMode;
+  domainBindingSource: DeploymentDomainBindingSource;
+  domainBindingScope: DeploymentDomainBindingScope;
+  allowMultiplePurchases: boolean;
+}
 
 export const APP_EDIT_TABS: Array<{
   key: AppEditTabKey;
@@ -51,6 +62,7 @@ export interface EditablePlan {
   interval: EditablePlanInterval;
   status: EditableRecordStatus;
   featureCodes: string[];
+  deploymentPolicy: DeploymentPolicyDraft;
 }
 
 export interface EditableOffer {
@@ -107,13 +119,6 @@ export interface FormState {
   faq: AppFaq[];
   links: AppLink[];
   appDetail: EditableAppDetail;
-}
-
-export type DeploymentDomainBindingSource = 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
-
-export interface DeploymentPolicyDraft {
-  domainBindingSource: DeploymentDomainBindingSource;
-  maxActiveDeployments: number;
 }
 
 export interface SaveRequest {
@@ -181,13 +186,12 @@ function normalizeMetaRecord(value: unknown) {
     : {};
 }
 
-export function createDeploymentPolicyDraft(
-  app?: Pick<AppWithDetails, 'meta'> | null
-): DeploymentPolicyDraft {
-  const meta = normalizeMetaRecord(app?.meta);
+export function createDeploymentPolicyDraft(metaInput?: unknown): DeploymentPolicyDraft {
+  const meta = normalizeMetaRecord(metaInput);
   const policy = normalizeMetaRecord(meta.deploymentPolicy);
   const source = typeof policy.domainBindingSource === 'string' ? policy.domainBindingSource : '';
-  const legacyMode = typeof policy.domainBindingMode === 'string' ? policy.domainBindingMode : '';
+  const mode = typeof policy.domainBindingMode === 'string' ? policy.domainBindingMode : '';
+  const scope = typeof policy.domainBindingScope === 'string' ? policy.domainBindingScope : '';
   const rawMax = policy.maxActiveDeployments;
   const parsedMax =
     typeof rawMax === 'number'
@@ -195,15 +199,22 @@ export function createDeploymentPolicyDraft(
       : typeof rawMax === 'string' && rawMax.trim().length > 0
         ? Number(rawMax)
         : Number.NaN;
+  const normalizedSource =
+    source === 'primaryDomain' || source === 'adminDomain' || source === 'wsDomain'
+      ? source
+      : 'none';
+  const normalizedMode =
+    mode === 'lock_on_first_success' && normalizedSource !== 'none'
+      ? 'lock_on_first_success'
+      : 'none';
+
   return {
-    domainBindingSource:
-      source === 'primaryDomain' || source === 'adminDomain' || source === 'wsDomain'
-        ? source
-        : legacyMode === 'frontend'
-          ? 'primaryDomain'
-          : 'none',
     maxActiveDeployments:
       Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
+    domainBindingMode: normalizedMode,
+    domainBindingSource: normalizedMode === 'none' ? 'none' : normalizedSource,
+    domainBindingScope: scope === 'exact_host' ? 'exact_host' : 'registrable_domain',
+    allowMultiplePurchases: policy.allowMultiplePurchases === true,
   };
 }
 
@@ -324,6 +335,7 @@ export function createEditablePlans(
     interval: normalizePlanInterval(plan.interval),
     status: (plan.status as EditableRecordStatus) ?? 'active',
     featureCodes: [...new Set(featureCodesByPlanId.get(plan.id) ?? [])],
+    deploymentPolicy: createDeploymentPolicyDraft(plan.meta),
   }));
 }
 
@@ -368,6 +380,9 @@ export function toPlanSummary(plan: EditablePlan, appId?: string): PlanSummary {
     currency: plan.currency.trim().toUpperCase() || 'CNY',
     status: plan.status,
     appId,
+    meta: {
+      deploymentPolicy: plan.deploymentPolicy,
+    },
   };
 }
 
@@ -527,7 +542,6 @@ export function buildSaveRequest(
   editablePlans: EditablePlan[],
   editableOffers: EditableOffer[],
   appMeta: Record<string, unknown> | undefined,
-  deploymentPolicy: DeploymentPolicyDraft,
 ): SaveRequest {
   const normalizedAppCode = slugify(form.appCode);
 
@@ -548,7 +562,15 @@ export function buildSaveRequest(
     interval: plan.interval,
     status: plan.status,
     featureCodes: plan.featureCodes.map((code) => slugify(code)).filter(Boolean),
-    meta: {},
+    meta: {
+      deploymentPolicy: {
+        ...plan.deploymentPolicy,
+        domainBindingSource:
+          plan.deploymentPolicy.domainBindingMode === 'lock_on_first_success'
+            ? plan.deploymentPolicy.domainBindingSource
+            : 'none',
+      },
+    },
   }));
 
   const offers = editableOffers.map((offer, index) => ({
@@ -597,11 +619,7 @@ export function buildSaveRequest(
       .filter((plan) => plan.period || plan.price || plan.description),
   };
   meta.deliveryMode = form.deliveryMode;
-  meta.deploymentPolicy = {
-    ...normalizeMetaRecord(meta.deploymentPolicy),
-    domainBindingSource: deploymentPolicy.domainBindingSource,
-    maxActiveDeployments: deploymentPolicy.maxActiveDeployments,
-  };
+  delete meta.deploymentPolicy;
   if (hasAppDetailProfileContent({ ...EMPTY_APP_DETAIL_PROFILE, ...appDetail })) {
     meta.appDetail = appDetail;
   } else {

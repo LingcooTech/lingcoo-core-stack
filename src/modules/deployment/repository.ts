@@ -9,6 +9,7 @@ export class DeploymentRepository {
   async createDeployment(input: {
     userId: string;
     appId: string;
+    entitlementId: string;
     label: string;
     environment: string;
     serverHost?: string | null;
@@ -23,6 +24,7 @@ export class DeploymentRepository {
       .values({
         userId: input.userId,
         appId: input.appId,
+        entitlementId: input.entitlementId,
         label: input.label,
         environment: input.environment,
         serverHost: input.serverHost ?? null,
@@ -54,14 +56,12 @@ export class DeploymentRepository {
     return deployment ?? null;
   }
 
-  async countActiveDeploymentsByUserAndApp(input: {
-    userId: string;
-    appId: string;
+  async countActiveDeploymentsByEntitlementId(input: {
+    entitlementId: string;
     excludeDeploymentId?: string;
   }) {
     const filters = [
-      eq(deployments.userId, input.userId),
-      eq(deployments.appId, input.appId),
+      eq(deployments.entitlementId, input.entitlementId),
       eq(deployments.status, 'active')
     ];
 

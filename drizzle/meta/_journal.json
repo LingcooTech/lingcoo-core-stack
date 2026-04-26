@@ -127,6 +127,13 @@
       "when": 1776672523203,
       "tag": "0017_support_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777200000000,
+      "tag": "0018_deployment_entitlements",
+      "breakpoints": true
     }
   ]
 }

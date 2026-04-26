@@ -42,6 +42,18 @@ function isEffectiveEntitlement(item: HydratedEntitlement) {
   return new Date(item.expiresAt).getTime() >= Date.now();
 }
 
+function normalizeMeta(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
+function planAllowsMultiplePurchases(planMeta: unknown) {
+  const meta = normalizeMeta(planMeta);
+  const policy = normalizeMeta(meta.deploymentPolicy);
+  return policy.allowMultiplePurchases === true;
+}
+
 export function AppCatalogPage() {
   const params = useParams<{ appCode: string }>();
   const navigate = useNavigate();
@@ -73,6 +85,10 @@ export function AppCatalogPage() {
 
   const offers = data?.offers.filter((offer) => offer.status === 'active') ?? [];
   const preferredOffer = useMemo(() => getPreferredOffer(offers), [offers]);
+  const planById = useMemo(
+    () => new Map((data?.plans ?? []).map((plan) => [plan.id, plan])),
+    [data?.plans],
+  );
   const priceRangeLabel = useMemo(() => formatOfferRangeLabel(offers), [offers]);
 
   const planFeatureMap = useMemo(() => {
@@ -155,6 +171,9 @@ export function AppCatalogPage() {
   const isDeployable = getAppDeliveryMode(app) === 'one_click';
   const entitlementStateLoading = isAuthenticated && entitlementsQuery.isLoading;
   const hasActiveEntitlement = activeCurrentAppEntitlements.length > 0;
+  const canBuyAnotherAuthorization = Boolean(
+    preferredOffer && planAllowsMultiplePurchases(planById.get(preferredOffer.planId)?.meta),
+  );
   const hasHistoricalEntitlement = currentAppEntitlements.length > 0;
   const hasHighlights = app.highlights.length > 0;
   const hasScreenshots = app.screenshots.length > 0;
@@ -348,16 +367,40 @@ export function AppCatalogPage() {
                     正在确认授权...
                   </Button>
                 ) : hasActiveEntitlement && isDeployable ? (
-                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
-                    <Link to={deploymentHref}>
-                      开始部署
-                      <Rocket className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <div className="mt-4 space-y-2">
+                    <Button className="h-10 w-full rounded-xl" asChild>
+                      <Link to={deploymentHref}>
+                        开始部署
+                        <Rocket className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    {canBuyAnotherAuthorization ? (
+                      <Button
+                        className="h-10 w-full rounded-xl"
+                        variant="outline"
+                        onClick={() => startCheckout()}
+                        disabled={!preferredOffer}
+                      >
+                        再买一个授权
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : hasActiveEntitlement ? (
-                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
-                    <Link to={accountAppsHref}>查看我的应用</Link>
-                  </Button>
+                  <div className="mt-4 space-y-2">
+                    <Button className="h-10 w-full rounded-xl" asChild>
+                      <Link to={accountAppsHref}>查看我的应用</Link>
+                    </Button>
+                    {canBuyAnotherAuthorization ? (
+                      <Button
+                        className="h-10 w-full rounded-xl"
+                        variant="outline"
+                        onClick={() => startCheckout()}
+                        disabled={!preferredOffer}
+                      >
+                        再买一个授权
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : offers.length > 0 ? (
                   <Button className="mt-4 h-10 w-full rounded-xl" onClick={() => startCheckout()} disabled={!preferredOffer}>
                     立即购买

@@ -153,6 +153,7 @@ export async function listMyDeployments(): Promise<DeploymentsResponse> {
 
 export async function createDeployment(payload: {
   appCode: string;
+  entitlementId: string;
   label: string;
   environment?: string;
   serverHost?: string;

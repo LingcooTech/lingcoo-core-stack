@@ -15,6 +15,7 @@ export interface PlanSummary {
   currency?: string;
   status?: string;
   appId?: string;
+  meta?: Record<string, unknown>;
 }
 
 export interface AppSummary {
@@ -763,6 +764,7 @@ export interface Entitlement {
   startsAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+  meta?: Record<string, unknown>;
   userId: string;
   appId: string;
   planId: string;
@@ -1029,10 +1031,23 @@ export interface DeploymentSummary {
   configuredSecretKeys: string[];
   domainBinding: {
     sourceField: 'none' | 'primaryDomain' | 'adminDomain' | 'wsDomain';
+    scope: 'registrable_domain' | 'exact_host';
     isLocked: boolean;
     boundDomain: string | null;
     boundAt: string | null;
   };
+  entitlement: {
+    id: string;
+    status: string;
+    startsAt: string | null;
+    expiresAt: string | null;
+    plan: {
+      id: string;
+      code: string;
+      name: string;
+      interval: string | null;
+    } | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
   user: UserSummary | null;

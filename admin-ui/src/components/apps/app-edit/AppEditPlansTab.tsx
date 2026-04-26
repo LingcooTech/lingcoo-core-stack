@@ -350,6 +350,147 @@ export function AppEditPlansTab({
                   </div>
                 </div>
 
+                <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+                  <div>
+                    <p className="text-sm font-semibold">部署权益</p>
+                    <p className="text-xs text-muted-foreground">
+                      这些配置会在购买时固化到授权实例；用户创建部署时必须选择一个有效授权。
+                    </p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>每个授权的 Active Deployments 上限</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={plan.deploymentPolicy.maxActiveDeployments}
+                        onChange={(event) => {
+                          const parsed = Number.parseInt(event.target.value, 10);
+                          updatePlan(plan.id, (current) => ({
+                            ...current,
+                            deploymentPolicy: {
+                              ...current.deploymentPolicy,
+                              maxActiveDeployments: Number.isFinite(parsed) && parsed >= 1 ? parsed : 1,
+                            },
+                          }));
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        只限制当前授权实例，不再按应用维度累计。
+                      </p>
+                    </div>
+                    <label className="flex items-start gap-3 rounded-md border bg-white p-3">
+                      <Checkbox
+                        checked={plan.deploymentPolicy.allowMultiplePurchases}
+                        onCheckedChange={(checked) =>
+                          updatePlan(plan.id, (current) => ({
+                            ...current,
+                            deploymentPolicy: {
+                              ...current.deploymentPolicy,
+                              allowMultiplePurchases: checked === true,
+                            },
+                          }))
+                        }
+                      />
+                      <span className="space-y-1">
+                        <span className="block text-sm font-medium">允许同一用户重复购买该套餐</span>
+                        <span className="block text-xs text-muted-foreground">
+                          启用后，每次购买会产生独立授权，可分别绑定域名和消耗部署名额。
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>域名绑定策略</Label>
+                      <Select
+                        value={plan.deploymentPolicy.domainBindingMode}
+                        onValueChange={(value) =>
+                          updatePlan(plan.id, (current) => ({
+                            ...current,
+                            deploymentPolicy: {
+                              ...current.deploymentPolicy,
+                              domainBindingMode: value as EditablePlan['deploymentPolicy']['domainBindingMode'],
+                              domainBindingSource:
+                                value === 'lock_on_first_success' &&
+                                current.deploymentPolicy.domainBindingSource === 'none'
+                                  ? 'primaryDomain'
+                                  : value === 'none'
+                                    ? 'none'
+                                    : current.deploymentPolicy.domainBindingSource,
+                            },
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">不绑定</SelectItem>
+                          <SelectItem value="lock_on_first_success">首次成功部署后锁定</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>绑定域名槽位</Label>
+                      <Select
+                        value={plan.deploymentPolicy.domainBindingSource}
+                        disabled={plan.deploymentPolicy.domainBindingMode === 'none'}
+                        onValueChange={(value) =>
+                          updatePlan(plan.id, (current) => ({
+                            ...current,
+                            deploymentPolicy: {
+                              ...current.deploymentPolicy,
+                              domainBindingSource:
+                                value as EditablePlan['deploymentPolicy']['domainBindingSource'],
+                            },
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">未启用</SelectItem>
+                          <SelectItem value="primaryDomain">主域名</SelectItem>
+                          <SelectItem value="adminDomain">后台域名</SelectItem>
+                          <SelectItem value="wsDomain">WS 域名</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>绑定粒度</Label>
+                      <Select
+                        value={plan.deploymentPolicy.domainBindingScope}
+                        disabled={plan.deploymentPolicy.domainBindingMode === 'none'}
+                        onValueChange={(value) =>
+                          updatePlan(plan.id, (current) => ({
+                            ...current,
+                            deploymentPolicy: {
+                              ...current.deploymentPolicy,
+                              domainBindingScope:
+                                value as EditablePlan['deploymentPolicy']['domainBindingScope'],
+                            },
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="registrable_domain">根域名 / 可注册域</SelectItem>
+                          <SelectItem value="exact_host">完整子域名</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        `根域名` 会把 app.example.com 和 www.example.com 视为同一授权域名。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
                   <div>
                     <p className="text-sm font-semibold">关联功能</p>

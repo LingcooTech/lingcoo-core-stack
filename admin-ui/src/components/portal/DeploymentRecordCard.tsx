@@ -99,6 +99,10 @@ function getDomainSourceLabel(sourceField: 'primaryDomain' | 'adminDomain' | 'ws
   }
 }
 
+function getDomainScopeLabel(scope: 'registrable_domain' | 'exact_host') {
+  return scope === 'exact_host' ? '完整子域名' : '根域名';
+}
+
 export function DeploymentRecordCard({
   deployment,
   issuedToken,
@@ -221,15 +225,23 @@ export function DeploymentRecordCard({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
+          <InfoLine
+            label="部署授权"
+            value={
+              deployment.entitlement?.plan
+                ? `${deployment.entitlement.plan.name} · ${deployment.entitlement.status}`
+                : '未绑定授权'
+            }
+          />
           <InfoLine label="后台域名" value={deployment.adminDomain || '未设置'} />
           <InfoLine label="WS 域名" value={deployment.wsDomain || '未设置'} />
           <InfoLine
             label="域名绑定"
             value={
               deployment.domainBinding.isLocked
-                ? `${deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}`
+                ? `${deployment.domainBinding.sourceField !== 'none' ? getDomainSourceLabel(deployment.domainBinding.sourceField) : '域名'}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                 : deployment.domainBinding.sourceField !== 'none'
-                  ? `启用，首次成功部署后锁定${getDomainSourceLabel(deployment.domainBinding.sourceField)}`
+                  ? `启用，首次成功部署后锁定${getDomainSourceLabel(deployment.domainBinding.sourceField)}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                   : '未启用'
             }
           />

@@ -22,6 +22,45 @@ type DeploymentIssueDetails = {
   missingFields?: Array<{ label?: string }>;
 };
 
+function normalizeMeta(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
+function normalizeDeploymentPolicy(metaInput: unknown) {
+  const meta = normalizeMeta(metaInput);
+  const policy = normalizeMeta(meta.deploymentPolicy);
+  const rawMax = policy.maxActiveDeployments;
+  const parsedMax =
+    typeof rawMax === 'number'
+      ? rawMax
+      : typeof rawMax === 'string'
+        ? Number(rawMax)
+        : Number.NaN;
+  const source =
+    policy.domainBindingSource === 'primaryDomain' ||
+    policy.domainBindingSource === 'adminDomain' ||
+    policy.domainBindingSource === 'wsDomain'
+      ? policy.domainBindingSource
+      : 'none';
+  const mode =
+    policy.domainBindingMode === 'lock_on_first_success' && source !== 'none'
+      ? 'lock_on_first_success'
+      : 'none';
+
+  return {
+    maxActiveDeployments: Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
+    domainBindingMode: mode,
+    domainBindingSource: mode === 'none' ? 'none' : source,
+    domainBindingScope: policy.domainBindingScope === 'exact_host' ? 'exact_host' : 'registrable_domain',
+  } as const;
+}
+
+function isEffectiveEntitlement(item: { status: string; expiresAt: string | null }) {
+  return item.status === 'active' && (!item.expiresAt || new Date(item.expiresAt).getTime() >= Date.now());
+}
+
 export function DeploymentsPage() {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -32,6 +71,8 @@ export function DeploymentsPage() {
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
 
   const apps = appsQuery.data?.items ?? [];
+  const entitlements = entitlementsQuery.data?.items ?? [];
+  const deployments = deploymentsQuery.data?.items ?? [];
   const summaries = entitlementsQuery.data?.summary ?? [];
   const summaryMap = new Map(summaries.map((entry) => [entry.appCode, entry.featureCodes]));
   const oneClickAppMap = useMemo(
@@ -47,7 +88,8 @@ export function DeploymentsPage() {
                 appCode: app.code,
                 appName: app.name,
                 manifest,
-                defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system'
+                defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+                entitlements: []
               }
             ];
           })
@@ -56,16 +98,39 @@ export function DeploymentsPage() {
   );
 
   const deployableApps = useMemo<DeployableAppOption[]>(
-    () =>
-      apps
-        .filter((app) => {
-          if (getAppDeliveryMode(app) !== 'one_click') {
-            return false;
-          }
-          return summaryMap.has(app.code);
-        })
+    () => {
+      const activeDeploymentCountByEntitlementId = new Map<string, number>();
+      for (const deployment of deployments) {
+        if (deployment.status !== 'active' || !deployment.entitlement?.id) {
+          continue;
+        }
+        activeDeploymentCountByEntitlementId.set(
+          deployment.entitlement.id,
+          (activeDeploymentCountByEntitlementId.get(deployment.entitlement.id) ?? 0) + 1,
+        );
+      }
+
+      return apps
+        .filter((app) => getAppDeliveryMode(app) === 'one_click')
         .map((app) => {
           const manifest = getDeliveryManifest(app);
+          const appEntitlements = entitlements
+            .filter((entitlement) => entitlement.app?.code === app.code && isEffectiveEntitlement(entitlement))
+            .map((entitlement) => {
+              const policy = normalizeDeploymentPolicy(entitlement.meta);
+              const binding = normalizeMeta(normalizeMeta(entitlement.meta).domainBinding);
+              return {
+                id: entitlement.id,
+                planCode: entitlement.plan?.code ?? '',
+                planName: entitlement.plan?.name ?? '未命名套餐',
+                expiresAt: entitlement.expiresAt,
+                activeDeploymentCount: activeDeploymentCountByEntitlementId.get(entitlement.id) ?? 0,
+                boundDomain: typeof binding.boundValue === 'string' && binding.boundValue.trim()
+                  ? binding.boundValue.trim()
+                  : null,
+                ...policy,
+              };
+            });
           return {
             appCode: app.code,
             appName: app.name,
@@ -73,9 +138,12 @@ export function DeploymentsPage() {
             featureCount: summaryMap.get(app.code)?.length ?? 0,
             manifest,
             defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+            entitlements: appEntitlements,
           };
-        }),
-    [apps, summaries]
+        })
+        .filter((app) => app.entitlements.length > 0);
+    },
+    [apps, deployments, entitlements, summaryMap]
   );
 
   const createDeploymentMutation = useMutation({
@@ -200,7 +268,6 @@ export function DeploymentsPage() {
     return await issueTokenMutation.mutateAsync(params);
   };
 
-  const deployments = deploymentsQuery.data?.items ?? [];
   const editingAppOption =
     editingDeployment?.app?.code ? oneClickAppMap.get(editingDeployment.app.code) ?? null : null;
   const activeDeployments = deployments.filter((deployment) => deployment.status === 'active');

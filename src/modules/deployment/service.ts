@@ -14,6 +14,11 @@ import {
   type DeliverySettingSecrets,
   type DeliverySettingValues
 } from '../../lib/delivery-settings';
+import {
+  getDomainBindingValue,
+  normalizeDeploymentPolicy,
+  type DeploymentPolicy
+} from '../../lib/deployment-policy';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -22,6 +27,7 @@ import { AppRepository } from '../app/repository';
 import { AppService } from '../app/service';
 import { AuthRepository } from '../auth/repository';
 import { EventService } from '../event/service';
+import { LicenseRepository } from '../license/repository';
 import { DeploymentRepository } from './repository';
 
 type DeploymentAppRecord = Awaited<ReturnType<AppService['getPublicApp']>>;
@@ -186,13 +192,9 @@ const DOMAIN_BINDING_SOURCE_LABELS: Record<DeliveryManifestDomainSourceField, st
   wsDomain: 'WS 域名'
 };
 
-type DeploymentPolicy = {
-  maxActiveDeployments: number;
-  domainBindingSource: DeploymentDomainBindingSource;
-};
-
 type DeploymentBindingState = {
   sourceField: DeploymentDomainBindingSource;
+  scope?: 'exact_host' | 'registrable_domain';
   boundDomain: string | null;
   boundAt: string | null;
 };
@@ -277,19 +279,79 @@ export class DeploymentService {
     };
   }
 
+  private isEffectiveEntitlement(entitlement: {
+    status: string;
+    expiresAt: Date | null;
+  }) {
+    return entitlement.status === 'active' && (!entitlement.expiresAt || entitlement.expiresAt.getTime() >= Date.now());
+  }
+
+  private async resolveDeploymentEntitlement(input: {
+    userId: string;
+    appId: string;
+    entitlementId: string;
+  }) {
+    const repository = new LicenseRepository(this.db);
+
+    const entitlement = await repository.findEntitlementById(input.entitlementId);
+    if (
+      !entitlement ||
+      entitlement.userId !== input.userId ||
+      entitlement.appId !== input.appId ||
+      !this.isEffectiveEntitlement(entitlement)
+    ) {
+      throw httpError(403, 'Selected entitlement is not active for this app');
+    }
+    const plan = await repository.getPlanById(entitlement.planId);
+    if (!plan) {
+      throw httpError(500, 'Selected entitlement is missing related plan');
+    }
+    return { entitlement, plan };
+  }
+
+  private async loadDeploymentEntitlement(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+  ) {
+    if (!deployment?.entitlementId) {
+      throw httpError(409, 'Deployment is not bound to an entitlement. Create a new deployment with an active entitlement.');
+    }
+
+    const entitlement = await new LicenseRepository(this.db).findEntitlementById(deployment.entitlementId);
+    if (!entitlement || entitlement.userId !== deployment.userId || entitlement.appId !== deployment.appId) {
+      throw httpError(409, 'Deployment entitlement is missing or no longer matches this deployment.');
+    }
+    if (!this.isEffectiveEntitlement(entitlement)) {
+      throw httpError(403, 'Deployment entitlement is not active. Restore access before continuing.');
+    }
+    const plan = await new LicenseRepository(this.db).getPlanById(entitlement.planId);
+    if (!plan) {
+      throw httpError(500, 'Deployment entitlement is missing related plan');
+    }
+
+    return { entitlement, plan };
+  }
+
   private async hydrateDeployments(
     rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>
   ) {
     const appIds = [...new Set(rows.map((item) => item.appId))];
     const userIds = [...new Set(rows.map((item) => item.userId))];
-    const [apps, users, tokens] = await Promise.all([
+    const entitlementIds = [
+      ...new Set(rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)))
+    ];
+    const [apps, users, tokens, entitlements] = await Promise.all([
       new AppRepository(this.db).listAppsByIds(appIds),
       new AuthRepository(this.db).listUsersByIds(userIds),
-      new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id))
+      new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
+      new LicenseRepository(this.db).listEntitlementsByIds(entitlementIds)
     ]);
 
     const appMap = new Map(apps.map((item) => [item.id, item]));
     const userMap = new Map(users.map((item) => [item.id, item]));
+    const entitlementMap = new Map(entitlements.map((item) => [item.id, item]));
+    const planIds = [...new Set(entitlements.map((item) => item.planId))];
+    const plans = await new LicenseRepository(this.db).listPlansByIds(planIds);
+    const planMap = new Map(plans.map((item) => [item.id, item]));
     const latestTokenMap = new Map<string, (typeof tokens)[number]>();
     for (const token of tokens) {
       if (!latestTokenMap.has(token.deploymentId)) {
@@ -301,21 +363,23 @@ export class DeploymentService {
       const app = appMap.get(row.appId) ?? null;
       const user = userMap.get(row.userId) ?? null;
       const token = latestTokenMap.get(row.id) ?? null;
+      const entitlement = row.entitlementId ? entitlementMap.get(row.entitlementId) ?? null : null;
+      const plan = entitlement ? planMap.get(entitlement.planId) ?? null : null;
       const deliveryValues = this.readDeploymentInputValues(row);
       const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
       const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
       const meta = this.normalizeMeta(row.meta);
       const runtimeUpdateMeta = this.normalizeMeta(meta.runtimeUpdate);
       const wordpressAssetsMeta = this.normalizeMeta(meta.wordpressAssetsUpdate);
-      const policy = app
-        ? this.readDeploymentPolicy(app as DeploymentAppRecord)
-        : { maxActiveDeployments: 1, domainBindingSource: 'none' as const };
-      const binding = this.readDeploymentBinding(row);
-      const activeBindingSource = binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+      const policy = entitlement ? this.readEntitlementDeploymentPolicy(entitlement) : null;
+      const binding = this.readEntitlementBinding(entitlement);
+      const activeBindingSource = policy?.domainBindingMode === 'lock_on_first_success'
+        ? policy.domainBindingSource
+        : 'none';
       const currentBoundValue =
         activeBindingSource === 'none'
           ? null
-          : normalizeHostname(this.getSourceFieldValue(row, activeBindingSource)) || null;
+          : getDomainBindingValue(this.getSourceFieldValue(row, activeBindingSource), policy?.domainBindingScope ?? 'registrable_domain') || null;
       const isDomainLocked =
         activeBindingSource !== 'none' &&
         Boolean(binding.boundDomain) &&
@@ -323,7 +387,8 @@ export class DeploymentService {
       const envDefaults = app
         ? (await this.buildBootstrapPayload({
             app: app as DeploymentAppRecord,
-            deployment: row
+            deployment: row,
+            entitlement
           })).envDefaults
         : {};
       const reportedCurrentRuntimeImages = {
@@ -392,8 +457,25 @@ export class DeploymentService {
           sourceField: activeBindingSource,
           isLocked: isDomainLocked,
           boundDomain: binding.boundDomain,
-          boundAt: binding.boundAt
+          boundAt: binding.boundAt,
+          scope: binding.scope ?? policy?.domainBindingScope ?? 'registrable_domain'
         },
+        entitlement: entitlement
+          ? {
+              id: entitlement.id,
+              status: entitlement.status,
+              startsAt: entitlement.startsAt,
+              expiresAt: entitlement.expiresAt,
+              plan: plan
+                ? {
+                    id: plan.id,
+                    code: plan.code,
+                    name: plan.name,
+                    interval: plan.interval
+                  }
+                : null
+            }
+          : null,
         user: user
           ? { id: user.id, email: user.email, displayName: user.displayName }
           : null,
@@ -517,51 +599,53 @@ export class DeploymentService {
     };
   }
 
-  private readDeploymentPolicy(app: DeploymentAppRecord): DeploymentPolicy {
-    const meta = this.normalizeMeta(app.meta);
-    const policy = this.normalizeMeta(meta.deploymentPolicy);
-    const rawMax = policy.maxActiveDeployments;
-    const rawDomainBindingSource = normalizeString(policy.domainBindingSource);
-    const rawLegacyDomainBindingMode = normalizeString(policy.domainBindingMode);
-    const parsedMax =
-      typeof rawMax === 'number'
-        ? rawMax
-        : typeof rawMax === 'string' && rawMax.trim().length > 0
-          ? Number(rawMax)
-          : Number.NaN;
-
-    return {
-      maxActiveDeployments:
-        Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
-      domainBindingSource: isDeploymentDomainBindingSource(rawDomainBindingSource)
-        ? rawDomainBindingSource
-        : rawLegacyDomainBindingMode === 'frontend'
-          ? 'primaryDomain'
-          : 'none'
-    };
+  private readEntitlementDeploymentPolicy(entitlement: { meta?: unknown } | null | undefined): DeploymentPolicy {
+    const meta = this.normalizeMeta(entitlement?.meta);
+    return normalizeDeploymentPolicy(meta.deploymentPolicy);
   }
 
-  private readDeploymentBinding(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
-  ): DeploymentBindingState {
-    const meta = this.normalizeMeta(deployment?.meta);
+  private readEntitlementBinding(entitlement: { meta?: unknown } | null | undefined): DeploymentBindingState {
+    const meta = this.normalizeMeta(entitlement?.meta);
     const binding = this.normalizeMeta(meta.domainBinding);
     const rawSourceField = normalizeString(binding.sourceField);
-    const rawLegacyMode = normalizeString(binding.mode);
     const sourceField = isDeploymentDomainBindingSource(rawSourceField)
       ? rawSourceField
-      : rawLegacyMode === 'frontend'
-        ? 'primaryDomain'
-        : 'none';
-    const boundDomain =
-      normalizeHostname(binding.boundDomain) || normalizeHostname(binding.primaryDomain) || null;
+      : 'none';
+    const boundDomain = normalizeHostname(binding.boundValue) || null;
     const boundAt = normalizeString(binding.boundAt) || null;
+    const scope = normalizeString(binding.scope) === 'exact_host' ? 'exact_host' : 'registrable_domain';
 
     return {
       sourceField,
+      scope,
       boundDomain,
       boundAt
     };
+  }
+
+  private async updateEntitlementBinding(input: {
+    entitlementId: string;
+    policy: DeploymentPolicy;
+    boundValue: string;
+  }) {
+    const repository = new LicenseRepository(this.db);
+    const entitlement = await repository.findEntitlementById(input.entitlementId);
+    if (!entitlement) {
+      throw httpError(404, 'Entitlement not found');
+    }
+    const meta = this.normalizeMeta(entitlement.meta);
+    meta.domainBinding = {
+      mode: input.policy.domainBindingMode,
+      sourceField: input.policy.domainBindingSource,
+      scope: input.policy.domainBindingScope,
+      boundValue: input.boundValue,
+      boundAt: new Date().toISOString()
+    };
+    const updated = await repository.updateEntitlementMeta(input.entitlementId, meta);
+    if (!updated) {
+      throw httpError(500, 'Failed to bind entitlement domain');
+    }
+    return updated;
   }
 
   private readDeploymentRuntimeUpdatePolicy(
@@ -629,7 +713,10 @@ export class DeploymentService {
       });
     }
 
-    if (input.policy?.domainBindingSource && input.policy.domainBindingSource !== 'none') {
+    if (
+      input.policy?.domainBindingMode === 'lock_on_first_success' &&
+      input.policy.domainBindingSource !== 'none'
+    ) {
       const sourceField = input.policy.domainBindingSource;
       const alreadyTracked = issues.some((issue) => issue.kind === 'domain_slot' && issue.sourceField === sourceField);
       if (!alreadyTracked && !domainValueBySource[sourceField]) {
@@ -701,15 +788,15 @@ export class DeploymentService {
   private assertDomainBindingEditable(input: {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     policy: DeploymentPolicy;
+    binding: DeploymentBindingState;
     requestedPrimaryDomain?: string;
     requestedAdminDomain?: string;
     requestedWsDomain?: string;
   }) {
-    const policySourceField = input.policy.domainBindingSource;
-    const binding = this.readDeploymentBinding(input.deployment);
-    const boundSourceField = binding.sourceField !== 'none' ? binding.sourceField : policySourceField;
+    const boundSourceField =
+      input.policy.domainBindingMode === 'lock_on_first_success' ? input.policy.domainBindingSource : 'none';
 
-    if (boundSourceField === 'none' || !binding.boundDomain) {
+    if (boundSourceField === 'none' || !input.binding.boundDomain) {
       return;
     }
 
@@ -720,27 +807,29 @@ export class DeploymentService {
     };
     const nextBoundValue =
       typeof requestedBySource[boundSourceField] === 'string'
-        ? normalizeHostname(requestedBySource[boundSourceField])
-        : normalizeHostname(this.getSourceFieldValue(input.deployment, boundSourceField));
+        ? getDomainBindingValue(requestedBySource[boundSourceField] ?? '', input.policy.domainBindingScope)
+        : getDomainBindingValue(this.getSourceFieldValue(input.deployment, boundSourceField), input.policy.domainBindingScope);
 
-    if (nextBoundValue === binding.boundDomain) {
+    if (nextBoundValue === input.binding.boundDomain) {
       return;
     }
 
-    throw this.createDomainBindingLockedError(binding);
+    throw this.createDomainBindingLockedError(input.binding);
   }
 
-  private ensureDeploymentReadyForTokenIssue(input: {
+  private async ensureDeploymentReadyForTokenIssue(input: {
     app: DeploymentAppRecord;
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
   }) {
-    const policy = this.readDeploymentPolicy(input.app);
-    const binding = this.readDeploymentBinding(input.deployment);
-    const activeBindingSource = binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+    const { entitlement } = await this.loadDeploymentEntitlement(input.deployment);
+    const policy = this.readEntitlementDeploymentPolicy(entitlement);
+    const binding = this.readEntitlementBinding(entitlement);
+    const activeBindingSource =
+      policy.domainBindingMode === 'lock_on_first_success' ? policy.domainBindingSource : 'none';
     const currentBoundValue =
       activeBindingSource === 'none'
         ? null
-        : normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource));
+        : getDomainBindingValue(this.getSourceFieldValue(input.deployment, activeBindingSource), policy.domainBindingScope);
     const issues = this.collectDeploymentConfigIssues({
       manifest: this.readManifest(input.app),
       values: this.readDeploymentInputValues(input.deployment),
@@ -782,19 +871,27 @@ export class DeploymentService {
 
   private async bindDeploymentDomainOnExchange(input: {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    entitlementId: string;
     policy: DeploymentPolicy;
   }) {
+    if (input.policy.domainBindingMode !== 'lock_on_first_success') {
+      return input.deployment;
+    }
     const sourceField = input.policy.domainBindingSource;
     if (sourceField === 'none') {
       return input.deployment;
     }
 
-    const currentDomain = normalizeHostname(this.getSourceFieldValue(input.deployment, sourceField));
+    const currentDomain = getDomainBindingValue(
+      this.getSourceFieldValue(input.deployment, sourceField),
+      input.policy.domainBindingScope
+    );
     if (!currentDomain) {
       throw httpError(409, `${getDomainBindingSourceLabel(sourceField)}不能为空，部署无法继续。`);
     }
 
-    const binding = this.readDeploymentBinding(input.deployment);
+    const entitlement = await new LicenseRepository(this.db).findEntitlementById(input.entitlementId);
+    const binding = this.readEntitlementBinding(entitlement);
     if (binding.boundDomain && binding.boundDomain !== currentDomain) {
       throw this.createDomainBindingLockedError(binding);
     }
@@ -803,22 +900,13 @@ export class DeploymentService {
       return input.deployment;
     }
 
-    const nextMeta = this.normalizeMeta(input.deployment?.meta);
-    nextMeta.domainBinding = {
-      sourceField,
-      boundDomain: currentDomain,
-      boundAt: new Date().toISOString()
-    };
-
-    const updated = await new DeploymentRepository(this.db).updateDeployment(input.deployment!.id, {
-      meta: nextMeta
+    await this.updateEntitlementBinding({
+      entitlementId: input.entitlementId,
+      policy: input.policy,
+      boundValue: currentDomain
     });
 
-    if (!updated) {
-      throw httpError(500, 'Failed to bind deployment domain');
-    }
-
-    return updated;
+    return input.deployment;
   }
 
   private buildRemoteInstallCommand(input: {
@@ -964,14 +1052,23 @@ export class DeploymentService {
   private async buildBootstrapPayload(input: {
     app: DeploymentAppRecord;
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    entitlement?: Awaited<ReturnType<LicenseRepository['findEntitlementById']>> | null;
     token?: string;
   }) {
     const statusReportAuth = await this.ensureDeploymentStatusReportAuth(input.deployment);
     input.deployment = statusReportAuth.deployment;
     const manifest = this.readManifest(input.app);
     const appDefaults = this.readLegacyDeploymentDefaults(input.app);
-    const policy = this.readDeploymentPolicy(input.app);
-    const binding = this.readDeploymentBinding(input.deployment);
+    const entitlement =
+      input.entitlement ??
+      (input.deployment?.entitlementId
+        ? await new LicenseRepository(this.db).findEntitlementById(input.deployment.entitlementId)
+        : null);
+    if (!entitlement || entitlement.userId !== input.deployment?.userId || entitlement.appId !== input.deployment?.appId) {
+      throw httpError(409, 'Deployment entitlement is missing or no longer matches this deployment.');
+    }
+    const policy = this.readEntitlementDeploymentPolicy(entitlement);
+    const binding = this.readEntitlementBinding(entitlement);
     const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(input.deployment);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
       input.app.code
@@ -1059,14 +1156,18 @@ export class DeploymentService {
     }
 
     const activeBindingSource =
-      binding.sourceField !== 'none' ? binding.sourceField : policy.domainBindingSource;
+      policy.domainBindingMode === 'lock_on_first_success' ? policy.domainBindingSource : 'none';
     envDefaults.FD_RUNTIME_IMAGE_UPDATE_POLICY = updatePolicy;
     envDefaults.FD_DOMAIN_BINDING_SOURCE = activeBindingSource;
+    envDefaults.FD_DOMAIN_BINDING_SCOPE = policy.domainBindingScope;
 
     if (activeBindingSource !== 'none') {
       const boundHost =
         binding.boundDomain ||
-        normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource)) ||
+        getDomainBindingValue(
+          this.getSourceFieldValue(input.deployment, activeBindingSource),
+          policy.domainBindingScope
+        ) ||
         '';
 
       if (boundHost.length > 0) {
@@ -1129,6 +1230,7 @@ export class DeploymentService {
   async createDeployment(input: {
     userId: string;
     appCode: string;
+    entitlementId: string;
     label: string;
     environment: string;
     serverHost?: string;
@@ -1144,16 +1246,20 @@ export class DeploymentService {
       userId: input.userId,
       appCode: input.appCode
     });
-    const policy = this.readDeploymentPolicy(selection.app);
-    const activeCount = await new DeploymentRepository(this.db).countActiveDeploymentsByUserAndApp({
+    const { entitlement, plan } = await this.resolveDeploymentEntitlement({
       userId: input.userId,
-      appId: selection.app.id
+      appId: selection.app.id,
+      entitlementId: input.entitlementId
+    });
+    const policy = this.readEntitlementDeploymentPolicy(entitlement);
+    const activeCount = await new DeploymentRepository(this.db).countActiveDeploymentsByEntitlementId({
+      entitlementId: entitlement.id
     });
 
     if (activeCount >= policy.maxActiveDeployments) {
       throw httpError(
         409,
-        `Active deployment limit reached for this app (${policy.maxActiveDeployments}). Deactivate an existing deployment before creating a new one.`
+        `Active deployment limit reached for this entitlement (${policy.maxActiveDeployments}). Deactivate an existing deployment or buy another entitlement before creating a new one.`
       );
     }
 
@@ -1187,6 +1293,7 @@ export class DeploymentService {
 
     const deploymentMeta: Record<string, unknown> = {
       appCode: selection.app.code,
+      planCode: plan.code,
       runtimeUpdate: {
         policy: normalizeDeploymentRuntimeUpdatePolicy(input.updatePolicy)
       }
@@ -1205,6 +1312,7 @@ export class DeploymentService {
     const deployment = await new DeploymentRepository(this.db).createDeployment({
       userId: input.userId,
       appId: selection.app.id,
+      entitlementId: entitlement.id,
       label: input.label,
       environment: input.environment,
       serverHost: input.serverHost ?? null,
@@ -1256,8 +1364,10 @@ export class DeploymentService {
     }
 
     const app = await new AppService(this.db).getPublicApp(appRow.code);
+    const { entitlement } = await this.loadDeploymentEntitlement(deployment);
     const manifest = this.readManifest(app);
-    const policy = this.readDeploymentPolicy(app);
+    const policy = this.readEntitlementDeploymentPolicy(entitlement);
+    const binding = this.readEntitlementBinding(entitlement);
     const currentValues = this.readDeploymentInputValues(deployment);
     const currentSecrets = this.readDeploymentInputSecrets(deployment);
     const nextValues = {
@@ -1290,6 +1400,7 @@ export class DeploymentService {
     this.assertDomainBindingEditable({
       deployment,
       policy,
+      binding,
       requestedPrimaryDomain,
       requestedAdminDomain,
       requestedWsDomain
@@ -1361,7 +1472,7 @@ export class DeploymentService {
     const app = await new AppService(this.db).getPublicApp(
       (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? ''
     );
-    this.ensureDeploymentReadyForTokenIssue({
+    await this.ensureDeploymentReadyForTokenIssue({
       app,
       deployment
     });
@@ -1431,14 +1542,16 @@ export class DeploymentService {
 
     const [hydrated] = await this.hydrateDeployments([deployment]);
     const app = await new AppService(this.db).getPublicApp(hydrated.app?.code ?? '');
-    const policy = this.readDeploymentPolicy(app);
-    this.ensureDeploymentReadyForTokenIssue({
+    const { entitlement } = await this.loadDeploymentEntitlement(deployment);
+    const policy = this.readEntitlementDeploymentPolicy(entitlement);
+    await this.ensureDeploymentReadyForTokenIssue({
       app,
       deployment
     });
     await repository.markTokenUsed(matched.id);
     const boundDeployment = await this.bindDeploymentDomainOnExchange({
       deployment,
+      entitlementId: entitlement.id,
       policy
     });
     const updatedDeployment = await repository.updateDeployment(boundDeployment.id, {
@@ -1609,6 +1722,7 @@ export class DeploymentService {
     if (!deployment || deployment.userId !== input.userId) {
       throw httpError(404, 'Deployment not found');
     }
+    await this.loadDeploymentEntitlement(deployment);
 
     const meta = this.normalizeMeta(deployment.meta);
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);

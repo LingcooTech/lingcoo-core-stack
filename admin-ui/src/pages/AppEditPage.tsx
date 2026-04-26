@@ -17,7 +17,6 @@ import { AppEditPlansTab } from '@/components/apps/app-edit/AppEditPlansTab';
 import {
   EMPTY_FORM_STATE,
   buildSaveRequest,
-  createDeploymentPolicyDraft,
   createDraftId,
   createEditableFeatures,
   createEditableOffers,
@@ -33,7 +32,6 @@ import {
   type EditableOffer,
   type EditablePlan,
   type FormState,
-  type DeploymentPolicyDraft,
   type SaveRequest,
 } from '@/components/apps/app-edit/model';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
@@ -104,7 +102,6 @@ function buildDraftSnapshot(
   editableOffers: EditableOffer[],
   deliverySettings: DeliverySettingsDraft,
   deliverySecrets: DeliverySecretState,
-  deploymentPolicy: DeploymentPolicyDraft,
 ) {
   return serializeDraft(
     form,
@@ -113,7 +110,6 @@ function buildDraftSnapshot(
     editableOffers,
     {
       delivery: serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
-      deploymentPolicy,
     },
   );
 }
@@ -137,9 +133,6 @@ export function AppEditPage() {
   );
   const [deliverySecrets, setDeliverySecrets] = useState<DeliverySecretState>(
     createDeliverySecretState(undefined, null),
-  );
-  const [deploymentPolicy, setDeploymentPolicy] = useState<DeploymentPolicyDraft>(
-    createDeploymentPolicyDraft(),
   );
   const [initialized, setInitialized] = useState(false);
   const [savedDraftSnapshot, setSavedDraftSnapshot] = useState('');
@@ -199,7 +192,6 @@ export function AppEditPage() {
       const emptyDeliverySettings = createDeliverySettingsDraft(undefined, null);
       const emptyDeliverySecrets = createDeliverySecretState(undefined, null);
       const emptyManifestSource = createDeliveryManifestSourceDraft();
-      const emptyDeploymentPolicy = createDeploymentPolicyDraft();
       setForm(EMPTY_FORM_STATE);
       setEditableFeatures([]);
       setEditablePlans([]);
@@ -207,7 +199,6 @@ export function AppEditPage() {
       setDeliverySettings(emptyDeliverySettings);
       setManifestSource(emptyManifestSource);
       setDeliverySecrets(emptyDeliverySecrets);
-      setDeploymentPolicy(emptyDeploymentPolicy);
       setSavedDraftSnapshot(
         buildDraftSnapshot(
           EMPTY_FORM_STATE,
@@ -216,7 +207,6 @@ export function AppEditPage() {
           [],
           emptyDeliverySettings,
           emptyDeliverySecrets,
-          emptyDeploymentPolicy,
         ),
       );
       setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(emptyManifestSource));
@@ -231,7 +221,6 @@ export function AppEditPage() {
     setDeliverySettings(createDeliverySettingsDraft(undefined, null));
     setManifestSource(createDeliveryManifestSourceDraft());
     setDeliverySecrets(createDeliverySecretState(undefined, null));
-    setDeploymentPolicy(createDeploymentPolicyDraft());
     setSavedDraftSnapshot('');
     setSavedManifestSourceSnapshot('');
     setInitialized(false);
@@ -249,7 +238,6 @@ export function AppEditPage() {
     const nextDeliverySettings = createDeliverySettingsDraft(deliverySettingsQuery.data, manifest);
     const nextManifestSource = createDeliveryManifestSourceDraft(app);
     const nextDeliverySecrets = createDeliverySecretState(deliverySettingsQuery.data, manifest);
-    const nextDeploymentPolicy = createDeploymentPolicyDraft(app);
 
     setForm(nextForm);
     setEditableFeatures(nextFeatures);
@@ -258,7 +246,6 @@ export function AppEditPage() {
     setDeliverySettings(nextDeliverySettings);
     setManifestSource(nextManifestSource);
     setDeliverySecrets(nextDeliverySecrets);
-    setDeploymentPolicy(nextDeploymentPolicy);
     setSavedDraftSnapshot(
       buildDraftSnapshot(
         nextForm,
@@ -267,7 +254,6 @@ export function AppEditPage() {
         nextOffers,
         nextDeliverySettings,
         nextDeliverySecrets,
-        nextDeploymentPolicy,
       ),
     );
     setSavedManifestSourceSnapshot(serializeDeliveryManifestSourceDraft(nextManifestSource));
@@ -311,9 +297,8 @@ export function AppEditPage() {
         editableOffers,
         deliverySettings,
         deliverySecrets,
-        deploymentPolicy,
       ),
-    [deliverySecrets, deliverySettings, deploymentPolicy, editableFeatures, editableOffers, editablePlans, form],
+    [deliverySecrets, deliverySettings, editableFeatures, editableOffers, editablePlans, form],
   );
   const currentManifestSourceSnapshot = useMemo(
     () => serializeDeliveryManifestSourceDraft(manifestSource),
@@ -351,7 +336,6 @@ export function AppEditPage() {
         editableOffers,
         nextDeliverySettings,
         nextDeliverySecrets,
-        deploymentPolicy,
       );
 
       flushSync(() => {
@@ -424,7 +408,6 @@ export function AppEditPage() {
           editableOffers,
           nextDeliverySettings,
           nextDeliverySecrets,
-          deploymentPolicy,
         ),
       );
 
@@ -575,6 +558,13 @@ export function AppEditPage() {
         interval: 'month',
         status: 'active',
         featureCodes: firstFeatureCode ? [firstFeatureCode] : [],
+        deploymentPolicy: {
+          maxActiveDeployments: 1,
+          domainBindingMode: 'none',
+          domainBindingSource: 'none',
+          domainBindingScope: 'registrable_domain',
+          allowMultiplePurchases: false,
+        },
       },
     ]);
   };
@@ -666,7 +656,6 @@ export function AppEditPage() {
       editablePlans,
       editableOffers,
       app?.meta,
-      deploymentPolicy,
     );
     const manifestPayload = buildDeliveryManifestSourcePayload(manifestSource);
     const nextMeta = { ...(appRequest.payload.meta ?? {}) };
@@ -689,7 +678,6 @@ export function AppEditPage() {
           editableOffers,
           deliverySettings,
           deliverySecrets,
-          deploymentPolicy,
         ),
       },
       saveDeliverySettings: showDeliveryTab,
@@ -844,16 +832,9 @@ export function AppEditPage() {
               manifest={manifest}
               deliverySettings={deliverySettings}
               deliverySecrets={deliverySecrets}
-              deploymentPolicy={deploymentPolicy}
               manifestSource={manifestSource}
               updateValueField={setDeliveryField}
               updateSecretField={setDeliverySecretField}
-              updateDeploymentPolicyField={(key, value) =>
-                setDeploymentPolicy((prev) => ({
-                  ...prev,
-                  [key]: value,
-                }))
-              }
               updateManifestField={setManifestField}
               hasSyncedManifest={hasSyncedManifest}
               isSyncingManifest={syncManifestMutation.isPending}

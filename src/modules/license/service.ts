@@ -1,4 +1,5 @@
 import type { DbClient, DbExecutor } from '../../db/types';
+import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { EventService } from '../event/service';
 import { AppRepository } from '../app/repository';
@@ -19,12 +20,20 @@ function addInterval(base: Date, interval: 'month' | 'year' | 'one_time') {
   return next;
 }
 
+function normalizeMeta(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
+
 export class LicenseService {
   constructor(private readonly db: DbClient | DbExecutor) {}
 
-  async findActiveOneTimeOwnership(userId: string, appId: string) {
+  async findActiveOneTimeOwnership(userId: string, appId: string, planId?: string) {
     const repository = new LicenseRepository(this.db);
-    const items = await repository.listEffectiveEntitlementsByUserIdAndAppId(userId, appId);
+    const items = planId
+      ? await repository.listEffectiveEntitlementsByUserIdAndAppIdAndPlanId(userId, appId, planId)
+      : await repository.listEffectiveEntitlementsByUserIdAndAppId(userId, appId);
     if (items.length === 0) {
       return null;
     }
@@ -96,8 +105,10 @@ export class LicenseService {
     const startsAt = input.startsAt ?? new Date();
     const expiresAt = addInterval(startsAt, plan.interval);
 
-    if (plan.interval === 'one_time') {
-      const ownership = await this.findActiveOneTimeOwnership(input.userId, app.id);
+    const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
+
+    if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
+      const ownership = await this.findActiveOneTimeOwnership(input.userId, app.id, plan.id);
       const conflictingItems =
         ownership?.items.filter(
           (item) => item.sourceType !== input.sourceType || (item.sourceId ?? null) !== (input.sourceId ?? null)
@@ -142,6 +153,14 @@ export class LicenseService {
       startsAt,
       expiresAt,
       meta: {
+        deploymentPolicy,
+        domainBinding: {
+          mode: deploymentPolicy.domainBindingMode,
+          sourceField: deploymentPolicy.domainBindingSource,
+          scope: deploymentPolicy.domainBindingScope,
+          boundValue: null,
+          boundAt: null
+        },
         planCode: plan.code,
         appCode: app.code
       }

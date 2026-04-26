@@ -507,6 +507,7 @@ export const deployments = pgTable('deployments', {
   appId: uuid('app_id')
     .notNull()
     .references(() => apps.id, { onDelete: 'restrict' }),
+  entitlementId: uuid('entitlement_id').references(() => entitlements.id, { onDelete: 'restrict' }),
   label: varchar('label', { length: 120 }).notNull(),
   environment: varchar('environment', { length: 32 }).notNull().default('production'),
   serverHost: varchar('server_host', { length: 255 }),

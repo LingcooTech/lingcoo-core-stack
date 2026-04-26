@@ -44,6 +44,14 @@ export class LicenseRepository {
     return entitlement ?? null;
   }
 
+  async listEntitlementsByIds(entitlementIds: string[]) {
+    if (entitlementIds.length === 0) {
+      return [];
+    }
+
+    return this.db.select().from(entitlements).where(inArray(entitlements.id, entitlementIds));
+  }
+
   async getPlanById(planId: string) {
     const [plan] = await this.db.select().from(plans).where(eq(plans.id, planId)).limit(1);
     return plan ?? null;
@@ -296,6 +304,27 @@ export class LicenseRepository {
       .orderBy(desc(entitlements.createdAt));
   }
 
+  async listEffectiveEntitlementsByUserIdAndAppIdAndPlanId(
+    userId: string,
+    appId: string,
+    planId: string,
+    now = new Date()
+  ) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(
+        and(
+          eq(entitlements.userId, userId),
+          eq(entitlements.appId, appId),
+          eq(entitlements.planId, planId),
+          eq(entitlements.status, 'active'),
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
+        )
+      )
+      .orderBy(desc(entitlements.createdAt));
+  }
+
   async listRecentEntitlements(limit = 50) {
     return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
   }
@@ -374,6 +403,16 @@ export class LicenseRepository {
         expiresAt: effectiveAt
       })
       .where(and(eq(entitlements.id, entitlementId), ne(entitlements.status, 'cancelled')))
+      .returning();
+
+    return entitlement ?? null;
+  }
+
+  async updateEntitlementMeta(entitlementId: string, meta: Record<string, unknown>) {
+    const [entitlement] = await this.db
+      .update(entitlements)
+      .set({ meta })
+      .where(eq(entitlements.id, entitlementId))
       .returning();
 
     return entitlement ?? null;
