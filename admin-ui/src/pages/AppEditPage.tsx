@@ -186,7 +186,7 @@ export function AppEditPage() {
 
   const showDeliveryTab = form.deliveryMode === 'one_click';
   const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
-    ? ['basics', 'content', 'features', 'plans', 'offers', 'delivery']
+    ? ['basics', 'content', 'delivery', 'features', 'plans', 'offers']
     : ['basics', 'content', 'features', 'plans', 'offers'];
 
   useEffect(() => {
@@ -824,6 +824,27 @@ export function AppEditPage() {
             saveDisabled={isBusy}
             onSave={saveDraft}
           />
+          {showDeliveryTab ? (
+            <AppEditDeliveryTab
+              appCode={form.appCode}
+              isCreateMode={isCreateMode}
+              manifest={manifest}
+              deliverySettings={deliverySettings}
+              deliverySecrets={deliverySecrets}
+              manifestSource={manifestSource}
+              updateValueField={setDeliveryField}
+              updateSecretField={setDeliverySecretField}
+              updateManifestField={setManifestField}
+              hasSyncedManifest={hasSyncedManifest}
+              isSyncingManifest={syncManifestMutation.isPending}
+              onSyncManifest={handleSyncManifest}
+              onClear={handleClearDelivery}
+              clearDisabled={isBusy}
+              isSaving={isBusy}
+              saveDisabled={isBusy}
+              onSave={saveDraft}
+            />
+          ) : null}
           <AppEditFeaturesTab
             features={editableFeatures}
             updateFeature={updateFeature}
@@ -857,27 +878,6 @@ export function AppEditPage() {
             saveDisabled={isBusy}
             onSave={saveDraft}
           />
-          {showDeliveryTab ? (
-            <AppEditDeliveryTab
-              appCode={form.appCode}
-              isCreateMode={isCreateMode}
-              manifest={manifest}
-              deliverySettings={deliverySettings}
-              deliverySecrets={deliverySecrets}
-              manifestSource={manifestSource}
-              updateValueField={setDeliveryField}
-              updateSecretField={setDeliverySecretField}
-              updateManifestField={setManifestField}
-              hasSyncedManifest={hasSyncedManifest}
-              isSyncingManifest={syncManifestMutation.isPending}
-              onSyncManifest={handleSyncManifest}
-              onClear={handleClearDelivery}
-              clearDisabled={isBusy}
-              isSaving={isBusy}
-              saveDisabled={isBusy}
-              onSave={saveDraft}
-            />
-          ) : null}
         </div>
       </Tabs>
 
