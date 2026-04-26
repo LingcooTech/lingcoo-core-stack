@@ -200,7 +200,7 @@ export function AppEditDeliveryTab({
                 <div>
                   <CardTitle className="text-base">交付 Manifest</CardTitle>
                   <CardDescription>
-                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，作为当前应用的一键部署契约。
+                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，并把新的 preset 默认值合并进交付配置；已保存的密钥会保留。
                   </CardDescription>
                 </div>
                 <Button
@@ -258,7 +258,7 @@ export function AppEditDeliveryTab({
                 {isCreateMode
                   ? '请先保存应用，再同步 delivery manifest。'
                   : hasSyncedManifest
-                    ? '当前已存在同步后的 deliveryManifest。'
+                    ? '当前已存在同步后的 deliveryManifest。再次同步会刷新插件 release tag 等默认预设，不需要先清空交付配置。'
                     : '当前尚未同步 deliveryManifest。'}
               </div>
             </CardContent>
@@ -397,7 +397,7 @@ export function AppEditDeliveryTab({
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={onClear} disabled={clearDisabled}>
               <Trash2 className="h-4 w-4" />
-              清空交付配置
+              清空交付配置与密钥
             </Button>
           </div>
         </CardContent>

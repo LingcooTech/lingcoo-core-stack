@@ -13,7 +13,7 @@ import { AppEditContentTab } from '@/components/apps/app-edit/AppEditContentTab'
 import { AppEditDeliveryTab } from '@/components/apps/app-edit/AppEditDeliveryTab';
 import { AppEditHeader } from '@/components/apps/app-edit/AppEditHeader';
 import { AppEditOffersTab } from '@/components/apps/app-edit/AppEditOffersTab';
-import { AppEditPlansTab } from '@/components/apps/app-edit/AppEditPlansTab';
+import { AppEditFeaturesTab, AppEditPlansTab } from '@/components/apps/app-edit/AppEditPlansTab';
 import {
   EMPTY_FORM_STATE,
   buildSaveRequest,
@@ -56,6 +56,11 @@ interface SaveMutationRequest {
   appRequest: SaveRequest;
   saveDeliverySettings: boolean;
   deliveryDraft: DeliverySettingsDraft;
+}
+
+interface SyncManifestResult {
+  app: AppWithDetails;
+  deliveryOverview: Awaited<ReturnType<typeof getDeliverySettings>>;
 }
 
 interface SyncManifestRequest {
@@ -181,8 +186,8 @@ export function AppEditPage() {
 
   const showDeliveryTab = form.deliveryMode === 'one_click';
   const visibleTabKeys: AppEditTabKey[] = showDeliveryTab
-    ? ['basics', 'content', 'plans', 'offers', 'delivery']
-    : ['basics', 'content', 'plans', 'offers'];
+    ? ['basics', 'content', 'features', 'plans', 'offers', 'delivery']
+    : ['basics', 'content', 'features', 'plans', 'offers'];
 
   useEffect(() => {
     setActiveTab('basics');
@@ -374,15 +379,35 @@ export function AppEditPage() {
   });
 
   const syncManifestMutation = useMutation({
-    mutationFn: ({ appCode: targetAppCode, payload }: SyncManifestRequest) =>
-      syncAppDeliveryManifest(targetAppCode, payload),
-    onSuccess: (result, variables) => {
+    mutationFn: async ({ appCode: targetAppCode, payload }: SyncManifestRequest): Promise<SyncManifestResult> => {
+      const syncedApp = await syncAppDeliveryManifest(targetAppCode, payload);
+      const deliveryOverview = await getDeliverySettings(targetAppCode);
+      return { app: syncedApp, deliveryOverview };
+    },
+    onSuccess: ({ app: result, deliveryOverview }, variables) => {
+      const nextManifest = getDeliveryManifest(result);
+      const nextDeliverySettings = createDeliverySettingsDraft(deliveryOverview, nextManifest);
+      const nextDeliverySecrets = createDeliverySecretState(deliveryOverview, nextManifest);
+
+      setDeliverySettings(nextDeliverySettings);
+      setDeliverySecrets(nextDeliverySecrets);
       setSavedManifestSourceSnapshot(variables.snapshot);
+      setSavedDraftSnapshot(
+        buildDraftSnapshot(
+          form,
+          editableFeatures,
+          editablePlans,
+          editableOffers,
+          nextDeliverySettings,
+          nextDeliverySecrets,
+        ),
+      );
       qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
         replaceAppInList(current, result),
       );
+      qc.setQueryData(['delivery-settings', variables.appCode], deliveryOverview);
       void qc.invalidateQueries({ queryKey: ['apps'] });
-      toast.success('交付 Manifest 已同步');
+      toast.success('交付 Manifest 已同步，预设版本已刷新且密钥状态已保留');
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '同步交付 Manifest 失败');
@@ -799,12 +824,18 @@ export function AppEditPage() {
             saveDisabled={isBusy}
             onSave={saveDraft}
           />
-          <AppEditPlansTab
+          <AppEditFeaturesTab
             features={editableFeatures}
-            plans={editablePlans}
             updateFeature={updateFeature}
             addFeature={addFeature}
             removeFeature={removeFeature}
+            isSaving={isBusy}
+            saveDisabled={isBusy}
+            onSave={saveDraft}
+          />
+          <AppEditPlansTab
+            features={editableFeatures}
+            plans={editablePlans}
             updatePlan={updatePlan}
             addPlan={addPlan}
             removePlan={removePlan}

@@ -21,9 +21,6 @@ import {
 interface AppEditPlansTabProps {
   features: EditableFeature[];
   plans: EditablePlan[];
-  updateFeature: EditableFeatureUpdate;
-  addFeature: () => void;
-  removeFeature: (featureId: string) => void;
   updatePlan: EditablePlanUpdate;
   addPlan: () => void;
   removePlan: (planId: string) => void;
@@ -32,21 +29,27 @@ interface AppEditPlansTabProps {
   onSave: () => void;
 }
 
-export function AppEditPlansTab({
+interface AppEditFeaturesTabProps {
+  features: EditableFeature[];
+  updateFeature: EditableFeatureUpdate;
+  addFeature: () => void;
+  removeFeature: (featureId: string) => void;
+  isSaving: boolean;
+  saveDisabled: boolean;
+  onSave: () => void;
+}
+
+export function AppEditFeaturesTab({
   features,
-  plans,
   updateFeature,
   addFeature,
   removeFeature,
-  updatePlan,
-  addPlan,
-  removePlan,
   isSaving,
   saveDisabled,
   onSave,
-}: AppEditPlansTabProps) {
+}: AppEditFeaturesTabProps) {
   return (
-    <TabsContent value="plans" className="space-y-6">
+    <TabsContent value="features" className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
@@ -165,6 +168,29 @@ export function AppEditPlansTab({
         </CardContent>
       </Card>
 
+      <AppEditSaveBar
+        title="保存功能"
+        description="保存后会更新当前应用的 feature 列表，并同步影响套餐关联。"
+        isSaving={isSaving}
+        disabled={saveDisabled}
+        onSave={onSave}
+      />
+    </TabsContent>
+  );
+}
+
+export function AppEditPlansTab({
+  features,
+  plans,
+  updatePlan,
+  addPlan,
+  removePlan,
+  isSaving,
+  saveDisabled,
+  onSave,
+}: AppEditPlansTabProps) {
+  return (
+    <TabsContent value="plans" className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
@@ -536,8 +562,8 @@ export function AppEditPlansTab({
       </Card>
 
       <AppEditSaveBar
-        title="保存功能与套餐"
-        description="保存后会更新 feature、plan 及它们之间的关联关系。"
+        title="保存套餐"
+        description="保存后会更新 plan、部署权益及它们和 feature 的关联关系。"
         isSaving={isSaving}
         disabled={saveDisabled}
         onSave={onSave}
