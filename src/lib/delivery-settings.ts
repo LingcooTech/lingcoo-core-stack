@@ -63,12 +63,16 @@ const LEGACY_VALUE_KEY_MAP: Record<
   wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
   wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
   fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
+  fdPageComposerReleaseTag: { envKey: 'FD_PAGE_COMPOSER_RELEASE_TAG', kind: 'string' },
   fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
   fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
   fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
   fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
   fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
+  fdFormsReleaseTag: { envKey: 'FD_FORMS_RELEASE_TAG', kind: 'string' },
+  fdAiRouterReleaseTag: { envKey: 'FD_AI_ROUTER_RELEASE_TAG', kind: 'string' },
   fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
+  wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
   wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
   wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
 };
