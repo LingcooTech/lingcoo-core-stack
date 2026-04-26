@@ -170,7 +170,8 @@ export class LicenseService {
 
   async listUserEntitlements(userId: string) {
     const repository = new LicenseRepository(this.db);
-    const items = await repository.listEffectiveEntitlementsByUserId(userId);
+    const items = await repository.listEntitlementsByUserId(userId);
+    const now = new Date();
 
     const planIds = [...new Set(items.map((item) => item.planId))];
     const appIds = [...new Set(items.map((item) => item.appId))];
@@ -208,7 +209,9 @@ export class LicenseService {
 
     const summaryMap = new Map<string, Set<string>>();
     for (const item of detailed) {
-      if (item.app) {
+      const isEffective =
+        item.status === 'active' && (!item.expiresAt || item.expiresAt.getTime() >= now.getTime());
+      if (item.app && isEffective) {
         if (!summaryMap.has(item.app.code)) {
           summaryMap.set(item.app.code, new Set());
         }

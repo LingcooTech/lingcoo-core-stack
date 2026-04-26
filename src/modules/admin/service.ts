@@ -323,6 +323,7 @@ export class AdminService {
     if (!entitlement) {
       throw httpError(404, 'Entitlement not found');
     }
+    const plan = await repository.getPlanById(entitlement.planId);
 
     const revoked = await this.db.transaction(async (tx) => {
       const txDb = tx as DbClient;
@@ -345,6 +346,7 @@ export class AdminService {
           sourceType: entitlement.sourceType,
           sourceId: entitlement.sourceId ?? null,
           entitlementId: entitlement.id,
+          planCode: plan?.code ?? null,
           revokedCount: items.length
         }
       });

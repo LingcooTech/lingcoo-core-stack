@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Boxes, LoaderCircle, Rocket } from 'lucide-react';
+import { AlertTriangle, Boxes, LoaderCircle, Rocket } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -212,6 +212,11 @@ export function DeploymentsPage() {
   const initialDeployApp = initialDeployAppCode
     ? deployableApps.find((option) => option.appCode === initialDeployAppCode) ?? null
     : null;
+  const requestedApp = requestedAppCode ? apps.find((app) => app.code === requestedAppCode) ?? null : null;
+  const requestedAppUnavailable =
+    Boolean(requestedAppCode) &&
+    !initialDeployAppCode &&
+    Boolean(requestedApp && getAppDeliveryMode(requestedApp) === 'one_click');
 
   return (
     <div className="space-y-5">
@@ -225,6 +230,14 @@ export function DeploymentsPage() {
             ? `正在为 ${initialDeployApp.appName} 创建部署记录。`
             : '选择支持一键部署的应用并完成部署配置。'}
         </p>
+        {requestedAppUnavailable ? (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {requestedApp?.name ?? requestedAppCode} 当前没有可用部署授权。可能是授权已过期、被撤销，或订单尚未同步。
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (

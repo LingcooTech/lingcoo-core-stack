@@ -23,6 +23,8 @@ export function EntitlementProductCard({
   items,
   deploymentHref,
   accessLinks,
+  appHref,
+  accessState = 'active',
 }: {
   productName: string;
   featureNames: string[];
@@ -30,8 +32,11 @@ export function EntitlementProductCard({
   items: HydratedEntitlement[];
   deploymentHref?: string;
   accessLinks?: AppLink[];
+  appHref?: string;
+  accessState?: 'active' | 'inactive';
 }) {
   const visibleAccessLinks = (accessLinks ?? []).filter((link) => link.url.trim());
+  const stateLabel = accessState === 'active' ? '有效授权' : '授权已失效';
 
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
@@ -43,6 +48,9 @@ export function EntitlementProductCard({
           <div>
             <CardTitle className="text-xl tracking-tight">{productName}</CardTitle>
           </div>
+          <Badge variant={accessState === 'active' ? 'default' : 'secondary'}>
+            {stateLabel}
+          </Badge>
         </div>
         {relatedApps.length ? (
           <div className="flex flex-wrap gap-2">
@@ -94,8 +102,22 @@ export function EntitlementProductCard({
           ))}
         </div>
 
-        {deploymentHref || visibleAccessLinks.length ? (
+        {accessState === 'inactive' ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+            当前应用没有有效授权。可能是授权已过期、被撤销，或订单状态发生变化；如需继续使用，请重新购买或联系支持。
+          </div>
+        ) : null}
+
+        {deploymentHref || visibleAccessLinks.length || appHref ? (
           <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
+            {appHref ? (
+              <Button asChild variant="outline" className="rounded-lg">
+                <Link to={appHref}>
+                  查看详情
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : null}
             {visibleAccessLinks.map((link, index) => (
               <Button
                 key={`${link.type}-${link.url}-${index}`}

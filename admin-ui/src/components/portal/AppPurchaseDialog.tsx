@@ -40,6 +40,7 @@ interface AppPurchaseDialogProps {
   offers: Offer[];
   initialOfferCode?: string | null;
   websiteUrl?: string | null;
+  deliveryMode?: 'one_click' | 'direct_access';
   onPaymentSuccess?: () => void;
 }
 
@@ -51,6 +52,7 @@ export function AppPurchaseDialog({
   offers,
   initialOfferCode,
   websiteUrl,
+  deliveryMode = 'direct_access',
   onPaymentSuccess,
 }: AppPurchaseDialogProps) {
   const { isEmailVerified } = useAuth();
@@ -91,12 +93,17 @@ export function AppPurchaseDialog({
         throw new Error('请先选择一个套餐');
       }
 
+      const postPurchaseUrl =
+        deliveryMode === 'one_click'
+          ? `${window.location.origin}/deploy?app=${encodeURIComponent(appCode)}`
+          : `${window.location.origin}/account?tab=apps`;
+
       return createCheckoutSession({
         appCode,
         planCode: selectedOffer.planCode,
         offerCode: selectedOffer.code,
         providerPreference,
-        successUrl: `${window.location.origin}/orders`,
+        successUrl: postPurchaseUrl,
         cancelUrl: `${window.location.origin}/apps/${appCode}`,
       });
     },
@@ -372,7 +379,9 @@ export function AppPurchaseDialog({
                     </div>
                     <h3 className="mt-4 text-xl font-semibold text-gray-900">支付已完成</h3>
                     <p className="mt-2 text-sm leading-6 text-gray-500">
-                      权益已同步到你的账户，可以前往订单页或我的应用继续查看。
+                      {deliveryMode === 'one_click'
+                        ? '权益已同步到你的账户，可以继续创建部署。'
+                        : '权益已同步到你的账户，可以在我的应用中查看授权入口。'}
                     </p>
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
                       <Button
@@ -380,12 +389,32 @@ export function AppPurchaseDialog({
                         onClick={() => {
                           resetDialog(false);
                           onPaymentSuccess?.();
-                          window.location.href = publicSessionQuery.data?.successUrl || '/orders';
+                          window.location.href =
+                            publicSessionQuery.data?.successUrl ||
+                            (deliveryMode === 'one_click' ? `/deploy?app=${encodeURIComponent(appCode)}` : '/account?tab=apps');
+                        }}
+                      >
+                        {deliveryMode === 'one_click' ? '开始部署' : '查看我的应用'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-2xl"
+                        onClick={() => {
+                          resetDialog(false);
+                          onPaymentSuccess?.();
+                          window.location.href = '/account?tab=orders';
                         }}
                       >
                         查看订单
                       </Button>
-                      <Button variant="outline" className="rounded-2xl" onClick={() => resetDialog(false)}>
+                      <Button
+                        variant="outline"
+                        className="rounded-2xl"
+                        onClick={() => {
+                          onPaymentSuccess?.();
+                          resetDialog(false);
+                        }}
+                      >
                         留在当前页面
                       </Button>
                     </div>

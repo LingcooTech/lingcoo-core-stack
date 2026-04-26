@@ -133,6 +133,26 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         dedupeKey: `event:${event.id}`,
       };
     }
+    case 'admin.entitlements_revoked': {
+      const planCode = normalizeString(properties.planCode) || '当前授权';
+      return {
+        userId: event.userId,
+        category: 'license',
+        level: 'warning',
+        title: '授权已变更',
+        body: `${planCode} 已被管理员撤销或调整。如有疑问，请联系支持。`,
+        ctaLabel: '查看我的应用',
+        ctaUrl: '/account?tab=apps',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+        meta: {
+          entitlementId: normalizeString(properties.entitlementId) || null,
+          sourceType: normalizeString(properties.sourceType) || null,
+          sourceId: normalizeString(properties.sourceId) || null,
+        },
+      };
+    }
     case 'deployment.created': {
       const appCode = normalizeString(properties.appCode) || '当前应用';
       return {

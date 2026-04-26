@@ -273,6 +273,14 @@ export class LicenseRepository {
       .orderBy(desc(entitlements.createdAt));
   }
 
+  async listEntitlementsByUserId(userId: string) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(eq(entitlements.userId, userId))
+      .orderBy(desc(entitlements.createdAt));
+  }
+
   async listEffectiveEntitlementsByUserIdAndAppId(userId: string, appId: string, now = new Date()) {
     return this.db
       .select()

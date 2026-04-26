@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronDown, CreditCard, Download, LoaderCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ArrowUpRight, CheckCircle2, ChevronDown, CreditCard, Download, LoaderCircle, Rocket } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -7,6 +7,8 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 import { getAppCatalog } from '@/api/apps';
+import { listMyEntitlements } from '@/api/user';
+import type { HydratedEntitlement } from '@/api/types';
 import { AppPurchaseDialog } from '@/components/portal/AppPurchaseDialog';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { OfferCard } from '@/components/portal/OfferCard';
@@ -30,13 +32,25 @@ import { formatTime, getInitials } from '@/lib/utils';
 
 type DetailTabKey = 'intro' | 'features' | 'screenshots' | 'pricing' | 'support';
 
+function isEffectiveEntitlement(item: HydratedEntitlement) {
+  if (item.status !== 'active') {
+    return false;
+  }
+  if (!item.expiresAt) {
+    return true;
+  }
+  return new Date(item.expiresAt).getTime() >= Date.now();
+}
+
 export function AppCatalogPage() {
   const params = useParams<{ appCode: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<DetailTabKey>('intro');
   const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [selectedPurchaseOfferCode, setSelectedPurchaseOfferCode] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['app-catalog', params.appCode],
@@ -44,10 +58,17 @@ export function AppCatalogPage() {
     enabled: Boolean(params.appCode),
   });
 
+  const entitlementsQuery = useQuery({
+    queryKey: ['my-entitlements'],
+    queryFn: listMyEntitlements,
+    enabled: isAuthenticated,
+  });
+
   useEffect(() => {
     setActiveTab('intro');
     setOpenFaqIndices(new Set());
     setPurchaseDialogOpen(false);
+    setSelectedPurchaseOfferCode(null);
   }, [params.appCode]);
 
   const offers = data?.offers.filter((offer) => offer.status === 'active') ?? [];
@@ -70,6 +91,18 @@ export function AppCatalogPage() {
     return grouped;
   }, [data]);
 
+  const currentAppEntitlements = useMemo(
+    () =>
+      (entitlementsQuery.data?.items ?? []).filter(
+        (item) => item.app?.code === params.appCode,
+      ),
+    [entitlementsQuery.data?.items, params.appCode],
+  );
+  const activeCurrentAppEntitlements = useMemo(
+    () => currentAppEntitlements.filter(isEffectiveEntitlement),
+    [currentAppEntitlements],
+  );
+
   const toggleFaq = (index: number) => {
     setOpenFaqIndices((prev) => {
       const next = new Set(prev);
@@ -82,11 +115,12 @@ export function AppCatalogPage() {
     });
   };
 
-  const startCheckout = () => {
+  const startCheckout = (offerCode?: string | null) => {
     if (!isAuthenticated) {
       navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
+    setSelectedPurchaseOfferCode(offerCode ?? preferredOffer?.code ?? null);
     setPurchaseDialogOpen(true);
   };
 
@@ -119,6 +153,9 @@ export function AppCatalogPage() {
   const app = data.app;
   const appDetail = getAppDetailProfile(app);
   const isDeployable = getAppDeliveryMode(app) === 'one_click';
+  const entitlementStateLoading = isAuthenticated && entitlementsQuery.isLoading;
+  const hasActiveEntitlement = activeCurrentAppEntitlements.length > 0;
+  const hasHistoricalEntitlement = currentAppEntitlements.length > 0;
   const hasHighlights = app.highlights.length > 0;
   const hasScreenshots = app.screenshots.length > 0;
   const hasContent = Boolean(app.content && app.content.trim().length > 0);
@@ -128,6 +165,9 @@ export function AppCatalogPage() {
   const downloadLinks = getLinksByType(app.links, 'download');
   const websiteLink = getPrimaryWebsiteLink(app.links);
   const primaryDownloadLink = getPrimaryDownloadLink(app.links);
+  const accountAppsHref = '/account?tab=apps';
+  const deploymentHref = `/deploy?app=${encodeURIComponent(app.code)}`;
+  const canShowEntitledResourceLinks = !offers.length || hasActiveEntitlement;
   const hasDirectAccess = !isDeployable && (websiteLinks.length > 0 || downloadLinks.length > 0);
   const primarySubscriptionPlan = appDetail.subscriptionPlans[0] ?? null;
   const fallbackPriceLabel =
@@ -293,13 +333,33 @@ export function AppCatalogPage() {
                   <p className="mt-2 text-sm leading-6 text-gray-500">
                     {heroPriceDescription}
                   </p>
+                  {hasActiveEntitlement ? (
+                    <p className="mt-2 text-xs font-medium text-emerald-600">当前账户已拥有有效授权</p>
+                  ) : hasHistoricalEntitlement ? (
+                    <p className="mt-2 text-xs font-medium text-amber-700">当前账户曾拥有授权，但已失效或被撤销</p>
+                  ) : null}
                   {appDetail.trialDays > 0 && offers.length === 0 ? (
                     <p className="mt-2 text-xs text-emerald-600">支持 {appDetail.trialDays} 天免费试用</p>
                   ) : null}
                 </div>
 
-                {offers.length > 0 ? (
-                  <Button className="mt-4 h-10 w-full rounded-xl" onClick={startCheckout} disabled={!preferredOffer}>
+                {entitlementStateLoading ? (
+                  <Button className="mt-4 h-10 w-full rounded-xl" disabled>
+                    正在确认授权...
+                  </Button>
+                ) : hasActiveEntitlement && isDeployable ? (
+                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
+                    <Link to={deploymentHref}>
+                      开始部署
+                      <Rocket className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : hasActiveEntitlement ? (
+                  <Button className="mt-4 h-10 w-full rounded-xl" asChild>
+                    <Link to={accountAppsHref}>查看我的应用</Link>
+                  </Button>
+                ) : offers.length > 0 ? (
+                  <Button className="mt-4 h-10 w-full rounded-xl" onClick={() => startCheckout()} disabled={!preferredOffer}>
                     立即购买
                   </Button>
                 ) : appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl ? (
@@ -329,7 +389,7 @@ export function AppCatalogPage() {
                   </Button>
                 )}
 
-                {websiteLink && offers.length > 0 ? (
+                {websiteLink && offers.length > 0 && canShowEntitledResourceLinks ? (
                   <Button variant="outline" className="mt-3 h-11 w-full rounded-xl" asChild>
                     <a href={websiteLink.url} target="_blank" rel="noopener noreferrer">
                       在线使用
@@ -338,13 +398,19 @@ export function AppCatalogPage() {
                   </Button>
                 ) : null}
 
-                {primaryDownloadLink ? (
+                {primaryDownloadLink && canShowEntitledResourceLinks ? (
                   <Button variant="outline" className="mt-2.5 h-10 w-full rounded-xl" asChild>
                     <a href={primaryDownloadLink.url} target="_blank" rel="noopener noreferrer">
                       {getAccessLinkLabel(primaryDownloadLink)}
                       <Download className="h-4 w-4" />
                     </a>
                   </Button>
+                ) : null}
+
+                {offers.length > 0 && !hasActiveEntitlement && (websiteLink || primaryDownloadLink) ? (
+                  <p className="mt-3 text-center text-xs text-gray-500">
+                    购买后可在「我的应用」中查看授权入口、下载或部署。
+                  </p>
                 ) : null}
 
                 {!offers.length && downloadLinks.length > 1 ? (
@@ -461,6 +527,8 @@ export function AppCatalogPage() {
                         key={offer.code}
                         offer={offer}
                         features={planFeatureMap.get(offer.planId) ?? []}
+                        selected={selectedPurchaseOfferCode === offer.code}
+                        onSelect={hasActiveEntitlement ? undefined : () => startCheckout(offer.code)}
                       />
                     ))}
                   </div>
@@ -681,8 +749,12 @@ export function AppCatalogPage() {
         open={purchaseDialogOpen}
         onOpenChange={setPurchaseDialogOpen}
         offers={offers}
-        initialOfferCode={preferredOffer?.code ?? null}
+        initialOfferCode={selectedPurchaseOfferCode ?? preferredOffer?.code ?? null}
         websiteUrl={websiteLink?.url ?? null}
+        deliveryMode={isDeployable ? 'one_click' : 'direct_access'}
+        onPaymentSuccess={() => {
+          void qc.invalidateQueries({ queryKey: ['my-entitlements'] });
+        }}
       />
     </div>
   );

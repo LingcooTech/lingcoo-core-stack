@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { listApps } from '@/api/apps';
 import { changePassword, forgotPassword, getCurrentUser, updateCurrentUser } from '@/api/auth';
-import type { NotificationItem, NotificationUnreadCount, NotificationsResponse } from '@/api/types';
+import type { HydratedEntitlement, NotificationItem, NotificationUnreadCount, NotificationsResponse } from '@/api/types';
 import {
   archiveNotification,
   getMyTicket,
@@ -63,6 +63,16 @@ const passwordSchema = z
 
 type ProfileValues = z.infer<typeof profileSchema>;
 type PasswordValues = z.infer<typeof passwordSchema>;
+
+function isEffectiveEntitlement(item: HydratedEntitlement) {
+  if (item.status !== 'active') {
+    return false;
+  }
+  if (!item.expiresAt) {
+    return true;
+  }
+  return new Date(item.expiresAt).getTime() >= Date.now();
+}
 
 function normalizeAccountTab(value: string | null): AccountTab {
   return accountTabValues.includes(value as AccountTab) ? (value as AccountTab) : 'profile';
@@ -670,19 +680,28 @@ function AccountAppsTab() {
     }
   }
 
-  const activeItems = items.filter((item) => item.status === 'active');
+  const activeItems = items.filter(isEffectiveEntitlement);
+  const inactiveItems = items.filter((item) => !isEffectiveEntitlement(item));
   const deployableCount = summary.filter((entry) => {
     const app = appByCode.get(entry.appCode);
     return Boolean(app && getAppDeliveryMode(app) === 'one_click');
   }).length;
+  const appCodes = Array.from(
+    new Set([
+      ...summary.map((entry) => entry.appCode),
+      ...items.map((item) => item.app?.code).filter((code): code is string => Boolean(code)),
+    ]),
+  );
+  const activeSummaryMap = new Map(summary.map((entry) => [entry.appCode, entry]));
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { label: '已购应用', value: String(summary.length) },
           { label: '激活授权', value: String(activeItems.length) },
-          { label: '可部署应用', value: String(deployableCount) }
+          { label: '可部署应用', value: String(deployableCount) },
+          { label: '失效/撤销', value: String(inactiveItems.length) }
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
             <p className="text-sm font-medium text-gray-500">{item.label}</p>
@@ -698,7 +717,7 @@ function AccountAppsTab() {
             正在加载已购应用...
           </CardContent>
         </Card>
-      ) : summary.length === 0 ? (
+      ) : appCodes.length === 0 ? (
         <EmptyState
           icon={KeyRound}
           title="还没有已购应用"
@@ -708,27 +727,40 @@ function AccountAppsTab() {
         <section className="space-y-5">
           <h2 className="text-2xl font-semibold tracking-tight text-gray-900">我的应用</h2>
           <div className="grid gap-5 lg:grid-cols-2">
-            {summary.map((entry) => {
-              const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
-              const relatedApps = appsByProduct.get(entry.appCode) ?? [];
-              const app = appByCode.get(entry.appCode) ?? null;
-              const featureNames = entry.featureCodes.map((code) => featureNameMap.get(code) ?? code);
+            {appCodes.map((appCode) => {
+              const entry = activeSummaryMap.get(appCode) ?? null;
+              const relatedItems = items.filter((item) => item.app?.code === appCode);
+              const activeRelatedItems = relatedItems.filter(isEffectiveEntitlement);
+              const relatedApps = appsByProduct.get(appCode) ?? [];
+              const app = appByCode.get(appCode) ?? null;
+              const fallbackFeatureNames = Array.from(
+                new Set(
+                  relatedItems
+                    .map((item) => item.plan?.name ?? item.plan?.code ?? '')
+                    .filter(Boolean),
+                ),
+              );
+              const featureNames =
+                entry?.featureCodes.map((code) => featureNameMap.get(code) ?? code) ??
+                fallbackFeatureNames;
               const deploymentHref =
-                app && getAppDeliveryMode(app) === 'one_click'
-                  ? `/deploy?app=${encodeURIComponent(entry.appCode)}`
+                activeRelatedItems.length > 0 && app && getAppDeliveryMode(app) === 'one_click'
+                  ? `/deploy?app=${encodeURIComponent(appCode)}`
                   : undefined;
               const accessLinks =
-                app && getAppDeliveryMode(app) !== 'one_click' ? getAccessLinks(app.links) : [];
+                activeRelatedItems.length > 0 && app && getAppDeliveryMode(app) !== 'one_click' ? getAccessLinks(app.links) : [];
 
               return (
                 <EntitlementProductCard
-                  key={entry.appCode}
-                  productName={relatedItems[0]?.app?.name ?? entry.appCode}
+                  key={appCode}
+                  productName={relatedItems[0]?.app?.name ?? app?.name ?? appCode}
                   featureNames={featureNames}
                   relatedApps={relatedApps}
                   items={relatedItems}
                   deploymentHref={deploymentHref}
                   accessLinks={accessLinks}
+                  appHref={`/apps/${appCode}`}
+                  accessState={activeRelatedItems.length > 0 ? 'active' : 'inactive'}
                 />
               );
             })}
