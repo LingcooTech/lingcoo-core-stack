@@ -722,6 +722,27 @@ export class DeploymentService {
     return values;
   }
 
+  private mergeLegacyDomainFields(
+    domainValues: Record<string, string>,
+    input: {
+      primaryDomain?: string;
+      adminDomain?: string;
+      wsDomain?: string;
+    }
+  ) {
+    const next = { ...domainValues };
+    if (typeof input.primaryDomain === 'string') {
+      next.primaryDomain = normalizeHostname(input.primaryDomain);
+    }
+    if (typeof input.adminDomain === 'string') {
+      next.adminDomain = normalizeHostname(input.adminDomain);
+    }
+    if (typeof input.wsDomain === 'string') {
+      next.wsDomain = normalizeHostname(input.wsDomain);
+    }
+    return Object.fromEntries(Object.entries(next).filter(([, value]) => value.length > 0));
+  }
+
   private collectDeploymentConfigIssues(input: {
     manifest: DeliveryManifest | null;
     values: DeliverySettingValues;
@@ -1304,12 +1325,10 @@ export class DeploymentService {
     const manifest = this.readManifest(selection.app);
     const deploymentValues = normalizeValueRecord(input.values);
     const deploymentSecrets = normalizeSecretRecord(input.secrets);
-    const deploymentDomainValues = normalizeDomainValueRecord({
-      ...input.domainValues,
-      primaryDomain: input.primaryDomain,
-      adminDomain: input.adminDomain,
-      wsDomain: input.wsDomain
-    });
+    const deploymentDomainValues = this.mergeLegacyDomainFields(
+      normalizeDomainValueRecord(input.domainValues),
+      input
+    );
 
     this.validateDeploymentInputs({
       manifest,
@@ -1423,12 +1442,10 @@ export class DeploymentService {
       ...normalizeSecretRecord(input.secrets)
     };
     const currentDomainValues = this.readDeploymentDomainValues(deployment);
-    const requestedDomainValues = normalizeDomainValueRecord({
-      ...input.domainValues,
-      primaryDomain: input.primaryDomain,
-      adminDomain: input.adminDomain,
-      wsDomain: input.wsDomain
-    });
+    const requestedDomainValues = this.mergeLegacyDomainFields(
+      normalizeDomainValueRecord(input.domainValues),
+      input
+    );
     const nextDomainValues = {
       ...currentDomainValues,
       ...requestedDomainValues
