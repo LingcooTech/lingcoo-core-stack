@@ -736,7 +736,8 @@ export class DeploymentService {
     }
 
     for (const slot of input.manifest.domainSlots) {
-      if (!slot.required || input.domainValues[slot.sourceField]) {
+      const slotValue = input.domainValues[slot.sourceField] || input.domainValues[slot.key];
+      if (!slot.required || slotValue) {
         continue;
       }
 
@@ -1041,7 +1042,8 @@ export class DeploymentService {
     }
 
     for (const slot of input.manifest.domainSlots) {
-      if (slot.required && !input.domainValues[slot.sourceField]) {
+      const slotValue = input.domainValues[slot.sourceField] || input.domainValues[slot.key];
+      if (slot.required && !slotValue) {
         throw httpError(422, `${slot.label} is required`);
       }
     }

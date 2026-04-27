@@ -190,7 +190,7 @@ export function DeploymentEditDialog({
 
     if (manifest) {
       for (const slot of manifest.domainSlots) {
-        const value = domainValues[slot.sourceField] ?? '';
+        const value = domainValues[slot.sourceField] ?? domainValues[slot.key] ?? '';
         if (slot.required && !value.trim()) {
           toast.error(`${slot.label}不能为空`);
           return false;
@@ -302,10 +302,11 @@ export function DeploymentEditDialog({
           {manifest?.domainSlots.length ? (
             <div className="grid gap-4 md:grid-cols-3">
               {manifest.domainSlots.map((slot) => {
-                const value = domainValues[slot.sourceField] ?? '';
+                const value = domainValues[slot.sourceField] ?? domainValues[slot.key] ?? '';
                 const onChange = (nextValue: string) => {
                   setDomainValues((current) => ({
                     ...current,
+                    [slot.key]: nextValue,
                     [slot.sourceField]: nextValue,
                   }));
                 };
