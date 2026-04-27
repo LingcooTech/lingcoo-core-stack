@@ -1111,7 +1111,6 @@ export class DeploymentService {
       throw httpError(409, 'Deployment entitlement is missing or no longer matches this deployment.');
     }
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
-    const binding = this.readEntitlementBinding(entitlement);
     const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(input.deployment);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
       input.app.code
@@ -1202,13 +1201,8 @@ export class DeploymentService {
     envDefaults.FD_DOMAIN_BINDING_SCOPE = policy.domainBindingScope;
 
     if (activeBindingSource !== 'none') {
-      const boundHost =
-        binding.boundDomain ||
-        getDomainBindingValue(
-          this.getSourceFieldValue(input.deployment, activeBindingSource),
-          policy.domainBindingScope
-        ) ||
-        '';
+      // Runtime host checks must use the exact deployed host, not the license binding scope.
+      const boundHost = normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource));
 
       if (boundHost.length > 0) {
         envDefaults.FD_BOUND_HOST = boundHost;
