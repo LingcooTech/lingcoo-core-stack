@@ -401,13 +401,10 @@ export class DeploymentService {
         activeBindingSource !== 'none' &&
         Boolean(binding.boundDomain) &&
         currentBoundValue === binding.boundDomain;
-      const envDefaults = app
-        ? (await this.buildBootstrapPayload({
-            app: app as DeploymentAppRecord,
-            deployment: row,
-            entitlement
-          })).envDefaults
-        : {};
+      const envDefaults = this.buildDeploymentDisplayEnvDefaults({
+        app: app ? (app as DeploymentAppRecord) : null,
+        deploymentValues: deliveryValues
+      });
       const reportedCurrentRuntimeImages = {
         frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
         websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null
@@ -620,6 +617,22 @@ export class DeploymentService {
         repoBranch: normalizeString(raw.repoBranch) || undefined
       }
     };
+  }
+
+  private buildDeploymentDisplayEnvDefaults(input: {
+    app: DeploymentAppRecord | null;
+    deploymentValues: DeliverySettingValues;
+  }) {
+    const values: DeliverySettingValues = {
+      ...(input.app ? this.readLegacyDeploymentDefaults(input.app).values : {}),
+      ...input.deploymentValues
+    };
+
+    return Object.fromEntries(
+      Object.entries(values)
+        .map(([key, value]) => [key, typeof value === 'boolean' ? String(value) : normalizeString(value)])
+        .filter(([, value]) => value.length > 0)
+    );
   }
 
   private readEntitlementDeploymentPolicy(entitlement: { meta?: unknown } | null | undefined): DeploymentPolicy {

@@ -315,6 +315,7 @@ export function DeploymentsPage() {
     Boolean(requestedAppCode) &&
     !initialDeployAppCode &&
     Boolean(requestedApp && getAppDeliveryMode(requestedApp) === 'one_click');
+  const loadError = appsQuery.error ?? entitlementsQuery.error ?? deploymentsQuery.error;
 
   return (
     <div className="space-y-5">
@@ -343,6 +344,13 @@ export function DeploymentsPage() {
           <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
             <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载部署数据...
+          </CardContent>
+        </Card>
+      ) : loadError ? (
+        <Card className="rounded-xl border-red-200 bg-red-50">
+          <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-red-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{loadError instanceof Error ? loadError.message : '部署数据加载失败，请稍后重试。'}</span>
           </CardContent>
         </Card>
       ) : deployableApps.length === 0 && deployments.length === 0 ? (
