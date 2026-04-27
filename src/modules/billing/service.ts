@@ -1,4 +1,5 @@
 import type { AppEnv } from '../../lib/env';
+import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
@@ -12,6 +13,12 @@ import type { PaymentNotificationResult } from './providers/types';
 import { BillingRepository } from './repository';
 
 type BillingOrder = NonNullable<Awaited<ReturnType<BillingRepository['findOrderByOrderNo']>>>;
+
+function normalizeMeta(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+}
 
 export class BillingService {
   constructor(
@@ -43,8 +50,9 @@ export class BillingService {
       offerCode: input.offerCode
     });
 
-    if (plan.interval === 'one_time') {
-      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, app.id);
+    const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
+    if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
+      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, app.id, plan.id);
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
