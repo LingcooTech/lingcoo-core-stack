@@ -134,6 +134,12 @@ export function DeploymentRecordCard({
   const domainBindingLabel =
     deployment.domainBinding.sourceLabel ??
     (deployment.domainBinding.sourceField !== 'none' ? deployment.domainBinding.sourceField : '域名');
+  const domainEntries = Object.entries(deployment.domainValues).filter(([, value]) => value.trim().length > 0);
+  const boundDomain =
+    deployment.domainBinding.boundDomain ??
+    (deployment.domainBinding.sourceField !== 'none'
+      ? deployment.domainValues[deployment.domainBinding.sourceField] ?? null
+      : null);
 
   return (
     <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
@@ -150,7 +156,9 @@ export function DeploymentRecordCard({
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">{deployment.environment}</Badge>
           {deployment.serverHost ? <Badge variant="secondary">{deployment.serverHost}</Badge> : null}
-          {deployment.primaryDomain ? <Badge variant="outline">{deployment.primaryDomain}</Badge> : null}
+          {domainEntries.slice(0, 3).map(([key, value]) => (
+            <Badge key={key} variant="outline">{value}</Badge>
+          ))}
           <Badge variant={deployment.updatePolicy === 'auto' ? 'default' : 'secondary'}>
             {deployment.updatePolicy === 'auto' ? '自动更新' : '手动更新'}
           </Badge>
@@ -225,13 +233,23 @@ export function DeploymentRecordCard({
                 : '未绑定授权'
             }
           />
-          <InfoLine label="后台域名" value={deployment.adminDomain || '未设置'} />
-          <InfoLine label="WS 域名" value={deployment.wsDomain || '未设置'} />
+          {domainEntries.length > 0 ? (
+            domainEntries.map(([key, value]) => (
+              <InfoLine
+                key={key}
+                label={key === deployment.domainBinding.sourceField ? domainBindingLabel : `域名 · ${key}`}
+                value={value}
+                mono
+              />
+            ))
+          ) : (
+            <InfoLine label="域名配置" value="未设置" />
+          )}
           <InfoLine
             label="域名绑定"
             value={
               deployment.domainBinding.isLocked
-                ? `${domainBindingLabel}: ${deployment.domainBinding.boundDomain ?? deployment.primaryDomain ?? '已绑定'}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
+                ? `${domainBindingLabel}: ${boundDomain ?? '已绑定'}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                 : deployment.domainBinding.sourceField !== 'none'
                   ? `启用，首次成功部署后锁定${domainBindingLabel}（${getDomainScopeLabel(deployment.domainBinding.scope)}）`
                   : '未启用'
@@ -298,7 +316,7 @@ export function DeploymentRecordCard({
           ) : null}
           {deployment.domainBinding.isLocked ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              当前{domainBindingLabel}已绑定为 {deployment.domainBinding.boundDomain ?? deployment.primaryDomain}。如需更换，需要提交工单处理。
+              当前{domainBindingLabel}已绑定为 {boundDomain ?? '已绑定'}。如需更换，需要提交工单处理。
             </p>
           ) : null}
 

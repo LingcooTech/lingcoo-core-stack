@@ -91,9 +91,6 @@ export function DeploymentEditDialog({
     label?: string;
     environment?: string;
     serverHost?: string;
-    primaryDomain?: string;
-    adminDomain?: string;
-    wsDomain?: string;
     installPath?: string;
     updatePolicy?: 'manual' | 'auto';
     domainValues?: Record<string, string>;
@@ -190,7 +187,7 @@ export function DeploymentEditDialog({
 
     if (manifest) {
       for (const slot of manifest.domainSlots) {
-        const value = domainValues[slot.sourceField] ?? domainValues[slot.key] ?? '';
+        const value = domainValues[slot.sourceField] ?? '';
         if (slot.required && !value.trim()) {
           toast.error(`${slot.label}不能为空`);
           return false;
@@ -302,11 +299,10 @@ export function DeploymentEditDialog({
           {manifest?.domainSlots.length ? (
             <div className="grid gap-4 md:grid-cols-3">
               {manifest.domainSlots.map((slot) => {
-                const value = domainValues[slot.sourceField] ?? domainValues[slot.key] ?? '';
+                const value = domainValues[slot.sourceField] ?? '';
                 const onChange = (nextValue: string) => {
                   setDomainValues((current) => ({
                     ...current,
-                    [slot.key]: nextValue,
                     [slot.sourceField]: nextValue,
                   }));
                 };

@@ -382,7 +382,7 @@ export class DeploymentService {
       const plan = entitlement ? planMap.get(entitlement.planId) ?? null : null;
       const manifest = app ? this.readManifest(app as DeploymentAppRecord) : null;
       const deliveryValues = this.readDeploymentInputValues(row);
-      const domainValues = this.readDeploymentDomainValues(row);
+      const domainValues = this.filterDomainValuesForManifest(manifest, this.readDeploymentDomainValues(row));
       const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
       const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
       const meta = this.normalizeMeta(row.meta);
@@ -707,40 +707,21 @@ export class DeploymentService {
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const domains = this.normalizeMeta(meta.deliveryDomains);
-    const values = normalizeDomainValueRecord(domains.values);
-
-    if (deployment?.primaryDomain) {
-      values.primaryDomain = normalizeHostname(deployment.primaryDomain);
-    }
-    if (deployment?.adminDomain) {
-      values.adminDomain = normalizeHostname(deployment.adminDomain);
-    }
-    if (deployment?.wsDomain) {
-      values.wsDomain = normalizeHostname(deployment.wsDomain);
-    }
-
-    return values;
+    return normalizeDomainValueRecord(domains.values);
   }
 
-  private mergeLegacyDomainFields(
-    domainValues: Record<string, string>,
-    input: {
-      primaryDomain?: string;
-      adminDomain?: string;
-      wsDomain?: string;
-    }
+  private filterDomainValuesForManifest(
+    manifest: DeliveryManifest | null,
+    domainValues: Record<string, string>
   ) {
-    const next = { ...domainValues };
-    if (typeof input.primaryDomain === 'string') {
-      next.primaryDomain = normalizeHostname(input.primaryDomain);
+    if (!manifest) {
+      return {};
     }
-    if (typeof input.adminDomain === 'string') {
-      next.adminDomain = normalizeHostname(input.adminDomain);
-    }
-    if (typeof input.wsDomain === 'string') {
-      next.wsDomain = normalizeHostname(input.wsDomain);
-    }
-    return Object.fromEntries(Object.entries(next).filter(([, value]) => value.length > 0));
+
+    const allowedSourceFields = new Set(manifest.domainSlots.map((slot) => slot.sourceField));
+    return Object.fromEntries(
+      Object.entries(domainValues).filter(([key]) => allowedSourceFields.has(key))
+    );
   }
 
   private collectDeploymentConfigIssues(input: {
@@ -757,7 +738,7 @@ export class DeploymentService {
     }
 
     for (const slot of input.manifest.domainSlots) {
-      const slotValue = input.domainValues[slot.sourceField] || input.domainValues[slot.key];
+      const slotValue = input.domainValues[slot.sourceField];
       if (!slot.required || slotValue) {
         continue;
       }
@@ -847,9 +828,6 @@ export class DeploymentService {
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
     policy: DeploymentPolicy;
     binding: DeploymentBindingState;
-    requestedPrimaryDomain?: string;
-    requestedAdminDomain?: string;
-    requestedWsDomain?: string;
     requestedDomainValues?: Record<string, string>;
   }) {
     const boundSourceField =
@@ -859,12 +837,7 @@ export class DeploymentService {
       return;
     }
 
-    const requestedBySource: Record<string, string | undefined> = {
-      ...(input.requestedDomainValues ?? {}),
-      primaryDomain: input.requestedPrimaryDomain,
-      adminDomain: input.requestedAdminDomain,
-      wsDomain: input.requestedWsDomain
-    };
+    const requestedBySource: Record<string, string | undefined> = input.requestedDomainValues ?? {};
     const nextBoundValue =
       typeof requestedBySource[boundSourceField] === 'string'
         ? getDomainBindingValue(requestedBySource[boundSourceField] ?? '', input.policy.domainBindingScope)
@@ -1007,17 +980,7 @@ export class DeploymentService {
     if (domainValues[sourceField]) {
       return domainValues[sourceField];
     }
-
-    switch (sourceField) {
-      case 'adminDomain':
-        return deployment?.adminDomain ?? undefined;
-      case 'wsDomain':
-        return deployment?.wsDomain ?? undefined;
-      case 'primaryDomain':
-        return deployment?.primaryDomain ?? undefined;
-      default:
-        return undefined;
-    }
+    return undefined;
   }
 
   private resolveManifestFieldValue(input: {
@@ -1059,11 +1022,21 @@ export class DeploymentService {
     domainValues: Record<string, string>;
   }) {
     if (!input.manifest) {
+      if (Object.keys(input.domainValues).length > 0) {
+        throw httpError(422, 'Delivery manifest is required for deployment domain fields');
+      }
       return;
     }
 
+    const allowedDomainFields = new Set(input.manifest.domainSlots.map((slot) => slot.sourceField));
+    for (const key of Object.keys(input.domainValues)) {
+      if (!allowedDomainFields.has(key)) {
+        throw httpError(422, `Unexpected deployment domain field: ${key}`);
+      }
+    }
+
     for (const slot of input.manifest.domainSlots) {
-      const slotValue = input.domainValues[slot.sourceField] || input.domainValues[slot.key];
+      const slotValue = input.domainValues[slot.sourceField];
       if (slot.required && !slotValue) {
         throw httpError(422, `${slot.label} is required`);
       }
@@ -1192,9 +1165,6 @@ export class DeploymentService {
       }
     } else {
       const fallbackEntries = Object.entries({
-        FRONTEND_DOMAIN: input.deployment?.primaryDomain ?? undefined,
-        ADMIN_DOMAIN: input.deployment?.adminDomain ?? undefined,
-        WS_DOMAIN: input.deployment?.wsDomain ?? undefined,
         ...Object.fromEntries(
           Object.entries(appValues).map(([key, value]) => [key, typeof value === 'boolean' ? String(value) : value])
         ),
@@ -1292,9 +1262,6 @@ export class DeploymentService {
     label: string;
     environment: string;
     serverHost?: string;
-    primaryDomain?: string;
-    adminDomain?: string;
-    wsDomain?: string;
     installPath?: string;
     updatePolicy?: DeploymentRuntimeUpdatePolicy;
     domainValues?: Record<string, string>;
@@ -1325,10 +1292,7 @@ export class DeploymentService {
     const manifest = this.readManifest(selection.app);
     const deploymentValues = normalizeValueRecord(input.values);
     const deploymentSecrets = normalizeSecretRecord(input.secrets);
-    const deploymentDomainValues = this.mergeLegacyDomainFields(
-      normalizeDomainValueRecord(input.domainValues),
-      input
-    );
+    const deploymentDomainValues = normalizeDomainValueRecord(input.domainValues);
 
     this.validateDeploymentInputs({
       manifest,
@@ -1378,9 +1342,6 @@ export class DeploymentService {
       label: input.label,
       environment: input.environment,
       serverHost: input.serverHost ?? null,
-      primaryDomain: deploymentDomainValues.primaryDomain ?? null,
-      adminDomain: deploymentDomainValues.adminDomain ?? null,
-      wsDomain: deploymentDomainValues.wsDomain ?? null,
       installPath: input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath,
       meta: deploymentMeta
     });
@@ -1406,9 +1367,6 @@ export class DeploymentService {
     label?: string;
     environment?: string;
     serverHost?: string;
-    primaryDomain?: string;
-    adminDomain?: string;
-    wsDomain?: string;
     installPath?: string;
     updatePolicy?: DeploymentRuntimeUpdatePolicy;
     domainValues?: Record<string, string>;
@@ -1441,11 +1399,11 @@ export class DeploymentService {
       ...currentSecrets,
       ...normalizeSecretRecord(input.secrets)
     };
-    const currentDomainValues = this.readDeploymentDomainValues(deployment);
-    const requestedDomainValues = this.mergeLegacyDomainFields(
-      normalizeDomainValueRecord(input.domainValues),
-      input
+    const currentDomainValues = this.filterDomainValuesForManifest(
+      manifest,
+      this.readDeploymentDomainValues(deployment)
     );
+    const requestedDomainValues = normalizeDomainValueRecord(input.domainValues);
     const nextDomainValues = {
       ...currentDomainValues,
       ...requestedDomainValues
@@ -1458,19 +1416,10 @@ export class DeploymentService {
       domainValues: nextDomainValues
     });
 
-    const requestedPrimaryDomain =
-      typeof input.primaryDomain === 'string' ? input.primaryDomain.trim() || '' : undefined;
-    const requestedAdminDomain =
-      typeof input.adminDomain === 'string' ? input.adminDomain.trim() || '' : undefined;
-    const requestedWsDomain =
-      typeof input.wsDomain === 'string' ? input.wsDomain.trim() || '' : undefined;
     this.assertDomainBindingEditable({
       deployment,
       policy,
       binding,
-      requestedPrimaryDomain,
-      requestedAdminDomain,
-      requestedWsDomain,
       requestedDomainValues
     });
 
@@ -1500,18 +1449,6 @@ export class DeploymentService {
       label: input.label?.trim() || deployment.label,
       environment: input.environment?.trim() || deployment.environment,
       serverHost: typeof input.serverHost === 'string' ? input.serverHost.trim() || null : deployment.serverHost,
-      primaryDomain:
-        Object.prototype.hasOwnProperty.call(requestedDomainValues, 'primaryDomain')
-          ? requestedDomainValues.primaryDomain || null
-          : deployment.primaryDomain,
-      adminDomain:
-        Object.prototype.hasOwnProperty.call(requestedDomainValues, 'adminDomain')
-          ? requestedDomainValues.adminDomain || null
-          : deployment.adminDomain,
-      wsDomain:
-        Object.prototype.hasOwnProperty.call(requestedDomainValues, 'wsDomain')
-          ? requestedDomainValues.wsDomain || null
-          : deployment.wsDomain,
       installPath: input.installPath?.trim() || deployment.installPath,
       meta: nextMeta
     });

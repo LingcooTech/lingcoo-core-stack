@@ -157,9 +157,6 @@ export async function createDeployment(payload: {
   label: string;
   environment?: string;
   serverHost?: string;
-  primaryDomain?: string;
-  adminDomain?: string;
-  wsDomain?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
   domainValues?: Record<string, string>;
@@ -177,9 +174,6 @@ export async function updateDeployment(payload: {
   label?: string;
   environment?: string;
   serverHost?: string;
-  primaryDomain?: string;
-  adminDomain?: string;
-  wsDomain?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
   domainValues?: Record<string, string>;

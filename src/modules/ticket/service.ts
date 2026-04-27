@@ -21,6 +21,22 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizeRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readDeploymentDomainValues(meta: unknown) {
+  const raw = normalizeRecord(normalizeRecord(meta).deliveryDomains);
+  const values = normalizeRecord(raw.values);
+  return Object.fromEntries(
+    Object.entries(values)
+      .map(([key, value]) => [key, normalizeString(value)])
+      .filter(([, value]) => value.length > 0)
+  );
+}
+
 function createTicketNo(now = new Date()) {
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -158,9 +174,7 @@ export class TicketService {
               label: deployment.label,
               environment: deployment.environment,
               status: deployment.status,
-              primaryDomain: deployment.primaryDomain,
-              adminDomain: deployment.adminDomain,
-              wsDomain: deployment.wsDomain
+              domainValues: readDeploymentDomainValues(deployment.meta)
             }
           : null,
         assignee: assignee ? { id: assignee.id, email: assignee.email, displayName: assignee.displayName } : null,

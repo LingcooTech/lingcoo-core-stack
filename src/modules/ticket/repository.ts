@@ -212,9 +212,7 @@ export class TicketRepository {
           ilike(apps.name, pattern),
           ilike(orders.orderNo, pattern),
           ilike(installs.extensionInstallId, pattern),
-          ilike(deployments.label, pattern),
-          ilike(deployments.primaryDomain, pattern),
-          ilike(deployments.adminDomain, pattern)
+          ilike(deployments.label, pattern)
         )!
       );
     }
@@ -283,9 +281,7 @@ export class TicketRepository {
           ilike(apps.name, pattern),
           ilike(orders.orderNo, pattern),
           ilike(installs.extensionInstallId, pattern),
-          ilike(deployments.label, pattern),
-          ilike(deployments.primaryDomain, pattern),
-          ilike(deployments.adminDomain, pattern)
+          ilike(deployments.label, pattern)
         )!
       );
     }

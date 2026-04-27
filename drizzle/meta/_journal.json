@@ -134,6 +134,13 @@
       "when": 1777200000000,
       "tag": "0018_deployment_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777294204000,
+      "tag": "0019_drop_static_deployment_domains",
+      "breakpoints": true
     }
   ]
 }

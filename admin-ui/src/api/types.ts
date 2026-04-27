@@ -870,9 +870,7 @@ export interface SupportTicketRelatedDeployment {
   label: string;
   environment: string;
   status: string;
-  primaryDomain: string | null;
-  adminDomain: string | null;
-  wsDomain: string | null;
+  domainValues: Record<string, string>;
 }
 
 export interface HydratedSupportTicket extends SupportTicket {
@@ -995,9 +993,6 @@ export interface DeploymentSummary {
   label: string;
   environment: string;
   serverHost: string | null;
-  primaryDomain: string | null;
-  adminDomain: string | null;
-  wsDomain: string | null;
   installPath: string;
   status: string;
   lastTokenIssuedAt: string | null;

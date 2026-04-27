@@ -254,12 +254,11 @@ function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null 
   const key = normalizeString(raw.key);
   const label = normalizeString(raw.label);
   const envKey = normalizeString(raw.envKey);
+  const sourceField = normalizeString(raw.sourceField);
 
-  if (!key || !label || !envKey) {
+  if (!key || !label || !envKey || !sourceField) {
     return null;
   }
-
-  const sourceField = normalizeString(raw.sourceField) || key;
 
   return {
     key,

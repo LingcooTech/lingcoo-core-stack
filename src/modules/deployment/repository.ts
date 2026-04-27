@@ -13,9 +13,6 @@ export class DeploymentRepository {
     label: string;
     environment: string;
     serverHost?: string | null;
-    primaryDomain?: string | null;
-    adminDomain?: string | null;
-    wsDomain?: string | null;
     installPath?: string | null;
     meta?: Record<string, unknown>;
   }) {
@@ -28,9 +25,6 @@ export class DeploymentRepository {
         label: input.label,
         environment: input.environment,
         serverHost: input.serverHost ?? null,
-        primaryDomain: input.primaryDomain ?? null,
-        adminDomain: input.adminDomain ?? null,
-        wsDomain: input.wsDomain ?? null,
         installPath: input.installPath ?? '/opt/fd-headless-wp-system',
         status: 'active',
         meta: input.meta ?? {},
@@ -151,9 +145,6 @@ export class DeploymentRepository {
     label?: string;
     environment?: string;
     serverHost?: string | null;
-    primaryDomain?: string | null;
-    adminDomain?: string | null;
-    wsDomain?: string | null;
     installPath?: string | null;
     status?: 'active' | 'inactive' | 'cancelled' | 'expired';
     meta?: Record<string, unknown>;
@@ -168,9 +159,6 @@ export class DeploymentRepository {
     if (typeof input.label !== 'undefined') changes.label = input.label;
     if (typeof input.environment !== 'undefined') changes.environment = input.environment;
     if (typeof input.serverHost !== 'undefined') changes.serverHost = input.serverHost;
-    if (typeof input.primaryDomain !== 'undefined') changes.primaryDomain = input.primaryDomain;
-    if (typeof input.adminDomain !== 'undefined') changes.adminDomain = input.adminDomain;
-    if (typeof input.wsDomain !== 'undefined') changes.wsDomain = input.wsDomain;
     if (typeof input.installPath !== 'undefined') changes.installPath = input.installPath;
     if (typeof input.status !== 'undefined') changes.status = input.status;
     if (typeof input.meta !== 'undefined') changes.meta = input.meta;
