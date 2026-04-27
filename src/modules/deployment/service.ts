@@ -1232,6 +1232,7 @@ export class DeploymentService {
         url: installer.repoUrl,
         branch: installer.repoBranch
       },
+      assets: manifest?.assets ?? [],
       envDefaults,
       remoteInstallCommand: input.token
         ? this.buildRemoteInstallCommand({

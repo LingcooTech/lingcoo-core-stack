@@ -5,6 +5,7 @@ import type { DbClient } from '../db/types';
 import { AppRepository } from '../modules/app/repository';
 import { hasPublicTable } from './db-compat';
 import {
+  listDeliveryManifestAssetRequiredSecretKeys,
   listDeliveryManifestFields,
   normalizeDeliveryManifest,
   type DeliveryManifestField
@@ -427,8 +428,15 @@ export class DeliverySettingsService {
       }
     }
 
+    for (const key of listDeliveryManifestAssetRequiredSecretKeys(manifest)) {
+      if (!Object.prototype.hasOwnProperty.call(secretStatuses, key)) {
+        secretStatuses[key] = { configured: false };
+      }
+    }
+
     const configured = manifest
-      ? listDeliveryManifestFields(manifest, { scope: 'preset' }).every((field) => isFieldConfigured(field, stored))
+      ? listDeliveryManifestFields(manifest, { scope: 'preset' }).every((field) => isFieldConfigured(field, stored)) &&
+        listDeliveryManifestAssetRequiredSecretKeys(manifest).every((key) => Boolean(stored.secrets[key]))
       : Boolean(Object.keys(stored.values).length > 0 || Object.keys(stored.secrets).length > 0);
 
     return {

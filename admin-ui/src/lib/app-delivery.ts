@@ -5,6 +5,13 @@ export type DeliveryMode = 'none' | 'one_click';
 export type DeliveryManifestFieldScope = 'user_input' | 'preset';
 export type DeliveryManifestFieldType = 'text' | 'email' | 'boolean' | 'secret';
 export type DeliveryManifestDomainSourceField = string;
+export type DeliveryManifestAssetType =
+  | 'github_release'
+  | 'docker_image'
+  | 'qiniu_object'
+  | 'http_file'
+  | 'custom';
+export type DeliveryManifestAssetVisibility = 'public' | 'private';
 
 export interface DeliveryManifestSourceDraft {
   repoUrl: string;
@@ -50,6 +57,28 @@ export interface DeliveryManifestField {
   defaultValue?: string | boolean;
 }
 
+export interface DeliveryManifestAsset {
+  key: string;
+  label: string;
+  type: DeliveryManifestAssetType;
+  required: boolean;
+  visibility: DeliveryManifestAssetVisibility;
+  group?: string;
+  description?: string;
+  repo?: string;
+  file?: string;
+  path?: string;
+  tag?: string;
+  tagEnv?: string;
+  image?: string;
+  imageEnv?: string;
+  url?: string;
+  urlEnv?: string;
+  authSecret?: string;
+  checksum?: string;
+  checksumEnv?: string;
+}
+
 export interface DeliveryManifest {
   version: string;
   installer: DeliveryManifestInstaller;
@@ -57,6 +86,7 @@ export interface DeliveryManifest {
   domainSlots: DeliveryManifestDomainSlot[];
   envFields: DeliveryManifestField[];
   secretFields: DeliveryManifestField[];
+  assets: DeliveryManifestAsset[];
   notes: string[];
 }
 
@@ -168,6 +198,57 @@ function normalizeField(
   };
 }
 
+function normalizeAssetType(value: unknown): DeliveryManifestAssetType {
+  const normalized = normalizeString(value);
+  if (
+    normalized === 'github_release' ||
+    normalized === 'docker_image' ||
+    normalized === 'qiniu_object' ||
+    normalized === 'http_file' ||
+    normalized === 'custom'
+  ) {
+    return normalized;
+  }
+
+  return 'custom';
+}
+
+function normalizeAssetVisibility(value: unknown): DeliveryManifestAssetVisibility {
+  return normalizeString(value) === 'private' ? 'private' : 'public';
+}
+
+function normalizeAsset(value: unknown): DeliveryManifestAsset | null {
+  const raw = normalizeMeta(value);
+  const key = normalizeString(raw.key);
+  const label = normalizeString(raw.label);
+
+  if (!key || !label) {
+    return null;
+  }
+
+  return {
+    key,
+    label,
+    type: normalizeAssetType(raw.type),
+    required: normalizeBoolean(raw.required) ?? true,
+    visibility: normalizeAssetVisibility(raw.visibility),
+    group: normalizeString(raw.group) || undefined,
+    description: normalizeString(raw.description) || undefined,
+    repo: normalizeString(raw.repo) || undefined,
+    file: normalizeString(raw.file) || undefined,
+    path: normalizeString(raw.path) || undefined,
+    tag: normalizeString(raw.tag) || undefined,
+    tagEnv: normalizeString(raw.tagEnv) || undefined,
+    image: normalizeString(raw.image) || undefined,
+    imageEnv: normalizeString(raw.imageEnv) || undefined,
+    url: normalizeString(raw.url) || undefined,
+    urlEnv: normalizeString(raw.urlEnv) || undefined,
+    authSecret: normalizeString(raw.authSecret) || undefined,
+    checksum: normalizeString(raw.checksum) || undefined,
+    checksumEnv: normalizeString(raw.checksumEnv) || undefined,
+  };
+}
+
 function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null {
   const raw = normalizeMeta(value);
   const key = normalizeString(raw.key);
@@ -261,6 +342,11 @@ export function getDeliveryManifest(
           .filter((item): item is DeliveryManifestField => Boolean(item))
           .map((item) => ({ ...item, type: 'secret' as const }))
       : [],
+    assets: Array.isArray(raw.assets)
+      ? raw.assets
+          .map((item) => normalizeAsset(item))
+          .filter((item): item is DeliveryManifestAsset => Boolean(item))
+      : [],
     notes: Array.isArray(raw.notes)
       ? raw.notes.map((item) => normalizeString(item)).filter((item) => item.length > 0)
       : [],
@@ -304,6 +390,36 @@ export function getManifestFieldGroups(
     description: groupKey === '__default__' ? undefined : groups.get(groupKey)?.description,
     fields: groupFields,
   }));
+}
+
+export function getManifestAssetGroups(manifest: DeliveryManifest | null) {
+  const assets = manifest?.assets ?? [];
+  const groups = new Map(manifest?.groups.map((group) => [group.key, group]) ?? []);
+  const grouped = new Map<string, DeliveryManifestAsset[]>();
+
+  for (const asset of assets) {
+    const groupKey = asset.group ?? '__default__';
+    const current = grouped.get(groupKey) ?? [];
+    current.push(asset);
+    grouped.set(groupKey, current);
+  }
+
+  return [...grouped.entries()].map(([groupKey, groupAssets]) => ({
+    key: groupKey,
+    label: groupKey === '__default__' ? '未分组资产' : groups.get(groupKey)?.label ?? groupKey,
+    description: groupKey === '__default__' ? undefined : groups.get(groupKey)?.description,
+    assets: groupAssets,
+  }));
+}
+
+export function listRequiredAssetSecretKeys(manifest: DeliveryManifest | null) {
+  return [
+    ...new Set(
+      (manifest?.assets ?? [])
+        .filter((asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret))
+        .map((asset) => asset.authSecret!),
+    ),
+  ];
 }
 
 function createDraftFromFields(
@@ -351,6 +467,10 @@ export function createDeliverySecretState(
 
   for (const field of getManifestFields(manifest ?? null, 'preset').filter((item) => item.type === 'secret')) {
     next[field.key] = overview?.secrets[field.key]?.configured ?? false;
+  }
+
+  for (const key of listRequiredAssetSecretKeys(manifest ?? null)) {
+    next[key] = overview?.secrets[key]?.configured ?? false;
   }
 
   for (const [key, status] of Object.entries(overview?.secrets ?? {})) {
@@ -438,7 +558,12 @@ export function computeDeliveryConfigured(
   secrets: DeliverySecretState,
 ) {
   const fields = getManifestFields(manifest, 'preset');
+  const requiredAssetSecretKeys = listRequiredAssetSecretKeys(manifest);
   if (fields.length === 0) {
+    if (requiredAssetSecretKeys.length > 0) {
+      return requiredAssetSecretKeys.every((key) => Boolean(secrets[key]));
+    }
+
     return Object.keys(draft.values).length > 0 || Object.keys(secrets).length > 0;
   }
 
@@ -457,7 +582,7 @@ export function computeDeliveryConfigured(
     }
 
     return typeof value === 'string' && value.trim().length > 0;
-  });
+  }) && requiredAssetSecretKeys.every((key) => Boolean(secrets[key]));
 }
 
 export function serializeDeliverySettingsDraft(

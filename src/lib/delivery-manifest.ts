@@ -3,6 +3,13 @@ type DeliveryManifestValue = string | boolean;
 export type DeliveryManifestFieldScope = 'user_input' | 'preset';
 export type DeliveryManifestFieldType = 'text' | 'email' | 'boolean' | 'secret';
 export type DeliveryManifestDomainSourceField = string;
+export type DeliveryManifestAssetType =
+  | 'github_release'
+  | 'docker_image'
+  | 'qiniu_object'
+  | 'http_file'
+  | 'custom';
+export type DeliveryManifestAssetVisibility = 'public' | 'private';
 
 export interface DeliveryManifestInstaller {
   repoUrl: string;
@@ -41,6 +48,28 @@ export interface DeliveryManifestField {
   defaultValue?: DeliveryManifestValue;
 }
 
+export interface DeliveryManifestAsset {
+  key: string;
+  label: string;
+  type: DeliveryManifestAssetType;
+  required: boolean;
+  visibility: DeliveryManifestAssetVisibility;
+  group?: string;
+  description?: string;
+  repo?: string;
+  file?: string;
+  path?: string;
+  tag?: string;
+  tagEnv?: string;
+  image?: string;
+  imageEnv?: string;
+  url?: string;
+  urlEnv?: string;
+  authSecret?: string;
+  checksum?: string;
+  checksumEnv?: string;
+}
+
 export interface DeliveryManifest {
   version: string;
   installer: DeliveryManifestInstaller;
@@ -48,6 +77,7 @@ export interface DeliveryManifest {
   domainSlots: DeliveryManifestDomainSlot[];
   envFields: DeliveryManifestField[];
   secretFields: DeliveryManifestField[];
+  assets: DeliveryManifestAsset[];
   notes: string[];
 }
 
@@ -143,6 +173,57 @@ function normalizeField(
   };
 }
 
+function normalizeAssetType(value: unknown): DeliveryManifestAssetType {
+  const normalized = normalizeString(value);
+  if (
+    normalized === 'github_release' ||
+    normalized === 'docker_image' ||
+    normalized === 'qiniu_object' ||
+    normalized === 'http_file' ||
+    normalized === 'custom'
+  ) {
+    return normalized;
+  }
+
+  return 'custom';
+}
+
+function normalizeAssetVisibility(value: unknown): DeliveryManifestAssetVisibility {
+  return normalizeString(value) === 'private' ? 'private' : 'public';
+}
+
+function normalizeAsset(value: unknown): DeliveryManifestAsset | null {
+  const raw = normalizeObject(value);
+  const key = normalizeString(raw.key);
+  const label = normalizeString(raw.label);
+
+  if (!key || !label) {
+    return null;
+  }
+
+  return {
+    key,
+    label,
+    type: normalizeAssetType(raw.type),
+    required: normalizeBoolean(raw.required) ?? true,
+    visibility: normalizeAssetVisibility(raw.visibility),
+    group: normalizeString(raw.group) || undefined,
+    description: normalizeString(raw.description) || undefined,
+    repo: normalizeString(raw.repo) || undefined,
+    file: normalizeString(raw.file) || undefined,
+    path: normalizeString(raw.path) || undefined,
+    tag: normalizeString(raw.tag) || undefined,
+    tagEnv: normalizeString(raw.tagEnv) || undefined,
+    image: normalizeString(raw.image) || undefined,
+    imageEnv: normalizeString(raw.imageEnv) || undefined,
+    url: normalizeString(raw.url) || undefined,
+    urlEnv: normalizeString(raw.urlEnv) || undefined,
+    authSecret: normalizeString(raw.authSecret) || undefined,
+    checksum: normalizeString(raw.checksum) || undefined,
+    checksumEnv: normalizeString(raw.checksumEnv) || undefined
+  };
+}
+
 function normalizeGroup(value: unknown): DeliveryManifestGroup | null {
   const raw = normalizeObject(value);
   const key = normalizeString(raw.key);
@@ -219,6 +300,11 @@ export function normalizeDeliveryManifest(value: unknown): DeliveryManifest | nu
           .filter((item): item is DeliveryManifestField => Boolean(item))
           .map((item) => ({ ...item, type: 'secret' as const }))
       : [],
+    assets: Array.isArray(raw.assets)
+      ? raw.assets
+          .map((item) => normalizeAsset(item))
+          .filter((item): item is DeliveryManifestAsset => Boolean(item))
+      : [],
     notes: normalizeNotes(raw.notes)
   };
 }
@@ -256,4 +342,18 @@ export function findDeliveryManifestField(manifest: DeliveryManifest | null, key
 
 export function getDeliveryManifestGroupMap(manifest: DeliveryManifest | null) {
   return new Map((manifest?.groups ?? []).map((group) => [group.key, group]));
+}
+
+export function listDeliveryManifestAssetRequiredSecretKeys(manifest: DeliveryManifest | null) {
+  if (!manifest) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      manifest.assets
+        .filter((asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret))
+        .map((asset) => asset.authSecret!)
+    )
+  ];
 }

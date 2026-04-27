@@ -10,9 +10,11 @@ import { Label } from '@/components/ui/label';
 import { TabsContent } from '@/components/ui/tabs';
 import {
   computeDeliveryConfigured,
+  getManifestAssetGroups,
   getManifestFieldGroups,
   getManifestFields,
   type DeliveryManifest,
+  type DeliveryManifestAsset,
   type DeliveryManifestField,
   type DeliveryManifestSourceDraft,
   type DeliverySecretState,
@@ -130,6 +132,28 @@ function renderPresetField(input: {
   );
 }
 
+const ASSET_TYPE_LABELS: Record<DeliveryManifestAsset['type'], string> = {
+  github_release: 'GitHub Release',
+  docker_image: 'Docker Image',
+  qiniu_object: '七牛云对象',
+  http_file: 'HTTP 文件',
+  custom: '自定义资产',
+};
+
+function renderAssetMeta(asset: DeliveryManifestAsset) {
+  const items = [
+    asset.repo ? `Repo: ${asset.repo}` : null,
+    asset.file ? `File: ${asset.file}` : null,
+    asset.imageEnv ? `Image Env: ${asset.imageEnv}` : null,
+    asset.tagEnv ? `Tag Env: ${asset.tagEnv}` : null,
+    asset.urlEnv ? `URL Env: ${asset.urlEnv}` : null,
+    asset.authSecret ? `Auth: ${asset.authSecret}` : null,
+    asset.checksumEnv ? `Checksum Env: ${asset.checksumEnv}` : null,
+  ].filter(Boolean);
+
+  return items.length > 0 ? items.join(' · ') : '该资产未声明额外定位信息。';
+}
+
 export function AppEditDeliveryTab({
   appCode,
   isCreateMode,
@@ -152,6 +176,7 @@ export function AppEditDeliveryTab({
   const configured = computeDeliveryConfigured(manifest, deliverySettings, deliverySecrets);
   const presetGroups = getManifestFieldGroups(manifest, 'preset');
   const userInputGroups = getManifestFieldGroups(manifest, 'user_input');
+  const assetGroups = getManifestAssetGroups(manifest);
   const presetSecretFields = getManifestFields(manifest, 'preset').filter(
     (field) => field.type === 'secret',
   );
@@ -323,6 +348,45 @@ export function AppEditDeliveryTab({
                   </CardHeader>
                 </Card>
               )}
+
+              {assetGroups.length > 0 ? (
+                assetGroups.map((group) => (
+                  <Card key={`assets-${group.key}`} className="border-dashed">
+                    <CardHeader>
+                      <CardTitle className="text-base">{group.label}资产</CardTitle>
+                      <CardDescription>
+                        {group.description ??
+                          'manifest 声明的交付资产；中台据此识别公开/私有资产和所需凭据。'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 md:grid-cols-2">
+                      {group.assets.map((asset) => (
+                        <div key={asset.key} className="rounded-lg border bg-muted/20 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold">{asset.label}</p>
+                            <StatusPill
+                              tone={asset.visibility === 'private' ? 'warn' : 'ok'}
+                              label={asset.visibility === 'private' ? '私有资产' : '公开资产'}
+                            />
+                            <StatusPill
+                              tone={asset.required ? 'ok' : 'neutral'}
+                              label={asset.required ? '必需' : '可选'}
+                            />
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {ASSET_TYPE_LABELS[asset.type]} · {renderAssetMeta(asset)}
+                          </p>
+                          {asset.description ? (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {asset.description}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : null}
 
               <Card className="border-dashed">
                 <CardHeader>
