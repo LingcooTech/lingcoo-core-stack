@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
 import { ApiError } from '@/api/client';
-import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
+import type { DeploymentSummary, DeploymentsResponse, IssueDeploymentTokenResult } from '@/api/types';
 import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, requestDeploymentAction, updateDeployment } from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
@@ -146,9 +146,16 @@ export function DeploymentsPage() {
     [apps, deployments, entitlements, summaryMap]
   );
 
+  const cacheDeployment = (deployment: DeploymentSummary) => {
+    qc.setQueryData<DeploymentsResponse>(['my-deployments'], (current) => ({
+      items: [deployment, ...(current?.items ?? []).filter((item) => item.id !== deployment.id)]
+    }));
+  };
+
   const createDeploymentMutation = useMutation({
     mutationFn: createDeployment,
-    onSuccess: () => {
+    onSuccess: (result) => {
+      cacheDeployment(result);
       toast.success('部署记录已创建');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
     },
@@ -160,6 +167,7 @@ export function DeploymentsPage() {
   const updateDeploymentMutation = useMutation({
     mutationFn: updateDeployment,
     onSuccess: (result) => {
+      cacheDeployment(result);
       toast.success('部署配置已更新');
       setEditingDeployment(null);
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
@@ -173,6 +181,28 @@ export function DeploymentsPage() {
   const issueTokenMutation = useMutation({
     mutationFn: issueDeploymentToken,
     onSuccess: (result) => {
+      qc.setQueryData<DeploymentsResponse>(['my-deployments'], (current) =>
+        current
+          ? {
+              items: current.items.map((deployment) =>
+                deployment.id === result.deploymentId
+                  ? {
+                      ...deployment,
+                      lastTokenIssuedAt: new Date().toISOString(),
+                      latestToken: {
+                        id: result.tokenId,
+                        tokenHint: result.tokenHint,
+                        status: 'active',
+                        expiresAt: result.expiresAt,
+                        usedAt: null,
+                        createdAt: new Date().toISOString()
+                      }
+                    }
+                  : deployment
+              )
+            }
+          : current
+      );
       setIssuedToken(result);
       toast.success('部署令牌已签发');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
@@ -202,7 +232,8 @@ export function DeploymentsPage() {
 
   const deactivateDeploymentMutation = useMutation({
     mutationFn: deactivateDeployment,
-    onSuccess: () => {
+    onSuccess: (result) => {
+      cacheDeployment(result);
       toast.success('Deployment 已停用');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
       setIssuedToken(null);
@@ -314,7 +345,7 @@ export function DeploymentsPage() {
             正在加载部署数据...
           </CardContent>
         </Card>
-      ) : deployableApps.length === 0 ? (
+      ) : deployableApps.length === 0 && deployments.length === 0 ? (
         <EmptyState
           icon={Boxes}
           title="暂无可部署的应用"
@@ -335,30 +366,7 @@ export function DeploymentsPage() {
             ))}
           </div>
 
-          <section className="space-y-5">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold tracking-tight text-gray-900">开始部署</h2>
-              {!initialDeployApp ? (
-                <p className="text-sm text-gray-500">未预选应用时，可在向导第一步选择应用。</p>
-              ) : null}
-            </div>
-            <DeploymentWizard
-              options={deployableApps}
-              initialAppCode={initialDeployAppCode}
-              onCreateDeployment={handleWizardCreate}
-              onIssueToken={handleWizardIssueToken}
-              creating={createDeploymentMutation.isPending}
-              issuing={issueTokenMutation.isPending}
-            />
-          </section>
-
-          {deployments.length === 0 ? (
-            <EmptyState
-              icon={Rocket}
-              title="还没有部署记录"
-              description="创建部署记录后即可签发安装令牌并完成一键部署。"
-            />
-          ) : (
+          {deployments.length > 0 ? (
             <section className="space-y-5">
               <h2 className="text-2xl font-semibold tracking-tight text-gray-900">部署记录</h2>
               <div className="grid gap-4">
@@ -412,7 +420,43 @@ export function DeploymentsPage() {
                 ))}
               </div>
             </section>
+          ) : null}
+
+          {deployableApps.length > 0 ? (
+            <section className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-2xl font-semibold tracking-tight text-gray-900">开始部署</h2>
+                {!initialDeployApp ? (
+                  <p className="text-sm text-gray-500">未预选应用时，可在向导第一步选择应用。</p>
+                ) : null}
+              </div>
+              <DeploymentWizard
+                options={deployableApps}
+                initialAppCode={initialDeployAppCode}
+                onCreateDeployment={handleWizardCreate}
+                onIssueToken={handleWizardIssueToken}
+                creating={createDeploymentMutation.isPending}
+                issuing={issueTokenMutation.isPending}
+              />
+            </section>
+          ) : (
+            <Card className="rounded-xl border-amber-200 bg-amber-50">
+              <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  当前没有可用于新建 deployment 的授权。已有部署记录仍保留在上方；需要新增客户站点时，请购买新的授权实例。
+                </span>
+              </CardContent>
+            </Card>
           )}
+
+          {deployments.length === 0 ? (
+            <EmptyState
+              icon={Rocket}
+              title="还没有部署记录"
+              description="创建部署记录后即可签发安装令牌并完成一键部署。"
+            />
+          ) : null}
         </>
       )}
 
