@@ -102,6 +102,86 @@
   /* Animation（Tailwind 自动生成 animate-{name} utility） */
   --animate-fade-in: fadeIn 0.5s ease-in-out forwards;
   --animate-shake: shake 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+
+  /* ════════════════════════════════════════════════════════════════════
+   * Status tones —— 对齐架构文档 ok/warn/danger/neutral/info
+   * 每个 tone 含 fg / bg / border 三态，可用 bg-status-success-bg、
+   * text-status-success-fg、border-status-success-border 等 utility。
+   * dark mode 留待 Phase B.2 ThemeProvider 时补 .dark 重映射。
+   * ════════════════════════════════════════════════════════════════════ */
+  --color-status-success-fg: #047857;
+  --color-status-success-bg: #ecfdf5;
+  --color-status-success-border: #a7f3d0;
+
+  --color-status-warning-fg: #b45309;
+  --color-status-warning-bg: #fffbeb;
+  --color-status-warning-border: #fde68a;
+
+  --color-status-danger-fg: #b91c1c;
+  --color-status-danger-bg: #fef2f2;
+  --color-status-danger-border: #fecaca;
+
+  --color-status-info-fg: #1d4ed8;
+  --color-status-info-bg: #eff6ff;
+  --color-status-info-border: #bfdbfe;
+
+  --color-status-neutral-fg: #475569;
+  --color-status-neutral-bg: #f8fafc;
+  --color-status-neutral-border: #e2e8f0;
+
+  /* ════════════════════════════════════════════════════════════════════
+   * Motion duration —— transition-duration utility:
+   *   duration-instant / duration-fast / duration-normal / ...
+   * ════════════════════════════════════════════════════════════════════ */
+  --duration-instant: 50ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
+
+  /* Easing —— Tailwind v4 默认带 linear/in/out/in-out，这里只补缺失的两个
+   *   ease-spring  → 弹簧回弹（Drawer/Toast 等出场）
+   *   ease-snappy  → Linear 风格：起步快、收尾匀速（hover/状态切换）
+   */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ════════════════════════════════════════════════════════════════════
+   * Z-index 命名层级 —— 避免组件间 z 数字打架
+   *   z-base / z-raised / z-sticky / z-overlay / z-dropdown
+   *   z-modal / z-popover / z-toast / z-tooltip
+   * 与 Radix 默认 z-50 兼容（modal=50），不冲突。
+   * ════════════════════════════════════════════════════════════════════ */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-dropdown: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* ════════════════════════════════════════════════════════════════════
+   * Typography —— Tailwind v4 默认 type scale 已够用（text-xs..text-9xl）
+   * 这里只显式补 line-height / letter-spacing / font-weight 命名 token，
+   * 让代码可以 leading-snug / tracking-tight / font-semibold 直接命中。
+   * ════════════════════════════════════════════════════════════════════ */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 }
 
 /* ─────────────────────────────────────────────────────────────────────

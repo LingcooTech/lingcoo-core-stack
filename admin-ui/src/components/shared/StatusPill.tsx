@@ -8,12 +8,25 @@ interface StatusPillProps {
   className?: string;
 }
 
+/**
+ * 使用 Phase B.1 的 semantic status token：
+ *   bg-status-{tone}-bg / text-status-{tone}-fg / border-status-{tone}-border
+ * 主题切换时只需在 :root / .dark 重映射这些 token，无需改组件。
+ */
 const toneStyles: Record<Tone, string> = {
-  ok: 'bg-green-50 border-green-200 text-green-700',
-  warn: 'bg-amber-50 border-amber-200 text-amber-700',
-  danger: 'bg-red-50 border-red-200 text-red-700',
-  neutral: 'bg-gray-50 border-gray-200 text-gray-600',
-  info: 'bg-blue-50 border-blue-200 text-blue-700',
+  ok: 'bg-status-success-bg border-status-success-border text-status-success-fg',
+  warn: 'bg-status-warning-bg border-status-warning-border text-status-warning-fg',
+  danger: 'bg-status-danger-bg border-status-danger-border text-status-danger-fg',
+  neutral: 'bg-status-neutral-bg border-status-neutral-border text-status-neutral-fg',
+  info: 'bg-status-info-bg border-status-info-border text-status-info-fg',
+};
+
+const dotStyles: Record<Tone, string> = {
+  ok: 'bg-status-success-fg',
+  warn: 'bg-status-warning-fg',
+  danger: 'bg-status-danger-fg',
+  neutral: 'bg-status-neutral-fg',
+  info: 'bg-status-info-fg',
 };
 
 export function StatusPill({ tone, label, className }: StatusPillProps) {
@@ -25,15 +38,7 @@ export function StatusPill({ tone, label, className }: StatusPillProps) {
         className,
       )}
     >
-      <span
-        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', {
-          'bg-green-500': tone === 'ok',
-          'bg-amber-500': tone === 'warn',
-          'bg-red-500': tone === 'danger',
-          'bg-slate-400': tone === 'neutral',
-          'bg-blue-500': tone === 'info',
-        })}
-      />
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotStyles[tone])} />
       {label}
     </span>
   );
