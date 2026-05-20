@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { Decorator, Preview } from '@storybook/react-vite';
 
 import '../src/index.css';
+import { TooltipProvider } from '../src/components/ui/tooltip';
 
 /**
  * 让每个 story 都注册一个主题切换 toolbar 项（light/dark/system），
@@ -23,9 +24,11 @@ const withTheme: Decorator = (Story, context) => {
     applyTheme(theme);
   }, [theme]);
   return (
-    <div className="min-h-[160px] bg-background p-6 text-foreground">
-      <Story />
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-[160px] bg-background p-6 text-foreground">
+        <Story />
+      </div>
+    </TooltipProvider>
   );
 };
 

@@ -19,6 +19,7 @@ import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
 import { ThemeProvider } from '@/lib/theme';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 /**
  * lazyNamed —— React.lazy 要求 default export，但本项目所有页面都是 named
@@ -236,13 +237,15 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <SiteSettingsBootstrap>
-            <SiteAppearanceSync />
-            <RouterProvider router={router} />
-            <Toaster position="top-right" richColors />
-          </SiteSettingsBootstrap>
-        </AuthProvider>
+        <TooltipProvider delayDuration={200}>
+          <AuthProvider>
+            <SiteSettingsBootstrap>
+              <SiteAppearanceSync />
+              <RouterProvider router={router} />
+              <Toaster position="top-right" richColors />
+            </SiteSettingsBootstrap>
+          </AuthProvider>
+        </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );
