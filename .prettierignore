@@ -1,0 +1,16 @@
+node_modules
+dist
+coverage
+.git
+.next
+.cache
+
+admin-ui/node_modules
+admin-ui/dist
+admin-ui/.vite
+
+drizzle/*.sql
+drizzle/meta
+
+package-lock.json
+*.tsbuildinfo
