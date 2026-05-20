@@ -2,6 +2,7 @@ import { ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CommandPalette } from '@/components/shared/CommandPalette';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +67,8 @@ export function Topbar() {
             </span>
             <span>状态</span>
           </a>
+
+          <ThemeToggle />
         </div>
       </header>
 

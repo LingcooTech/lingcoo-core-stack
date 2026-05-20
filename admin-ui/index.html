@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>fd-core-stack 管理后台</title>
+    <script>
+      // 防 FOUC：在 React 加载前同步设置主题 class，避免暗色刷新一闪
+      (function () {
+        try {
+          var stored = localStorage.getItem('fd-core:theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = stored === 'dark' || ((!stored || stored === 'system') && prefersDark);
+          if (dark) document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (_) {
+          /* 隐私模式下 localStorage 不可用，忽略 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

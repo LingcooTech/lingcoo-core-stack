@@ -23,6 +23,7 @@ import { getMyNotificationUnreadCount } from '@/api/user';
 import { Container } from '@/components/layout/Container';
 import { RouteSlot } from '@/components/layout/RouteSlot';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import {
   Accordion,
   AccordionContent,
@@ -250,6 +251,9 @@ export function UserShell() {
               >
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
               </Button>
+              <span className="hidden lg:inline-flex">
+                <ThemeToggle />
+              </span>
               {isAuthenticated ? (
                 <Button
                   type="button"

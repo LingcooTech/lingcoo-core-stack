@@ -18,6 +18,7 @@ import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
+import { ThemeProvider } from '@/lib/theme';
 
 /**
  * lazyNamed —— React.lazy 要求 default export，但本项目所有页面都是 named
@@ -233,14 +234,16 @@ const router = createBrowserRouter(
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SiteSettingsBootstrap>
-          <SiteAppearanceSync />
-          <RouterProvider router={router} />
-          <Toaster position="top-right" richColors />
-        </SiteSettingsBootstrap>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SiteSettingsBootstrap>
+            <SiteAppearanceSync />
+            <RouterProvider router={router} />
+            <Toaster position="top-right" richColors />
+          </SiteSettingsBootstrap>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
