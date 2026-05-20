@@ -5,6 +5,7 @@
 node_modules
 dist
 coverage
+storybook-static
 *.tsbuildinfo
 *.log
 npm-debug.log*
