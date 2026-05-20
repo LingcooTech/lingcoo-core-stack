@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { RouteSlot } from './RouteSlot';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
@@ -10,14 +10,14 @@ export function Shell() {
     <div
       className="grid min-h-screen w-full"
       style={{
-        gridTemplateColumns: collapsed ? '84px minmax(0,1fr)' : '268px minmax(0,1fr)'
+        gridTemplateColumns: collapsed ? '84px minmax(0,1fr)' : '268px minmax(0,1fr)',
       }}
     >
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-h-screen flex-col overflow-hidden bg-[#f8fafc]">
         <Topbar />
         <main className="flex-1 overflow-auto">
-          <Outlet />
+          <RouteSlot />
         </main>
       </div>
     </div>

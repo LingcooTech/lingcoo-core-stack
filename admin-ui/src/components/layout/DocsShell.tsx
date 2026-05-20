@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, ChevronRight, FileText } from 'lucide-react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 
 import { getPublicSiteSettings } from '@/api/settings';
 import { Container } from '@/components/layout/Container';
+import { RouteSlot } from '@/components/layout/RouteSlot';
 import { Button } from '@/components/ui/button';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, getSiteDisplayName } from '@/lib/site-settings';
 import { cn, getInitials } from '@/lib/utils';
@@ -15,7 +16,9 @@ function DocsNavLink({ to, label }: { to: string; label: string }) {
       className={({ isActive }) =>
         cn(
           'inline-flex items-center rounded-full px-3 py-2 text-sm font-medium transition',
-          isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
+          isActive
+            ? 'bg-white text-slate-900 shadow-sm'
+            : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
         )
       }
     >
@@ -36,7 +39,7 @@ export function DocsShell() {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fbfcfe_0%,#f4f7fb_100%)]">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/92 backdrop-blur-xl">
+      <header className="bg-white/92 sticky top-0 z-30 border-b border-slate-200/80 backdrop-blur-xl">
         <Container className="py-2">
           <div className="flex min-h-[52px] items-center justify-between gap-4">
             <Link to="/docs" className="flex min-w-0 items-center gap-3">
@@ -47,12 +50,14 @@ export function DocsShell() {
                   className="h-9 w-9 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
                 />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-500 text-sm font-semibold text-white shadow-sm shadow-primary/20">
+                <div className="from-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
                   {getInitials(siteName)}
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold tracking-tight text-slate-900">{siteName}</p>
+                <p className="truncate text-[14px] font-semibold tracking-tight text-slate-900">
+                  {siteName}
+                </p>
                 <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
                   <BookOpen className="h-3 w-3" />
                   <span>文档中心</span>
@@ -88,7 +93,7 @@ export function DocsShell() {
 
       <main className="px-4 py-6 sm:px-5 md:px-6 xl:px-8">
         <div className="mx-auto w-full max-w-[1520px]">
-          <Outlet />
+          <RouteSlot />
         </div>
       </main>
     </div>

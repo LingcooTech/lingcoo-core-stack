@@ -1,25 +1,51 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, CircleHelp, LayoutDashboard, LogIn, LogOut, Menu, Package2, Settings, ShoppingBag, UserCircle2, X } from 'lucide-react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  ChevronDown,
+  CircleHelp,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  Package2,
+  Settings,
+  ShoppingBag,
+  UserCircle2,
+  X,
+} from 'lucide-react';
 
 import type { SiteNavigationItem } from '@/api/types';
 import { getCurrentUser } from '@/api/auth';
 import { getPublicSiteSettings } from '@/api/settings';
 import { getMyNotificationUnreadCount } from '@/api/user';
 import { Container } from '@/components/layout/Container';
+import { RouteSlot } from '@/components/layout/RouteSlot';
 import { ConsumerFooter } from '@/components/portal/ConsumerFooter';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   getNormalizedInternalPath,
   getSiteDisplayName,
   getSiteHeaderNavigation,
   isExternalSiteUrl,
   isInternalSiteUrl,
-  PUBLIC_SITE_SETTINGS_QUERY_KEY
+  PUBLIC_SITE_SETTINGS_QUERY_KEY,
 } from '@/lib/site-settings';
 import { useAuth } from '@/lib/auth';
 import { cn, getInitials } from '@/lib/utils';
@@ -34,16 +60,22 @@ function isActiveSiteUrl(url: string, pathname: string) {
     return false;
   }
 
-  return pathname === normalizedPath || (normalizedPath !== '/' && pathname.startsWith(`${normalizedPath}/`));
+  return (
+    pathname === normalizedPath ||
+    (normalizedPath !== '/' && pathname.startsWith(`${normalizedPath}/`))
+  );
 }
 
 function hasActiveNavigationItem(item: SiteNavigationItem, pathname: string) {
-  return isActiveSiteUrl(item.url, pathname) || item.children.some((child) => isActiveSiteUrl(child.url, pathname));
+  return (
+    isActiveSiteUrl(item.url, pathname) ||
+    item.children.some((child) => isActiveSiteUrl(child.url, pathname))
+  );
 }
 
 function desktopNavItemClass(isActive: boolean) {
   return cn(
-    'inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-all duration-200',
+    'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-medium transition-all duration-200',
     isActive
       ? 'bg-white text-slate-900 shadow-sm'
       : 'text-gray-600 hover:bg-white/80 hover:text-slate-900',
@@ -58,13 +90,13 @@ export function UserShell() {
   const { data: siteSettings } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
     queryFn: getPublicSiteSettings,
-    staleTime: 5 * 60_000
+    staleTime: 5 * 60_000,
   });
   const { data: currentUserData } = useQuery({
     queryKey: ['current-user'],
     queryFn: getCurrentUser,
     enabled: isAuthenticated,
-    staleTime: 60_000
+    staleTime: 60_000,
   });
   const { data: unreadNotificationData } = useQuery({
     queryKey: ['my-notifications', 'unread-count'],
@@ -78,9 +110,7 @@ export function UserShell() {
   const currentUser = currentUserData?.user ?? null;
   const unreadNotificationCount = unreadNotificationData?.unreadCount ?? 0;
   const accountName =
-    currentUser?.displayName?.trim() ||
-    user?.email?.split('@')[0]?.trim() ||
-    '个人账户';
+    currentUser?.displayName?.trim() || user?.email?.split('@')[0]?.trim() || '个人账户';
   const accountEmail = currentUser?.email || user?.email || '';
 
   useEffect(() => {
@@ -107,7 +137,7 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
-      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/88 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+      <header className="bg-white/88 sticky top-0 z-30 border-b border-white/70 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
@@ -124,12 +154,17 @@ export function UserShell() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold tracking-tight text-gray-900">{siteName}</p>
+                  <p className="truncate text-[14px] font-semibold tracking-tight text-gray-900">
+                    {siteName}
+                  </p>
                 </div>
               </Link>
             </div>
 
-            <nav className="hidden flex-1 items-center justify-center gap-1.5 lg:flex" aria-label="主导航">
+            <nav
+              className="hidden flex-1 items-center justify-center gap-1.5 lg:flex"
+              aria-label="主导航"
+            >
               {headerNavigation.map((item) => {
                 const isActive = hasActiveNavigationItem(item, location.pathname);
 
@@ -137,10 +172,7 @@ export function UserShell() {
                   return (
                     <DropdownMenu key={`${item.label}:${item.url}`}>
                       <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className={desktopNavItemClass(isActive)}
-                        >
+                        <button type="button" className={desktopNavItemClass(isActive)}>
                           {item.label}
                           <ChevronDown className="h-4 w-4" />
                         </button>
@@ -199,9 +231,7 @@ export function UserShell() {
                   <NavLink
                     key={`${item.label}:${item.url}`}
                     to={item.url}
-                    className={({ isActive: currentActive }) =>
-                      desktopNavItemClass(currentActive)
-                    }
+                    className={({ isActive: currentActive }) => desktopNavItemClass(currentActive)}
                   >
                     {item.label}
                   </NavLink>
@@ -242,7 +272,7 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 pl-1.5 pr-2 py-1 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="focus-visible:ring-primary inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 py-1 pl-1.5 pr-2 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-7 w-7">
@@ -276,10 +306,14 @@ export function UserShell() {
                           <Settings className="h-4 w-4" />
                         </button>
                         <div className="flex flex-col items-center text-center">
-                          <Avatar className="h-20 w-20 ring-4 ring-white/80 shadow-sm">
-                            <AvatarFallback className="text-lg">{getInitials(accountName)}</AvatarFallback>
+                          <Avatar className="h-20 w-20 shadow-sm ring-4 ring-white/80">
+                            <AvatarFallback className="text-lg">
+                              {getInitials(accountName)}
+                            </AvatarFallback>
                           </Avatar>
-                          <p className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{accountName}</p>
+                          <p className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+                            {accountName}
+                          </p>
                           {accountEmail ? (
                             <p className="mt-1 text-sm text-slate-600">{accountEmail}</p>
                           ) : null}
@@ -372,7 +406,11 @@ export function UserShell() {
                 </DropdownMenu>
               ) : (
                 <>
-                  <Button variant="ghost" asChild className="hidden h-9 rounded-full px-4 sm:inline-flex">
+                  <Button
+                    variant="ghost"
+                    asChild
+                    className="hidden h-9 rounded-full px-4 sm:inline-flex"
+                  >
                     <Link to="/login">
                       <LogIn className="h-4 w-4" />
                       登录
@@ -389,11 +427,18 @@ export function UserShell() {
           {mobileMenuOpen ? (
             <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-lg shadow-slate-900/5 lg:hidden">
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">导航</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  导航
+                </p>
                 <div className="space-y-2">
                   {headerNavigation.map((item, index) =>
                     item.children.length > 0 ? (
-                      <Accordion key={`${item.label}:${index}`} type="single" collapsible className="rounded-lg border border-gray-100 px-4">
+                      <Accordion
+                        key={`${item.label}:${index}`}
+                        type="single"
+                        collapsible
+                        className="rounded-lg border border-gray-100 px-4"
+                      >
                         <AccordionItem value={`mobile-nav-${index}`} className="border-b-0">
                           <AccordionTrigger className="py-3 text-sm font-medium text-slate-900 hover:no-underline">
                             {item.label}
@@ -402,7 +447,7 @@ export function UserShell() {
                             {item.url ? (
                               <button
                                 type="button"
-                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50 hover:text-primary"
+                                className="hover:text-primary block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50"
                                 onClick={() => handleSiteNavigation(item.url, item.openInNewTab)}
                               >
                                 进入 {item.label}
@@ -412,7 +457,7 @@ export function UserShell() {
                               <button
                                 key={`${item.label}:${child.label}:${child.url}`}
                                 type="button"
-                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50 hover:text-primary"
+                                className="hover:text-primary block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50"
                                 onClick={() => handleSiteNavigation(child.url, child.openInNewTab)}
                               >
                                 {child.label}
@@ -427,7 +472,7 @@ export function UserShell() {
                         href={item.url}
                         target={item.openInNewTab ? '_blank' : undefined}
                         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
-                        className="block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-gray-50 hover:text-primary"
+                        className="hover:text-primary block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-gray-50"
                       >
                         {item.label}
                       </a>
@@ -438,19 +483,23 @@ export function UserShell() {
                         className={({ isActive }) =>
                           cn(
                             'block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium transition',
-                            isActive ? 'border-primary/20 bg-primary/5 text-primary' : 'text-slate-900 hover:bg-gray-50 hover:text-primary'
+                            isActive
+                              ? 'border-primary/20 bg-primary/5 text-primary'
+                              : 'hover:text-primary text-slate-900 hover:bg-gray-50',
                           )
                         }
                       >
                         {item.label}
                       </NavLink>
-                    )
+                    ),
                   )}
                 </div>
 
                 {isAuthenticated ? (
                   <div className="space-y-2 border-t border-gray-100 pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">账户</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                      账户
+                    </p>
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                       <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
                         <button
@@ -462,11 +511,15 @@ export function UserShell() {
                           <Settings className="h-4 w-4" />
                         </button>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-14 w-14 ring-4 ring-white/80 shadow-sm">
-                            <AvatarFallback className="text-sm">{getInitials(accountName)}</AvatarFallback>
+                          <Avatar className="h-14 w-14 shadow-sm ring-4 ring-white/80">
+                            <AvatarFallback className="text-sm">
+                              {getInitials(accountName)}
+                            </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="truncate text-base font-semibold tracking-tight text-slate-900">{accountName}</p>
+                            <p className="truncate text-base font-semibold tracking-tight text-slate-900">
+                              {accountName}
+                            </p>
                             {accountEmail ? (
                               <p className="mt-1 truncate text-sm text-slate-600">{accountEmail}</p>
                             ) : null}
@@ -477,7 +530,7 @@ export function UserShell() {
                       <div className="space-y-1 px-3 py-3">
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/account?tab=notifications')}
                         >
                           <Bell className="h-4 w-4 text-slate-500" />
@@ -490,7 +543,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/account?tab=profile')}
                         >
                           <UserCircle2 className="h-4 w-4 text-slate-500" />
@@ -498,7 +551,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/account?tab=orders')}
                         >
                           <ShoppingBag className="h-4 w-4 text-slate-500" />
@@ -506,7 +559,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/account?tab=apps')}
                         >
                           <Package2 className="h-4 w-4 text-slate-500" />
@@ -514,7 +567,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/tickets')}
                         >
                           <CircleHelp className="h-4 w-4 text-slate-500" />
@@ -522,7 +575,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                           onClick={() => navigate('/account?tab=profile')}
                         >
                           <Settings className="h-4 w-4 text-slate-500" />
@@ -531,7 +584,7 @@ export function UserShell() {
                         {isAdmin ? (
                           <button
                             type="button"
-                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50 hover:text-primary"
+                            className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
                             onClick={() => navigate('/admin')}
                           >
                             <LayoutDashboard className="h-4 w-4 text-slate-500" />
@@ -571,17 +624,21 @@ export function UserShell() {
           <Container className="flex items-center justify-between gap-4 py-2.5 text-sm">
             <div>
               <p className="font-bold text-amber-900">邮箱尚未验证</p>
-              <p className="text-amber-800/80">请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。</p>
+              <p className="text-amber-800/80">
+                请先完成邮箱验证，部分需要实名用户确认的接口会拒绝访问。
+              </p>
             </div>
             <Button asChild size="sm">
-              <Link to={`/verify-email?next=${encodeURIComponent(location.pathname)}`}>立即验证</Link>
+              <Link to={`/verify-email?next=${encodeURIComponent(location.pathname)}`}>
+                立即验证
+              </Link>
             </Button>
           </Container>
         </div>
       ) : null}
 
       <Container as="main" className="py-6">
-        <Outlet />
+        <RouteSlot />
       </Container>
 
       <ConsumerFooter siteSettings={siteSettings} />

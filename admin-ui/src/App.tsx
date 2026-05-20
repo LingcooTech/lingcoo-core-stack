@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { lazy, type ComponentType, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import {
   createBrowserRouter,
@@ -19,53 +18,78 @@ import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
-import { AccountCenterPage } from '@/pages/AccountCenterPage';
-import { AppCatalogPage } from '@/pages/AppCatalogPage';
-import { AppEditPage } from '@/pages/AppEditPage';
-import { AppsPage } from '@/pages/AppsPage';
-import { AiTranslateWorkflowPrivacyPage } from '@/pages/AiTranslateWorkflowPrivacyPage';
-import { AiTranslateWorkflowSupportPage } from '@/pages/AiTranslateWorkflowSupportPage';
-import { ContentDetailPage } from '@/pages/ContentDetailPage';
-import { ContentEditPage } from '@/pages/ContentEditPage';
-import { ContentHubPage } from '@/pages/ContentHubPage';
-import { CreateTicketPage } from '@/pages/CreateTicketPage';
-import { DocsHubPage } from '@/pages/DocsHubPage';
-import { DocsPage } from '@/pages/DocsPage';
-import { DocsSpacePage } from '@/pages/DocsSpacePage';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { DeploymentsPage } from '@/pages/DeploymentsPage';
-import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
-import { HomePage } from '@/pages/HomePage';
-import { InstallsPage } from '@/pages/InstallsPage';
-import { LicensesPage } from '@/pages/LicensesPage';
-import { LoginPage } from '@/pages/LoginPage';
-import { MyTicketsPage } from '@/pages/MyTicketsPage';
-import { ContentPage } from '@/pages/ContentPage';
-import { ObservabilityPage } from '@/pages/ObservabilityPage';
-import { NotificationsPage } from '@/pages/NotificationsPage';
-import { OrdersPage } from '@/pages/OrdersPage';
-import { PaymentsPage } from '@/pages/PaymentsPage';
-import { SecretsPage } from '@/pages/SecretsPage';
-import { SettingsPage } from '@/pages/SettingsPage';
-import { TicketsPage } from '@/pages/TicketsPage';
-import { UserAuthPage } from '@/pages/UserAuthPage';
-import { UsersPage } from '@/pages/UsersPage';
-import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
+
+/**
+ * lazyNamed —— React.lazy 要求 default export，但本项目所有页面都是 named
+ * export（`export function FooPage`），用此 helper 包装一次。
+ */
+function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
+  loader: () => Promise<T>,
+  name: K,
+): ComponentType {
+  return lazy(() => loader().then((mod) => ({ default: mod[name] as ComponentType })));
+}
+
+const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), 'AccountCenterPage');
+const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
+const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');
+const AppsPage = lazyNamed(() => import('@/pages/AppsPage'), 'AppsPage');
+const AiTranslateWorkflowPrivacyPage = lazyNamed(
+  () => import('@/pages/AiTranslateWorkflowPrivacyPage'),
+  'AiTranslateWorkflowPrivacyPage',
+);
+const AiTranslateWorkflowSupportPage = lazyNamed(
+  () => import('@/pages/AiTranslateWorkflowSupportPage'),
+  'AiTranslateWorkflowSupportPage',
+);
+const ContentDetailPage = lazyNamed(() => import('@/pages/ContentDetailPage'), 'ContentDetailPage');
+const ContentEditPage = lazyNamed(() => import('@/pages/ContentEditPage'), 'ContentEditPage');
+const ContentHubPage = lazyNamed(() => import('@/pages/ContentHubPage'), 'ContentHubPage');
+const CreateTicketPage = lazyNamed(() => import('@/pages/CreateTicketPage'), 'CreateTicketPage');
+const DocsHubPage = lazyNamed(() => import('@/pages/DocsHubPage'), 'DocsHubPage');
+const DocsPage = lazyNamed(() => import('@/pages/DocsPage'), 'DocsPage');
+const DocsSpacePage = lazyNamed(() => import('@/pages/DocsSpacePage'), 'DocsSpacePage');
+const DashboardPage = lazyNamed(() => import('@/pages/DashboardPage'), 'DashboardPage');
+const DeploymentsPage = lazyNamed(() => import('@/pages/DeploymentsPage'), 'DeploymentsPage');
+const ForgotPasswordPage = lazyNamed(
+  () => import('@/pages/ForgotPasswordPage'),
+  'ForgotPasswordPage',
+);
+const HomePage = lazyNamed(() => import('@/pages/HomePage'), 'HomePage');
+const InstallsPage = lazyNamed(() => import('@/pages/InstallsPage'), 'InstallsPage');
+const LicensesPage = lazyNamed(() => import('@/pages/LicensesPage'), 'LicensesPage');
+const LoginPage = lazyNamed(() => import('@/pages/LoginPage'), 'LoginPage');
+const MyTicketsPage = lazyNamed(() => import('@/pages/MyTicketsPage'), 'MyTicketsPage');
+const ContentPage = lazyNamed(() => import('@/pages/ContentPage'), 'ContentPage');
+const ObservabilityPage = lazyNamed(() => import('@/pages/ObservabilityPage'), 'ObservabilityPage');
+const NotificationsPage = lazyNamed(() => import('@/pages/NotificationsPage'), 'NotificationsPage');
+const OrdersPage = lazyNamed(() => import('@/pages/OrdersPage'), 'OrdersPage');
+const PaymentsPage = lazyNamed(() => import('@/pages/PaymentsPage'), 'PaymentsPage');
+const SecretsPage = lazyNamed(() => import('@/pages/SecretsPage'), 'SecretsPage');
+const SettingsPage = lazyNamed(() => import('@/pages/SettingsPage'), 'SettingsPage');
+const TicketsPage = lazyNamed(() => import('@/pages/TicketsPage'), 'TicketsPage');
+const UsersPage = lazyNamed(() => import('@/pages/UsersPage'), 'UsersPage');
+const VerifyEmailPage = lazyNamed(() => import('@/pages/VerifyEmailPage'), 'VerifyEmailPage');
+
+// UserAuthPage 接收 mode prop，单独 lazy 拿到组件类型后再用
+const UserAuthPage = lazy(() =>
+  import('@/pages/UserAuthPage').then((m) => ({ default: m.UserAuthPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30_000
-    }
-  }
+      staleTime: 30_000,
+    },
+  },
 });
 
 function SiteAppearanceSync() {
   const { data } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
     queryFn: getPublicSiteSettings,
-    staleTime: 5 * 60_000
+    staleTime: 5 * 60_000,
   });
 
   useEffect(() => {
@@ -116,7 +140,12 @@ function ProtectedUserRoute() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+    return (
+      <Navigate
+        to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
+    );
   }
   return <Outlet />;
 }
@@ -138,8 +167,14 @@ const router = createBrowserRouter(
       <Route element={<UserShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/apps" element={<HomePage />} />
-        <Route path="/apps/ai-translate-workflow/privacy" element={<AiTranslateWorkflowPrivacyPage />} />
-        <Route path="/apps/ai-translate-workflow/support" element={<AiTranslateWorkflowSupportPage />} />
+        <Route
+          path="/apps/ai-translate-workflow/privacy"
+          element={<AiTranslateWorkflowPrivacyPage />}
+        />
+        <Route
+          path="/apps/ai-translate-workflow/support"
+          element={<AiTranslateWorkflowSupportPage />}
+        />
         <Route path="/apps/:appCode" element={<AppCatalogPage />} />
         <Route path="/content" element={<ContentHubPage />} />
         <Route path="/content/:slug" element={<ContentDetailPage />} />
@@ -149,7 +184,10 @@ const router = createBrowserRouter(
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedUserRoute />}>
           <Route path="/account" element={<AccountCenterPage />} />
-          <Route path="/notifications" element={<Navigate to="/account?tab=notifications" replace />} />
+          <Route
+            path="/notifications"
+            element={<Navigate to="/account?tab=notifications" replace />}
+          />
           <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
           <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
           <Route path="/tickets" element={<MyTicketsPage />} />
