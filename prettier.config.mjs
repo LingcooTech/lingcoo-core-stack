@@ -13,7 +13,7 @@ export default {
     {
       files: 'admin-ui/**/*.{ts,tsx,js,jsx,css}',
       options: {
-        tailwindConfig: './admin-ui/tailwind.config.ts',
+        tailwindStylesheet: './admin-ui/src/index.css',
       },
     },
   ],

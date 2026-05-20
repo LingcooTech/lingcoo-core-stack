@@ -53,9 +53,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const siteName = getSiteDisplayName(siteSettings);
   const currentUser = currentUserData?.user ?? null;
   const accountName =
-    currentUser?.displayName?.trim() ||
-    user?.email?.split('@')[0]?.trim() ||
-    '管理员账户';
+    currentUser?.displayName?.trim() || user?.email?.split('@')[0]?.trim() || '管理员账户';
   const accountEmail = currentUser?.email || user?.email || '';
 
   const currentSection = resolveAdminSection(location.pathname);
@@ -63,19 +61,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'sticky top-0 h-screen flex flex-col bg-[#f7f8fb] border-r border-border overflow-hidden transition-all duration-200',
-        collapsed ? 'w-[84px]' : 'w-[268px]'
+        'border-border sticky top-0 flex h-screen flex-col overflow-hidden border-r bg-[#f7f8fb] transition-all duration-200',
+        collapsed ? 'w-[84px]' : 'w-[268px]',
       )}
     >
       {/* Brand */}
       <div
         className={cn(
-          'group/brand relative px-4 pt-5 pb-4 flex-shrink-0',
+          'group/brand relative shrink-0 px-4 pb-4 pt-5',
           collapsed ? 'space-y-0' : 'flex items-center gap-3',
         )}
       >
         <div className={cn('flex items-center gap-3', collapsed ? 'justify-center' : 'min-w-0')}>
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             {siteSettings?.logoUrl ? (
               <img
                 src={siteSettings.logoUrl}
@@ -83,15 +81,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 className="h-10 w-10 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-500 text-sm font-semibold text-white shadow-sm shadow-primary/20">
+              <div className="from-primary shadow-primary/20 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
                 {getInitials(siteName)}
               </div>
             )}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-base font-semibold tracking-tight text-foreground leading-tight">{siteName}</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Admin Console</p>
+              <p className="text-foreground truncate text-base font-semibold leading-tight tracking-tight">
+                {siteName}
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-[11px]">Admin Console</p>
             </div>
           )}
         </div>
@@ -103,7 +103,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             'h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900',
             collapsed
               ? 'absolute right-3 top-1/2 -translate-y-1/2 opacity-0 shadow-sm transition-opacity duration-150 group-hover/brand:opacity-100'
-              : 'ml-auto flex-shrink-0',
+              : 'ml-auto shrink-0',
           )}
           onClick={onToggle}
           aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
@@ -117,7 +117,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {adminNavigationGroups.map((group) => (
           <div key={group.label} className="mb-2.5">
             {!collapsed && (
-              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              <p className="text-muted-foreground/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]">
                 {group.label}
               </p>
             )}
@@ -134,7 +134,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     'text-sm font-semibold no-underline',
                     isActive
                       ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                      : 'border-transparent text-slate-600 hover:bg-white hover:border-slate-200 hover:text-slate-900 hover:shadow-sm'
+                      : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 hover:shadow-sm',
                   )}
                 >
                   {isActive && !collapsed ? (
@@ -142,17 +142,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   ) : null}
                   <span
                     className={cn(
-                      'flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-semibold border transition-colors',
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors',
                       isActive
-                        ? 'bg-white/10 border-white/10 text-white shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-500'
+                        ? 'border-white/10 bg-white/10 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-500',
                     )}
                   >
                     {meta.icon}
                   </span>
                   {!collapsed && (
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-semibold leading-tight">{meta.navTitle}</span>
+                      <span className="block text-[13px] font-semibold leading-tight">
+                        {meta.navTitle}
+                      </span>
                     </span>
                   )}
                 </Link>
@@ -163,18 +165,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </ScrollArea>
 
       {/* User */}
-      <div className="flex-shrink-0 border-t border-border p-3">
+      <div className="border-border shrink-0 border-t p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={cn(
                 'w-full rounded-2xl border border-slate-200/90 bg-white/95 text-left shadow-sm transition hover:border-slate-300 hover:bg-white',
-                collapsed ? 'flex items-center justify-center p-2.5' : 'flex items-center gap-3 px-3 py-2.5',
+                collapsed
+                  ? 'flex items-center justify-center p-2.5'
+                  : 'flex items-center gap-3 px-3 py-2.5',
               )}
               title={collapsed ? (user?.email ?? '管理员') : undefined}
             >
-              <Avatar className="h-9 w-9 flex-shrink-0">
+              <Avatar className="h-9 w-9 shrink-0">
                 <AvatarFallback className="text-xs">{getInitials(accountName)}</AvatarFallback>
               </Avatar>
               {!collapsed ? (
@@ -182,9 +186,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900">{accountName}</p>
                     {accountEmail ? (
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{accountEmail}</p>
+                      <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                        {accountEmail}
+                      </p>
                     ) : null}
-                    <p className="mt-0.5 text-xs text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      {user?.role === 'admin' ? '管理员' : '用户'}
+                    </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-slate-400" />
                 </>
@@ -211,14 +219,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <Settings className="h-4 w-4" />
                 </button>
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-[72px] w-[72px] ring-4 ring-white/80 shadow-sm">
+                  <Avatar className="h-[72px] w-[72px] shadow-sm ring-4 ring-white/80">
                     <AvatarFallback className="text-lg">{getInitials(accountName)}</AvatarFallback>
                   </Avatar>
-                  <p className="mt-3 text-lg font-semibold tracking-tight text-slate-900">{accountName}</p>
+                  <p className="mt-3 text-lg font-semibold tracking-tight text-slate-900">
+                    {accountName}
+                  </p>
                   {accountEmail ? (
                     <p className="mt-1 text-sm text-slate-600">{accountEmail}</p>
                   ) : null}
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">{user?.role === 'admin' ? '管理员' : '用户'}</p>
+                  <p className="text-muted-foreground mt-1 text-xs font-medium">
+                    {user?.role === 'admin' ? '管理员' : '用户'}
+                  </p>
                 </div>
               </div>
             </DropdownMenuLabel>

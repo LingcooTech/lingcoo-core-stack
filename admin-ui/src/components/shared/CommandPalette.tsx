@@ -7,7 +7,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator
+  CommandSeparator,
 } from '@/components/ui/command';
 import { adminCommandItems } from '@/lib/foundation';
 
@@ -67,12 +67,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   onSelect={() => handleSelect(item)}
                   className="flex items-center gap-3"
                 >
-                  <span className="flex-shrink-0 w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground">
+                  <span className="border-border bg-muted text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border text-[9px] font-semibold">
                     {item.icon}
                   </span>
-                  <span className="flex-1 min-w-0 text-sm font-bold">{item.label}</span>
+                  <span className="min-w-0 flex-1 text-sm font-bold">{item.label}</span>
                   {item.shortcut && (
-                    <kbd className="flex-shrink-0 text-[10px] font-mono bg-muted border border-border rounded px-1.5 py-0.5">
+                    <kbd className="bg-muted border-border shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px]">
                       {item.shortcut}
                     </kbd>
                   )}

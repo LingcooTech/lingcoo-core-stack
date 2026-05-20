@@ -8,7 +8,7 @@
 const adminUiEslint = (files) => {
   const relPaths = files.map((f) => f.replace(/^.*\/admin-ui\//, ''));
   return [
-    `npm --prefix admin-ui exec -- eslint --fix --no-warn-ignored ${relPaths.join(' ')}`,
+    `bash -c "cd admin-ui && npx eslint --fix --no-warn-ignored ${relPaths.join(' ')}"`,
     `prettier --write ${files.join(' ')}`,
   ];
 };

@@ -14,24 +14,26 @@ export function Topbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex min-h-[64px] items-center justify-between gap-4 border-b border-border bg-white/80 px-5 backdrop-blur-sm flex-shrink-0">
+      <header className="border-border sticky top-0 z-20 flex min-h-[64px] shrink-0 items-center justify-between gap-4 border-b bg-white/80 px-5 backdrop-blur-sm">
         {/* Left */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="flex items-center gap-3 h-10 w-full max-w-[440px] px-3.5 rounded-full border border-gray-200 bg-white text-left text-sm text-muted-foreground shadow-sm hover:border-primary/30 transition-colors cursor-pointer"
+            className="text-muted-foreground hover:border-primary/30 flex h-10 w-full max-w-[440px] cursor-pointer items-center gap-3 rounded-full border border-gray-200 bg-white px-3.5 text-left text-sm shadow-sm transition-colors"
           >
-            <Search className="w-3.5 h-3.5 flex-shrink-0" />
+            <Search className="h-3.5 w-3.5 shrink-0" />
             <span className="flex-1">搜索...</span>
             <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider">
-              <kbd className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded border border-border bg-white text-[10px] font-mono">/</kbd>
+              <kbd className="border-border inline-flex h-5 min-w-5 items-center justify-center rounded border bg-white px-1.5 font-mono text-[10px]">
+                /
+              </kbd>
             </span>
           </button>
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           {section?.heroActions.map((action) => (
             <a
               key={action.href}
@@ -39,16 +41,16 @@ export function Topbar() {
               target={action.external ? '_blank' : undefined}
               rel={action.external ? 'noreferrer' : undefined}
               className={cn(
-                'inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border text-xs font-semibold no-underline transition-all',
+                'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline transition-all',
                 action.tone === 'primary'
-                  ? 'bg-gradient-to-br from-primary to-blue-600 border-transparent text-white shadow-sm hover:shadow'
-                  : 'bg-white border-border text-foreground hover:bg-muted shadow-sm'
+                  ? 'from-primary border-transparent bg-gradient-to-br to-blue-600 text-white shadow-sm hover:shadow'
+                  : 'border-border text-foreground hover:bg-muted bg-white shadow-sm',
               )}
             >
               <span>{action.label}</span>
-              {action.external && <ExternalLink className="w-3 h-3" />}
+              {action.external && <ExternalLink className="h-3 w-3" />}
               {action.shortcut && (
-                <span className="inline-flex items-center justify-center h-4 px-1 rounded border border-current/20 bg-current/10 text-[9px] font-mono">
+                <span className="border-current/20 bg-current/10 inline-flex h-4 items-center justify-center rounded border px-1 font-mono text-[9px]">
                   {action.shortcut}
                 </span>
               )}
@@ -57,9 +59,11 @@ export function Topbar() {
 
           <a
             href="/"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-foreground no-underline hover:bg-muted transition-colors shadow-sm"
+            className="border-border text-foreground hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-semibold no-underline shadow-sm transition-colors"
           >
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted text-[9px] font-semibold">ST</span>
+            <span className="bg-muted inline-flex h-5 w-5 items-center justify-center rounded text-[9px] font-semibold">
+              ST
+            </span>
             <span>状态</span>
           </a>
         </div>

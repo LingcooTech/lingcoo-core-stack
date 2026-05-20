@@ -14,8 +14,8 @@ export function DashboardPage() {
     queries: [
       { queryKey: ['payment-settings'], queryFn: getPaymentSettings },
       { queryKey: ['orders', { limit: 50 }], queryFn: () => listOrders({ limit: 50 }) },
-      { queryKey: ['apps'], queryFn: listAppsAdmin }
-    ]
+      { queryKey: ['apps'], queryFn: listAppsAdmin },
+    ],
   });
 
   const [paymentsResult, ordersResult, appsResult] = results;
@@ -25,32 +25,74 @@ export function DashboardPage() {
 
   const paidOrders = orders.filter((o) => o.status === 'paid');
   const pendingOrders = orders.filter((o) => ['pending', 'processing'].includes(o.status));
-  const activeSecrets = apps.flatMap((a) => a.secrets ?? []).filter((s) => !s.expiresAt || new Date(s.expiresAt) > new Date());
+  const activeSecrets = apps
+    .flatMap((a) => a.secrets ?? [])
+    .filter((s) => !s.expiresAt || new Date(s.expiresAt) > new Date());
 
   const wechat = paymentData?.items.find((i) => i.code === 'wechat_pay');
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
 
   const quickLinks = [
-    { label: '支付配置', href: '/admin/payments', icon: CreditCard, color: 'text-blue-600 bg-blue-50' },
-    { label: '应用管理', href: '/admin/apps', icon: Package, color: 'text-violet-600 bg-violet-50' },
-    { label: '授权管理', href: '/admin/licenses', icon: ShieldCheck, color: 'text-green-600 bg-green-50' },
-    { label: '订单管理', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' }
+    {
+      label: '支付配置',
+      href: '/admin/payments',
+      icon: CreditCard,
+      color: 'text-blue-600 bg-blue-50',
+    },
+    {
+      label: '应用管理',
+      href: '/admin/apps',
+      icon: Package,
+      color: 'text-violet-600 bg-violet-50',
+    },
+    {
+      label: '授权管理',
+      href: '/admin/licenses',
+      icon: ShieldCheck,
+      color: 'text-green-600 bg-green-50',
+    },
+    { label: '订单管理', href: '/admin/orders', icon: Zap, color: 'text-amber-600 bg-amber-50' },
   ];
 
   return (
     <div>
       <SectionHeader sectionKey="dashboard" />
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} color="from-blue-500 to-blue-600" delay={0} />
-          <MetricCard label="活跃密钥" value={activeSecrets.length} loading={appsResult.isLoading} color="from-green-500 to-green-600" delay={50} />
-          <MetricCard label="已支付订单" value={paidOrders.length} loading={ordersResult.isLoading} color="from-purple-500 to-purple-600" delay={100} />
-          <MetricCard label="待处理订单" value={pendingOrders.length} loading={ordersResult.isLoading} tone={pendingOrders.length > 0 ? 'warn' : 'ok'} color="from-amber-500 to-amber-600" delay={150} />
+      <div className="space-y-6 p-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <MetricCard
+            label="接入应用"
+            value={apps.length}
+            loading={appsResult.isLoading}
+            color="from-blue-500 to-blue-600"
+            delay={0}
+          />
+          <MetricCard
+            label="活跃密钥"
+            value={activeSecrets.length}
+            loading={appsResult.isLoading}
+            color="from-green-500 to-green-600"
+            delay={50}
+          />
+          <MetricCard
+            label="已支付订单"
+            value={paidOrders.length}
+            loading={ordersResult.isLoading}
+            color="from-purple-500 to-purple-600"
+            delay={100}
+          />
+          <MetricCard
+            label="待处理订单"
+            value={pendingOrders.length}
+            loading={ordersResult.isLoading}
+            tone={pendingOrders.length > 0 ? 'warn' : 'ok'}
+            color="from-amber-500 to-amber-600"
+            delay={150}
+          />
         </div>
 
         <div>
-          <h2 className="mb-3 text-base font-semibold text-foreground">支付通道</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-foreground mb-3 text-base font-semibold">支付通道</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <PaymentStatusCard
               name="微信支付"
               config={wechat}
@@ -67,22 +109,24 @@ export function DashboardPage() {
         </div>
 
         <div>
-          <h2 className="mb-3 text-base font-semibold text-foreground">快捷入口</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <h2 className="text-foreground mb-3 text-base font-semibold">快捷入口</h2>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {quickLinks.map((link, index) => {
               const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="group flex flex-col gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 hover:shadow-md hover:-translate-y-1 transition-all duration-300 no-underline animate-fadeInUp"
+                  className="border-border hover:border-primary/30 animate-fadeInUp group flex flex-col gap-3 rounded-xl border bg-white p-4 no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                   style={{ animationDelay: `${200 + index * 50}ms` }}
                 >
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${link.color} transition-transform duration-300 group-hover:scale-110`}>
-                    <Icon className="w-5 h-5" />
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${link.color} transition-transform duration-300 group-hover:scale-110`}
+                  >
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">{link.label}</p>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+                  <p className="text-foreground text-sm font-semibold">{link.label}</p>
+                  <ArrowRight className="text-muted-foreground group-hover:text-primary h-4 w-4 transition-all duration-300 group-hover:translate-x-1" />
                 </Link>
               );
             })}
@@ -91,26 +135,30 @@ export function DashboardPage() {
 
         {orders.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-foreground">最近订单</h2>
-              <Link to="/admin/orders" className="text-xs font-bold text-primary hover:underline">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-foreground text-base font-semibold">最近订单</h2>
+              <Link to="/admin/orders" className="text-primary text-xs font-bold hover:underline">
                 查看全部 →
               </Link>
             </div>
-            <div className="rounded-xl border border-border bg-white overflow-hidden">
+            <div className="border-border overflow-hidden rounded-xl border bg-white">
               {orders.slice(0, 5).map((order, idx) => (
                 <div
                   key={order.orderNo}
-                  className={`flex items-center justify-between gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''}`}
+                  className={`flex items-center justify-between gap-3 px-4 py-3 ${idx > 0 ? 'border-border border-t' : ''}`}
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-bold font-mono text-foreground truncate">{order.orderNo}</p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-foreground truncate font-mono text-xs font-bold">
+                      {order.orderNo}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">
                       {order.user?.email ?? order.userId} · {order.app?.name ?? order.appId}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-bold">{formatAmount(order.amount, order.currency)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs font-bold">
+                      {formatAmount(order.amount, order.currency)}
+                    </span>
                     <StatusPill tone={statusToTone(order.status)} label={order.status} />
                   </div>
                 </div>
@@ -129,7 +177,7 @@ function MetricCard({
   loading,
   tone = 'neutral',
   color = 'from-gray-500 to-gray-600',
-  delay = 0
+  delay = 0,
 }: {
   label: string;
   value: number;
@@ -139,13 +187,16 @@ function MetricCard({
   delay?: number;
 }) {
   return (
-    <Card className="transition-all duration-300 hover:-translate-y-1 hover:shadow-md animate-fadeInUp" style={{ animationDelay: `${delay}ms` }}>
+    <Card
+      className="animate-fadeInUp transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <CardTitle className="text-muted-foreground text-sm font-medium">{label}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-8 w-16 rounded bg-muted animate-pulse" />
+          <div className="bg-muted h-8 w-16 animate-pulse rounded" />
         ) : (
           <div className="flex items-center justify-between">
             <p
@@ -167,7 +218,7 @@ function PaymentStatusCard({
   name,
   config,
   loading,
-  href
+  href,
 }: {
   name: string;
   config: { configured: boolean; source: string } | undefined;
@@ -177,20 +228,20 @@ function PaymentStatusCard({
   return (
     <Link
       to={href}
-      className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border bg-white hover:border-primary/30 transition-colors no-underline"
+      className="border-border hover:border-primary/30 flex items-center justify-between gap-3 rounded-xl border bg-white p-4 no-underline transition-colors"
     >
       <div>
-        <p className="text-sm font-semibold text-foreground">{name}</p>
+        <p className="text-foreground text-sm font-semibold">{name}</p>
         {loading ? (
-          <div className="h-3 w-20 mt-1 rounded bg-muted animate-pulse" />
+          <div className="bg-muted mt-1 h-3 w-20 animate-pulse rounded" />
         ) : config ? (
-          <p className="text-xs text-muted-foreground mt-0.5">{config.source}</p>
+          <p className="text-muted-foreground mt-0.5 text-xs">{config.source}</p>
         ) : (
-          <p className="text-xs text-muted-foreground mt-0.5">未配置</p>
+          <p className="text-muted-foreground mt-0.5 text-xs">未配置</p>
         )}
       </div>
       {loading ? (
-        <div className="h-6 w-16 rounded-full bg-muted animate-pulse" />
+        <div className="bg-muted h-6 w-16 animate-pulse rounded-full" />
       ) : (
         <StatusPill
           tone={config?.configured ? 'ok' : 'neutral'}

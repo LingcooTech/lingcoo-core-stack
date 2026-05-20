@@ -13,25 +13,25 @@ const toneStyles: Record<Tone, string> = {
   warn: 'bg-amber-50 border-amber-200 text-amber-700',
   danger: 'bg-red-50 border-red-200 text-red-700',
   neutral: 'bg-gray-50 border-gray-200 text-gray-600',
-  info: 'bg-blue-50 border-blue-200 text-blue-700'
+  info: 'bg-blue-50 border-blue-200 text-blue-700',
 };
 
 export function StatusPill({ tone, label, className }: StatusPillProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold',
         toneStyles[tone],
-        className
+        className,
       )}
     >
       <span
-        className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', {
+        className={cn('h-1.5 w-1.5 shrink-0 rounded-full', {
           'bg-green-500': tone === 'ok',
           'bg-amber-500': tone === 'warn',
           'bg-red-500': tone === 'danger',
           'bg-slate-400': tone === 'neutral',
-          'bg-blue-500': tone === 'info'
+          'bg-blue-500': tone === 'info',
         })}
       />
       {label}
@@ -42,9 +42,11 @@ export function StatusPill({ tone, label, className }: StatusPillProps) {
 // Maps common status strings to tones
 export function statusToTone(status: string): Tone {
   const s = status.toLowerCase();
-  if (['active', 'paid', 'completed', 'ok', 'success', 'configured', 'granted'].includes(s)) return 'ok';
+  if (['active', 'paid', 'completed', 'ok', 'success', 'configured', 'granted'].includes(s))
+    return 'ok';
   if (['pending', 'processing', 'partial'].includes(s)) return 'warn';
-  if (['failed', 'cancelled', 'expired', 'revoked', 'inactive', 'error'].includes(s)) return 'danger';
+  if (['failed', 'cancelled', 'expired', 'revoked', 'inactive', 'error'].includes(s))
+    return 'danger';
   if (['env', 'database'].includes(s)) return 'info';
   return 'neutral';
 }
