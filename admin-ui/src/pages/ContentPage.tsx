@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -11,7 +11,7 @@ import {
 } from '@/api/admin';
 import type { ContentItem } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterBar } from '@/components/shared/FilterBar';
+import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
@@ -19,7 +19,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useTableState } from '@/hooks/useTableState';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -47,10 +54,12 @@ function getStatusTone(status: ContentItem['status']) {
 export function ContentPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('__all__');
-  const [statusFilter, setStatusFilter] = useState('__all__');
-  const [page, setPage] = useState(1);
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: PAGE_SIZE,
+    knownFilters: ['sourceType', 'status'],
+  });
+  const sourceTypeValues = useMemo(() => filters.sourceType ?? [], [filters.sourceType]);
+  const statusValues = useMemo(() => filters.status ?? [], [filters.status]);
   const deferredSearch = useDeferredValue(search);
 
   const [wpForm, setWpForm] = useState({
@@ -66,25 +75,16 @@ export function ContentPage() {
     status: 'draft' as 'draft' | 'published',
   });
 
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, sourceFilter, statusFilter]);
-
   const query = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
-      sourceType:
-        sourceFilter !== '__all__'
-          ? (sourceFilter as 'manual' | 'wordpress' | 'notion' | 'wechat')
-          : undefined,
-      status:
-        statusFilter !== '__all__'
-          ? (statusFilter as 'draft' | 'published' | 'archived')
-          : undefined,
+      // 后端单值，多选时取首项
+      sourceType: sourceTypeValues[0] as 'manual' | 'wordpress' | 'notion' | 'wechat' | undefined,
+      status: statusValues[0] as 'draft' | 'published' | 'archived' | undefined,
     }),
-    [deferredSearch, page, sourceFilter, statusFilter],
+    [deferredSearch, page, sourceTypeValues, statusValues],
   );
 
   const contentQuery = useQuery({
@@ -136,8 +136,10 @@ export function ContentPage() {
       cell: (row) => (
         <div className="space-y-1">
           <p className="text-sm font-semibold text-slate-900">{row.title}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">{row.slug}</p>
-          {row.excerpt ? <p className="line-clamp-2 text-sm text-slate-600">{row.excerpt}</p> : null}
+          <p className="text-muted-foreground font-mono text-[11px]">{row.slug}</p>
+          {row.excerpt ? (
+            <p className="line-clamp-2 text-sm text-slate-600">{row.excerpt}</p>
+          ) : null}
         </div>
       ),
       className: 'min-w-[360px]',
@@ -148,7 +150,9 @@ export function ContentPage() {
       cell: (row) => (
         <div className="space-y-1">
           <StatusPill tone="info" label={getSourceLabel(row.sourceType)} />
-          {row.authorName ? <p className="text-xs text-muted-foreground">{row.authorName}</p> : null}
+          {row.authorName ? (
+            <p className="text-muted-foreground text-xs">{row.authorName}</p>
+          ) : null}
         </div>
       ),
     },
@@ -165,14 +169,22 @@ export function ContentPage() {
     {
       key: 'importedAt',
       header: '导入时间',
-      cell: (row) => <span className="text-xs text-slate-700">{formatTime(row.importedAt || row.createdAt)}</span>,
+      cell: (row) => (
+        <span className="text-xs text-slate-700">
+          {formatTime(row.importedAt || row.createdAt)}
+        </span>
+      ),
     },
     {
       key: 'actions',
       header: '操作',
       cell: (row) => (
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate(`/admin/content/${row.id}/edit`)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/admin/content/${row.id}/edit`)}
+          >
             编辑
           </Button>
           {row.sourceUrl ? (
@@ -198,9 +210,14 @@ export function ContentPage() {
             { label: '已发布', value: String(publishedCount) },
             { label: '已导入', value: String(importedCount) },
           ].map((item) => (
-            <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+            <div
+              key={item.label}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+            >
               <p className="text-sm font-medium text-gray-500">{item.label}</p>
-              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">
+                {item.value}
+              </p>
             </div>
           ))}
         </div>
@@ -208,7 +225,9 @@ export function ContentPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">导入与管理</h2>
-            <p className="text-sm text-muted-foreground">支持导入外部内容，也支持手动创建本地内容。</p>
+            <p className="text-muted-foreground text-sm">
+              支持导入外部内容，也支持手动创建本地内容。
+            </p>
           </div>
           <Button asChild>
             <Link to="/admin/content/new">新建内容</Link>
@@ -219,7 +238,9 @@ export function ContentPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 WordPress</CardTitle>
-              <CardDescription>系统会使用“系统设置”中的 WordPress 连接配置，这里只需输入文章 URL。</CardDescription>
+              <CardDescription>
+                系统会使用“系统设置”中的 WordPress 连接配置，这里只需输入文章 URL。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -227,7 +248,9 @@ export function ContentPage() {
                 <Input
                   placeholder="https://your-site.com/post-slug"
                   value={wpForm.postUrl}
-                  onChange={(event) => setWpForm((prev) => ({ ...prev, postUrl: event.target.value }))}
+                  onChange={(event) =>
+                    setWpForm((prev) => ({ ...prev, postUrl: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -260,7 +283,9 @@ export function ContentPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 Notion</CardTitle>
-              <CardDescription>系统会使用“系统设置”中的 Notion Token，这里只需输入页面 URL。</CardDescription>
+              <CardDescription>
+                系统会使用“系统设置”中的 Notion Token，这里只需输入页面 URL。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -268,7 +293,9 @@ export function ContentPage() {
                 <Input
                   placeholder="https://www.notion.so/..."
                   value={notionForm.pageUrl}
-                  onChange={(event) => setNotionForm((prev) => ({ ...prev, pageUrl: event.target.value }))}
+                  onChange={(event) =>
+                    setNotionForm((prev) => ({ ...prev, pageUrl: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -301,7 +328,9 @@ export function ContentPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入微信公众号</CardTitle>
-              <CardDescription>输入公众号文章链接，系统会抓取标题、摘要和正文 HTML。</CardDescription>
+              <CardDescription>
+                输入公众号文章链接，系统会抓取标题、摘要和正文 HTML。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -309,7 +338,9 @@ export function ContentPage() {
                 <Input
                   placeholder="https://mp.weixin.qq.com/s/..."
                   value={wechatForm.url}
-                  onChange={(event) => setWechatForm((prev) => ({ ...prev, url: event.target.value }))}
+                  onChange={(event) =>
+                    setWechatForm((prev) => ({ ...prev, url: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -341,43 +372,46 @@ export function ContentPage() {
         </div>
 
         <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <FilterBar
+          <FilterChipBar
             searchValue={search}
             onSearchChange={setSearch}
             searchPlaceholder="搜索标题、slug、作者、来源链接..."
-            filters={[
-              {
-                id: 'sourceType',
-                placeholder: '全部来源',
-                value: sourceFilter,
-                onChange: setSourceFilter,
-                options: [
-                  { value: 'wordpress', label: 'WordPress' },
-                  { value: 'notion', label: 'Notion' },
-                  { value: 'wechat', label: '微信公众号' },
-                ],
-              },
-              {
-                id: 'status',
-                placeholder: '全部状态',
-                value: statusFilter,
-                onChange: setStatusFilter,
-                options: [
-                  { value: 'draft', label: '草稿' },
-                  { value: 'published', label: '已发布' },
-                  { value: 'archived', label: '已归档' },
-                ],
-              },
-            ]}
+            chips={
+              [
+                {
+                  id: 'sourceType',
+                  label: '来源',
+                  values: sourceTypeValues,
+                  onChange: (next) => setFilter('sourceType', next),
+                  options: [
+                    { value: 'wordpress', label: 'WordPress' },
+                    { value: 'notion', label: 'Notion' },
+                    { value: 'wechat', label: '微信公众号' },
+                  ],
+                },
+                {
+                  id: 'status',
+                  label: '状态',
+                  values: statusValues,
+                  onChange: (next) => setFilter('status', next),
+                  options: [
+                    { value: 'draft', label: '草稿' },
+                    { value: 'published', label: '已发布' },
+                    { value: 'archived', label: '已归档' },
+                  ],
+                },
+              ] satisfies FilterChipConfig[]
+            }
+            onClearAll={clearFilters}
           />
 
-          <div className="overflow-hidden rounded-xl border border-border bg-white">
+          <div className="border-border overflow-hidden rounded-xl border bg-white">
             <DataTable
               columns={columns}
               data={items}
               isLoading={contentQuery.isLoading}
               emptyMessage="暂无内容"
-              getRowKey={(row) => row.id}
+              getRowId={(row) => row.id}
             />
           </div>
 

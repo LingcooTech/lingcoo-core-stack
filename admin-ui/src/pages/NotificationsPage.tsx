@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { listAdminNotifications, publishAnnouncement } from '@/api/admin';
 import type { AdminNotificationItem } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterBar } from '@/components/shared/FilterBar';
+import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
@@ -13,8 +13,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useTableState } from '@/hooks/useTableState';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -62,10 +69,12 @@ function statusTone(status: AdminNotificationItem['status']) {
 
 export function NotificationsPage() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('__all__');
-  const [categoryFilter, setCategoryFilter] = useState('__all__');
-  const [page, setPage] = useState(1);
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: PAGE_SIZE,
+    knownFilters: ['status', 'category'],
+  });
+  const statusValues = useMemo(() => filters.status ?? [], [filters.status]);
+  const categoryValues = useMemo(() => filters.category ?? [], [filters.category]);
   const deferredSearch = useDeferredValue(search);
 
   const [announcementForm, setAnnouncementForm] = useState({
@@ -76,25 +85,16 @@ export function NotificationsPage() {
     ctaUrl: '',
   });
 
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, statusFilter, categoryFilter]);
-
   const query = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
-      status:
-        statusFilter !== '__all__'
-          ? (statusFilter as 'unread' | 'read' | 'archived')
-          : undefined,
-      category:
-        categoryFilter !== '__all__'
-          ? (categoryFilter as AdminNotificationItem['category'])
-          : undefined,
+      // 后端单值，多选时取首项
+      status: statusValues[0] as 'unread' | 'read' | 'archived' | undefined,
+      category: categoryValues[0] as AdminNotificationItem['category'] | undefined,
     }),
-    [categoryFilter, deferredSearch, page, statusFilter],
+    [categoryValues, deferredSearch, page, statusValues],
   );
 
   const notificationsQuery = useQuery({
@@ -142,7 +142,9 @@ export function NotificationsPage() {
       cell: (row) => (
         <div className="space-y-1">
           <p className="text-sm font-medium text-slate-900">{row.user?.email ?? '—'}</p>
-          {row.user?.displayName ? <p className="text-xs text-slate-500">{row.user.displayName}</p> : null}
+          {row.user?.displayName ? (
+            <p className="text-xs text-slate-500">{row.user.displayName}</p>
+          ) : null}
           {row.user?.status ? (
             <StatusPill
               tone={row.user.status === 'active' ? 'ok' : 'warn'}
@@ -192,7 +194,11 @@ export function NotificationsPage() {
         <div className="flex items-center gap-2">
           {row.ctaLabel && row.ctaUrl ? (
             <Button size="sm" variant="outline" asChild>
-              <a href={row.ctaUrl} target={row.ctaUrl.startsWith('/') ? undefined : '_blank'} rel="noreferrer">
+              <a
+                href={row.ctaUrl}
+                target={row.ctaUrl.startsWith('/') ? undefined : '_blank'}
+                rel="noreferrer"
+              >
                 {row.ctaLabel}
               </a>
             </Button>
@@ -212,7 +218,9 @@ export function NotificationsPage() {
           <Card className="border-gray-200 bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">发布公告</CardTitle>
-              <CardDescription>发布后会作为站内通知发送给所有活跃用户，并直接出现在用户消息中心。</CardDescription>
+              <CardDescription>
+                发布后会作为站内通知发送给所有活跃用户，并直接出现在用户消息中心。
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
@@ -305,12 +313,25 @@ export function NotificationsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             {[
               { label: '当前筛选结果', value: String(total), note: '符合当前筛选条件的通知总数' },
-              { label: '当前页未读', value: String(items.filter((item) => item.status === 'unread').length), note: '当前页里尚未被用户读取的通知' },
-              { label: '当前页公告', value: String(items.filter((item) => item.category === 'announcement').length), note: '当前页里来自后台公告广播的通知' },
+              {
+                label: '当前页未读',
+                value: String(items.filter((item) => item.status === 'unread').length),
+                note: '当前页里尚未被用户读取的通知',
+              },
+              {
+                label: '当前页公告',
+                value: String(items.filter((item) => item.category === 'announcement').length),
+                note: '当前页里来自后台公告广播的通知',
+              },
             ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+              <div
+                key={item.label}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+              >
                 <p className="text-sm font-medium text-gray-500">{item.label}</p>
-                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">
+                  {item.value}
+                </p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
               </div>
             ))}
@@ -321,51 +342,56 @@ export function NotificationsPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">通知记录</h2>
-              <p className="text-sm text-muted-foreground">查看系统发出的用户通知，包括事件通知和管理员公告。</p>
+              <p className="text-muted-foreground text-sm">
+                查看系统发出的用户通知，包括事件通知和管理员公告。
+              </p>
             </div>
           </div>
 
-          <FilterBar
+          <FilterChipBar
             searchValue={search}
             onSearchChange={setSearch}
             searchPlaceholder="搜索标题、正文、用户邮箱..."
-            filters={[
-              {
-                id: 'category',
-                placeholder: '全部分类',
-                value: categoryFilter,
-                onChange: setCategoryFilter,
-                options: [
-                  { value: 'announcement', label: '公告' },
-                  { value: 'account', label: '账户' },
-                  { value: 'billing', label: '账单' },
-                  { value: 'license', label: '授权' },
-                  { value: 'deployment', label: '部署' },
-                  { value: 'ticket', label: '工单' },
-                  { value: 'system', label: '系统' },
-                ],
-              },
-              {
-                id: 'status',
-                placeholder: '全部状态',
-                value: statusFilter,
-                onChange: setStatusFilter,
-                options: [
-                  { value: 'unread', label: '未读' },
-                  { value: 'read', label: '已读' },
-                  { value: 'archived', label: '已归档' },
-                ],
-              },
-            ]}
+            chips={
+              [
+                {
+                  id: 'category',
+                  label: '分类',
+                  values: categoryValues,
+                  onChange: (next) => setFilter('category', next),
+                  options: [
+                    { value: 'announcement', label: '公告' },
+                    { value: 'account', label: '账户' },
+                    { value: 'billing', label: '账单' },
+                    { value: 'license', label: '授权' },
+                    { value: 'deployment', label: '部署' },
+                    { value: 'ticket', label: '工单' },
+                    { value: 'system', label: '系统' },
+                  ],
+                },
+                {
+                  id: 'status',
+                  label: '状态',
+                  values: statusValues,
+                  onChange: (next) => setFilter('status', next),
+                  options: [
+                    { value: 'unread', label: '未读' },
+                    { value: 'read', label: '已读' },
+                    { value: 'archived', label: '已归档' },
+                  ],
+                },
+              ] satisfies FilterChipConfig[]
+            }
+            onClearAll={clearFilters}
           />
 
-          <div className="overflow-hidden rounded-lg border border-border bg-white">
+          <div className="border-border overflow-hidden rounded-lg border bg-white">
             <DataTable
               columns={columns}
               data={items}
               isLoading={notificationsQuery.isLoading}
               emptyMessage="暂无通知记录"
-              getRowKey={(row) => row.id}
+              getRowId={(row) => row.id}
             />
           </div>
 

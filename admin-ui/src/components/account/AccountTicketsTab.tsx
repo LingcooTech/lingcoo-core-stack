@@ -6,12 +6,13 @@ import { Link } from 'react-router-dom';
 import { closeMyTicket, getMyTicket, listMyTickets, replyMyTicket } from '@/api/user';
 import type { HydratedSupportTicket, SupportTicketDetail, SupportTicketMessage } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterBar } from '@/components/shared/FilterBar';
+import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useTableState } from '@/hooks/useTableState';
 import { cn, formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
@@ -107,11 +108,21 @@ function messageAuthorLabel(message: SupportTicketMessage) {
   return message.author?.displayName?.trim() || message.author?.email || '我';
 }
 
-function MetaField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function MetaField({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2.5">
       <p className="text-[11px] font-medium text-gray-500">{label}</p>
-      <p className={cn('mt-1 text-sm text-gray-900', mono && 'font-mono text-xs')}>{value || '—'}</p>
+      <p className={cn('mt-1 text-sm text-gray-900', mono && 'font-mono text-xs')}>
+        {value || '—'}
+      </p>
     </div>
   );
 }
@@ -126,14 +137,13 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
       {messages.map((message) => {
         const isUser = message.authorType === 'user';
         return (
-          <div
-            key={message.id}
-            className={cn('flex', isUser ? 'justify-end' : 'justify-start')}
-          >
+          <div key={message.id} className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
                 'max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm',
-                isUser ? 'border-blue-200 bg-blue-50 text-slate-900' : 'border-gray-200 bg-white text-slate-900'
+                isUser
+                  ? 'border-blue-200 bg-blue-50 text-slate-900'
+                  : 'border-gray-200 bg-white text-slate-900',
               )}
             >
               <div className="flex items-center gap-2 text-[11px] text-gray-500">
@@ -156,7 +166,7 @@ function TicketDetailPanel({
   onReply,
   onCloseTicket,
   isReplying,
-  isClosing
+  isClosing,
 }: {
   detail: SupportTicketDetail;
   replyBody: string;
@@ -179,8 +189,14 @@ function TicketDetailPanel({
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusPill tone={ticketStatusTone(ticket.status)} label={ticketStatusLabel(ticket.status)} />
-            <StatusPill tone={ticketPriorityTone(ticket.priority)} label={ticketPriorityLabel(ticket.priority)} />
+            <StatusPill
+              tone={ticketStatusTone(ticket.status)}
+              label={ticketStatusLabel(ticket.status)}
+            />
+            <StatusPill
+              tone={ticketPriorityTone(ticket.priority)}
+              label={ticketPriorityLabel(ticket.priority)}
+            />
             <StatusPill tone="neutral" label={ticketCategoryLabel(ticket.category)} />
           </div>
         </div>
@@ -222,11 +238,7 @@ function TicketDetailPanel({
               rows={4}
             />
             <div className="flex justify-end">
-              <Button
-                type="button"
-                onClick={onReply}
-                disabled={isReplying || !replyBody.trim()}
-              >
+              <Button type="button" onClick={onReply} disabled={isReplying || !replyBody.trim()}>
                 {isReplying ? '发送中...' : '发送回复'}
               </Button>
             </div>
@@ -239,55 +251,50 @@ function TicketDetailPanel({
 
 export function AccountTicketsTab() {
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('__all__');
-  const [categoryFilter, setCategoryFilter] = useState('__all__');
-  const [page, setPage] = useState(1);
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: PAGE_SIZE,
+    prefix: 'tickets',
+    knownFilters: ['status', 'category'],
+  });
+  const statusValues = useMemo(() => filters.status ?? [], [filters.status]);
+  const categoryValues = useMemo(() => filters.category ?? [], [filters.category]);
   const [selectedTicketNo, setSelectedTicketNo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const deferredSearch = useDeferredValue(search);
-
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, statusFilter, categoryFilter]);
 
   const ticketQuery = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
-      status:
-        statusFilter !== '__all__'
-          ? (statusFilter as HydratedSupportTicket['status'])
-          : undefined,
-      category:
-        categoryFilter !== '__all__'
-          ? (categoryFilter as HydratedSupportTicket['category'])
-          : undefined
+      // 后端单值，多选时取首项
+      status: statusValues[0] as HydratedSupportTicket['status'] | undefined,
+      category: categoryValues[0] as HydratedSupportTicket['category'] | undefined,
     }),
-    [categoryFilter, deferredSearch, page, statusFilter]
+    [categoryValues, deferredSearch, page, statusValues],
   );
 
   const ticketsQuery = useQuery({
     queryKey: ['my-tickets', ticketQuery],
-    queryFn: () => listMyTickets(ticketQuery)
+    queryFn: () => listMyTickets(ticketQuery),
   });
 
   const ticketDetailQuery = useQuery({
     queryKey: ['my-ticket-detail', selectedTicketNo],
     queryFn: () => getMyTicket(selectedTicketNo!),
-    enabled: Boolean(selectedTicketNo)
+    enabled: Boolean(selectedTicketNo),
   });
 
   const replyMutation = useMutation({
-    mutationFn: ({ ticketNo, body }: { ticketNo: string; body: string }) => replyMyTicket(ticketNo, body),
+    mutationFn: ({ ticketNo, body }: { ticketNo: string; body: string }) =>
+      replyMyTicket(ticketNo, body),
     onSuccess: async (_, variables) => {
       toast.success('回复已发送');
       setReplyBody('');
       await qc.invalidateQueries({ queryKey: ['my-tickets'] });
       await qc.invalidateQueries({ queryKey: ['my-ticket-detail', variables.ticketNo] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '发送回复失败')
+    onError: (error) => toast.error(error instanceof Error ? error.message : '发送回复失败'),
   });
 
   const closeMutation = useMutation({
@@ -297,10 +304,10 @@ export function AccountTicketsTab() {
       await qc.invalidateQueries({ queryKey: ['my-tickets'] });
       await qc.invalidateQueries({ queryKey: ['my-ticket-detail', ticketNo] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '关闭工单失败')
+    onError: (error) => toast.error(error instanceof Error ? error.message : '关闭工单失败'),
   });
 
-  const tickets = ticketsQuery.data?.items ?? [];
+  const tickets = useMemo(() => ticketsQuery.data?.items ?? [], [ticketsQuery.data?.items]);
   const total = ticketsQuery.data?.total ?? 0;
 
   useEffect(() => {
@@ -323,7 +330,7 @@ export function AccountTicketsTab() {
             {row.order?.orderNo ? ` · 订单 ${row.order.orderNo}` : ''}
           </p>
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -331,14 +338,17 @@ export function AccountTicketsTab() {
       cell: (row) => (
         <div className="space-y-1.5">
           <StatusPill tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
-          <StatusPill tone={ticketPriorityTone(row.priority)} label={ticketPriorityLabel(row.priority)} />
+          <StatusPill
+            tone={ticketPriorityTone(row.priority)}
+            label={ticketPriorityLabel(row.priority)}
+          />
         </div>
-      )
+      ),
     },
     {
       key: 'category',
       header: '分类',
-      cell: (row) => <StatusPill tone="neutral" label={ticketCategoryLabel(row.category)} />
+      cell: (row) => <StatusPill tone="neutral" label={ticketCategoryLabel(row.category)} />,
     },
     {
       key: 'activity',
@@ -348,7 +358,7 @@ export function AccountTicketsTab() {
           <p className="text-xs text-slate-700">{formatTime(row.lastActivityAt)}</p>
           <p className="text-[11px] text-slate-500">{row.messageCount} 条消息</p>
         </div>
-      )
+      ),
     },
     {
       key: 'actions',
@@ -358,12 +368,14 @@ export function AccountTicketsTab() {
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => setSelectedTicketNo(row.ticketNo === selectedTicketNo ? null : row.ticketNo)}
+          onClick={() =>
+            setSelectedTicketNo(row.ticketNo === selectedTicketNo ? null : row.ticketNo)
+          }
         >
           {selectedTicketNo === row.ticketNo ? '收起' : '查看'}
         </Button>
-      )
-    }
+      ),
+    },
   ];
 
   const selectedDetail = ticketDetailQuery.data;
@@ -381,40 +393,43 @@ export function AccountTicketsTab() {
           </Button>
         </div>
 
-        <FilterBar
+        <FilterChipBar
           searchValue={search}
           onSearchChange={setSearch}
           searchPlaceholder="搜索工单号、标题、应用、订单号..."
-          filters={[
-            {
-              id: 'status',
-              placeholder: '全部状态',
-              value: statusFilter,
-              onChange: setStatusFilter,
-              options: [
-                { value: 'waiting_staff', label: '待处理' },
-                { value: 'waiting_user', label: '待回复' },
-                { value: 'resolved', label: '已解决' },
-                { value: 'closed', label: '已关闭' }
-              ]
-            },
-            {
-              id: 'category',
-              placeholder: '全部分类',
-              value: categoryFilter,
-              onChange: setCategoryFilter,
-              options: [
-                { value: 'billing', label: '账单' },
-                { value: 'access', label: '授权' },
-                { value: 'install', label: '安装' },
-                { value: 'deployment', label: '部署' },
-                { value: 'bug', label: '缺陷' },
-                { value: 'feature', label: '功能' },
-                { value: 'account', label: '账户' },
-                { value: 'other', label: '其他' }
-              ]
-            }
-          ]}
+          chips={
+            [
+              {
+                id: 'status',
+                label: '状态',
+                values: statusValues,
+                onChange: (next) => setFilter('status', next),
+                options: [
+                  { value: 'waiting_staff', label: '待处理' },
+                  { value: 'waiting_user', label: '待回复' },
+                  { value: 'resolved', label: '已解决' },
+                  { value: 'closed', label: '已关闭' },
+                ],
+              },
+              {
+                id: 'category',
+                label: '分类',
+                values: categoryValues,
+                onChange: (next) => setFilter('category', next),
+                options: [
+                  { value: 'billing', label: '账单' },
+                  { value: 'access', label: '授权' },
+                  { value: 'install', label: '安装' },
+                  { value: 'deployment', label: '部署' },
+                  { value: 'bug', label: '缺陷' },
+                  { value: 'feature', label: '功能' },
+                  { value: 'account', label: '账户' },
+                  { value: 'other', label: '其他' },
+                ],
+              },
+            ] satisfies FilterChipConfig[]
+          }
+          onClearAll={clearFilters}
         />
 
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -423,7 +438,7 @@ export function AccountTicketsTab() {
             data={tickets}
             isLoading={ticketsQuery.isLoading}
             emptyMessage="暂无工单"
-            getRowKey={(row) => row.ticketNo}
+            getRowId={(row) => row.ticketNo}
           />
         </div>
 
@@ -445,7 +460,7 @@ export function AccountTicketsTab() {
           onReply={() =>
             replyMutation.mutate({
               ticketNo: selectedTicketNo,
-              body: replyBody.trim()
+              body: replyBody.trim(),
             })
           }
           onCloseTicket={() => closeMutation.mutate(selectedTicketNo)}

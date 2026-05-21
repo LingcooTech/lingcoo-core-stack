@@ -1,26 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { listInstalls } from '@/api/admin';
 import type { HydratedInstall } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterBar } from '@/components/shared/FilterBar';
+import { FilterChipBar } from '@/components/shared/FilterChipBar';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
+import { useTableState } from '@/hooks/useTableState';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
 export function InstallsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const { page, search, setPage, setSearch } = useTableState({ defaultPageSize: PAGE_SIZE });
+  const deferredSearch = useDeferredValue(search);
+
   const installQuery = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
-      search: deferredSearchQuery.trim() || undefined,
+      search: deferredSearch.trim() || undefined,
     }),
-    [deferredSearchQuery, page],
+    [deferredSearch, page],
   );
   const installsQuery = useQuery({
     queryKey: ['installs', installQuery],
@@ -29,31 +30,29 @@ export function InstallsPage() {
   const installs = installsQuery.data?.items ?? [];
   const totalInstalls = installsQuery.data?.total ?? 0;
 
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearchQuery]);
-
   const installColumns: Column<HydratedInstall>[] = [
     {
       key: 'install',
       header: '安装实例',
       cell: (row) => (
         <div>
-          <p className="text-xs font-bold font-mono">{row.extensionInstallId}</p>
-          {row.chromeProfileHint && <p className="text-[10px] text-muted-foreground">{row.chromeProfileHint}</p>}
-          {row.appVersion && <p className="text-[10px] text-muted-foreground">v{row.appVersion}</p>}
+          <p className="font-mono text-xs font-bold">{row.extensionInstallId}</p>
+          {row.chromeProfileHint && (
+            <p className="text-muted-foreground text-[10px]">{row.chromeProfileHint}</p>
+          )}
+          {row.appVersion && <p className="text-muted-foreground text-[10px]">v{row.appVersion}</p>}
         </div>
-      )
+      ),
     },
     {
       key: 'app',
       header: '应用',
       cell: (row) => (
         <div>
-          <p className="text-xs font-mono">{row.app?.code ?? '—'}</p>
+          <p className="font-mono text-xs">{row.app?.code ?? '—'}</p>
           <StatusPill tone="neutral" label={row.app?.type ?? '—'} className="mt-1" />
         </div>
-      )
+      ),
     },
     {
       key: 'user',
@@ -61,9 +60,11 @@ export function InstallsPage() {
       cell: (row) => (
         <div>
           <p className="text-xs font-bold">{row.user?.email ?? '未绑定'}</p>
-          {row.user?.displayName && <p className="text-[10px] text-muted-foreground">{row.user.displayName}</p>}
+          {row.user?.displayName && (
+            <p className="text-muted-foreground text-[10px]">{row.user.displayName}</p>
+          )}
         </div>
-      )
+      ),
     },
     {
       key: 'status',
@@ -71,9 +72,9 @@ export function InstallsPage() {
       cell: (row) => (
         <div className="flex flex-col gap-1">
           <StatusPill tone={statusToTone(row.status)} label={row.status} />
-          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
+          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
         </div>
-      )
+      ),
     },
     {
       key: 'lastSeen',
@@ -81,10 +82,10 @@ export function InstallsPage() {
       cell: (row) => (
         <div>
           <p className="text-xs">{formatTime(row.lastSeenAt)}</p>
-          <p className="text-[10px] text-muted-foreground">{formatTime(row.updatedAt)}</p>
+          <p className="text-muted-foreground text-[10px]">{formatTime(row.updatedAt)}</p>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -92,20 +93,20 @@ export function InstallsPage() {
       <div className="p-6">
         <h1 className="text-2xl font-semibold tracking-tight">安装实例</h1>
       </div>
-      <div className="px-6 pb-6 space-y-4">
-        <FilterBar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+      <div className="space-y-4 px-6 pb-6">
+        <FilterChipBar
+          searchValue={search}
+          onSearchChange={setSearch}
           searchPlaceholder="搜索安装 ID、用户、应用..."
         />
 
-        <div className="rounded-lg border border-border bg-white overflow-hidden">
+        <div className="border-border overflow-hidden rounded-lg border bg-white">
           <DataTable
             columns={installColumns}
             data={installs}
             isLoading={installsQuery.isLoading}
             emptyMessage="暂无安装记录"
-            getRowKey={(row) => row.id}
+            getRowId={(row) => row.id}
           />
         </div>
 
