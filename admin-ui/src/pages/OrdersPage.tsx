@@ -1,41 +1,61 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getOrderDetail, listOrders, reconcileOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
 import { Button } from '@/components/ui/button';
+import { BulkActionBar, BulkActionButton } from '@/components/shared/BulkActionBar';
 import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterBar } from '@/components/shared/FilterBar';
+import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { JsonViewer } from '@/components/shared/JsonViewer';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
+import { useTableState } from '@/hooks/useTableState';
 import { formatAmount, formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
+const STATUS_OPTIONS = [
+  { value: 'pending', label: '待支付' },
+  { value: 'paid', label: '已支付' },
+  { value: 'failed', label: '失败' },
+  { value: 'cancelled', label: '已取消' },
+  { value: 'refunded', label: '已退款' },
+] as const;
+
+const PROVIDER_OPTIONS = [
+  { value: 'wechat_pay', label: '微信支付' },
+  { value: 'alipay', label: '支付宝' },
+] as const;
+
+type OrderStatus = (typeof STATUS_OPTIONS)[number]['value'];
+type OrderProvider = (typeof PROVIDER_OPTIONS)[number]['value'];
+
 export function OrdersPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('__all__');
-  const [providerFilter, setProviderFilter] = useState('__all__');
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: PAGE_SIZE,
+    knownFilters: ['status', 'provider'],
+  });
+
+  const statusValues = useMemo(() => filters.status ?? [], [filters.status]);
+  const providerValues = useMemo(() => filters.provider ?? [], [filters.provider]);
+  const deferredSearch = useDeferredValue(search);
+
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
 
   const qc = useQueryClient();
+  // 后端 status/provider 当前为单值；多选时取首项，UI 仍允许多选以便未来扩展
   const orderQuery = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
-      search: deferredSearchQuery.trim() || undefined,
-      status:
-        statusFilter !== '__all__'
-          ? (statusFilter as 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded')
-          : undefined,
-      provider:
-        providerFilter !== '__all__' ? (providerFilter as 'wechat_pay' | 'alipay') : undefined,
+      search: deferredSearch.trim() || undefined,
+      status: (statusValues[0] as OrderStatus | undefined) ?? undefined,
+      provider: (providerValues[0] as OrderProvider | undefined) ?? undefined,
     }),
-    [deferredSearchQuery, page, providerFilter, statusFilter],
+    [deferredSearch, page, providerValues, statusValues],
   );
   const ordersQuery = useQuery({
     queryKey: ['orders', orderQuery],
@@ -61,11 +81,29 @@ export function OrdersPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败'),
   });
 
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearchQuery, providerFilter, statusFilter]);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const runBulkReconcile = async () => {
+    if (selectedRowIds.size === 0) return;
+    setBulkRunning(true);
+    const ids = Array.from(selectedRowIds);
+    let ok = 0;
+    let fail = 0;
+    for (const orderNo of ids) {
+      try {
+        await reconcileOrder(orderNo);
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setBulkRunning(false);
+    setSelectedRowIds(new Set());
+    void qc.invalidateQueries({ queryKey: ['orders'] });
+    if (fail === 0) toast.success(`批量同步完成：${ok} 笔`);
+    else toast.warning(`批量同步：成功 ${ok}、失败 ${fail}`);
+  };
 
-  const orders = ordersQuery.data?.items ?? [];
+  const orders = useMemo(() => ordersQuery.data?.items ?? [], [ordersQuery.data?.items]);
   const totalOrders = ordersQuery.data?.total ?? 0;
 
   useEffect(() => {
@@ -73,6 +111,23 @@ export function OrdersPage() {
       setSelectedOrderNo(null);
     }
   }, [orders, selectedOrderNo]);
+
+  const chips: FilterChipConfig[] = [
+    {
+      id: 'status',
+      label: '状态',
+      values: statusValues,
+      onChange: (next) => setFilter('status', next),
+      options: STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    },
+    {
+      id: 'provider',
+      label: '支付方式',
+      values: providerValues,
+      onChange: (next) => setFilter('provider', next),
+      options: PROVIDER_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    },
+  ];
 
   const orderColumns: Column<HydratedOrder>[] = [
     {
@@ -179,36 +234,23 @@ export function OrdersPage() {
         <h1 className="text-[2rem] font-semibold tracking-tight text-slate-900">订单管理</h1>
       </div>
       <div className="space-y-3.5 px-6 pb-6">
-        <FilterBar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
+        <FilterChipBar
+          searchValue={search}
+          onSearchChange={setSearch}
           searchPlaceholder="搜索订单号、用户、应用..."
-          filters={[
-            {
-              id: 'status',
-              placeholder: '全部状态',
-              value: statusFilter,
-              onChange: setStatusFilter,
-              options: [
-                { value: 'pending', label: 'pending' },
-                { value: 'paid', label: 'paid' },
-                { value: 'failed', label: 'failed' },
-                { value: 'cancelled', label: 'cancelled' },
-                { value: 'refunded', label: 'refunded' },
-              ],
-            },
-            {
-              id: 'provider',
-              placeholder: '全部渠道',
-              value: providerFilter,
-              onChange: setProviderFilter,
-              options: [
-                { value: 'wechat_pay', label: 'wechat_pay' },
-                { value: 'alipay', label: 'alipay' },
-              ],
-            },
-          ]}
+          chips={chips}
+          onClearAll={clearFilters}
         />
+
+        <BulkActionBar
+          selectedCount={selectedRowIds.size}
+          onClear={() => setSelectedRowIds(new Set())}
+        >
+          <BulkActionButton onClick={runBulkReconcile} disabled={bulkRunning}>
+            <RefreshCw className={`size-3.5 ${bulkRunning ? 'animate-spin' : ''}`} />
+            {bulkRunning ? '同步中...' : '批量同步'}
+          </BulkActionButton>
+        </BulkActionBar>
 
         <div className="border-border overflow-hidden rounded-xl border bg-white shadow-sm">
           <DataTable
@@ -216,7 +258,10 @@ export function OrdersPage() {
             data={orders}
             isLoading={ordersQuery.isLoading}
             emptyMessage="暂无订单"
-            getRowKey={(row) => row.orderNo}
+            getRowId={(row) => row.orderNo}
+            enableRowSelection
+            selectedRowIds={selectedRowIds}
+            onSelectionChange={setSelectedRowIds}
           />
         </div>
 
@@ -229,7 +274,6 @@ export function OrdersPage() {
           onPageChange={setPage}
         />
 
-        {/* Order Detail Panel */}
         {selectedOrderNo && (
           <div className="border-border space-y-4 rounded-xl border bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between">
@@ -265,7 +309,6 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 
   return (
     <div className="space-y-4 text-sm">
-      {/* Order Meta */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <InfoBlock label="订单号" value={item.orderNo} mono />
         <InfoBlock label="状态" value={item.status} />
@@ -278,7 +321,6 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <InfoBlock label="支付时间" value={formatTime(item.paidAt)} />
       </div>
 
-      {/* Checkout Session */}
       {item.checkoutSession && (
         <div className="bg-muted/30 border-border rounded-md border p-3">
           <p className="mb-2 text-xs font-semibold">Checkout Session</p>
@@ -292,7 +334,6 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         </div>
       )}
 
-      {/* Payment Attempts */}
       {paymentAttempts.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-semibold">支付尝试 ({paymentAttempts.length})</p>
@@ -321,7 +362,6 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         </div>
       )}
 
-      {/* Entitlements */}
       {entitlements.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-semibold">关联权益 ({entitlements.length})</p>
@@ -339,7 +379,6 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         </div>
       )}
 
-      {/* Events */}
       {events.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-semibold">关联事件 ({events.length})</p>
