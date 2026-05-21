@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { getOrderDetail, listOrders, reconcileOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { BulkActionBar, BulkActionButton } from '@/components/shared/BulkActionBar';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
@@ -192,20 +199,11 @@ export function OrdersPage() {
             className="text-xs"
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedOrderNo(row.orderNo === selectedOrderNo ? null : row.orderNo);
+              setSelectedOrderNo(row.orderNo);
             }}
           >
-            {selectedOrderNo === row.orderNo ? (
-              <>
-                <ChevronUp className="mr-1 h-3 w-3" />
-                收起
-              </>
-            ) : (
-              <>
-                <ChevronDown className="mr-1 h-3 w-3" />
-                详情
-              </>
-            )}
+            <Eye className="mr-1 h-3 w-3" />
+            查看
           </Button>
           <Button
             size="sm"
@@ -275,29 +273,44 @@ export function OrdersPage() {
         />
 
         {selectedOrderNo && (
-          <div className="border-border space-y-4 rounded-xl border bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">订单详情: {selectedOrderNo}</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => reconcileMutation.mutate(selectedOrderNo)}
-                disabled={reconcileMutation.isPending}
-              >
-                {reconcileMutation.isPending ? '同步中...' : '同步订单'}
-              </Button>
-            </div>
+          <Sheet
+            open
+            onOpenChange={(open) => {
+              if (!open) setSelectedOrderNo(null);
+            }}
+          >
+            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+              <SheetHeader className="border-border border-b">
+                <SheetTitle className="font-mono text-sm">{selectedOrderNo}</SheetTitle>
+                <SheetDescription>订单详情</SheetDescription>
+                <div className="mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => reconcileMutation.mutate(selectedOrderNo)}
+                    disabled={reconcileMutation.isPending}
+                  >
+                    <RefreshCw
+                      className={`mr-1.5 size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
+                    />
+                    {reconcileMutation.isPending ? '同步中...' : '同步订单'}
+                  </Button>
+                </div>
+              </SheetHeader>
 
-            {orderDetailQuery.isLoading ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="bg-muted h-8 animate-pulse rounded" />
-                ))}
+              <div className="px-4 pb-6">
+                {orderDetailQuery.isLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="bg-muted h-8 animate-pulse rounded" />
+                    ))}
+                  </div>
+                ) : detail ? (
+                  <OrderDetailSection detail={detail} />
+                ) : null}
               </div>
-            ) : detail ? (
-              <OrderDetailSection detail={detail} />
-            ) : null}
-          </div>
+            </SheetContent>
+          </Sheet>
         )}
       </div>
     </div>
