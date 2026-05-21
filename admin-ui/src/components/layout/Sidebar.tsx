@@ -78,10 +78,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <img
                 src={siteSettings.logoUrl}
                 alt={siteName}
-                className="border-border bg-card h-10 w-10 rounded-2xl border object-contain p-1.5 shadow-sm"
+                className="border-border bg-card h-10 w-10 rounded-xl border object-contain p-1.5 shadow-sm"
               />
             ) : (
-              <div className="from-primary shadow-primary/20 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
+              <div className="from-primary shadow-primary/20 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
                 {getInitials(siteName)}
               </div>
             )}
@@ -171,7 +171,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <button
               type="button"
               className={cn(
-                'border-border/90 bg-card/95 hover:border-border hover:bg-card w-full rounded-2xl border text-left shadow-sm transition',
+                'border-border/90 bg-card/95 hover:border-border hover:bg-card w-full rounded-xl border text-left shadow-sm transition',
                 collapsed
                   ? 'flex items-center justify-center p-2.5'
                   : 'flex items-center gap-3 px-3 py-2.5',
@@ -237,7 +237,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div className="px-3 py-3">
               <div className="space-y-1">
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/account?tab=profile');
@@ -247,7 +247,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   个人资料
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/account?tab=orders');
@@ -257,7 +257,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   我的订单
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/account?tab=apps');
@@ -267,7 +267,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   我的应用
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/tickets');
@@ -282,7 +282,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
               <div className="space-y-1">
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/admin');
@@ -292,7 +292,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   后台首页
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     navigate('/admin/settings');
@@ -302,7 +302,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   设置
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="rounded-2xl px-3 py-3 text-[15px]"
+                  className="rounded-xl px-3 py-3 text-[15px]"
                   onSelect={(event) => {
                     event.preventDefault();
                     window.open('/api-docs', '_blank', 'noopener,noreferrer');
@@ -316,7 +316,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <DropdownMenuSeparator className="my-3" />
 
               <DropdownMenuItem
-                className="rounded-2xl px-3 py-3 text-[15px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
+                className="rounded-xl px-3 py-3 text-[15px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
                 onSelect={(event) => {
                   event.preventDefault();
                   logout();

@@ -23,13 +23,13 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
       <img
         src={app.iconUrl}
         alt={app.name}
-        className="border-border bg-card h-20 w-20 rounded-[22%] border object-contain p-1 shadow-sm"
+        className="border-border bg-card h-20 w-20 rounded-xl border object-contain p-1 shadow-sm"
       />
     );
   }
 
   return (
-    <div className="bg-muted text-muted-foreground flex h-20 w-20 items-center justify-center rounded-[22%] text-2xl font-semibold shadow-sm">
+    <div className="bg-muted text-muted-foreground flex h-20 w-20 items-center justify-center rounded-xl text-2xl font-semibold shadow-sm">
       {getInitials(app.name)}
     </div>
   );
@@ -97,7 +97,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'border-border bg-card group overflow-hidden rounded-xl border shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
+    'border-border bg-card group overflow-hidden rounded-xl border shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
     className,
   );
 

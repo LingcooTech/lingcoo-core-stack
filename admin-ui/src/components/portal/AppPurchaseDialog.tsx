@@ -331,14 +331,14 @@ export function AppPurchaseDialog({
 
                   <div className="flex flex-wrap gap-3">
                     <Button
-                      className="rounded-2xl"
+                      className="rounded-xl"
                       disabled={!selectedOffer}
                       onClick={() => setStep('payment')}
                     >
                       下一步
                     </Button>
                     {websiteUrl ? (
-                      <Button variant="outline" className="rounded-2xl" asChild>
+                      <Button variant="outline" className="rounded-xl" asChild>
                         <a href={websiteUrl} target="_blank" rel="noopener noreferrer">
                           在线使用
                           <ExternalLink className="h-4 w-4" />
@@ -362,7 +362,7 @@ export function AppPurchaseDialog({
                           key={provider.value}
                           type="button"
                           onClick={() => setProviderPreference(provider.value)}
-                          className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
+                          className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
                             providerPreference === provider.value
                               ? 'border-sky-200 bg-sky-50 text-sky-700'
                               : 'border-border bg-card text-muted-foreground hover:text-foreground'
@@ -377,14 +377,14 @@ export function AppPurchaseDialog({
                   <div className="flex flex-wrap gap-3">
                     <Button
                       variant="outline"
-                      className="rounded-2xl"
+                      className="rounded-xl"
                       onClick={() => setStep('plan')}
                     >
                       <ChevronLeft className="h-4 w-4" />
                       返回套餐
                     </Button>
                     <Button
-                      className="rounded-2xl"
+                      className="rounded-xl"
                       disabled={!selectedOffer || checkoutMutation.isPending}
                       onClick={() => {
                         if (!isEmailVerified) {
@@ -431,7 +431,7 @@ export function AppPurchaseDialog({
                     </p>
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
                       <Button
-                        className="rounded-2xl"
+                        className="rounded-xl"
                         onClick={() => {
                           resetDialog(false);
                           onPaymentSuccess?.();
@@ -446,7 +446,7 @@ export function AppPurchaseDialog({
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-2xl"
+                        className="rounded-xl"
                         onClick={() => {
                           resetDialog(false);
                           onPaymentSuccess?.();
@@ -457,7 +457,7 @@ export function AppPurchaseDialog({
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-2xl"
+                        className="rounded-xl"
                         onClick={() => {
                           onPaymentSuccess?.();
                           resetDialog(false);
@@ -475,7 +475,7 @@ export function AppPurchaseDialog({
                     <img
                       src={paymentAction.qrCodeDataUrl}
                       alt="支付二维码"
-                      className="border-border bg-card h-56 w-56 rounded-2xl border p-3"
+                      className="border-border bg-card h-56 w-56 rounded-xl border p-3"
                     />
                     <p className="text-muted-foreground mt-4 text-sm">
                       请使用微信扫描二维码完成支付
@@ -491,13 +491,13 @@ export function AppPurchaseDialog({
                       支付宝会在新窗口中完成支付，支付完成后当前弹窗会自动刷新状态。
                     </p>
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
-                      <Button className="rounded-2xl" onClick={openRedirectPayment}>
+                      <Button className="rounded-xl" onClick={openRedirectPayment}>
                         打开支付窗口
                       </Button>
                       {externalPaymentOpened ? (
                         <Button
                           variant="outline"
-                          className="rounded-2xl"
+                          className="rounded-xl"
                           disabled={reconcileMutation.isPending}
                           onClick={() => reconcileMutation.mutate()}
                         >

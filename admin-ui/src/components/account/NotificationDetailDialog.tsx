@@ -143,7 +143,7 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
           <div key={message.id} className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
-                'max-w-[88%] rounded-2xl border px-4 py-3 shadow-sm',
+                'max-w-[88%] rounded-xl border px-4 py-3 shadow-sm',
                 isUser
                   ? 'text-foreground border-blue-200 bg-blue-50'
                   : 'border-border bg-card text-foreground',
@@ -264,7 +264,7 @@ export function NotificationDetailDialog({
               )
             ) : (
               <div className="space-y-4">
-                <div className="border-border bg-card rounded-2xl border px-5 py-4 shadow-sm">
+                <div className="border-border bg-card rounded-xl border px-5 py-4 shadow-sm">
                   <p className="text-foreground whitespace-pre-wrap text-sm leading-7">
                     {notification.body}
                   </p>

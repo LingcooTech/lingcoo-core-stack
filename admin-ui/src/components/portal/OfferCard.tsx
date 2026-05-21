@@ -37,11 +37,11 @@ export function OfferCard({
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={onSelect}
-      className={`rounded-2xl border p-6 text-left transition-all duration-300 ${
+      className={`rounded-xl border p-6 text-left transition-all duration-300 ${
         selected
           ? 'border-primary ring-primary/10 bg-blue-50/70 shadow-lg shadow-blue-500/10 ring-1'
           : interactive
-            ? 'border-border bg-card hover:border-border hover:shadow-slate-900/8 shadow-sm shadow-slate-900/5 hover:-translate-y-0.5 hover:shadow-lg'
+            ? 'border-border bg-card hover:border-border hover:shadow-slate-900/8 shadow-sm shadow-slate-900/5 hover:shadow-lg'
             : 'border-border bg-card'
       }`}
     >

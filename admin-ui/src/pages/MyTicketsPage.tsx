@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 export function MyTicketsPage() {
   return (
     <div className="space-y-5">
-      <section className="border-border bg-card/95 flex flex-wrap items-start justify-between gap-4 rounded-3xl border px-6 py-6 shadow-sm">
+      <section className="border-border bg-card/95 flex flex-wrap items-start justify-between gap-4 rounded-xl border px-6 py-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-primary text-xs font-semibold uppercase tracking-[0.18em]">Support</p>
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">我的工单</h1>

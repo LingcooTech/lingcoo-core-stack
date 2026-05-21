@@ -39,7 +39,7 @@ export function ContentHubPage() {
 
   return (
     <div className="space-y-6">
-      <section className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+      <section className="border-border bg-card rounded-xl border p-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-medium text-sky-700">内容中心</p>
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">
@@ -63,7 +63,7 @@ export function ContentHubPage() {
       {contentQuery.isLoading ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={index} className="border-border bg-card rounded-2xl">
+            <Card key={index} className="border-border bg-card rounded-xl">
               <CardContent className="space-y-3 p-5">
                 <div className="bg-muted h-5 w-2/3 animate-pulse rounded" />
                 <div className="bg-muted h-4 w-1/2 animate-pulse rounded" />
@@ -85,7 +85,7 @@ export function ContentHubPage() {
             <Link
               key={item.id}
               to={`/content/${item.slug}`}
-              className="border-border bg-card hover:border-border block rounded-2xl border p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-md"
+              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm shadow-slate-900/5 transition"
             >
               <div className="space-y-3">
                 <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">

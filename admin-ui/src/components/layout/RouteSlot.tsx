@@ -24,7 +24,7 @@ function RouteLoading() {
 function RouteErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
           <AlertTriangle className="h-6 w-6" />
         </div>

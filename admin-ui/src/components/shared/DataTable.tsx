@@ -188,7 +188,7 @@ export function DataTable<T extends RowData>({
             </TableCell>
           </TableRow>
         ) : (
-          table.getRowModel().rows.map((row, idx) => (
+          table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
@@ -199,7 +199,6 @@ export function DataTable<T extends RowData>({
                 row.getIsSelected() && 'bg-primary/5',
                 rowClassName ? rowClassName(row.original) : '',
               )}
-              style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
             >
               {enableRowSelection && (
                 <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>

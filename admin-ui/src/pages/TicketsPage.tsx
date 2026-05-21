@@ -162,7 +162,7 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
         return (
           <div
             key={message.id}
-            className="border-border bg-card rounded-2xl border px-4 py-3 shadow-sm"
+            className="border-border bg-card rounded-xl border px-4 py-3 shadow-sm"
           >
             <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
               <span className="text-foreground font-semibold">{messageAuthorLabel(message)}</span>

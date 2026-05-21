@@ -69,7 +69,7 @@ export function CreateTicketPage() {
           </Link>
         </Button>
 
-        <section className="border-border bg-card/95 rounded-3xl border px-6 py-6 shadow-sm">
+        <section className="border-border bg-card/95 rounded-xl border px-6 py-6 shadow-sm">
           <p className="text-primary text-xs font-semibold uppercase tracking-[0.18em]">
             Create Ticket
           </p>
@@ -81,7 +81,7 @@ export function CreateTicketPage() {
         </section>
       </div>
 
-      <Card className="border-border bg-card rounded-2xl shadow-sm">
+      <Card className="border-border bg-card rounded-xl shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl tracking-tight">工单内容</CardTitle>
           <CardDescription>问题越具体，定位和处理越快。</CardDescription>

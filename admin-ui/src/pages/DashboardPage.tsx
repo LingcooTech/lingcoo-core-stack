@@ -64,21 +64,18 @@ export function DashboardPage() {
             value={apps.length}
             loading={appsResult.isLoading}
             color="from-blue-500 to-blue-600"
-            delay={0}
           />
           <MetricCard
             label="活跃密钥"
             value={activeSecrets.length}
             loading={appsResult.isLoading}
             color="from-green-500 to-green-600"
-            delay={50}
           />
           <MetricCard
             label="已支付订单"
             value={paidOrders.length}
             loading={ordersResult.isLoading}
             color="from-purple-500 to-purple-600"
-            delay={100}
           />
           <MetricCard
             label="待处理订单"
@@ -86,7 +83,6 @@ export function DashboardPage() {
             loading={ordersResult.isLoading}
             tone={pendingOrders.length > 0 ? 'warn' : 'ok'}
             color="from-amber-500 to-amber-600"
-            delay={150}
           />
         </div>
 
@@ -111,17 +107,16 @@ export function DashboardPage() {
         <div>
           <h2 className="text-foreground mb-3 text-base font-semibold">快捷入口</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {quickLinks.map((link, index) => {
+            {quickLinks.map((link) => {
               const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="border-border hover:border-primary/30 animate-fadeInUp bg-card group flex flex-col gap-3 rounded-xl border p-4 no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
-                  style={{ animationDelay: `${200 + index * 50}ms` }}
+                  className="border-border hover:border-primary/30 bg-card group flex flex-col gap-3 rounded-xl border p-4 no-underline transition-all duration-300"
                 >
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${link.color} transition-transform duration-300 group-hover:scale-110`}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${link.color} transition-transform duration-300`}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
@@ -177,20 +172,15 @@ function MetricCard({
   loading,
   tone = 'neutral',
   color = 'from-gray-500 to-gray-600',
-  delay = 0,
 }: {
   label: string;
   value: number;
   loading?: boolean;
   tone?: 'ok' | 'warn' | 'neutral';
   color?: string;
-  delay?: number;
 }) {
   return (
-    <Card
-      className="animate-fadeInUp transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
-      style={{ animationDelay: `${delay}ms` }}
-    >
+    <Card className="transition-colors">
       <CardHeader className="pb-2">
         <CardTitle className="text-muted-foreground text-sm font-medium">{label}</CardTitle>
       </CardHeader>

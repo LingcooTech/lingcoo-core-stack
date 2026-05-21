@@ -29,8 +29,8 @@ export function PageTransition({ children, className }: PageTransitionProps) {
     <div
       className={cn(
         'transition-opacity duration-200',
-        transitionStage === 'fadeIn' ? 'animate-fadeInUp opacity-100' : 'opacity-0',
-        className
+        transitionStage === 'fadeIn' ? 'opacity-100' : 'opacity-0',
+        className,
       )}
       onAnimationEnd={handleAnimationEnd}
     >
@@ -41,9 +41,5 @@ export function PageTransition({ children, className }: PageTransitionProps) {
 
 // 简化版本 - 只有淡入效果
 export function SimpleFadeIn({ children, className }: PageTransitionProps) {
-  return (
-    <div className={cn('animate-fadeInUp', className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('', className)}>{children}</div>;
 }

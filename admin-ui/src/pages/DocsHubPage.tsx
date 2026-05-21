@@ -16,7 +16,7 @@ export function DocsHubPage() {
 
   return (
     <div className="space-y-6">
-      <section className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+      <section className="border-border bg-card rounded-xl border p-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-medium text-sky-700">文档中心</p>
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">
@@ -44,7 +44,7 @@ export function DocsHubPage() {
             <Link
               key={space.id}
               to={`/docs/${space.slug}`}
-              className="border-border bg-card hover:border-border block rounded-2xl border p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-md"
+              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm shadow-slate-900/5 transition"
             >
               <Card className="border-0 shadow-none">
                 <CardContent className="space-y-3 p-0">

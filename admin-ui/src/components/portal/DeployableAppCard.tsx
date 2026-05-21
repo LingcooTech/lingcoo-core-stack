@@ -14,7 +14,7 @@ export function DeployableAppCard({
   featureCount: number;
 }) {
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5 transition hover:-translate-y-0.5 hover:shadow-lg">
+    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5 transition hover:shadow-lg">
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

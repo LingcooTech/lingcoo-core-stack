@@ -47,10 +47,10 @@ export function DocsShell() {
                 <img
                   src={siteSettings.logoUrl}
                   alt={siteName}
-                  className="border-border bg-card h-9 w-9 rounded-2xl border object-contain p-1.5 shadow-sm"
+                  className="border-border bg-card h-9 w-9 rounded-xl border object-contain p-1.5 shadow-sm"
                 />
               ) : (
-                <div className="from-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
+                <div className="from-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
                   {getInitials(siteName)}
                 </div>
               )}

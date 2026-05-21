@@ -100,7 +100,7 @@ export function DocsSpacePage() {
       </Button>
 
       <div className="grid gap-6 lg:grid-cols-[260px,minmax(0,1fr),220px]">
-        <aside className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm shadow-slate-900/5">
+        <aside className="border-border bg-card overflow-hidden rounded-xl border shadow-sm shadow-slate-900/5">
           <div className="border-border border-b px-4 py-4">
             <p className="text-foreground text-sm font-semibold">{space.title}</p>
             {space.description ? (
@@ -131,7 +131,7 @@ export function DocsSpacePage() {
         </aside>
 
         <main className="space-y-5">
-          <header className="border-border bg-card rounded-2xl border px-5 py-5 shadow-sm shadow-slate-900/5">
+          <header className="border-border bg-card rounded-xl border px-5 py-5 shadow-sm shadow-slate-900/5">
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
               <Link to="/docs" className="hover:text-foreground">
                 文档中心
@@ -149,7 +149,7 @@ export function DocsSpacePage() {
             ) : null}
           </header>
 
-          <section className="border-border bg-card rounded-2xl border px-6 py-6 shadow-sm shadow-slate-900/5">
+          <section className="border-border bg-card rounded-xl border px-6 py-6 shadow-sm shadow-slate-900/5">
             <div className="prose prose-slate prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed max-w-none">
               <ReactMarkdown
                 rehypePlugins={[rehypeRaw]}
@@ -184,7 +184,7 @@ export function DocsSpacePage() {
         </main>
 
         <aside className="hidden lg:block">
-          <div className="border-border bg-card sticky top-20 rounded-2xl border px-4 py-4 shadow-sm shadow-slate-900/5">
+          <div className="border-border bg-card sticky top-20 rounded-xl border px-4 py-4 shadow-sm shadow-slate-900/5">
             <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.16em]">
               目录
             </p>

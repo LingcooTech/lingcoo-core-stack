@@ -67,17 +67,17 @@ export function HomePage() {
     <div className="space-y-8">
       <section className="space-y-4">
         {isLoading ? (
-          <div className="border-border bg-card overflow-hidden rounded-2xl border p-6 shadow-sm">
+          <div className="border-border bg-card overflow-hidden rounded-xl border p-6 shadow-sm">
             <div className="bg-muted h-8 w-44 animate-pulse rounded" />
             <div className="bg-muted mt-4 h-5 w-2/3 animate-pulse rounded" />
             <div className="mt-6 grid gap-4 md:grid-cols-[112px,minmax(0,1fr),180px]">
-              <div className="bg-muted h-24 w-24 animate-pulse rounded-[22%]" />
+              <div className="bg-muted h-24 w-24 animate-pulse rounded-xl" />
               <div className="space-y-4">
                 <div className="bg-muted h-5 w-40 animate-pulse rounded" />
                 <div className="bg-muted h-4 w-full animate-pulse rounded" />
                 <div className="bg-muted h-4 w-3/4 animate-pulse rounded" />
               </div>
-              <div className="bg-muted h-32 animate-pulse rounded-2xl" />
+              <div className="bg-muted h-32 animate-pulse rounded-xl" />
             </div>
           </div>
         ) : hotApps.length === 0 ? (
@@ -88,7 +88,7 @@ export function HomePage() {
           />
         ) : (
           <div className="space-y-3">
-            <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-md">
+            <div className="border-border bg-card overflow-hidden rounded-xl border shadow-md">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
@@ -114,10 +114,10 @@ export function HomePage() {
                               <img
                                 src={app.iconUrl}
                                 alt={app.name}
-                                className="border-border bg-card h-28 w-28 rounded-[22%] border object-contain p-1 shadow-md"
+                                className="border-border bg-card h-28 w-28 rounded-xl border object-contain p-1 shadow-md"
                               />
                             ) : (
-                              <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-[22%] border text-3xl font-semibold shadow-md">
+                              <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-xl border text-3xl font-semibold shadow-md">
                                 {getInitials(app.name)}
                               </div>
                             )}
@@ -152,7 +152,7 @@ export function HomePage() {
                             </div>
                           </div>
 
-                          <div className="border-border bg-card/95 rounded-2xl border p-5 shadow-sm">
+                          <div className="border-border bg-card/95 rounded-xl border p-5 shadow-sm">
                             <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
                               起始价格
                             </p>
@@ -231,11 +231,7 @@ export function HomePage() {
         {isLoading ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="animate-fadeInUp"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
+              <div key={index} className="">
                 <SkeletonAppCard />
               </div>
             ))}
@@ -248,14 +244,8 @@ export function HomePage() {
           />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredApps.map((app, index) => (
-              <div
-                key={app.id}
-                className="animate-fadeInUp"
-                style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
-              >
-                <AppCard app={app} href={`/apps/${app.code}`} className="h-full" />
-              </div>
+            {filteredApps.map((app) => (
+              <AppCard key={app.id} app={app} href={`/apps/${app.code}`} className="h-full" />
             ))}
           </div>
         )}

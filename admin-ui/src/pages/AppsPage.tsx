@@ -279,7 +279,7 @@ export function AppsPage() {
       <div className="grid gap-4 lg:grid-cols-4">
         {isAppsLoading
           ? Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} style={{ animationDelay: `${index * 50}ms` }}>
+              <div key={index}>
                 <SkeletonMetricCard />
               </div>
             ))
@@ -308,13 +308,12 @@ export function AppsPage() {
                 value: String(activeOfferCount),
                 color: 'from-purple-500 to-purple-600',
               },
-            ].map((item, index) => {
+            ].map((item) => {
               const Icon = item.icon;
               return (
                 <div
                   key={item.label}
-                  className="animate-fadeInUp border-border bg-card rounded-lg border px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="border-border bg-card rounded-lg border px-4 py-4 shadow-sm transition-all duration-300"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
