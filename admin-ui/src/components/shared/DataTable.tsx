@@ -5,6 +5,7 @@ import {
   useReactTable,
   type ColumnDef,
   type RowData,
+  type RowSelectionState,
 } from '@tanstack/react-table';
 
 import {
@@ -15,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +41,10 @@ interface DataTableProps<T> {
   getRowKey?: (row: T) => string;
   sortConfig?: { key: keyof T | null; direction: 'asc' | 'desc' | null };
   onSort?: (key: keyof T) => void;
+  /** 行选择：开启后会在最前面插入 checkbox 列 */
+  enableRowSelection?: boolean;
+  selectedRowIds?: ReadonlySet<string>;
+  onSelectionChange?: (selected: Set<string>) => void;
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -64,10 +70,10 @@ export function DataTable<T extends RowData>({
   getRowKey,
   sortConfig,
   onSort,
+  enableRowSelection,
+  selectedRowIds,
+  onSelectionChange,
 }: DataTableProps<T>) {
-  // 把现有 Column<T>[] 转换成 TanStack ColumnDef<T>[]。
-  // 注意：排序仍由外部 sortConfig + onSort 控制（manualSorting），
-  // TanStack 这里只承担 row model + flexRender 渲染。
   const tableColumns = useMemo<ColumnDef<T>[]>(
     () =>
       columns.map((col) => ({
@@ -82,11 +88,31 @@ export function DataTable<T extends RowData>({
     [columns],
   );
 
+  // RowSelection: Set<string> ↔ Record<string, boolean>
+  const rowSelection = useMemo<RowSelectionState>(() => {
+    if (!selectedRowIds) return {};
+    const next: RowSelectionState = {};
+    for (const id of selectedRowIds) next[id] = true;
+    return next;
+  }, [selectedRowIds]);
+
   const table = useReactTable<T>({
     data,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
+    enableRowSelection: !!enableRowSelection,
+    state: { rowSelection },
+    onRowSelectionChange: onSelectionChange
+      ? (updater) => {
+          const next = typeof updater === 'function' ? updater(rowSelection) : updater;
+          const ids = new Set<string>();
+          for (const id in next) {
+            if (next[id]) ids.add(id);
+          }
+          onSelectionChange(ids);
+        }
+      : undefined,
     getRowId: getRowId
       ? (row, index) => getRowId(row, index)
       : getRowKey
@@ -94,10 +120,27 @@ export function DataTable<T extends RowData>({
         : undefined,
   });
 
+  const totalCols = columns.length + (enableRowSelection ? 1 : 0);
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
+          {enableRowSelection && (
+            <TableHead className="w-10">
+              <Checkbox
+                aria-label="选择所有行"
+                checked={
+                  table.getIsAllRowsSelected()
+                    ? true
+                    : table.getIsSomeRowsSelected()
+                      ? 'indeterminate'
+                      : false
+                }
+                onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+              />
+            </TableHead>
+          )}
           {table.getHeaderGroups().map((headerGroup) =>
             headerGroup.headers.map((header) => {
               const col = columns.find((c) => c.key === header.column.id);
@@ -134,11 +177,11 @@ export function DataTable<T extends RowData>({
       </TableHeader>
       <TableBody>
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={columns.length} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={totalCols} />)
         ) : data.length === 0 ? (
           <TableRow>
             <TableCell
-              colSpan={columns.length}
+              colSpan={totalCols}
               className="text-muted-foreground py-12 text-center text-sm"
             >
               {emptyMessage}
@@ -149,13 +192,24 @@ export function DataTable<T extends RowData>({
             <TableRow
               key={row.id}
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+              data-state={row.getIsSelected() ? 'selected' : undefined}
               className={cn(
                 'animate-fadeIn transition-colors',
                 onRowClick && 'cursor-pointer hover:bg-slate-50',
+                row.getIsSelected() && 'bg-primary/5',
                 rowClassName ? rowClassName(row.original) : '',
               )}
               style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
             >
+              {enableRowSelection && (
+                <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    aria-label="选择该行"
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                  />
+                </TableCell>
+              )}
               {row.getVisibleCells().map((cell) => {
                 const col = columns.find((c) => c.key === cell.column.id);
                 return (
