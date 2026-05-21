@@ -7,7 +7,6 @@ import {
   FileEdit,
   MoreHorizontal,
   Plus,
-  Search,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 import { archiveApp, listAppsAdmin, purgeAppConfiguration } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { SkeletonMetricCard } from '@/components/shared/Skeleton';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Badge } from '@/components/ui/badge';
@@ -32,13 +32,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useTableState } from '@/hooks/useTableState';
 import {
   formatOfferPriceLabel,
   getActiveOffers,
@@ -137,9 +138,12 @@ export function AppsPage() {
   const qc = useQueryClient();
   const [pendingDangerAction, setPendingDangerAction] = useState<PendingDangerAction>(null);
   const [confirmAppCode, setConfirmAppCode] = useState('');
-  const [searchValue, setSearchValue] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [activeState, setActiveState] = useState<'all' | 'active' | 'archived'>('all');
+
+  const { search, filters, setSearch, setFilter, clearFilters } = useTableState({
+    knownFilters: ['category', 'state'],
+  });
+  const categoryValues = useMemo(() => filters.category ?? [], [filters.category]);
+  const stateValue = (filters.state?.[0] ?? 'all') as 'all' | 'active' | 'archived';
 
   const { data: appsData, isLoading: isAppsLoading } = useQuery({
     queryKey: ['apps'],
@@ -161,7 +165,7 @@ export function AppsPage() {
   );
 
   const filteredApps = useMemo(() => {
-    const keyword = searchValue.trim().toLowerCase();
+    const keyword = search.trim().toLowerCase();
 
     return apps.filter((app) => {
       const lifecycleState = getLifecycleState(app);
@@ -170,17 +174,19 @@ export function AppsPage() {
         app.name.toLowerCase().includes(keyword) ||
         app.code.toLowerCase().includes(keyword) ||
         (app.tagline ?? '').toLowerCase().includes(keyword);
-      const matchesCategory = activeCategory === 'all' || app.category === activeCategory;
+      const matchesCategory =
+        categoryValues.length === 0 ||
+        (app.category ? categoryValues.includes(app.category) : false);
       const matchesState =
-        activeState === 'all'
+        stateValue === 'all'
           ? true
-          : activeState === 'archived'
+          : stateValue === 'archived'
             ? Boolean(lifecycleState)
             : !lifecycleState && app.status === 'active';
 
       return matchesKeyword && matchesCategory && matchesState;
     });
-  }, [activeCategory, activeState, apps, searchValue]);
+  }, [categoryValues, stateValue, apps, search]);
 
   const publishedCount = useMemo(
     () => apps.filter((app) => !getLifecycleState(app) && app.status === 'active').length,
@@ -234,6 +240,27 @@ export function AppsPage() {
 
   const isDangerPending = archiveMutation.isPending || purgeMutation.isPending;
 
+  const chips: FilterChipConfig[] = [
+    {
+      id: 'category',
+      label: '分类',
+      values: categoryValues,
+      onChange: (next) => setFilter('category', next),
+      searchable: categories.length >= 7,
+      options: categories.map((c) => ({ value: c, label: c })),
+    },
+    {
+      id: 'state',
+      label: '状态',
+      values: stateValue === 'all' ? [] : [stateValue],
+      onChange: (next) => setFilter('state', next.length === 0 ? null : [next[next.length - 1]]),
+      options: [
+        { value: 'active', label: '已上架' },
+        { value: 'archived', label: '已归档' },
+      ],
+    },
+  ];
+
   return (
     <div className="space-y-5 p-6">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -250,81 +277,75 @@ export function AppsPage() {
       </header>
 
       <div className="grid gap-4 lg:grid-cols-4">
-        {isAppsLoading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} style={{ animationDelay: `${index * 50}ms` }}>
-              <SkeletonMetricCard />
-            </div>
-          ))
-        ) : (
-          [
-            { icon: Boxes, label: '应用总数', value: String(apps.length), color: 'from-blue-500 to-blue-600' },
-            { icon: Sparkles, label: '已上架', value: String(publishedCount), color: 'from-green-500 to-green-600' },
-            { icon: Archive, label: '已归档', value: String(archivedCount), color: 'from-amber-500 to-amber-600' },
-            { icon: CreditCard, label: '可售卖', value: String(activeOfferCount), color: 'from-purple-500 to-purple-600' },
-          ].map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <div 
-                key={item.label} 
-                className="rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md animate-fadeInUp"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
-                      {item.label}
-                    </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{item.value}</p>
-                  </div>
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-white shadow-sm`}>
-                    <Icon className="h-5 w-5" />
+        {isAppsLoading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} style={{ animationDelay: `${index * 50}ms` }}>
+                <SkeletonMetricCard />
+              </div>
+            ))
+          : [
+              {
+                icon: Boxes,
+                label: '应用总数',
+                value: String(apps.length),
+                color: 'from-blue-500 to-blue-600',
+              },
+              {
+                icon: Sparkles,
+                label: '已上架',
+                value: String(publishedCount),
+                color: 'from-green-500 to-green-600',
+              },
+              {
+                icon: Archive,
+                label: '已归档',
+                value: String(archivedCount),
+                color: 'from-amber-500 to-amber-600',
+              },
+              {
+                icon: CreditCard,
+                label: '可售卖',
+                value: String(activeOfferCount),
+                color: 'from-purple-500 to-purple-600',
+              },
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.label}
+                  className="animate-fadeInUp rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
+                        {item.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                        {item.value}
+                      </p>
+                    </div>
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-white shadow-sm`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })}
       </div>
 
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-gray-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="grid gap-3 md:grid-cols-[minmax(260px,1fr),180px,160px] xl:w-[760px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-                placeholder="搜索应用名称、Code 或一句话介绍"
-                className="h-10 border-gray-200 pl-10"
-              />
-            </div>
-
-            <Select value={activeCategory} onValueChange={setActiveCategory}>
-              <SelectTrigger className="h-10 border-gray-200">
-                <SelectValue placeholder="全部分类" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部分类</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={activeState} onValueChange={(value) => setActiveState(value as typeof activeState)}>
-              <SelectTrigger className="h-10 border-gray-200">
-                <SelectValue placeholder="全部状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="active">已上架</SelectItem>
-                <SelectItem value="archived">已归档</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+          <FilterChipBar
+            className="flex-1"
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="搜索应用名称、Code 或一句话介绍"
+            chips={chips}
+            onClearAll={clearFilters}
+          />
 
           <div className="flex items-center gap-3 text-sm text-gray-500">
             <span>结果 {filteredApps.length}</span>
@@ -379,7 +400,9 @@ export function AppsPage() {
                           )}
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">{app.name}</p>
+                            <p className="truncate text-sm font-semibold text-gray-900">
+                              {app.name}
+                            </p>
                             <p className="mt-1 font-mono text-xs text-gray-400">{app.code}</p>
                             {app.tagline ? (
                               <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500">
@@ -399,7 +422,9 @@ export function AppsPage() {
                           ) : (
                             <span className="text-sm text-gray-400">未分类</span>
                           )}
-                          <p className="text-sm font-medium text-gray-700">{getAppTypeLabel(app.type)}</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            {getAppTypeLabel(app.type)}
+                          </p>
                         </div>
                       </TableCell>
 
@@ -422,14 +447,19 @@ export function AppsPage() {
                               : '暂无活动 Offer'}
                           </p>
                           {activeOffers.length > 1 ? (
-                            <p className="text-xs text-gray-400">另有 {activeOffers.length - 1} 个活动方案</p>
+                            <p className="text-xs text-gray-400">
+                              另有 {activeOffers.length - 1} 个活动方案
+                            </p>
                           ) : null}
                         </div>
                       </TableCell>
 
                       <TableCell>
                         <div className="flex flex-col gap-2">
-                          <StatusPill tone={statusToTone(app.status)} label={getAppStatusLabel(app.status)} />
+                          <StatusPill
+                            tone={statusToTone(app.status)}
+                            label={getAppStatusLabel(app.status)}
+                          />
                           {lifecycleState ? (
                             <StatusPill tone={lifecycleState.tone} label={lifecycleState.label} />
                           ) : null}
