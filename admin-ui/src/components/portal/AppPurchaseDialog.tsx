@@ -18,7 +18,13 @@ import {
   getCheckoutSessionStatus,
   reconcileCheckoutSession,
 } from '@/api/user';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
@@ -56,7 +62,9 @@ export function AppPurchaseDialog({
   onPaymentSuccess,
 }: AppPurchaseDialogProps) {
   const { isEmailVerified } = useAuth();
-  const [providerPreference, setProviderPreference] = useState<'wechat_pay' | 'alipay'>('wechat_pay');
+  const [providerPreference, setProviderPreference] = useState<'wechat_pay' | 'alipay'>(
+    'wechat_pay',
+  );
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [externalPaymentOpened, setExternalPaymentOpened] = useState(false);
   const [selectedOfferCode, setSelectedOfferCode] = useState<string>('');
@@ -69,7 +77,9 @@ export function AppPurchaseDialog({
 
     const fallbackOffer = getPreferredOffer(offers);
     const nextOfferCode =
-      (initialOfferCode && offers.some((offer) => offer.code === initialOfferCode) ? initialOfferCode : '') ||
+      (initialOfferCode && offers.some((offer) => offer.code === initialOfferCode)
+        ? initialOfferCode
+        : '') ||
       fallbackOffer?.code ||
       '';
 
@@ -177,10 +187,12 @@ export function AppPurchaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
-      <DialogContent className="max-w-3xl rounded-xl border-gray-200 p-0">
-        <DialogHeader className="border-b border-gray-200 px-6 py-5">
-          <DialogTitle className="text-xl font-semibold text-gray-900">购买 {appName}</DialogTitle>
-          <DialogDescription className="text-sm text-gray-500">
+      <DialogContent className="border-border max-w-3xl rounded-xl p-0">
+        <DialogHeader className="border-border border-b px-6 py-5">
+          <DialogTitle className="text-foreground text-xl font-semibold">
+            购买 {appName}
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
             {sessionCode ? '订单已创建，请在当前弹窗内完成支付。' : '先选择套餐，再确认支付方式。'}
           </DialogDescription>
         </DialogHeader>
@@ -191,7 +203,7 @@ export function AppPurchaseDialog({
               className={`inline-flex items-center rounded-full px-3 py-1.5 font-medium ${
                 step === 'plan' && !sessionCode
                   ? 'bg-sky-50 text-sky-700'
-                  : 'bg-gray-100 text-gray-500'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               1. 选择套餐
@@ -200,7 +212,7 @@ export function AppPurchaseDialog({
               className={`inline-flex items-center rounded-full px-3 py-1.5 font-medium ${
                 (step === 'payment' && !sessionCode) || sessionCode
                   ? 'bg-sky-50 text-sky-700'
-                  : 'bg-gray-100 text-gray-500'
+                  : 'bg-muted text-muted-foreground'
               }`}
             >
               2. 支付与订单
@@ -208,41 +220,59 @@ export function AppPurchaseDialog({
           </div>
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr),240px]">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">当前套餐</p>
-              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+            <div className="border-border bg-muted rounded-xl border p-5">
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+                当前套餐
+              </p>
+              <h3 className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
                 {selectedOffer?.title ?? '暂无可购买方案'}
               </h3>
-              <p className="mt-3 text-4xl font-bold text-gray-900">{formatOfferPriceLabel(selectedOffer)}</p>
-              <p className="mt-1 text-sm text-gray-500">{formatOfferCycleLabel(selectedOffer)}</p>
+              <p className="text-foreground mt-3 text-4xl font-bold">
+                {formatOfferPriceLabel(selectedOffer)}
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {formatOfferCycleLabel(selectedOffer)}
+              </p>
               {selectedOffer?.badge ? (
-                <Badge className="mt-4 bg-white text-gray-700 hover:bg-white">{selectedOffer.badge}</Badge>
+                <Badge className="bg-card text-foreground hover:bg-card mt-4">
+                  {selectedOffer.badge}
+                </Badge>
               ) : null}
               {selectedOffer?.description ? (
-                <p className="mt-4 text-sm leading-6 text-gray-600">{selectedOffer.description}</p>
+                <p className="text-muted-foreground mt-4 text-sm leading-6">
+                  {selectedOffer.description}
+                </p>
               ) : null}
             </div>
 
-            <div className="rounded-[20px] border border-gray-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">订单状态</p>
-              <p className="mt-2 text-lg font-semibold text-gray-900">{statusLabel}</p>
-              <div className="mt-4 space-y-3 text-sm text-gray-600">
+            <div className="border-border bg-card rounded-[20px] border p-5">
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+                订单状态
+              </p>
+              <p className="text-foreground mt-2 text-lg font-semibold">{statusLabel}</p>
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-4">
                   <span>订单号</span>
-                  <span className="font-medium text-gray-900">
-                    {publicSessionQuery.data?.order.orderNo ?? checkoutMutation.data?.order.orderNo ?? '-'}
+                  <span className="text-foreground font-medium">
+                    {publicSessionQuery.data?.order.orderNo ??
+                      checkoutMutation.data?.order.orderNo ??
+                      '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>支付方式</span>
-                  <span className="font-medium text-gray-900">
+                  <span className="text-foreground font-medium">
                     {providerPreference === 'wechat_pay' ? '微信支付' : '支付宝'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>过期时间</span>
-                  <span className="font-medium text-gray-900">
-                    {formatTime(publicSessionQuery.data?.expiresAt ?? checkoutMutation.data?.expiresAt ?? null)}
+                  <span className="text-foreground font-medium">
+                    {formatTime(
+                      publicSessionQuery.data?.expiresAt ??
+                        checkoutMutation.data?.expiresAt ??
+                        null,
+                    )}
                   </span>
                 </div>
               </div>
@@ -254,7 +284,7 @@ export function AppPurchaseDialog({
               {step === 'plan' ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">选择套餐</p>
+                    <p className="text-foreground text-sm font-medium">选择套餐</p>
                     <div className="grid gap-3">
                       {offers.map((offer) => (
                         <button
@@ -264,24 +294,34 @@ export function AppPurchaseDialog({
                           className={`rounded-xl border p-4 text-left transition-colors ${
                             selectedOffer?.code === offer.code
                               ? 'border-sky-200 bg-sky-50/70'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
+                              : 'border-border bg-card hover:border-gray-300'
                           }`}
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-lg font-semibold text-gray-900">{offer.title}</p>
+                                <p className="text-foreground text-lg font-semibold">
+                                  {offer.title}
+                                </p>
                                 {offer.badge ? (
-                                  <Badge className="bg-white text-gray-700 hover:bg-white">{offer.badge}</Badge>
+                                  <Badge className="bg-card text-foreground hover:bg-card">
+                                    {offer.badge}
+                                  </Badge>
                                 ) : null}
                               </div>
                               {offer.description ? (
-                                <p className="mt-2 text-sm leading-6 text-gray-500">{offer.description}</p>
+                                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                                  {offer.description}
+                                </p>
                               ) : null}
                             </div>
                             <div className="text-left sm:text-right">
-                              <p className="text-xl font-semibold text-gray-900">{formatOfferPriceLabel(offer)}</p>
-                              <p className="text-sm text-gray-500">{formatOfferCycleLabel(offer)}</p>
+                              <p className="text-foreground text-xl font-semibold">
+                                {formatOfferPriceLabel(offer)}
+                              </p>
+                              <p className="text-muted-foreground text-sm">
+                                {formatOfferCycleLabel(offer)}
+                              </p>
                             </div>
                           </div>
                         </button>
@@ -310,12 +350,14 @@ export function AppPurchaseDialog({
               ) : (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">支付方式</p>
+                    <p className="text-foreground text-sm font-medium">支付方式</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {([
-                        { value: 'wechat_pay', label: '微信支付' },
-                        { value: 'alipay', label: '支付宝' },
-                      ] as const).map((provider) => (
+                      {(
+                        [
+                          { value: 'wechat_pay', label: '微信支付' },
+                          { value: 'alipay', label: '支付宝' },
+                        ] as const
+                      ).map((provider) => (
                         <button
                           key={provider.value}
                           type="button"
@@ -323,7 +365,7 @@ export function AppPurchaseDialog({
                           className={`rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
                             providerPreference === provider.value
                               ? 'border-sky-200 bg-sky-50 text-sky-700'
-                              : 'border-gray-200 bg-white text-gray-600 hover:text-gray-900'
+                              : 'border-border bg-card text-muted-foreground hover:text-foreground'
                           }`}
                         >
                           {provider.label}
@@ -333,7 +375,11 @@ export function AppPurchaseDialog({
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" className="rounded-2xl" onClick={() => setStep('plan')}>
+                    <Button
+                      variant="outline"
+                      className="rounded-2xl"
+                      onClick={() => setStep('plan')}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                       返回套餐
                     </Button>
@@ -367,18 +413,18 @@ export function AppPurchaseDialog({
             </>
           ) : (
             <div className="space-y-5">
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="border-border bg-card rounded-xl border p-5">
                 {publicSessionQuery.isLoading ? (
                   <div className="flex min-h-[220px] items-center justify-center">
-                    <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                    <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
                   </div>
                 ) : isPaid ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
                       <CheckCircle2 className="h-7 w-7" />
                     </div>
-                    <h3 className="mt-4 text-xl font-semibold text-gray-900">支付已完成</h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-500">
+                    <h3 className="text-foreground mt-4 text-xl font-semibold">支付已完成</h3>
+                    <p className="text-muted-foreground mt-2 text-sm leading-6">
                       {deliveryMode === 'one_click'
                         ? '权益已同步到你的账户，可以继续创建部署。'
                         : '权益已同步到你的账户，可以在我的应用中查看授权入口。'}
@@ -391,7 +437,9 @@ export function AppPurchaseDialog({
                           onPaymentSuccess?.();
                           window.location.href =
                             publicSessionQuery.data?.successUrl ||
-                            (deliveryMode === 'one_click' ? `/deploy?app=${encodeURIComponent(appCode)}` : '/account?tab=apps');
+                            (deliveryMode === 'one_click'
+                              ? `/deploy?app=${encodeURIComponent(appCode)}`
+                              : '/account?tab=apps');
                         }}
                       >
                         {deliveryMode === 'one_click' ? '开始部署' : '查看我的应用'}
@@ -427,17 +475,19 @@ export function AppPurchaseDialog({
                     <img
                       src={paymentAction.qrCodeDataUrl}
                       alt="支付二维码"
-                      className="h-56 w-56 rounded-2xl border border-gray-200 bg-white p-3"
+                      className="border-border bg-card h-56 w-56 rounded-2xl border p-3"
                     />
-                    <p className="mt-4 text-sm text-gray-600">请使用微信扫描二维码完成支付</p>
+                    <p className="text-muted-foreground mt-4 text-sm">
+                      请使用微信扫描二维码完成支付
+                    </p>
                   </div>
                 ) : paymentAction?.type === 'redirect_url' ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-sky-700">
                       <CreditCard className="h-6 w-6" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">打开支付宝支付窗口</h3>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
+                    <h3 className="text-foreground text-lg font-semibold">打开支付宝支付窗口</h3>
+                    <p className="text-muted-foreground mt-2 max-w-md text-sm leading-6">
                       支付宝会在新窗口中完成支付，支付完成后当前弹窗会自动刷新状态。
                     </p>
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -468,16 +518,22 @@ export function AppPurchaseDialog({
                   </div>
                 ) : (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <p className="text-sm text-gray-500">正在准备支付动作，请稍候。</p>
+                    <p className="text-muted-foreground text-sm">正在准备支付动作，请稍候。</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                <span>订单号 {publicSessionQuery.data?.order.orderNo ?? checkoutMutation.data?.order.orderNo}</span>
+              <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
+                <span>
+                  订单号{' '}
+                  {publicSessionQuery.data?.order.orderNo ?? checkoutMutation.data?.order.orderNo}
+                </span>
                 <span className="hidden text-gray-300 sm:inline">|</span>
                 <span>
-                  实付 {publicSessionQuery.data?.order.amountYuan ?? ((selectedOffer?.priceAmount ?? 0) / 100).toFixed(2)} 元
+                  实付{' '}
+                  {publicSessionQuery.data?.order.amountYuan ??
+                    ((selectedOffer?.priceAmount ?? 0) / 100).toFixed(2)}{' '}
+                  元
                 </span>
               </div>
             </div>

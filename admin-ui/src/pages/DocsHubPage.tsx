@@ -16,11 +16,13 @@ export function DocsHubPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="border-border bg-card rounded-2xl border p-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-medium text-sky-700">文档中心</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">产品文档与开发指南</h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-600">
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+            产品文档与开发指南
+          </h1>
+          <p className="text-muted-foreground max-w-2xl text-sm leading-7">
             统一汇集 fd-core-stack 本身以及各应用的产品文档、接入说明、安装指南与常见问题。
           </p>
         </div>
@@ -28,7 +30,7 @@ export function DocsHubPage() {
 
       {docsQuery.isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
-          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+          <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
         </div>
       ) : items.length === 0 ? (
         <EmptyState
@@ -42,24 +44,34 @@ export function DocsHubPage() {
             <Link
               key={space.id}
               to={`/docs/${space.slug}`}
-              className="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+              className="border-border bg-card hover:border-border block rounded-2xl border p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <Card className="border-0 shadow-none">
                 <CardContent className="space-y-3 p-0">
                   <div className="flex items-center gap-3">
                     {space.iconUrl ? (
-                      <img src={space.iconUrl} alt={space.title} className="h-10 w-10 rounded-xl border border-gray-200 bg-white object-contain p-1.5" />
+                      <img
+                        src={space.iconUrl}
+                        alt={space.title}
+                        className="border-border bg-card h-10 w-10 rounded-xl border object-contain p-1.5"
+                      />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-sm font-semibold text-slate-700">
+                      <div className="bg-muted text-foreground flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold">
                         {space.title.slice(0, 1)}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-semibold tracking-tight text-slate-900">{space.title}</p>
-                      <p className="text-xs uppercase tracking-wider text-slate-400">{space.pageCount} pages</p>
+                      <p className="text-foreground truncate text-lg font-semibold tracking-tight">
+                        {space.title}
+                      </p>
+                      <p className="text-muted-foreground text-xs uppercase tracking-wider">
+                        {space.pageCount} pages
+                      </p>
                     </div>
                   </div>
-                  <p className="line-clamp-3 text-sm leading-7 text-slate-600">{space.description || '该文档空间暂未补充说明。'}</p>
+                  <p className="text-muted-foreground line-clamp-3 text-sm leading-7">
+                    {space.description || '该文档空间暂未补充说明。'}
+                  </p>
                 </CardContent>
               </Card>
             </Link>

@@ -39,11 +39,13 @@ export function ContentHubPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="border-border bg-card rounded-2xl border p-6 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-medium text-sky-700">内容中心</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">文章、观点与教程</h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-600">
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+            文章、观点与教程
+          </h1>
+          <p className="text-muted-foreground max-w-2xl text-sm leading-7">
             汇集产品动态、观点文章、操作教程与最佳实践，帮助用户更好地理解和使用平台。
           </p>
         </div>
@@ -61,12 +63,12 @@ export function ContentHubPage() {
       {contentQuery.isLoading ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Card key={index} className="rounded-2xl border-gray-200 bg-white">
+            <Card key={index} className="border-border bg-card rounded-2xl">
               <CardContent className="space-y-3 p-5">
-                <div className="h-5 w-2/3 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-1/2 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-4/5 animate-pulse rounded bg-gray-100" />
+                <div className="bg-muted h-5 w-2/3 animate-pulse rounded" />
+                <div className="bg-muted h-4 w-1/2 animate-pulse rounded" />
+                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                <div className="bg-muted h-4 w-4/5 animate-pulse rounded" />
               </CardContent>
             </Card>
           ))}
@@ -83,15 +85,19 @@ export function ContentHubPage() {
             <Link
               key={item.id}
               to={`/content/${item.slug}`}
-              className="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+              className="border-border bg-card hover:border-border block rounded-2xl border p-5 shadow-sm shadow-slate-900/5 transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">
                   <span>{item.authorName || '匿名作者'}</span>
                   <span>{formatTime(item.publishedAt || item.createdAt)}</span>
                 </div>
-                <h2 className="line-clamp-2 text-xl font-semibold tracking-tight text-slate-900">{item.title}</h2>
-                <p className="line-clamp-3 text-sm leading-7 text-slate-600">{item.excerpt || '暂无摘要。'}</p>
+                <h2 className="text-foreground line-clamp-2 text-xl font-semibold tracking-tight">
+                  {item.title}
+                </h2>
+                <p className="text-muted-foreground line-clamp-3 text-sm leading-7">
+                  {item.excerpt || '暂无摘要。'}
+                </p>
               </div>
             </Link>
           ))}
@@ -100,10 +106,14 @@ export function ContentHubPage() {
 
       {contentQuery.data && contentQuery.data.total > PAGE_SIZE ? (
         <div className="flex items-center justify-center gap-3">
-          <Button variant="outline" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page === 1}>
+          <Button
+            variant="outline"
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={page === 1}
+          >
             上一页
           </Button>
-          <span className="text-sm text-slate-500">第 {page} 页</span>
+          <span className="text-muted-foreground text-sm">第 {page} 页</span>
           <Button
             variant="outline"
             onClick={() => setPage((prev) => prev + 1)}

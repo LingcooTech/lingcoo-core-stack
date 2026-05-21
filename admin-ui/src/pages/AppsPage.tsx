@@ -118,7 +118,7 @@ function AppsTableSkeleton() {
           {Array.from({ length: 7 }).map((__, cellIndex) => (
             <TableCell key={cellIndex}>
               <div
-                className="h-4 animate-pulse rounded bg-slate-100"
+                className="bg-muted h-4 animate-pulse rounded"
                 style={{ width: `${60 + ((rowIndex + cellIndex) % 4) * 10}%` }}
               />
             </TableCell>
@@ -265,7 +265,7 @@ export function AppsPage() {
     <div className="space-y-5 p-6">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">应用列表</h1>
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">应用列表</h1>
         </div>
 
         <Button asChild>
@@ -313,15 +313,15 @@ export function AppsPage() {
               return (
                 <div
                   key={item.label}
-                  className="animate-fadeInUp rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                  className="animate-fadeInUp border-border bg-card rounded-lg border px-4 py-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">
+                      <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
                         {item.label}
                       </p>
-                      <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                      <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
                         {item.value}
                       </p>
                     </div>
@@ -336,8 +336,8 @@ export function AppsPage() {
             })}
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+      <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <div className="border-border flex flex-col gap-3 border-b px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
           <FilterChipBar
             className="flex-1"
             searchValue={search}
@@ -347,7 +347,7 @@ export function AppsPage() {
             onClearAll={clearFilters}
           />
 
-          <div className="flex items-center gap-3 text-sm text-gray-500">
+          <div className="text-muted-foreground flex items-center gap-3 text-sm">
             <span>结果 {filteredApps.length}</span>
             <span className="hidden text-gray-300 md:inline">|</span>
             <span className="hidden md:inline">分类 {categories.length}</span>
@@ -355,8 +355,8 @@ export function AppsPage() {
         </div>
 
         <Table>
-          <TableHeader className="bg-slate-50/70">
-            <TableRow className="hover:bg-slate-50/70">
+          <TableHeader className="bg-muted/70">
+            <TableRow className="hover:bg-muted/70">
               <TableHead className="w-[28%]">应用</TableHead>
               <TableHead className="w-[16%]">分类 / 类型</TableHead>
               <TableHead className="w-[18%]">目录配置</TableHead>
@@ -373,7 +373,10 @@ export function AppsPage() {
             <TableBody>
               {filteredApps.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-14 text-center text-sm text-gray-500">
+                  <TableCell
+                    colSpan={7}
+                    className="text-muted-foreground py-14 text-center text-sm"
+                  >
                     没有符合当前筛选条件的应用。
                   </TableCell>
                 </TableRow>
@@ -384,28 +387,30 @@ export function AppsPage() {
                   const preferredOffer = getPreferredOffer(activeOffers);
 
                   return (
-                    <TableRow key={app.id} className="hover:bg-slate-50/70">
+                    <TableRow key={app.id} className="hover:bg-muted/70">
                       <TableCell className="py-4">
                         <div className="flex items-start gap-3">
                           {app.iconUrl ? (
                             <img
                               src={app.iconUrl}
                               alt={app.name}
-                              className="h-11 w-11 rounded-xl border border-gray-100 bg-white object-contain"
+                              className="border-border bg-card h-11 w-11 rounded-xl border object-contain"
                             />
                           ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-100 bg-slate-50 text-sm font-semibold text-gray-400">
+                            <div className="border-border bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-semibold">
                               {getInitials(app.name)}
                             </div>
                           )}
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-gray-900">
+                            <p className="text-foreground truncate text-sm font-semibold">
                               {app.name}
                             </p>
-                            <p className="mt-1 font-mono text-xs text-gray-400">{app.code}</p>
+                            <p className="text-muted-foreground mt-1 font-mono text-xs">
+                              {app.code}
+                            </p>
                             {app.tagline ? (
-                              <p className="mt-2 line-clamp-2 text-sm leading-6 text-gray-500">
+                              <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-6">
                                 {app.tagline}
                               </p>
                             ) : null}
@@ -416,20 +421,20 @@ export function AppsPage() {
                       <TableCell>
                         <div className="space-y-2">
                           {app.category ? (
-                            <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">
+                            <Badge className="bg-muted text-foreground hover:bg-muted">
                               {app.category}
                             </Badge>
                           ) : (
-                            <span className="text-sm text-gray-400">未分类</span>
+                            <span className="text-muted-foreground text-sm">未分类</span>
                           )}
-                          <p className="text-sm font-medium text-gray-700">
+                          <p className="text-foreground text-sm font-medium">
                             {getAppTypeLabel(app.type)}
                           </p>
                         </div>
                       </TableCell>
 
                       <TableCell>
-                        <div className="space-y-2 text-sm text-gray-600">
+                        <div className="text-muted-foreground space-y-2 text-sm">
                           <p>{app.features.length} Features</p>
                           <p>{app.plans.length} Plans</p>
                           <p>{app.checkoutOffers.length} Offers</p>
@@ -438,16 +443,16 @@ export function AppsPage() {
 
                       <TableCell>
                         <div className="space-y-2">
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-foreground text-sm font-semibold">
                             {formatOfferPriceLabel(preferredOffer)}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-muted-foreground text-xs">
                             {preferredOffer
                               ? `${preferredOffer.title} · ${formatPlanInterval(preferredOffer.interval)}`
                               : '暂无活动 Offer'}
                           </p>
                           {activeOffers.length > 1 ? (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-muted-foreground text-xs">
                               另有 {activeOffers.length - 1} 个活动方案
                             </p>
                           ) : null}
@@ -467,7 +472,9 @@ export function AppsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <p className="text-sm text-gray-600">{formatUpdatedAt(app.updatedAt)}</p>
+                        <p className="text-muted-foreground text-sm">
+                          {formatUpdatedAt(app.updatedAt)}
+                        </p>
                       </TableCell>
 
                       <TableCell>

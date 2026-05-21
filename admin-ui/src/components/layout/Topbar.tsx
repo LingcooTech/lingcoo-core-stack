@@ -15,18 +15,18 @@ export function Topbar() {
 
   return (
     <>
-      <header className="border-border sticky top-0 z-20 flex min-h-[64px] shrink-0 items-center justify-between gap-4 border-b bg-white/80 px-5 backdrop-blur-sm">
+      <header className="border-border bg-card/80 sticky top-0 z-20 flex min-h-[64px] shrink-0 items-center justify-between gap-4 border-b px-5 backdrop-blur-sm">
         {/* Left */}
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="text-muted-foreground hover:border-primary/30 flex h-10 w-full max-w-[440px] cursor-pointer items-center gap-3 rounded-full border border-gray-200 bg-white px-3.5 text-left text-sm shadow-sm transition-colors"
+            className="text-muted-foreground hover:border-primary/30 border-border bg-card flex h-10 w-full max-w-[440px] cursor-pointer items-center gap-3 rounded-full border px-3.5 text-left text-sm shadow-sm transition-colors"
           >
             <Search className="h-3.5 w-3.5 shrink-0" />
             <span className="flex-1">搜索...</span>
             <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider">
-              <kbd className="border-border inline-flex h-5 min-w-5 items-center justify-center rounded border bg-white px-1.5 font-mono text-[10px]">
+              <kbd className="border-border bg-card inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 font-mono text-[10px]">
                 /
               </kbd>
             </span>
@@ -45,7 +45,7 @@ export function Topbar() {
                 'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline transition-all',
                 action.tone === 'primary'
                   ? 'from-primary border-transparent bg-gradient-to-br to-blue-600 text-white shadow-sm hover:shadow'
-                  : 'border-border text-foreground hover:bg-muted bg-white shadow-sm',
+                  : 'border-border text-foreground hover:bg-muted bg-card shadow-sm',
               )}
             >
               <span>{action.label}</span>
@@ -60,7 +60,7 @@ export function Topbar() {
 
           <a
             href="/"
-            className="border-border text-foreground hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-lg border bg-white px-3 text-xs font-semibold no-underline shadow-sm transition-colors"
+            className="border-border text-foreground hover:bg-muted bg-card inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline shadow-sm transition-colors"
           >
             <span className="bg-muted inline-flex h-5 w-5 items-center justify-center rounded text-[9px] font-semibold">
               ST

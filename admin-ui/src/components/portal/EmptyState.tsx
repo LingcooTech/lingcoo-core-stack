@@ -9,7 +9,7 @@ export function EmptyState({
   title,
   description,
   className,
-  action
+  action,
 }: {
   icon: LucideIcon;
   title: string;
@@ -18,14 +18,14 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <Card className={cn('border-dashed border-slate-300 bg-white/80', className)}>
+    <Card className={cn('border-border bg-card/80 border-dashed', className)}>
       <CardContent className="flex flex-col items-center justify-center gap-4 p-10 text-center">
-        <div className="rounded-lg bg-gray-100 p-4 text-gray-600">
+        <div className="bg-muted text-muted-foreground rounded-lg p-4">
           <Icon className="h-7 w-7" />
         </div>
         <div className="space-y-2">
-          <p className="text-lg font-semibold text-gray-900">{title}</p>
-          <p className="max-w-xl text-sm leading-7 text-muted-foreground">{description}</p>
+          <p className="text-foreground text-lg font-semibold">{title}</p>
+          <p className="text-muted-foreground max-w-xl text-sm leading-7">{description}</p>
         </div>
         {action}
       </CardContent>

@@ -9,7 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   buildManifestInputPayload,
   createDeploymentInputDraft,
@@ -118,9 +124,7 @@ export function DeploymentWizard({
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
-  const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
-    createWizardDraft(null),
-  );
+  const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(createWizardDraft(null));
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [tokenResult, setTokenResult] = useState<IssueDeploymentTokenResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -136,10 +140,7 @@ export function DeploymentWizard({
     [selectedApp, selectedEntitlementId],
   );
   const manifest = selectedApp?.manifest ?? null;
-  const userInputGroups = useMemo(
-    () => getManifestFieldGroups(manifest, 'user_input'),
-    [manifest],
-  );
+  const userInputGroups = useMemo(() => getManifestFieldGroups(manifest, 'user_input'), [manifest]);
   const visibleUserInputGroups = useMemo(
     () =>
       userInputGroups
@@ -246,7 +247,10 @@ export function DeploymentWizard({
         }
 
         if (field.type === 'boolean') {
-          if (!hasOwnValue(deploymentDraft.values, field.key) && typeof field.defaultValue !== 'boolean') {
+          if (
+            !hasOwnValue(deploymentDraft.values, field.key) &&
+            typeof field.defaultValue !== 'boolean'
+          ) {
             toast.error(`${field.label}不能为空`);
             return false;
           }
@@ -343,13 +347,16 @@ export function DeploymentWizard({
   }, []);
 
   const stepLabels = ['选择应用', '填写部署信息', '安装命令'];
-  const hasAdvancedSection = advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
+  const hasAdvancedSection =
+    advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
 
   return (
-    <Card className="border-gray-200/80 bg-white/95">
+    <Card className="border-border/80 bg-card/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
-        <CardDescription>通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。</CardDescription>
+        <CardDescription>
+          通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。
+        </CardDescription>
         <div className="flex items-center gap-2 pt-2">
           {stepLabels.map((sLabel, idx) => {
             const stepNum = (idx + 1) as WizardStep;
@@ -357,7 +364,7 @@ export function DeploymentWizard({
             const isDone = step > stepNum;
             return (
               <div key={sLabel} className="flex items-center gap-2">
-                {idx > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                {idx > 0 && <ChevronRight className="text-muted-foreground h-4 w-4" />}
                 <div
                   className={cn(
                     'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
@@ -366,7 +373,7 @@ export function DeploymentWizard({
                     !isActive && !isDone && 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-semibold">
+                  <span className="bg-card/20 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
                     {isDone ? <Check className="h-3 w-3" /> : stepNum}
                   </span>
                   {sLabel}
@@ -380,7 +387,7 @@ export function DeploymentWizard({
       <CardContent className="space-y-4">
         {step === 1 && (
           <>
-            <p className="text-sm text-muted-foreground">选择一个已购的系统应用来创建部署记录。</p>
+            <p className="text-muted-foreground text-sm">选择一个已购的系统应用来创建部署记录。</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {options.map((app) => {
                 const isSelected = selectedAppCode === app.appCode;
@@ -393,34 +400,38 @@ export function DeploymentWizard({
                       'flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-all hover:shadow-sm',
                       isSelected
                         ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border bg-white hover:border-slate-300',
+                        : 'border-border bg-card hover:border-border',
                     )}
                   >
                     <div
                       className={cn(
                         'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-gray-100 text-gray-600',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground',
                       )}
                     >
                       {getInitials(app.appName)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900">{app.appName}</p>
+                      <p className="text-foreground truncate text-sm font-bold">{app.appName}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge variant="secondary" className="text-[10px]">
                           {app.appType}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">{app.featureCount} 项能力</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-muted-foreground text-xs">
+                          {app.featureCount} 项能力
+                        </span>
+                        <span className="text-muted-foreground text-xs">
                           {app.entitlements.length} 个可用授权
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-muted-foreground text-xs">
                           {app.manifest ? 'Manifest 已同步' : 'Manifest 未同步'}
                         </span>
                       </div>
                     </div>
                     {isSelected && (
-                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <div className="bg-primary text-primary-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                         <Check className="h-3 w-3" />
                       </div>
                     )}
@@ -448,10 +459,10 @@ export function DeploymentWizard({
             ) : null}
 
             {selectedApp ? (
-              <div className="space-y-3 rounded-lg border border-border p-4">
+              <div className="border-border space-y-3 rounded-lg border p-4">
                 <div>
                   <p className="text-sm font-bold">选择部署授权 *</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     一个授权实例独立计算部署上限和域名绑定；需要部署多个客户站点时，应购买多个授权。
                   </p>
                 </div>
@@ -470,7 +481,7 @@ export function DeploymentWizard({
                   </SelectContent>
                 </Select>
                 {selectedEntitlement ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {selectedEntitlement.domainBindingMode === 'lock_on_first_success'
                       ? `首次成功部署后将锁定 ${
                           manifest?.domainSlots.find(
@@ -532,7 +543,7 @@ export function DeploymentWizard({
                         placeholder={slot.placeholder}
                       />
                       {slot.description ? (
-                        <p className="text-xs text-muted-foreground">{slot.description}</p>
+                        <p className="text-muted-foreground text-xs">{slot.description}</p>
                       ) : null}
                     </div>
                   );
@@ -541,11 +552,11 @@ export function DeploymentWizard({
             ) : null}
 
             {visibleUserInputGroups.map((group) => (
-              <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
+              <div key={group.key} className="border-border space-y-4 rounded-lg border p-4">
                 <div>
                   <p className="text-sm font-bold">{group.label}</p>
                   {group.description ? (
-                    <p className="text-sm text-muted-foreground">{group.description}</p>
+                    <p className="text-muted-foreground text-sm">{group.description}</p>
                   ) : null}
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -554,16 +565,18 @@ export function DeploymentWizard({
                       return (
                         <label
                           key={field.key}
-                          className="flex items-center gap-3 rounded-md border border-border p-3"
+                          className="border-border flex items-center gap-3 rounded-md border p-3"
                         >
                           <Checkbox
                             checked={getBooleanFieldValue(deploymentDraft, field)}
-                            onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}
+                            onCheckedChange={(checked) =>
+                              setDraftValue(field.key, Boolean(checked))
+                            }
                           />
                           <span className="space-y-1">
                             <span className="block text-sm font-medium">{field.label}</span>
                             {field.description ? (
-                              <span className="block text-xs text-muted-foreground">
+                              <span className="text-muted-foreground block text-xs">
                                 {field.description}
                               </span>
                             ) : null}
@@ -587,7 +600,7 @@ export function DeploymentWizard({
                             placeholder={field.placeholder}
                           />
                           {field.description ? (
-                            <p className="text-xs text-muted-foreground">{field.description}</p>
+                            <p className="text-muted-foreground text-xs">{field.description}</p>
                           ) : null}
                         </div>
                       );
@@ -607,7 +620,7 @@ export function DeploymentWizard({
                           placeholder={field.placeholder}
                         />
                         {field.description ? (
-                          <p className="text-xs text-muted-foreground">{field.description}</p>
+                          <p className="text-muted-foreground text-xs">{field.description}</p>
                         ) : null}
                       </div>
                     );
@@ -616,20 +629,22 @@ export function DeploymentWizard({
               </div>
             ))}
 
-            <div className="rounded-lg border border-border">
+            <div className="border-border rounded-lg border">
               <button
                 type="button"
-                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
                 onClick={() => setAdvancedOpen(!advancedOpen)}
               >
                 高级选项
-                <ChevronDown className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')} />
+                <ChevronDown
+                  className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')}
+                />
               </button>
               {advancedOpen && (
-                <div className="space-y-4 border-t border-border px-4 pb-4 pt-3">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="wizard-server">服务器 / Host</Label>
+                <div className="border-border space-y-4 border-t px-4 pb-4 pt-3">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="wizard-server">服务器 / Host</Label>
                       <Input
                         id="wizard-server"
                         value={serverHost}
@@ -643,7 +658,9 @@ export function DeploymentWizard({
                         id="wizard-install-path"
                         value={installPath}
                         onChange={(event) => setInstallPath(event.target.value)}
-                        placeholder={selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}
+                        placeholder={
+                          selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system'
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -660,18 +677,18 @@ export function DeploymentWizard({
                           <SelectItem value="auto">自动更新</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         `manual` 只记录新镜像可用状态，不自动切换；`auto` 会在收到新镜像时直接应用。
                       </p>
                     </div>
                   </div>
 
                   {advancedUserInputGroups.map((group) => (
-                    <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
+                    <div key={group.key} className="border-border space-y-4 rounded-lg border p-4">
                       <div>
                         <p className="text-sm font-bold">{group.label}</p>
                         {group.description ? (
-                          <p className="text-sm text-muted-foreground">{group.description}</p>
+                          <p className="text-muted-foreground text-sm">{group.description}</p>
                         ) : null}
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
@@ -680,7 +697,7 @@ export function DeploymentWizard({
                             return (
                               <label
                                 key={field.key}
-                                className="flex items-center gap-3 rounded-md border border-border p-3"
+                                className="border-border flex items-center gap-3 rounded-md border p-3"
                               >
                                 <Checkbox
                                   checked={getBooleanFieldValue(deploymentDraft, field)}
@@ -691,7 +708,7 @@ export function DeploymentWizard({
                                 <span className="space-y-1">
                                   <span className="block text-sm font-medium">{field.label}</span>
                                   {field.description ? (
-                                    <span className="block text-xs text-muted-foreground">
+                                    <span className="text-muted-foreground block text-xs">
                                       {field.description}
                                     </span>
                                   ) : null}
@@ -711,11 +728,15 @@ export function DeploymentWizard({
                                   id={`wizard-advanced-${field.key}`}
                                   type="password"
                                   value={deploymentDraft.secrets[field.key] ?? ''}
-                                  onChange={(event) => setDraftSecret(field.key, event.target.value)}
+                                  onChange={(event) =>
+                                    setDraftSecret(field.key, event.target.value)
+                                  }
                                   placeholder={field.placeholder}
                                 />
                                 {field.description ? (
-                                  <p className="text-xs text-muted-foreground">{field.description}</p>
+                                  <p className="text-muted-foreground text-xs">
+                                    {field.description}
+                                  </p>
                                 ) : null}
                               </div>
                             );
@@ -735,7 +756,7 @@ export function DeploymentWizard({
                                 placeholder={field.placeholder}
                               />
                               {field.description ? (
-                                <p className="text-xs text-muted-foreground">{field.description}</p>
+                                <p className="text-muted-foreground text-xs">{field.description}</p>
                               ) : null}
                             </div>
                           );
@@ -745,7 +766,7 @@ export function DeploymentWizard({
                   ))}
 
                   {!hasAdvancedSection ? (
-                    <p className="text-sm text-muted-foreground">当前没有额外的高级配置项。</p>
+                    <p className="text-muted-foreground text-sm">当前没有额外的高级配置项。</p>
                   ) : null}
                 </div>
               )}
@@ -784,7 +805,7 @@ export function DeploymentWizard({
             {tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
                     Remote Install Command
                   </p>
                   <div className="relative">
@@ -797,31 +818,37 @@ export function DeploymentWizard({
                         className="absolute right-2 top-2 rounded-lg bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                         onClick={() => handleCopyCommand(tokenResult.remoteInstallCommand!)}
                       >
-                        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     ) : null}
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                  <div className="border-border bg-card rounded-md border px-3 py-2">
+                    <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
                       Token 尾号
                     </p>
-                    <p className="mt-1 font-mono text-sm text-slate-900">{tokenResult.tokenHint}</p>
+                    <p className="text-foreground mt-1 font-mono text-sm">
+                      {tokenResult.tokenHint}
+                    </p>
                   </div>
-                  <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                  <div className="border-border bg-card rounded-md border px-3 py-2">
+                    <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
                       过期时间
                     </p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
+                    <p className="text-foreground mt-1 text-sm font-medium">
                       {formatTime(tokenResult.expiresAt)}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
                     Exchange URL
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
@@ -830,7 +857,7 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
                     One-time Token
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
@@ -839,7 +866,7 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
                     Exchange Curl
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">

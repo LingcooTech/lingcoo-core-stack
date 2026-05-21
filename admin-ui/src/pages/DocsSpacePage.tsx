@@ -12,7 +12,10 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-function flattenDocTree(nodes: DocPageTreeNode[], depth = 0): Array<DocPageTreeNode & { depth: number }> {
+function flattenDocTree(
+  nodes: DocPageTreeNode[],
+  depth = 0,
+): Array<DocPageTreeNode & { depth: number }> {
   const result: Array<DocPageTreeNode & { depth: number }> = [];
   for (const node of nodes) {
     result.push({ ...node, depth });
@@ -65,7 +68,7 @@ export function DocsSpacePage() {
   if (pageQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+        <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -73,7 +76,7 @@ export function DocsSpacePage() {
   if (!pageQuery.data) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+        <Button variant="ghost" asChild className="text-muted-foreground px-0">
           <Link to="/docs">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回文档中心
@@ -89,7 +92,7 @@ export function DocsSpacePage() {
 
   return (
     <div className="space-y-5">
-      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+      <Button variant="ghost" asChild className="text-muted-foreground px-0">
         <Link to="/docs">
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回文档中心
@@ -97,10 +100,12 @@ export function DocsSpacePage() {
       </Button>
 
       <div className="grid gap-6 lg:grid-cols-[260px,minmax(0,1fr),220px]">
-        <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm shadow-slate-900/5">
-          <div className="border-b border-gray-100 px-4 py-4">
-            <p className="text-sm font-semibold text-slate-900">{space.title}</p>
-            {space.description ? <p className="mt-1 text-xs leading-5 text-slate-500">{space.description}</p> : null}
+        <aside className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm shadow-slate-900/5">
+          <div className="border-border border-b px-4 py-4">
+            <p className="text-foreground text-sm font-semibold">{space.title}</p>
+            {space.description ? (
+              <p className="text-muted-foreground mt-1 text-xs leading-5">{space.description}</p>
+            ) : null}
           </div>
           <nav className="space-y-1 px-2 py-3">
             {flatTree.map((item) => {
@@ -112,7 +117,9 @@ export function DocsSpacePage() {
                   to={href}
                   className={cn(
                     'block rounded-xl px-3 py-2 text-sm transition',
-                    isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                    isActive
+                      ? 'bg-slate-900 text-white'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                   style={{ paddingLeft: `${12 + item.depth * 14}px` }}
                 >
@@ -124,18 +131,26 @@ export function DocsSpacePage() {
         </aside>
 
         <main className="space-y-5">
-          <header className="rounded-2xl border border-gray-200 bg-white px-5 py-5 shadow-sm shadow-slate-900/5">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Link to="/docs" className="hover:text-slate-900">文档中心</Link>
+          <header className="border-border bg-card rounded-2xl border px-5 py-5 shadow-sm shadow-slate-900/5">
+            <div className="text-muted-foreground flex items-center gap-2 text-xs">
+              <Link to="/docs" className="hover:text-foreground">
+                文档中心
+              </Link>
               <ChevronRight className="h-3 w-3" />
               <span>{space.title}</span>
             </div>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900">{page.title}</h1>
-            {page.summary ? <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{page.summary}</p> : null}
+            <h1 className="text-foreground mt-3 text-3xl font-semibold tracking-tight">
+              {page.title}
+            </h1>
+            {page.summary ? (
+              <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-7">
+                {page.summary}
+              </p>
+            ) : null}
           </header>
 
-          <section className="rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm shadow-slate-900/5">
-            <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed">
+          <section className="border-border bg-card rounded-2xl border px-6 py-6 shadow-sm shadow-slate-900/5">
+            <div className="prose prose-slate prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed max-w-none">
               <ReactMarkdown
                 rehypePlugins={[rehypeRaw]}
                 remarkPlugins={[remarkGfm]}
@@ -153,9 +168,13 @@ export function DocsSpacePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             {previousPage ? (
               <Button variant="outline" asChild>
-                <Link to={`/docs/${space.slug}/${previousPage.path}`}>上一页：{previousPage.title}</Link>
+                <Link to={`/docs/${space.slug}/${previousPage.path}`}>
+                  上一页：{previousPage.title}
+                </Link>
               </Button>
-            ) : <span />}
+            ) : (
+              <span />
+            )}
             {nextPage ? (
               <Button variant="outline" asChild>
                 <Link to={`/docs/${space.slug}/${nextPage.path}`}>下一页：{nextPage.title}</Link>
@@ -165,17 +184,19 @@ export function DocsSpacePage() {
         </main>
 
         <aside className="hidden lg:block">
-          <div className="sticky top-20 rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm shadow-slate-900/5">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">目录</p>
+          <div className="border-border bg-card sticky top-20 rounded-2xl border px-4 py-4 shadow-sm shadow-slate-900/5">
+            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.16em]">
+              目录
+            </p>
             <div className="mt-3 space-y-2">
               {toc.length === 0 ? (
-                <p className="text-sm text-slate-500">当前页暂无二级标题。</p>
+                <p className="text-muted-foreground text-sm">当前页暂无二级标题。</p>
               ) : (
                 toc.map((item) => (
                   <a
                     key={item.id}
                     href={`${location.pathname}#${item.id}`}
-                    className="block text-sm text-slate-600 transition hover:text-slate-900"
+                    className="text-muted-foreground hover:text-foreground block text-sm transition"
                     style={{ paddingLeft: `${(item.level - 2) * 12}px` }}
                   >
                     {item.text}

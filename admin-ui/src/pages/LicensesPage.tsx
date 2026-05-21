@@ -230,7 +230,7 @@ export function LicensesPage() {
       <SectionHeader sectionKey="licenses" />
       <div className="space-y-6 p-6">
         {/* Grant Form */}
-        <div className="border-border max-w-lg rounded-lg border bg-white p-5">
+        <div className="border-border bg-card max-w-lg rounded-lg border p-5">
           <h3 className="mb-4 text-sm font-semibold">人工发放授权</h3>
           <Form {...grantForm}>
             <form
@@ -334,7 +334,7 @@ export function LicensesPage() {
               searchPlaceholder="搜索用户、应用、套餐、订单号..."
             />
           </div>
-          <div className="border-border overflow-hidden rounded-lg border bg-white">
+          <div className="border-border bg-card overflow-hidden rounded-lg border">
             <DataTable
               columns={columns}
               data={entitlements}

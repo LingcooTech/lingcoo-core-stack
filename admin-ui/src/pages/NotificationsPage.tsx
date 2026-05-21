@@ -128,10 +128,12 @@ export function NotificationsPage() {
       className: 'min-w-[320px]',
       cell: (row) => (
         <div className="space-y-1.5">
-          <p className="text-sm font-semibold text-slate-900">{row.title}</p>
-          <p className="line-clamp-2 text-sm text-slate-600">{row.body}</p>
+          <p className="text-foreground text-sm font-semibold">{row.title}</p>
+          <p className="text-muted-foreground line-clamp-2 text-sm">{row.body}</p>
           {typeof row.meta?.broadcastId === 'string' ? (
-            <p className="font-mono text-[10px] text-slate-500">广播 ID: {row.meta.broadcastId}</p>
+            <p className="text-muted-foreground font-mono text-[10px]">
+              广播 ID: {row.meta.broadcastId}
+            </p>
           ) : null}
         </div>
       ),
@@ -141,9 +143,9 @@ export function NotificationsPage() {
       header: '接收用户',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-sm font-medium text-slate-900">{row.user?.email ?? '—'}</p>
+          <p className="text-foreground text-sm font-medium">{row.user?.email ?? '—'}</p>
           {row.user?.displayName ? (
-            <p className="text-xs text-slate-500">{row.user.displayName}</p>
+            <p className="text-muted-foreground text-xs">{row.user.displayName}</p>
           ) : null}
           {row.user?.status ? (
             <StatusPill
@@ -171,7 +173,7 @@ export function NotificationsPage() {
       cell: (row) => (
         <div className="space-y-1">
           <StatusPill tone={statusTone(row.status)} label={row.status} />
-          <p className="text-[11px] text-slate-500">{row.sourceEventName ?? 'manual'}</p>
+          <p className="text-muted-foreground text-[11px]">{row.sourceEventName ?? 'manual'}</p>
         </div>
       ),
     },
@@ -180,8 +182,8 @@ export function NotificationsPage() {
       header: '时间',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-xs text-slate-700">{formatTime(row.createdAt)}</p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-foreground text-xs">{formatTime(row.createdAt)}</p>
+          <p className="text-muted-foreground text-[11px]">
             {row.readAt ? `已读：${formatTime(row.readAt)}` : '未读'}
           </p>
         </div>
@@ -203,7 +205,7 @@ export function NotificationsPage() {
               </a>
             </Button>
           ) : (
-            <span className="text-xs text-slate-400">无 CTA</span>
+            <span className="text-muted-foreground text-xs">无 CTA</span>
           )}
         </div>
       ),
@@ -215,7 +217,7 @@ export function NotificationsPage() {
       <SectionHeader sectionKey="notifications" />
       <div className="space-y-4 p-6">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          <Card className="border-gray-200 bg-white shadow-sm">
+          <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">发布公告</CardTitle>
               <CardDescription>
@@ -326,13 +328,13 @@ export function NotificationsPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+                className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm"
               >
-                <p className="text-sm font-medium text-gray-500">{item.label}</p>
-                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">
+                <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+                <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
                   {item.value}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{item.note}</p>
+                <p className="text-muted-foreground mt-1 text-xs leading-5">{item.note}</p>
               </div>
             ))}
           </div>
@@ -341,7 +343,7 @@ export function NotificationsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">通知记录</h2>
+              <h2 className="text-foreground text-lg font-semibold">通知记录</h2>
               <p className="text-muted-foreground text-sm">
                 查看系统发出的用户通知，包括事件通知和管理员公告。
               </p>
@@ -385,7 +387,7 @@ export function NotificationsPage() {
             onClearAll={clearFilters}
           />
 
-          <div className="border-border overflow-hidden rounded-lg border bg-white">
+          <div className="border-border bg-card overflow-hidden rounded-lg border">
             <DataTable
               columns={columns}
               data={items}

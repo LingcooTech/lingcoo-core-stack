@@ -141,9 +141,9 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2.5">
-      <p className="text-[11px] font-medium text-gray-500">{label}</p>
-      <p className={cn('mt-1 text-sm text-gray-900', mono && 'font-mono text-xs')}>
+    <div className="border-border bg-muted/70 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-[11px] font-medium">{label}</p>
+      <p className={cn('text-foreground mt-1 text-sm', mono && 'font-mono text-xs')}>
         {value || '—'}
       </p>
     </div>
@@ -152,7 +152,7 @@ function MetaField({
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-sm text-slate-500">暂无会话记录。</p>;
+    return <p className="text-muted-foreground text-sm">暂无会话记录。</p>;
   }
 
   return (
@@ -162,14 +162,14 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
         return (
           <div
             key={message.id}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+            className="border-border bg-card rounded-2xl border px-4 py-3 shadow-sm"
           >
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-700">{messageAuthorLabel(message)}</span>
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-foreground font-semibold">{messageAuthorLabel(message)}</span>
               <span>{formatTime(message.createdAt)}</span>
               {isInternal ? <StatusPill tone="neutral" label="内部备注" /> : null}
             </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-900">
+            <p className="text-foreground mt-2 whitespace-pre-wrap text-sm leading-6">
               {message.body}
             </p>
           </div>
@@ -213,7 +213,7 @@ function TicketDetailPanel({
   const { ticket, messages } = detail;
 
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -252,7 +252,7 @@ function TicketDetailPanel({
 
       <CardContent className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-          <div className="space-y-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4">
+          <div className="border-border bg-muted/60 space-y-3 rounded-xl border border-dashed p-4">
             <div className="space-y-2">
               <Label>工单状态</Label>
               <Select
@@ -283,7 +283,7 @@ function TicketDetailPanel({
             <div className="h-px bg-gray-200" />
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-slate-900">指派</p>
+              <p className="text-foreground text-sm font-semibold">指派</p>
               <Button type="button" variant="outline" onClick={onAssignToMe} disabled={isAssigning}>
                 {isAssigning ? '处理中...' : '指派给我'}
               </Button>
@@ -295,16 +295,16 @@ function TicketDetailPanel({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">会话记录</p>
-              <p className="text-xs text-slate-500">{messages.length} 条消息</p>
+              <p className="text-foreground text-sm font-semibold">会话记录</p>
+              <p className="text-muted-foreground text-xs">{messages.length} 条消息</p>
             </div>
             <TicketMessageList messages={messages} />
           </div>
         </div>
 
-        <div className="space-y-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4">
+        <div className="border-border bg-muted/60 space-y-3 rounded-xl border border-dashed p-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-slate-900">回复工单</p>
+            <p className="text-foreground text-sm font-semibold">回复工单</p>
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={internalNote}
@@ -426,9 +426,11 @@ export function TicketsPage() {
       className: 'min-w-[280px]',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="font-mono text-[11px] font-semibold text-slate-600">{row.ticketNo}</p>
-          <p className="text-sm font-semibold text-slate-900">{row.subject}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold">
+            {row.ticketNo}
+          </p>
+          <p className="text-foreground text-sm font-semibold">{row.subject}</p>
+          <p className="text-muted-foreground text-xs">
             {row.app?.name ?? '未关联应用'}
             {row.order?.orderNo ? ` · 订单 ${row.order.orderNo}` : ''}
           </p>
@@ -453,8 +455,8 @@ export function TicketsPage() {
       header: '用户 / 分类',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-sm font-medium text-slate-900">{row.user?.email ?? row.userId}</p>
-          <p className="text-xs text-slate-500">{ticketCategoryLabel(row.category)}</p>
+          <p className="text-foreground text-sm font-medium">{row.user?.email ?? row.userId}</p>
+          <p className="text-muted-foreground text-xs">{ticketCategoryLabel(row.category)}</p>
         </div>
       ),
     },
@@ -463,10 +465,10 @@ export function TicketsPage() {
       header: '指派',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-sm text-slate-900">
+          <p className="text-foreground text-sm">
             {row.assignee?.displayName ?? row.assignee?.email ?? '未分配'}
           </p>
-          <p className="text-[11px] text-slate-500">{formatTime(row.lastActivityAt)}</p>
+          <p className="text-muted-foreground text-[11px]">{formatTime(row.lastActivityAt)}</p>
         </div>
       ),
     },
@@ -543,7 +545,7 @@ export function TicketsPage() {
           onClearAll={clearFilters}
         />
 
-        <div className="border-border overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <DataTable
             columns={columns}
             data={tickets}
@@ -615,7 +617,7 @@ export function TicketsPage() {
                 ) : detailQuery.isLoading ? (
                   <div className="space-y-3 pt-4">
                     {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="h-10 animate-pulse rounded-lg bg-gray-100" />
+                      <div key={index} className="bg-muted h-10 animate-pulse rounded-lg" />
                     ))}
                   </div>
                 ) : null}

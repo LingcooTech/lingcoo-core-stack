@@ -155,8 +155,8 @@ export function DataTable<T extends RowData>({
                       type="button"
                       onClick={() => onSort(col.sortKey!)}
                       className={cn(
-                        'inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-gray-900',
-                        isSorted && 'text-gray-900',
+                        'hover:text-foreground inline-flex items-center gap-1.5 font-semibold transition-colors',
+                        isSorted && 'text-foreground',
                       )}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -195,7 +195,7 @@ export function DataTable<T extends RowData>({
               data-state={row.getIsSelected() ? 'selected' : undefined}
               className={cn(
                 'animate-fadeIn transition-colors',
-                onRowClick && 'cursor-pointer hover:bg-slate-50',
+                onRowClick && 'hover:bg-muted cursor-pointer',
                 row.getIsSelected() && 'bg-primary/5',
                 rowClassName ? rowClassName(row.original) : '',
               )}

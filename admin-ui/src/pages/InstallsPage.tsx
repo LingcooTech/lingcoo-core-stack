@@ -100,7 +100,7 @@ export function InstallsPage() {
           searchPlaceholder="搜索安装 ID、用户、应用..."
         />
 
-        <div className="border-border overflow-hidden rounded-lg border bg-white">
+        <div className="border-border bg-card overflow-hidden rounded-lg border">
           <DataTable
             columns={installColumns}
             data={installs}

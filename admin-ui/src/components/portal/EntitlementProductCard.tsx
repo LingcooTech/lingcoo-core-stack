@@ -39,18 +39,16 @@ export function EntitlementProductCard({
   const stateLabel = accessState === 'active' ? '有效授权' : '授权已失效';
 
   return (
-    <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-blue-50 p-3 text-primary">
+          <div className="text-primary rounded-lg bg-blue-50 p-3">
             <Boxes className="h-5 w-5" />
           </div>
           <div>
             <CardTitle className="text-xl tracking-tight">{productName}</CardTitle>
           </div>
-          <Badge variant={accessState === 'active' ? 'default' : 'secondary'}>
-            {stateLabel}
-          </Badge>
+          <Badge variant={accessState === 'active' ? 'default' : 'secondary'}>{stateLabel}</Badge>
         </div>
         {relatedApps.length ? (
           <div className="flex flex-wrap gap-2">
@@ -64,39 +62,63 @@ export function EntitlementProductCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">应用数量</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{relatedApps.length || 1}</p>
+          <div className="border-border bg-muted/80 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+              应用数量
+            </p>
+            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
+              {relatedApps.length || 1}
+            </p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">能力项</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{featureNames.length}</p>
+          <div className="border-border bg-muted/80 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+              能力项
+            </p>
+            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
+              {featureNames.length}
+            </p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">授权记录</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">{items.length}</p>
+          <div className="border-border bg-muted/80 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+              授权记录
+            </p>
+            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
+              {items.length}
+            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {featureNames.map((featureName) => (
-            <Badge key={featureName} variant="secondary" className="inline-flex items-center gap-1.5">
+            <Badge
+              key={featureName}
+              variant="secondary"
+              className="inline-flex items-center gap-1.5"
+            >
               <KeyRound className="h-3 w-3 text-emerald-600" />
               {formatFeatureName(featureName)}
             </Badge>
           ))}
         </div>
 
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground space-y-2 text-sm">
           {items.map((item) => (
-            <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-4">
+            <div key={item.id} className="border-border bg-muted/80 rounded-lg border px-4 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-slate-800">{item.plan?.name ?? item.plan?.code ?? '未命名能力'}</span>
-                <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>{item.status}</Badge>
+                <span className="text-foreground font-medium">
+                  {item.plan?.name ?? item.plan?.code ?? '未命名能力'}
+                </span>
+                <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
+                  {item.status}
+                </Badge>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <p className="text-xs">生效时间：{item.startsAt ? formatTime(item.startsAt) : '立即生效'}</p>
-                <p className="text-xs">到期时间：{item.expiresAt ? formatTime(item.expiresAt) : '永不过期'}</p>
+                <p className="text-xs">
+                  生效时间：{item.startsAt ? formatTime(item.startsAt) : '立即生效'}
+                </p>
+                <p className="text-xs">
+                  到期时间：{item.expiresAt ? formatTime(item.expiresAt) : '永不过期'}
+                </p>
               </div>
             </div>
           ))}
@@ -109,7 +131,7 @@ export function EntitlementProductCard({
         ) : null}
 
         {deploymentHref || visibleAccessLinks.length || appHref ? (
-          <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4">
+          <div className="border-border flex flex-wrap justify-end gap-3 border-t pt-4">
             {appHref ? (
               <Button asChild variant="outline" className="rounded-lg">
                 <Link to={appHref}>

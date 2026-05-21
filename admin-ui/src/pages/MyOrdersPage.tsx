@@ -20,7 +20,7 @@ export function MyOrdersPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '同步失败');
-    }
+    },
   });
 
   const orders = ordersQuery.data?.items ?? [];
@@ -31,35 +31,38 @@ export function MyOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-4xl font-semibold tracking-tight text-gray-900">订单记录</h1>
+        <h1 className="text-foreground text-4xl font-semibold tracking-tight">订单记录</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
-          { label: '待同步', value: String(pendingOrders.length) }
+          { label: '待同步', value: String(pendingOrders.length) },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{item.value}</p>
+          <div key={item.label} className="border-border bg-card rounded-xl border p-4 shadow-sm">
+            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+            <p className="text-foreground mt-2 text-3xl font-semibold tracking-tight">
+              {item.value}
+            </p>
           </div>
         ))}
       </div>
 
       <section className="space-y-5">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">全部订单</h2>
-          <p className="text-sm text-gray-500">
-            已支付 {paidOrders.length} 笔，累计 {formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY')}
+          <h2 className="text-foreground text-2xl font-semibold tracking-tight">全部订单</h2>
+          <p className="text-muted-foreground text-sm">
+            已支付 {paidOrders.length} 笔，累计{' '}
+            {formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY')}
           </p>
         </div>
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="rounded-xl border-gray-200 bg-white">
-              <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-                <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            <Card className="border-border bg-card rounded-xl">
+              <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+                <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
                 正在加载订单记录...
               </CardContent>
             </Card>

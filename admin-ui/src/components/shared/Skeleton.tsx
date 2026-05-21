@@ -32,7 +32,7 @@ export function Skeleton({
 // 预设骨架屏组件
 export function SkeletonCard() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="border-border bg-card rounded-xl border p-5 shadow-sm">
       <div className="flex items-start gap-4">
         <Skeleton variant="circular" className="h-12 w-12 shrink-0" />
         <div className="flex-1 space-y-3">
@@ -65,7 +65,7 @@ export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: nu
 
 export function SkeletonAppCard() {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="border-border bg-card overflow-hidden rounded-xl border p-5 shadow-sm">
       <div className="flex flex-col items-center text-center">
         <Skeleton variant="circular" className="mb-4 h-20 w-20" />
         <div className="mb-3 flex gap-2">
@@ -83,7 +83,7 @@ export function SkeletonAppCard() {
 
 export function SkeletonMetricCard() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm">
+    <div className="border-border bg-card rounded-lg border px-4 py-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 space-y-2">
           <Skeleton className="h-3 w-20" />
@@ -101,7 +101,7 @@ export function SkeletonList({ items = 3 }: { items?: number }) {
       {Array.from({ length: items }).map((_, index) => (
         <div
           key={index}
-          className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4"
+          className="border-border bg-card flex items-center gap-3 rounded-lg border p-4"
         >
           <Skeleton variant="circular" className="h-10 w-10 shrink-0" />
           <div className="flex-1 space-y-2">

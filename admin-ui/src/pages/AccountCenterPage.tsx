@@ -9,7 +9,12 @@ import { z } from 'zod';
 
 import { listApps } from '@/api/apps';
 import { changePassword, forgotPassword, getCurrentUser, updateCurrentUser } from '@/api/auth';
-import type { HydratedEntitlement, NotificationItem, NotificationUnreadCount, NotificationsResponse } from '@/api/types';
+import type {
+  HydratedEntitlement,
+  NotificationItem,
+  NotificationUnreadCount,
+  NotificationsResponse,
+} from '@/api/types';
 import {
   archiveNotification,
   getMyTicket,
@@ -29,7 +34,14 @@ import { StatusPill } from '@/components/shared/StatusPill';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
@@ -37,28 +49,25 @@ import { getAccessLinks } from '@/lib/app-catalog-ui';
 import { cn, formatAmount, formatTime } from '@/lib/utils';
 
 const accountTabValues = ['profile', 'notifications', 'orders', 'apps', 'tickets'] as const;
-type AccountTab = typeof accountTabValues[number];
+type AccountTab = (typeof accountTabValues)[number];
 
 const profileSchema = z.object({
-  displayName: z
-    .string()
-    .trim()
-    .max(120, '用户名不能超过 120 个字符')
+  displayName: z.string().trim().max(120, '用户名不能超过 120 个字符'),
 });
 
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(8, '请输入当前密码'),
     newPassword: z.string().min(8, '新密码至少 8 位'),
-    confirmPassword: z.string().min(8, '请再次输入新密码')
+    confirmPassword: z.string().min(8, '请再次输入新密码'),
   })
   .refine((value) => value.newPassword === value.confirmPassword, {
     path: ['confirmPassword'],
-    message: '两次输入的新密码不一致'
+    message: '两次输入的新密码不一致',
   })
   .refine((value) => value.currentPassword !== value.newPassword, {
     path: ['newPassword'],
-    message: '新密码不能与当前密码相同'
+    message: '新密码不能与当前密码相同',
   });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -82,15 +91,15 @@ function AccountProfileTab() {
   const qc = useQueryClient();
   const currentUserQuery = useQuery({
     queryKey: ['current-user'],
-    queryFn: getCurrentUser
+    queryFn: getCurrentUser,
   });
   const currentUser = currentUserQuery.data?.user ?? null;
 
   const profileForm = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      displayName: ''
-    }
+      displayName: '',
+    },
   });
 
   const passwordForm = useForm<PasswordValues>({
@@ -98,8 +107,8 @@ function AccountProfileTab() {
     defaultValues: {
       currentPassword: '',
       newPassword: '',
-      confirmPassword: ''
-    }
+      confirmPassword: '',
+    },
   });
 
   useEffect(() => {
@@ -108,7 +117,7 @@ function AccountProfileTab() {
     }
 
     profileForm.reset({
-      displayName: currentUser.displayName ?? ''
+      displayName: currentUser.displayName ?? '',
     });
   }, [currentUser, profileForm]);
 
@@ -118,13 +127,13 @@ function AccountProfileTab() {
       toast.success('个人资料已更新');
       qc.setQueryData(['current-user'], {
         authenticated: true,
-        user: result.user
+        user: result.user,
       });
       profileForm.reset({
-        displayName: result.user.displayName ?? ''
+        displayName: result.user.displayName ?? '',
       });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '更新个人资料失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '更新个人资料失败'),
   });
 
   const changePasswordMutation = useMutation({
@@ -134,7 +143,7 @@ function AccountProfileTab() {
       toast.success('密码已修改');
       passwordForm.reset();
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '修改密码失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '修改密码失败'),
   });
 
   const sendResetEmailMutation = useMutation({
@@ -148,14 +157,14 @@ function AccountProfileTab() {
     onSuccess: () => {
       toast.success('找回密码邮件已发送，请检查邮箱');
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '发送找回密码邮件失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '发送找回密码邮件失败'),
   });
 
   if (currentUserQuery.isLoading) {
     return (
-      <Card className="rounded-xl border-gray-200 bg-white">
-        <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-          <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+      <Card className="border-border bg-card rounded-xl">
+        <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+          <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
           正在加载个人资料...
         </CardContent>
       </Card>
@@ -175,16 +184,20 @@ function AccountProfileTab() {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">登录邮箱</p>
-          <p className="mt-2 break-all text-sm font-semibold text-gray-900">{currentUser.email}</p>
+        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
+          <p className="text-muted-foreground text-sm font-medium">登录邮箱</p>
+          <p className="text-foreground mt-2 break-all text-sm font-semibold">
+            {currentUser.email}
+          </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">账户角色</p>
-          <p className="mt-2 text-sm font-semibold text-gray-900">{currentUser.role === 'admin' ? '管理员' : '普通用户'}</p>
+        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
+          <p className="text-muted-foreground text-sm font-medium">账户角色</p>
+          <p className="text-foreground mt-2 text-sm font-semibold">
+            {currentUser.role === 'admin' ? '管理员' : '普通用户'}
+          </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">邮箱验证</p>
+        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
+          <p className="text-muted-foreground text-sm font-medium">邮箱验证</p>
           <div className="mt-2">
             <Badge variant={currentUser.emailVerified ? 'default' : 'secondary'}>
               {currentUser.emailVerified ? '已验证' : '待验证'}
@@ -194,14 +207,16 @@ function AccountProfileTab() {
       </div>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card rounded-xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl tracking-tight">个人资料</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...profileForm}>
               <form
-                onSubmit={profileForm.handleSubmit((values) => updateProfileMutation.mutate(values))}
+                onSubmit={profileForm.handleSubmit((values) =>
+                  updateProfileMutation.mutate(values),
+                )}
                 className="space-y-5"
               >
                 <FormField
@@ -226,14 +241,16 @@ function AccountProfileTab() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card rounded-xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl tracking-tight">密码与安全</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <Form {...passwordForm}>
               <form
-                onSubmit={passwordForm.handleSubmit((values) => changePasswordMutation.mutate(values))}
+                onSubmit={passwordForm.handleSubmit((values) =>
+                  changePasswordMutation.mutate(values),
+                )}
                 className="space-y-5"
               >
                 <FormField
@@ -282,8 +299,8 @@ function AccountProfileTab() {
               </form>
             </Form>
 
-            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/70 p-4">
-              <p className="text-sm font-semibold text-gray-900">忘记当前密码？</p>
+            <div className="border-border bg-muted/70 rounded-lg border border-dashed p-4">
+              <p className="text-foreground text-sm font-semibold">忘记当前密码？</p>
               <Button
                 type="button"
                 variant="outline"
@@ -313,7 +330,7 @@ function AccountOrdersTab() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '同步失败');
-    }
+    },
   });
 
   const orders = ordersQuery.data?.items ?? [];
@@ -326,28 +343,37 @@ function AccountOrdersTab() {
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
-          { label: '待同步', value: String(pendingOrders.length) }
+          { label: '待同步', value: String(pendingOrders.length) },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+          <div
+            key={item.label}
+            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+          >
+            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              {item.value}
+            </p>
           </div>
         ))}
       </div>
 
       <section className="space-y-5">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">我的订单</h2>
-          <p className="text-sm text-gray-500">
-            已支付 {paidOrders.length} 笔，累计 {formatAmount(paidOrders.reduce((sum, order) => sum + order.amount, 0), paidOrders[0]?.currency ?? 'CNY')}
+          <h2 className="text-foreground text-2xl font-semibold tracking-tight">我的订单</h2>
+          <p className="text-muted-foreground text-sm">
+            已支付 {paidOrders.length} 笔，累计{' '}
+            {formatAmount(
+              paidOrders.reduce((sum, order) => sum + order.amount, 0),
+              paidOrders[0]?.currency ?? 'CNY',
+            )}
           </p>
         </div>
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="rounded-xl border-gray-200 bg-white">
-              <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-                <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            <Card className="border-border bg-card rounded-xl">
+              <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+                <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
                 正在加载订单记录...
               </CardContent>
             </Card>
@@ -422,7 +448,9 @@ function AccountNotificationsTab() {
     queryFn: () => listMyNotifications({ limit: 100 }),
   });
   const selectedTicketNo =
-    selectedNotification?.category === 'ticket' ? extractNotificationTicketNo(selectedNotification) : null;
+    selectedNotification?.category === 'ticket'
+      ? extractNotificationTicketNo(selectedNotification)
+      : null;
   const ticketDetailQuery = useQuery({
     queryKey: ['notification-ticket-detail', selectedTicketNo],
     queryFn: () => getMyTicket(selectedTicketNo!),
@@ -442,7 +470,8 @@ function AccountNotificationsTab() {
 
       const previousNotifications = qc.getQueryData<NotificationsResponse>(notificationsQueryKey);
       const previousUnreadCount = qc.getQueryData<NotificationUnreadCount>(unreadCountQueryKey);
-      const target = previousNotifications?.items.find((item) => item.id === notificationId) ?? null;
+      const target =
+        previousNotifications?.items.find((item) => item.id === notificationId) ?? null;
 
       if (target?.status === 'unread') {
         const now = new Date().toISOString();
@@ -462,7 +491,7 @@ function AccountNotificationsTab() {
                     readAt: now,
                     updatedAt: now,
                   }
-                : item
+                : item,
             ),
           };
         });
@@ -472,7 +501,7 @@ function AccountNotificationsTab() {
             ? {
                 unreadCount: Math.max(0, current.unreadCount - 1),
               }
-            : current
+            : current,
         );
 
         setSelectedNotification((current) =>
@@ -483,7 +512,7 @@ function AccountNotificationsTab() {
                 readAt: now,
                 updatedAt: now,
               }
-            : current
+            : current,
         );
       }
 
@@ -552,11 +581,19 @@ function AccountNotificationsTab() {
         {[
           { label: '全部通知', value: String(notifications.length) },
           { label: '未读', value: String(unreadCount) },
-          { label: '已归档', value: String(notifications.filter((item) => item.status === 'archived').length) },
+          {
+            label: '已归档',
+            value: String(notifications.filter((item) => item.status === 'archived').length),
+          },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+          <div
+            key={item.label}
+            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+          >
+            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              {item.value}
+            </p>
           </div>
         ))}
       </div>
@@ -564,8 +601,10 @@ function AccountNotificationsTab() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-gray-900">消息通知</h2>
-            <p className="text-sm text-gray-500">集中查看与你的账户、订单、授权和部署相关的系统通知。</p>
+            <h2 className="text-foreground text-2xl font-semibold tracking-tight">消息通知</h2>
+            <p className="text-muted-foreground text-sm">
+              集中查看与你的账户、订单、授权和部署相关的系统通知。
+            </p>
           </div>
           <Button
             variant="outline"
@@ -577,25 +616,21 @@ function AccountNotificationsTab() {
         </div>
 
         {notificationsQuery.isLoading ? (
-          <Card className="rounded-xl border-gray-200 bg-white">
-            <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-              <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+          <Card className="border-border bg-card rounded-xl">
+            <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+              <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
               正在加载通知...
             </CardContent>
           </Card>
         ) : notifications.length === 0 ? (
-          <EmptyState
-            icon={Bell}
-            title="暂无通知"
-            description="当前还没有与你相关的系统通知。"
-          />
+          <EmptyState icon={Bell} title="暂无通知" description="当前还没有与你相关的系统通知。" />
         ) : (
           <div className="space-y-3">
             {notifications.map((item) => (
               <Card
                 key={item.id}
                 className={cn(
-                  'rounded-xl border-gray-200 bg-white shadow-sm transition',
+                  'border-border bg-card rounded-xl shadow-sm transition',
                   item.status === 'unread' ? 'border-sky-200 bg-sky-50/30' : '',
                 )}
               >
@@ -609,18 +644,25 @@ function AccountNotificationsTab() {
                             未读
                           </span>
                         ) : null}
-                        <StatusPill tone={notificationTone(item.level)} label={notificationCategoryLabel(item.category)} />
+                        <StatusPill
+                          tone={notificationTone(item.level)}
+                          label={notificationCategoryLabel(item.category)}
+                        />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{item.body}</p>
+                        <p className="text-foreground text-base font-semibold">{item.title}</p>
+                        <p className="text-muted-foreground mt-1 text-sm leading-6">{item.body}</p>
                       </div>
                     </div>
-                    <p className="text-xs text-slate-500">{formatTime(item.createdAt)}</p>
+                    <p className="text-muted-foreground text-xs">{formatTime(item.createdAt)}</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openNotificationDetail(item)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openNotificationDetail(item)}
+                    >
                       查看详情
                     </Button>
                     {item.status !== 'archived' ? (
@@ -644,7 +686,9 @@ function AccountNotificationsTab() {
           notification={selectedNotification}
           ticketDetail={ticketDetailQuery.data}
           isTicketLoading={ticketDetailQuery.isLoading}
-          ticketErrorMessage={ticketDetailQuery.error instanceof Error ? ticketDetailQuery.error.message : null}
+          ticketErrorMessage={
+            ticketDetailQuery.error instanceof Error ? ticketDetailQuery.error.message : null
+          }
           onOpenChange={(open) => {
             if (!open) {
               setSelectedNotification(null);
@@ -657,7 +701,10 @@ function AccountNotificationsTab() {
 }
 
 function AccountAppsTab() {
-  const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
+  const entitlementsQuery = useQuery({
+    queryKey: ['my-entitlements'],
+    queryFn: listMyEntitlements,
+  });
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
 
   const summary = entitlementsQuery.data?.summary ?? [];
@@ -701,19 +748,24 @@ function AccountAppsTab() {
           { label: '已购应用', value: String(summary.length) },
           { label: '激活授权', value: String(activeItems.length) },
           { label: '可部署应用', value: String(deployableCount) },
-          { label: '失效/撤销', value: String(inactiveItems.length) }
+          { label: '失效/撤销', value: String(inactiveItems.length) },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+          <div
+            key={item.label}
+            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+          >
+            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              {item.value}
+            </p>
           </div>
         ))}
       </div>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="rounded-xl border-gray-200 bg-white">
-          <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+        <Card className="border-border bg-card rounded-xl">
+          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
             正在加载已购应用...
           </CardContent>
         </Card>
@@ -725,7 +777,7 @@ function AccountAppsTab() {
         />
       ) : (
         <section className="space-y-5">
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">我的应用</h2>
+          <h2 className="text-foreground text-2xl font-semibold tracking-tight">我的应用</h2>
           <div className="grid gap-5 lg:grid-cols-2">
             {appCodes.map((appCode) => {
               const entry = activeSummaryMap.get(appCode) ?? null;
@@ -748,7 +800,9 @@ function AccountAppsTab() {
                   ? `/deploy?app=${encodeURIComponent(appCode)}`
                   : undefined;
               const accessLinks =
-                activeRelatedItems.length > 0 && app && getAppDeliveryMode(app) !== 'one_click' ? getAccessLinks(app.links) : [];
+                activeRelatedItems.length > 0 && app && getAppDeliveryMode(app) !== 'one_click'
+                  ? getAccessLinks(app.links)
+                  : [];
 
               return (
                 <EntitlementProductCard
@@ -778,7 +832,7 @@ export function AccountCenterPage() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">个人中心</h1>
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">个人中心</h1>
       </div>
 
       <Tabs
@@ -786,8 +840,8 @@ export function AccountCenterPage() {
         onValueChange={(nextValue) => setSearchParams({ tab: normalizeAccountTab(nextValue) })}
         className="space-y-5"
       >
-        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-          <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
+        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
+          <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
             <TabsTrigger value="profile" className="min-w-[108px] rounded-md">
               个人资料
             </TabsTrigger>

@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 import { createDraftId, type EditableAppDetail, type EditableAppSubscriptionPlan } from './model';
@@ -39,19 +45,35 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <Label>开发者 / 开发商</Label>
-            <Input value={value.developer} onChange={(event) => setField('developer', event.target.value)} placeholder="例如：FutureDecade" />
+            <Input
+              value={value.developer}
+              onChange={(event) => setField('developer', event.target.value)}
+              placeholder="例如：FutureDecade"
+            />
           </div>
           <div className="space-y-2">
             <Label>版本号</Label>
-            <Input value={value.version} onChange={(event) => setField('version', event.target.value)} placeholder="例如：1.2.0" />
+            <Input
+              value={value.version}
+              onChange={(event) => setField('version', event.target.value)}
+              placeholder="例如：1.2.0"
+            />
           </div>
           <div className="space-y-2">
             <Label>更新日期</Label>
-            <Input value={value.updateDate} onChange={(event) => setField('updateDate', event.target.value)} placeholder="例如：2026-04-18" />
+            <Input
+              value={value.updateDate}
+              onChange={(event) => setField('updateDate', event.target.value)}
+              placeholder="例如：2026-04-18"
+            />
           </div>
           <div className="space-y-2">
             <Label>应用大小</Label>
-            <Input value={value.size} onChange={(event) => setField('size', event.target.value)} placeholder="例如：45 MB" />
+            <Input
+              value={value.size}
+              onChange={(event) => setField('size', event.target.value)}
+              placeholder="例如：45 MB"
+            />
           </div>
         </div>
 
@@ -63,7 +85,9 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
               onChange={(event) => setField('platformsText', event.target.value)}
               placeholder="例如：iOS, Android, Web"
             />
-            <p className="text-xs text-muted-foreground">用逗号分隔多个平台，详情页会显示为标签。</p>
+            <p className="text-muted-foreground text-xs">
+              用逗号分隔多个平台，详情页会显示为标签。
+            </p>
           </div>
           <div className="space-y-2">
             <Label>支持语言</Label>
@@ -97,24 +121,36 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
           </div>
           <div className="space-y-2">
             <Label>价格文案</Label>
-            <Input value={value.price} onChange={(event) => setField('price', event.target.value)} placeholder="例如：¥29 / 月" />
+            <Input
+              value={value.price}
+              onChange={(event) => setField('price', event.target.value)}
+              placeholder="例如：¥29 / 月"
+            />
           </div>
           <div className="space-y-2">
             <Label>试用天数</Label>
-            <Input value={value.trialDays} onChange={(event) => setField('trialDays', event.target.value)} placeholder="例如：14" />
+            <Input
+              value={value.trialDays}
+              onChange={(event) => setField('trialDays', event.target.value)}
+              placeholder="例如：14"
+            />
           </div>
           <div className="space-y-2">
             <Label>站外购买地址</Label>
-            <Input value={value.purchaseUrl} onChange={(event) => setField('purchaseUrl', event.target.value)} placeholder="https://..." />
+            <Input
+              value={value.purchaseUrl}
+              onChange={(event) => setField('purchaseUrl', event.target.value)}
+              placeholder="https://..."
+            />
           </div>
         </div>
 
         {value.purchaseType === 'onsite_subscription' ? (
-          <div className="space-y-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+          <div className="border-border bg-muted/80 space-y-4 rounded-xl border p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">订阅套餐</p>
-                <p className="text-xs text-muted-foreground">用于详情页右侧边栏展示套餐信息。</p>
+                <p className="text-foreground text-sm font-semibold">订阅套餐</p>
+                <p className="text-muted-foreground text-xs">用于详情页右侧边栏展示套餐信息。</p>
               </div>
               <Button
                 type="button"
@@ -123,7 +159,12 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
                 onClick={() =>
                   setField('subscriptionPlans', [
                     ...value.subscriptionPlans,
-                    { id: createDraftId('subscription_plan'), period: '', price: '', description: '' },
+                    {
+                      id: createDraftId('subscription_plan'),
+                      period: '',
+                      price: '',
+                      description: '',
+                    },
                   ])
                 }
               >
@@ -133,11 +174,14 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
             </div>
 
             {value.subscriptionPlans.length === 0 ? (
-              <p className="text-xs text-muted-foreground">暂无订阅套餐，点击右上角添加。</p>
+              <p className="text-muted-foreground text-xs">暂无订阅套餐，点击右上角添加。</p>
             ) : null}
 
             {value.subscriptionPlans.map((plan) => (
-              <div key={plan.id} className="grid gap-3 rounded-lg border border-gray-200 bg-white p-3 md:grid-cols-[1fr,1fr,2fr,auto]">
+              <div
+                key={plan.id}
+                className="border-border bg-card grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr,1fr,2fr,auto]"
+              >
                 <Input
                   value={plan.period}
                   onChange={(event) =>

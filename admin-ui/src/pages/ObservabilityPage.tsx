@@ -180,7 +180,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索事件名、用户、安装 ID、应用..."
               />
             </div>
-            <div className="border-border overflow-hidden rounded-lg border bg-white">
+            <div className="border-border bg-card overflow-hidden rounded-lg border">
               <DataTable
                 columns={eventColumns}
                 data={events}
@@ -209,7 +209,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索回调类型、渠道、事件号..."
               />
             </div>
-            <div className="border-border overflow-hidden rounded-lg border bg-white">
+            <div className="border-border bg-card overflow-hidden rounded-lg border">
               <DataTable
                 columns={webhookColumns}
                 data={webhooks}

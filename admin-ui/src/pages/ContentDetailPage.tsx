@@ -21,7 +21,7 @@ export function ContentDetailPage() {
   if (contentQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+        <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function ContentDetailPage() {
   if (!contentQuery.data) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+        <Button variant="ghost" asChild className="text-muted-foreground px-0">
           <Link to="/content">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回内容中心
@@ -44,27 +44,29 @@ export function ContentDetailPage() {
 
   return (
     <article className="space-y-6">
-      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+      <Button variant="ghost" asChild className="text-muted-foreground px-0">
         <Link to="/content">
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回内容中心
         </Link>
       </Button>
 
-      <header className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <header className="border-border bg-card rounded-2xl border p-6 shadow-sm">
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
             <span>{item.authorName || '匿名作者'}</span>
             <span className="text-slate-300">•</span>
             <span>{formatTime(item.publishedAt || item.createdAt)}</span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{item.title}</h1>
-          {item.excerpt ? <p className="max-w-3xl text-sm leading-7 text-slate-600">{item.excerpt}</p> : null}
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">{item.title}</h1>
+          {item.excerpt ? (
+            <p className="text-muted-foreground max-w-3xl text-sm leading-7">{item.excerpt}</p>
+          ) : null}
         </div>
       </header>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="prose prose-slate max-w-none prose-headings:font-semibold prose-p:leading-relaxed">
+      <section className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <div className="prose prose-slate prose-headings:font-semibold prose-p:leading-relaxed max-w-none">
           <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
             {item.content}
           </ReactMarkdown>

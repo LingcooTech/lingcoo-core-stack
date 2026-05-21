@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 type ContentStatus = 'draft' | 'published' | 'archived';
@@ -67,9 +73,7 @@ export function ContentEditPage() {
         status: form.status,
       };
 
-      return isCreateMode
-        ? createContent(payload)
-        : updateContent(contentId!, payload);
+      return isCreateMode ? createContent(payload) : updateContent(contentId!, payload);
     },
     onSuccess: async (item) => {
       toast.success(isCreateMode ? '内容已创建' : '内容已保存');
@@ -81,13 +85,13 @@ export function ContentEditPage() {
 
   return (
     <div className="space-y-4">
-      <div className="border-b border-border px-6 py-5">
+      <div className="border-border border-b px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            <h1 className="text-foreground text-lg font-semibold tracking-tight">
               {isCreateMode ? '新建内容' : '编辑内容'}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               支持手动创建内容，也支持对导入内容做二次编辑。
             </p>
           </div>
@@ -103,7 +107,7 @@ export function ContentEditPage() {
       </div>
 
       <div className="space-y-4 p-6">
-        <Card className="border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card shadow-sm">
           <CardHeader>
             <CardTitle>基础信息</CardTitle>
             <CardDescription>标题、slug、来源和发布状态。</CardDescription>
@@ -112,11 +116,17 @@ export function ContentEditPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>标题</Label>
-                <Input value={form.title} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} />
+                <Input
+                  value={form.title}
+                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>slug</Label>
-                <Input value={form.slug} onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))} />
+                <Input
+                  value={form.slug}
+                  onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
+                />
               </div>
             </div>
 
@@ -125,7 +135,9 @@ export function ContentEditPage() {
                 <Label>状态</Label>
                 <Select
                   value={form.status}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as ContentStatus }))}
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, status: value as ContentStatus }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -141,7 +153,9 @@ export function ContentEditPage() {
                 <Label>来源类型</Label>
                 <Select
                   value={form.sourceType}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, sourceType: value as ContentSourceType }))}
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, sourceType: value as ContentSourceType }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -156,24 +170,42 @@ export function ContentEditPage() {
               </div>
               <div className="space-y-2">
                 <Label>作者</Label>
-                <Input value={form.authorName} onChange={(event) => setForm((prev) => ({ ...prev, authorName: event.target.value }))} />
+                <Input
+                  value={form.authorName}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, authorName: event.target.value }))
+                  }
+                />
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>来源 ID</Label>
-                <Input value={form.sourceId} onChange={(event) => setForm((prev) => ({ ...prev, sourceId: event.target.value }))} />
+                <Input
+                  value={form.sourceId}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, sourceId: event.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>来源链接</Label>
-                <Input value={form.sourceUrl} onChange={(event) => setForm((prev) => ({ ...prev, sourceUrl: event.target.value }))} />
+                <Input
+                  value={form.sourceUrl}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, sourceUrl: event.target.value }))
+                  }
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>封面图</Label>
-              <Input value={form.coverUrl} onChange={(event) => setForm((prev) => ({ ...prev, coverUrl: event.target.value }))} />
+              <Input
+                value={form.coverUrl}
+                onChange={(event) => setForm((prev) => ({ ...prev, coverUrl: event.target.value }))}
+              />
             </div>
 
             <div className="space-y-2">
@@ -187,7 +219,7 @@ export function ContentEditPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card shadow-sm">
           <CardHeader>
             <CardTitle>正文内容</CardTitle>
             <CardDescription>当前阶段直接维护 Markdown / HTML 正文。</CardDescription>

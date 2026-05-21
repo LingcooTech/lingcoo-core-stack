@@ -6,7 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
 import type { DeliveryManifest } from '@/lib/app-delivery';
 
@@ -67,7 +73,7 @@ export function AppEditFeaturesTab({
         </CardHeader>
         <CardContent className="space-y-3">
           {features.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
               当前还没有功能。先创建 feature，后面套餐才能关联这些功能。
             </div>
           ) : (
@@ -76,12 +82,12 @@ export function AppEditFeaturesTab({
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-muted-foreground" />
+                      <Sparkles className="text-muted-foreground h-4 w-4" />
                       <p className="text-sm font-semibold">
                         {feature.name.trim() || `功能 ${index + 1}`}
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       功能 Code 会用于 plan 关联和授权汇总。
                     </p>
                   </div>
@@ -201,7 +207,9 @@ export function AppEditPlansTab({
           <div className="flex items-center justify-between gap-3">
             <div>
               <CardTitle>套餐列表</CardTitle>
-              <CardDescription>套餐定义购买层和功能集合；售卖文案在 Offers Tab 单独配置。</CardDescription>
+              <CardDescription>
+                套餐定义购买层和功能集合；售卖文案在 Offers Tab 单独配置。
+              </CardDescription>
             </div>
             <Button
               type="button"
@@ -217,13 +225,13 @@ export function AppEditPlansTab({
         </CardHeader>
         <CardContent className="space-y-3">
           {features.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
               请先创建功能，再创建套餐。每个套餐至少要关联一个功能。
             </div>
           ) : null}
 
           {plans.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
               当前还没有套餐。创建套餐后，Offers Tab 才能绑定并售卖。
             </div>
           ) : (
@@ -232,10 +240,12 @@ export function AppEditPlansTab({
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-semibold">{plan.name.trim() || `套餐 ${index + 1}`}</p>
+                      <Package className="text-muted-foreground h-4 w-4" />
+                      <p className="text-sm font-semibold">
+                        {plan.name.trim() || `套餐 ${index + 1}`}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {formatPlanInterval(plan.interval)} · {plan.code || '未设置 Plan Code'}
                     </p>
                   </div>
@@ -381,10 +391,10 @@ export function AppEditPlansTab({
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+                <div className="bg-muted/20 space-y-4 rounded-lg border p-4">
                   <div>
                     <p className="text-sm font-semibold">部署权益</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       这些配置会在购买时固化到授权实例；用户创建部署时必须选择一个有效授权。
                     </p>
                   </div>
@@ -402,16 +412,17 @@ export function AppEditPlansTab({
                             ...current,
                             deploymentPolicy: {
                               ...current.deploymentPolicy,
-                              maxActiveDeployments: Number.isFinite(parsed) && parsed >= 1 ? parsed : 1,
+                              maxActiveDeployments:
+                                Number.isFinite(parsed) && parsed >= 1 ? parsed : 1,
                             },
                           }));
                         }}
                       />
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         只限制当前授权实例，不再按应用维度累计。
                       </p>
                     </div>
-                    <label className="flex items-start gap-3 rounded-md border bg-white p-3">
+                    <label className="bg-card flex items-start gap-3 rounded-md border p-3">
                       <Checkbox
                         checked={plan.deploymentPolicy.allowMultiplePurchases}
                         onCheckedChange={(checked) =>
@@ -425,8 +436,10 @@ export function AppEditPlansTab({
                         }
                       />
                       <span className="space-y-1">
-                        <span className="block text-sm font-medium">允许同一用户重复购买该套餐</span>
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="block text-sm font-medium">
+                          允许同一用户重复购买该套餐
+                        </span>
+                        <span className="text-muted-foreground block text-xs">
                           启用后，每次购买会产生独立授权，可分别绑定域名和消耗部署名额。
                         </span>
                       </span>
@@ -443,11 +456,12 @@ export function AppEditPlansTab({
                             ...current,
                             deploymentPolicy: {
                               ...current.deploymentPolicy,
-                              domainBindingMode: value as EditablePlan['deploymentPolicy']['domainBindingMode'],
+                              domainBindingMode:
+                                value as EditablePlan['deploymentPolicy']['domainBindingMode'],
                               domainBindingSource:
                                 value === 'lock_on_first_success' &&
                                 current.deploymentPolicy.domainBindingSource === 'none'
-                                  ? domainSlots[0]?.sourceField ?? 'none'
+                                  ? (domainSlots[0]?.sourceField ?? 'none')
                                   : value === 'none'
                                     ? 'none'
                                     : current.deploymentPolicy.domainBindingSource,
@@ -486,12 +500,18 @@ export function AppEditPlansTab({
                         <SelectContent>
                           <SelectItem value="none">未启用</SelectItem>
                           {domainSlots.map((slot) => (
-                            <SelectItem key={`${slot.key}:${slot.sourceField}`} value={slot.sourceField}>
+                            <SelectItem
+                              key={`${slot.key}:${slot.sourceField}`}
+                              value={slot.sourceField}
+                            >
                               {slot.label}
                             </SelectItem>
                           ))}
                           {plan.deploymentPolicy.domainBindingSource !== 'none' &&
-                          !domainSlots.some((slot) => slot.sourceField === plan.deploymentPolicy.domainBindingSource) ? (
+                          !domainSlots.some(
+                            (slot) =>
+                              slot.sourceField === plan.deploymentPolicy.domainBindingSource,
+                          ) ? (
                             <SelectItem value={plan.deploymentPolicy.domainBindingSource}>
                               {plan.deploymentPolicy.domainBindingSource}
                             </SelectItem>
@@ -528,17 +548,17 @@ export function AppEditPlansTab({
                           <SelectItem value="exact_host">完整子域名</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         `根域名` 会把 app.example.com 和 www.example.com 视为同一授权域名。
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                <div className="bg-muted/20 space-y-3 rounded-lg border p-4">
                   <div>
                     <p className="text-sm font-semibold">关联功能</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       至少勾选一个功能。授权结果会根据这里的映射聚合。
                     </p>
                   </div>
@@ -548,7 +568,7 @@ export function AppEditPlansTab({
                       return (
                         <label
                           key={feature.id}
-                          className="flex items-start gap-3 rounded-md border bg-white p-3"
+                          className="bg-card flex items-start gap-3 rounded-md border p-3"
                         >
                           <Checkbox
                             checked={checked}
@@ -564,7 +584,9 @@ export function AppEditPlansTab({
                           />
                           <div className="space-y-1">
                             <p className="text-sm font-semibold">{feature.name || feature.code}</p>
-                            <p className="text-xs font-mono text-muted-foreground">{feature.code}</p>
+                            <p className="text-muted-foreground font-mono text-xs">
+                              {feature.code}
+                            </p>
                           </div>
                         </label>
                       );

@@ -135,10 +135,10 @@ export function ContentPage() {
       header: '内容',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-slate-900">{row.title}</p>
+          <p className="text-foreground text-sm font-semibold">{row.title}</p>
           <p className="text-muted-foreground font-mono text-[11px]">{row.slug}</p>
           {row.excerpt ? (
-            <p className="line-clamp-2 text-sm text-slate-600">{row.excerpt}</p>
+            <p className="text-muted-foreground line-clamp-2 text-sm">{row.excerpt}</p>
           ) : null}
         </div>
       ),
@@ -164,13 +164,13 @@ export function ContentPage() {
     {
       key: 'publishedAt',
       header: '发布时间',
-      cell: (row) => <span className="text-xs text-slate-700">{formatTime(row.publishedAt)}</span>,
+      cell: (row) => <span className="text-foreground text-xs">{formatTime(row.publishedAt)}</span>,
     },
     {
       key: 'importedAt',
       header: '导入时间',
       cell: (row) => (
-        <span className="text-xs text-slate-700">
+        <span className="text-foreground text-xs">
           {formatTime(row.importedAt || row.createdAt)}
         </span>
       ),
@@ -212,10 +212,10 @@ export function ContentPage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+              className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm"
             >
-              <p className="text-sm font-medium text-gray-500">{item.label}</p>
-              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">
+              <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+              <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
                 {item.value}
               </p>
             </div>
@@ -224,7 +224,7 @@ export function ContentPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">导入与管理</h2>
+            <h2 className="text-foreground text-lg font-semibold">导入与管理</h2>
             <p className="text-muted-foreground text-sm">
               支持导入外部内容，也支持手动创建本地内容。
             </p>
@@ -235,7 +235,7 @@ export function ContentPage() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-gray-200 bg-white shadow-sm">
+          <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 WordPress</CardTitle>
               <CardDescription>
@@ -280,7 +280,7 @@ export function ContentPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-gray-200 bg-white shadow-sm">
+          <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入 Notion</CardTitle>
               <CardDescription>
@@ -325,7 +325,7 @@ export function ContentPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-gray-200 bg-white shadow-sm">
+          <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="text-base">导入微信公众号</CardTitle>
               <CardDescription>
@@ -371,7 +371,7 @@ export function ContentPage() {
           </Card>
         </div>
 
-        <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm">
           <FilterChipBar
             searchValue={search}
             onSearchChange={setSearch}
@@ -405,7 +405,7 @@ export function ContentPage() {
             onClearAll={clearFilters}
           />
 
-          <div className="border-border overflow-hidden rounded-xl border bg-white">
+          <div className="border-border bg-card overflow-hidden rounded-xl border">
             <DataTable
               columns={columns}
               data={items}

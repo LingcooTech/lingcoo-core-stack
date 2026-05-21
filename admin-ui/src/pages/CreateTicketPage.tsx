@@ -11,7 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 export function CreateTicketPage() {
@@ -24,13 +30,13 @@ export function CreateTicketPage() {
     category: 'other' as HydratedSupportTicket['category'],
     priority: 'normal' as HydratedSupportTicket['priority'],
     subject: '',
-    body: ''
+    body: '',
   });
 
   const appsQuery = useQuery({
     queryKey: ['catalog-apps'],
     queryFn: listApps,
-    staleTime: 5 * 60_000
+    staleTime: 5 * 60_000,
   });
 
   useEffect(() => {
@@ -48,7 +54,7 @@ export function CreateTicketPage() {
       toast.success(`工单已创建：${result.ticket.ticketNo}`);
       navigate('/tickets');
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '创建工单失败')
+    onError: (error) => toast.error(error instanceof Error ? error.message : '创建工单失败'),
   });
 
   const appOptions = appsQuery.data?.items ?? [];
@@ -56,23 +62,26 @@ export function CreateTicketPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
+        <Button variant="ghost" asChild className="text-muted-foreground px-0">
           <Link to="/tickets">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回我的工单
           </Link>
         </Button>
 
-        <section className="rounded-3xl border border-gray-200 bg-white/95 px-6 py-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Create Ticket</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900">提交新工单</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-            请把关联应用、订单号、安装实例 ID、复现步骤和已尝试过的排查动作写完整，这样后续处理更高效。
+        <section className="border-border bg-card/95 rounded-3xl border px-6 py-6 shadow-sm">
+          <p className="text-primary text-xs font-semibold uppercase tracking-[0.18em]">
+            Create Ticket
+          </p>
+          <h1 className="text-foreground mt-3 text-3xl font-semibold tracking-tight">提交新工单</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6">
+            请把关联应用、订单号、安装实例
+            ID、复现步骤和已尝试过的排查动作写完整，这样后续处理更高效。
           </p>
         </section>
       </div>
 
-      <Card className="rounded-2xl border-gray-200 bg-white shadow-sm">
+      <Card className="border-border bg-card rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl tracking-tight">工单内容</CardTitle>
           <CardDescription>问题越具体，定位和处理越快。</CardDescription>
@@ -86,7 +95,7 @@ export function CreateTicketPage() {
                 onValueChange={(value) =>
                   setForm((prev) => ({
                     ...prev,
-                    appCode: value === '__none__' ? '' : value
+                    appCode: value === '__none__' ? '' : value,
                   }))
                 }
               >
@@ -132,7 +141,7 @@ export function CreateTicketPage() {
                   onValueChange={(value) =>
                     setForm((prev) => ({
                       ...prev,
-                      category: value as HydratedSupportTicket['category']
+                      category: value as HydratedSupportTicket['category'],
                     }))
                   }
                 >
@@ -159,7 +168,7 @@ export function CreateTicketPage() {
                   onValueChange={(value) =>
                     setForm((prev) => ({
                       ...prev,
-                      priority: value as HydratedSupportTicket['priority']
+                      priority: value as HydratedSupportTicket['priority'],
                     }))
                   }
                 >
@@ -210,7 +219,7 @@ export function CreateTicketPage() {
                   category: form.category,
                   priority: form.priority,
                   subject: form.subject.trim(),
-                  body: form.body.trim()
+                  body: form.body.trim(),
                 })
               }
               disabled={createMutation.isPending || !form.subject.trim() || !form.body.trim()}

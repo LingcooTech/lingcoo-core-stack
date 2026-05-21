@@ -23,13 +23,13 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
       <img
         src={app.iconUrl}
         alt={app.name}
-        className="h-20 w-20 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-sm"
+        className="border-border bg-card h-20 w-20 rounded-[22%] border object-contain p-1 shadow-sm"
       />
     );
   }
 
   return (
-    <div className="flex h-20 w-20 items-center justify-center rounded-[22%] bg-gray-50 text-2xl font-semibold text-gray-400 shadow-sm">
+    <div className="bg-muted text-muted-foreground flex h-20 w-20 items-center justify-center rounded-[22%] text-2xl font-semibold shadow-sm">
       {getInitials(app.name)}
     </div>
   );
@@ -58,31 +58,33 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
           {app.category ? (
             <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
           ) : null}
-          <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">
+          <Badge className="bg-muted text-foreground hover:bg-muted">
             {getAppTypeLabel(app.type)}
           </Badge>
         </div>
 
-        <h3 className="mb-1.5 line-clamp-1 text-base font-semibold text-gray-900 transition-colors duration-200 group-hover:text-blue-600">
+        <h3 className="text-foreground mb-1.5 line-clamp-1 text-base font-semibold transition-colors duration-200 group-hover:text-blue-600">
           {app.name}
         </h3>
 
-        <p className="mb-4 min-h-[40px] line-clamp-2 text-sm leading-6 text-gray-500">
+        <p className="text-muted-foreground mb-4 line-clamp-2 min-h-[40px] text-sm leading-6">
           {app.tagline || app.description || '应用详情暂未补充。'}
         </p>
 
         <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-          <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
+          <span className="border-border bg-muted text-muted-foreground rounded-full border px-3 py-1 text-xs font-medium">
             {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
           </span>
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-400">起始价格</p>
+          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+            起始价格
+          </p>
           <p
             className={cn(
               'text-lg font-semibold',
-              priceLabel === '免费' ? 'text-green-600' : 'text-gray-900',
+              priceLabel === '免费' ? 'text-green-600' : 'text-foreground',
             )}
           >
             {priceLabel}
@@ -95,7 +97,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
+    'border-border bg-card group overflow-hidden rounded-xl border shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
     className,
   );
 
@@ -118,7 +120,7 @@ export function AppCard({ app, href, footer, className }: AppCardProps) {
       ) : (
         body
       )}
-      {footer ? <div className="border-t border-gray-100 px-6 py-5">{footer}</div> : null}
+      {footer ? <div className="border-border border-t px-6 py-5">{footer}</div> : null}
     </article>
   );
 }

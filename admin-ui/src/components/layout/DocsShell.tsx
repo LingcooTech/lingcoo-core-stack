@@ -17,8 +17,8 @@ function DocsNavLink({ to, label }: { to: string; label: string }) {
         cn(
           'inline-flex items-center rounded-full px-3 py-2 text-sm font-medium transition',
           isActive
-            ? 'bg-white text-slate-900 shadow-sm'
-            : 'text-slate-600 hover:bg-white/80 hover:text-slate-900',
+            ? 'bg-card text-foreground shadow-sm'
+            : 'text-muted-foreground hover:bg-card/80 hover:text-foreground',
         )
       }
     >
@@ -39,7 +39,7 @@ export function DocsShell() {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fbfcfe_0%,#f4f7fb_100%)]">
-      <header className="bg-white/92 sticky top-0 z-30 border-b border-slate-200/80 backdrop-blur-xl">
+      <header className="bg-card/92 border-border/80 sticky top-0 z-30 border-b backdrop-blur-xl">
         <Container className="py-2">
           <div className="flex min-h-[52px] items-center justify-between gap-4">
             <Link to="/docs" className="flex min-w-0 items-center gap-3">
@@ -47,7 +47,7 @@ export function DocsShell() {
                 <img
                   src={siteSettings.logoUrl}
                   alt={siteName}
-                  className="h-9 w-9 rounded-2xl border border-slate-200 bg-white object-contain p-1.5 shadow-sm"
+                  className="border-border bg-card h-9 w-9 rounded-2xl border object-contain p-1.5 shadow-sm"
                 />
               ) : (
                 <div className="from-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br to-blue-500 text-sm font-semibold text-white shadow-sm">
@@ -55,10 +55,10 @@ export function DocsShell() {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold tracking-tight text-slate-900">
+                <p className="text-foreground truncate text-[14px] font-semibold tracking-tight">
                   {siteName}
                 </p>
-                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+                <div className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[11px]">
                   <BookOpen className="h-3 w-3" />
                   <span>文档中心</span>
                 </div>

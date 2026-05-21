@@ -229,7 +229,7 @@ export function OrdersPage() {
   return (
     <div className="space-y-4">
       <div className="px-6 pt-5">
-        <h1 className="text-[2rem] font-semibold tracking-tight text-slate-900">订单管理</h1>
+        <h1 className="text-foreground text-[2rem] font-semibold tracking-tight">订单管理</h1>
       </div>
       <div className="space-y-3.5 px-6 pb-6">
         <FilterChipBar
@@ -250,7 +250,7 @@ export function OrdersPage() {
           </BulkActionButton>
         </BulkActionBar>
 
-        <div className="border-border overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <DataTable
             columns={orderColumns}
             data={orders}

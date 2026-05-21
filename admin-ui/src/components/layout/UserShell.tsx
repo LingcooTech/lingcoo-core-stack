@@ -78,8 +78,8 @@ function desktopNavItemClass(isActive: boolean) {
   return cn(
     'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-medium transition-all duration-200',
     isActive
-      ? 'bg-white text-slate-900 shadow-sm'
-      : 'text-gray-600 hover:bg-white/80 hover:text-slate-900',
+      ? 'bg-card text-foreground shadow-sm'
+      : 'text-muted-foreground hover:bg-card/80 hover:text-foreground',
   );
 }
 
@@ -138,7 +138,7 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
-      <header className="bg-white/88 sticky top-0 z-30 border-b border-white/70 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+      <header className="bg-card/88 sticky top-0 z-30 border-b border-white/70 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
@@ -147,7 +147,7 @@ export function UserShell() {
                   <img
                     src={siteSettings.logoUrl}
                     alt={siteName}
-                    className="h-9 w-9 rounded-2xl border border-gray-200/90 bg-white object-contain p-1.5 shadow-sm"
+                    className="border-border/90 bg-card h-9 w-9 rounded-2xl border object-contain p-1.5 shadow-sm"
                   />
                 ) : (
                   <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-[13px] font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
@@ -155,7 +155,7 @@ export function UserShell() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold tracking-tight text-gray-900">
+                  <p className="text-foreground truncate text-[14px] font-semibold tracking-tight">
                     {siteName}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export function UserShell() {
                       <DropdownMenuContent
                         align="center"
                         sideOffset={10}
-                        className="w-60 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_48px_-24px_rgba(15,23,42,0.24)]"
+                        className="border-border bg-card w-60 rounded-2xl border p-2 shadow-[0_20px_48px_-24px_rgba(15,23,42,0.24)]"
                       >
                         {item.url ? (
                           <>
@@ -259,7 +259,7 @@ export function UserShell() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="relative hidden h-9 w-9 rounded-full border border-slate-200 bg-white/80 text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900 lg:inline-flex"
+                  className="border-border bg-card/80 text-muted-foreground hover:border-border hover:bg-card hover:text-foreground relative hidden h-9 w-9 rounded-full border shadow-sm transition lg:inline-flex"
                   onClick={() => navigate('/account?tab=notifications')}
                   aria-label="打开消息通知"
                 >
@@ -276,16 +276,16 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="focus-visible:ring-primary inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50/90 py-1 pl-1.5 pr-2 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                      className="focus-visible:ring-primary border-border bg-muted/90 hover:border-border hover:bg-card inline-flex items-center gap-2 rounded-full border py-1 pl-1.5 pr-2 shadow-sm transition hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-7 w-7">
                         <AvatarFallback>{getInitials(accountName)}</AvatarFallback>
                       </Avatar>
-                      <span className="hidden max-w-[96px] truncate text-[13px] font-medium text-slate-900 sm:block">
+                      <span className="text-foreground hidden max-w-[96px] truncate text-[13px] font-medium sm:block">
                         {accountName}
                       </span>
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
+                      <span className="bg-card text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full shadow-sm">
                         <ChevronDown className="h-3.5 w-3.5" />
                       </span>
                     </button>
@@ -293,13 +293,13 @@ export function UserShell() {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={10}
-                    className="w-[320px] rounded-xl border border-slate-200 bg-white p-0 shadow-lg"
+                    className="border-border bg-card w-[320px] rounded-xl border p-0 shadow-lg"
                   >
                     <DropdownMenuLabel className="px-0 py-0">
                       <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-5 py-5">
                         <button
                           type="button"
-                          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 shadow-sm transition"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -315,11 +315,11 @@ export function UserShell() {
                               {getInitials(accountName)}
                             </AvatarFallback>
                           </Avatar>
-                          <p className="mt-3 text-xl font-semibold tracking-tight text-slate-900">
+                          <p className="text-foreground mt-3 text-xl font-semibold tracking-tight">
                             {accountName}
                           </p>
                           {accountEmail ? (
-                            <p className="mt-1 text-sm text-slate-600">{accountEmail}</p>
+                            <p className="text-muted-foreground mt-1 text-sm">{accountEmail}</p>
                           ) : null}
                         </div>
                       </div>
@@ -333,7 +333,7 @@ export function UserShell() {
                             navigate('/account?tab=notifications');
                           }}
                         >
-                          <Bell className="h-4 w-4 text-slate-500" />
+                          <Bell className="text-muted-foreground h-4 w-4" />
                           消息通知
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -343,7 +343,7 @@ export function UserShell() {
                             navigate('/account?tab=profile');
                           }}
                         >
-                          <UserCircle2 className="h-4 w-4 text-slate-500" />
+                          <UserCircle2 className="text-muted-foreground h-4 w-4" />
                           个人资料
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -353,7 +353,7 @@ export function UserShell() {
                             navigate('/account?tab=orders');
                           }}
                         >
-                          <ShoppingBag className="h-4 w-4 text-slate-500" />
+                          <ShoppingBag className="text-muted-foreground h-4 w-4" />
                           我的订单
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -363,7 +363,7 @@ export function UserShell() {
                             navigate('/account?tab=apps');
                           }}
                         >
-                          <Package2 className="h-4 w-4 text-slate-500" />
+                          <Package2 className="text-muted-foreground h-4 w-4" />
                           我的应用
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -373,7 +373,7 @@ export function UserShell() {
                             navigate('/tickets');
                           }}
                         >
-                          <CircleHelp className="h-4 w-4 text-slate-500" />
+                          <CircleHelp className="text-muted-foreground h-4 w-4" />
                           我的工单
                         </DropdownMenuItem>
                       </div>
@@ -388,7 +388,7 @@ export function UserShell() {
                             navigate('/admin');
                           }}
                         >
-                          <LayoutDashboard className="h-4 w-4 text-slate-500" />
+                          <LayoutDashboard className="text-muted-foreground h-4 w-4" />
                           管理后台
                         </DropdownMenuItem>
                       ) : null}
@@ -429,9 +429,9 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-lg shadow-slate-900/5 lg:hidden">
+            <div className="border-border bg-card mt-3 rounded-2xl border p-4 shadow-lg shadow-slate-900/5 lg:hidden">
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
                   导航
                 </p>
                 <div className="space-y-2">
@@ -441,17 +441,17 @@ export function UserShell() {
                         key={`${item.label}:${index}`}
                         type="single"
                         collapsible
-                        className="rounded-lg border border-gray-100 px-4"
+                        className="border-border rounded-lg border px-4"
                       >
                         <AccordionItem value={`mobile-nav-${index}`} className="border-b-0">
-                          <AccordionTrigger className="py-3 text-sm font-medium text-slate-900 hover:no-underline">
+                          <AccordionTrigger className="text-foreground py-3 text-sm font-medium hover:no-underline">
                             {item.label}
                           </AccordionTrigger>
                           <AccordionContent className="space-y-2 pb-3">
                             {item.url ? (
                               <button
                                 type="button"
-                                className="hover:text-primary block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50"
+                                className="hover:text-primary text-muted-foreground hover:bg-muted block w-full rounded-lg px-3 py-2 text-left text-sm transition"
                                 onClick={() => handleSiteNavigation(item.url, item.openInNewTab)}
                               >
                                 进入 {item.label}
@@ -461,7 +461,7 @@ export function UserShell() {
                               <button
                                 key={`${item.label}:${child.label}:${child.url}`}
                                 type="button"
-                                className="hover:text-primary block w-full rounded-lg px-3 py-2 text-left text-sm text-gray-600 transition hover:bg-gray-50"
+                                className="hover:text-primary text-muted-foreground hover:bg-muted block w-full rounded-lg px-3 py-2 text-left text-sm transition"
                                 onClick={() => handleSiteNavigation(child.url, child.openInNewTab)}
                               >
                                 {child.label}
@@ -476,7 +476,7 @@ export function UserShell() {
                         href={item.url}
                         target={item.openInNewTab ? '_blank' : undefined}
                         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
-                        className="hover:text-primary block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium text-slate-900 transition hover:bg-gray-50"
+                        className="hover:text-primary border-border text-foreground hover:bg-muted block rounded-lg border px-4 py-3 text-sm font-medium transition"
                       >
                         {item.label}
                       </a>
@@ -486,10 +486,10 @@ export function UserShell() {
                         to={item.url}
                         className={({ isActive }) =>
                           cn(
-                            'block rounded-lg border border-gray-100 px-4 py-3 text-sm font-medium transition',
+                            'border-border block rounded-lg border px-4 py-3 text-sm font-medium transition',
                             isActive
                               ? 'border-primary/20 bg-primary/5 text-primary'
-                              : 'hover:text-primary text-slate-900 hover:bg-gray-50',
+                              : 'hover:text-primary text-foreground hover:bg-muted',
                           )
                         }
                       >
@@ -500,15 +500,15 @@ export function UserShell() {
                 </div>
 
                 {isAuthenticated ? (
-                  <div className="space-y-2 border-t border-gray-100 pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="border-border space-y-2 border-t pt-3">
+                    <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
                       账户
                     </p>
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
                       <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
                         <button
                           type="button"
-                          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-900"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 shadow-sm transition"
                           onClick={() => navigate('/account?tab=profile')}
                           aria-label="打开账户设置"
                         >
@@ -521,11 +521,13 @@ export function UserShell() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="truncate text-base font-semibold tracking-tight text-slate-900">
+                            <p className="text-foreground truncate text-base font-semibold tracking-tight">
                               {accountName}
                             </p>
                             {accountEmail ? (
-                              <p className="mt-1 truncate text-sm text-slate-600">{accountEmail}</p>
+                              <p className="text-muted-foreground mt-1 truncate text-sm">
+                                {accountEmail}
+                              </p>
                             ) : null}
                           </div>
                         </div>
@@ -534,10 +536,10 @@ export function UserShell() {
                       <div className="space-y-1 px-3 py-3">
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/account?tab=notifications')}
                         >
-                          <Bell className="h-4 w-4 text-slate-500" />
+                          <Bell className="text-muted-foreground h-4 w-4" />
                           消息通知
                           {unreadNotificationCount > 0 ? (
                             <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
@@ -547,51 +549,51 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/account?tab=profile')}
                         >
-                          <UserCircle2 className="h-4 w-4 text-slate-500" />
+                          <UserCircle2 className="text-muted-foreground h-4 w-4" />
                           个人资料
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/account?tab=orders')}
                         >
-                          <ShoppingBag className="h-4 w-4 text-slate-500" />
+                          <ShoppingBag className="text-muted-foreground h-4 w-4" />
                           我的订单
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/account?tab=apps')}
                         >
-                          <Package2 className="h-4 w-4 text-slate-500" />
+                          <Package2 className="text-muted-foreground h-4 w-4" />
                           我的应用
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/tickets')}
                         >
-                          <CircleHelp className="h-4 w-4 text-slate-500" />
+                          <CircleHelp className="text-muted-foreground h-4 w-4" />
                           我的工单
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                           onClick={() => navigate('/account?tab=profile')}
                         >
-                          <Settings className="h-4 w-4 text-slate-500" />
+                          <Settings className="text-muted-foreground h-4 w-4" />
                           设置
                         </button>
                         {isAdmin ? (
                           <button
                             type="button"
-                            className="hover:text-primary flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium text-slate-900 transition hover:bg-slate-50"
+                            className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-[15px] font-medium transition"
                             onClick={() => navigate('/admin')}
                           >
-                            <LayoutDashboard className="h-4 w-4 text-slate-500" />
+                            <LayoutDashboard className="text-muted-foreground h-4 w-4" />
                             管理后台
                           </button>
                         ) : null}
@@ -608,7 +610,7 @@ export function UserShell() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex gap-2 border-t border-gray-100 pt-3 sm:hidden">
+                  <div className="border-border flex gap-2 border-t pt-3 sm:hidden">
                     <Button variant="ghost" asChild className="flex-1">
                       <Link to="/login">登录</Link>
                     </Button>

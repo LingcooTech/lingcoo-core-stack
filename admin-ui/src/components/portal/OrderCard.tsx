@@ -9,43 +9,59 @@ import { formatAmount, formatTime } from '@/lib/utils';
 export function OrderCard({
   order,
   onSync,
-  syncing
+  syncing,
 }: {
   order: HydratedOrder;
   onSync: (orderNo: string) => void;
   syncing?: boolean;
 }) {
   return (
-    <Card className="rounded-lg border-gray-200/80 bg-white/95 shadow-sm shadow-gray-900/5">
+    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
-            <CardTitle className="text-xl tracking-tight">{order.app?.name ?? '未命名产品'}</CardTitle>
-            <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>{order.status}</Badge>
+            <CardTitle className="text-xl tracking-tight">
+              {order.app?.name ?? '未命名产品'}
+            </CardTitle>
+            <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
+              {order.status}
+            </Badge>
           </div>
           <CardDescription className="text-sm leading-6">
-            订单号 {order.orderNo} · {order.plan?.name ?? '未命名套餐'} · {order.provider ?? '未指定渠道'}
+            订单号 {order.orderNo} · {order.plan?.name ?? '未命名套餐'} ·{' '}
+            {order.provider ?? '未指定渠道'}
           </CardDescription>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">
+            <span className="border-border bg-muted text-foreground inline-flex rounded-full border px-3 py-1.5 text-xs font-medium">
               创建于 {formatTime(order.createdAt)}
             </span>
-            <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-700">
+            <span className="border-border bg-muted text-foreground inline-flex rounded-full border px-3 py-1.5 text-xs font-medium">
               支付时间 {order.paidAt ? formatTime(order.paidAt) : '未支付'}
             </span>
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3.5 text-left sm:min-w-[170px] sm:text-right">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Order Total</p>
-          <p className="mt-1.5 text-2xl font-semibold tracking-tight text-gray-900">{formatAmount(order.amount, order.currency)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Checkout：{order.checkoutSession?.sessionCode ?? '—'}</p>
+        <div className="border-border bg-muted/80 rounded-lg border px-4 py-3.5 text-left sm:min-w-[170px] sm:text-right">
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+            Order Total
+          </p>
+          <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight">
+            {formatAmount(order.amount, order.currency)}
+          </p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Checkout：{order.checkoutSession?.sessionCode ?? '—'}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-4">
-        <div className="text-sm leading-7 text-muted-foreground">
+        <div className="text-muted-foreground text-sm leading-7">
           当前记录会和支付状态、授权状态保持同步。若外部支付渠道已完成，但这里还未更新，可以手动触发同步。
         </div>
-        <Button variant="outline" className="rounded-lg" onClick={() => onSync(order.orderNo)} disabled={syncing}>
+        <Button
+          variant="outline"
+          className="rounded-lg"
+          onClick={() => onSync(order.orderNo)}
+          disabled={syncing}
+        >
           <RefreshCw className="h-4 w-4" />
           同步订单状态
         </Button>

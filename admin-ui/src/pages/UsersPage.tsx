@@ -234,7 +234,7 @@ export function UsersPage() {
           onClearAll={clearFilters}
         />
 
-        <div className="border-border overflow-hidden rounded-lg border bg-white">
+        <div className="border-border bg-card overflow-hidden rounded-lg border">
           <DataTable
             columns={columns}
             data={users}

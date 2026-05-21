@@ -10,7 +10,10 @@ import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
 
 export function MyAccessPage() {
-  const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
+  const entitlementsQuery = useQuery({
+    queryKey: ['my-entitlements'],
+    queryFn: listMyEntitlements,
+  });
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
 
   const summary = entitlementsQuery.data?.summary ?? [];
@@ -43,27 +46,32 @@ export function MyAccessPage() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">我的应用</h1>
-        <p className="text-sm text-gray-500">查看已购应用和可用能力。</p>
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">我的应用</h1>
+        <p className="text-muted-foreground text-sm">查看已购应用和可用能力。</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { label: '已购应用', value: String(summary.length) },
           { label: '激活授权', value: String(activeItems.length) },
-          { label: '可部署应用', value: String(deployableCount) }
+          { label: '可部署应用', value: String(deployableCount) },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-            <p className="text-sm font-medium text-gray-500">{item.label}</p>
-            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+          <div
+            key={item.label}
+            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+          >
+            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              {item.value}
+            </p>
           </div>
         ))}
       </div>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="rounded-xl border-gray-200 bg-white">
-          <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+        <Card className="border-border bg-card rounded-xl">
+          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
             正在加载授权状态...
           </CardContent>
         </Card>
@@ -75,17 +83,19 @@ export function MyAccessPage() {
         />
       ) : (
         <section className="space-y-5">
-          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">已购产品</h2>
+          <h2 className="text-foreground text-2xl font-semibold tracking-tight">已购产品</h2>
           <div className="grid gap-5 lg:grid-cols-2">
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
               const relatedApps = appsByProduct.get(entry.appCode) ?? [];
               const app = appByCode.get(entry.appCode) ?? null;
               const featureNames = entry.featureCodes.map(
-                (code) => featureNameMap.get(code) ?? code
+                (code) => featureNameMap.get(code) ?? code,
               );
               const isDeployable = Boolean(app && getAppDeliveryMode(app) === 'one_click');
-              const deploymentHref = isDeployable ? `/deploy?app=${encodeURIComponent(entry.appCode)}` : undefined;
+              const deploymentHref = isDeployable
+                ? `/deploy?app=${encodeURIComponent(entry.appCode)}`
+                : undefined;
               const accessLinks = app && !isDeployable ? getAccessLinks(app.links) : [];
 
               return (

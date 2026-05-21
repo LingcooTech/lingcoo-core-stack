@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -54,7 +54,7 @@ function formatUploadedAt(uploadedAt: string | null) {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 }
 
@@ -64,7 +64,7 @@ export function QiniuImagePickerDialog({
   onSelect,
   defaultPrefix = '',
   title = '从七牛云选择图片',
-  description = '可以直接上传图片，或从七牛云已存在的图片中选择。'
+  description = '可以直接上传图片，或从七牛云已存在的图片中选择。',
 }: QiniuImagePickerDialogProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [prefix, setPrefix] = useState(defaultPrefix);
@@ -75,7 +75,7 @@ export function QiniuImagePickerDialog({
   const { data: qiniuSettings } = useQuery({
     queryKey: ['system-settings', 'qiniu'],
     queryFn: getQiniuSettings,
-    enabled: open
+    enabled: open,
   });
 
   const loadImagesMutation = useMutation({
@@ -83,7 +83,7 @@ export function QiniuImagePickerDialog({
       listQiniuImages({
         prefix: input.prefix || undefined,
         marker: input.marker || undefined,
-        limit: 60
+        limit: 60,
       }),
     onSuccess: (result, variables) => {
       setItems((current) => (variables.marker ? [...current, ...result.items] : result.items));
@@ -91,14 +91,14 @@ export function QiniuImagePickerDialog({
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '加载图片失败');
-    }
+    },
   });
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const token = await createQiniuUploadToken({
         filename: file.name,
-        prefix: prefix || undefined
+        prefix: prefix || undefined,
       });
       const formData = new FormData();
       formData.set('token', token.uploadToken);
@@ -107,7 +107,7 @@ export function QiniuImagePickerDialog({
 
       const response = await fetch(token.uploadHost, {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
       if (!response.ok) {
@@ -125,7 +125,7 @@ export function QiniuImagePickerDialog({
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : '上传失败');
-    }
+    },
   });
 
   useEffect(() => {
@@ -151,15 +151,16 @@ export function QiniuImagePickerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-border border-b px-6 py-5">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-6 py-5">
           {!qiniuSettings?.configured ? (
-            <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
-              七牛云尚未配置完整。请先到“系统设置”里填写 Access Key、Secret Key、Bucket 和公共访问域名。
+            <div className="border-border bg-muted/40 text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
+              七牛云尚未配置完整。请先到“系统设置”里填写 Access Key、Secret Key、Bucket
+              和公共访问域名。
             </div>
           ) : (
             <>
@@ -176,7 +177,11 @@ export function QiniuImagePickerDialog({
                   disabled={isBusy}
                   onClick={() => loadImagesMutation.mutate({ prefix })}
                 >
-                  {loadImagesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {loadImagesMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
                   刷新列表
                 </Button>
                 <Button
@@ -184,7 +189,11 @@ export function QiniuImagePickerDialog({
                   disabled={isBusy}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {uploadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {uploadMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                   上传图片
                 </Button>
                 <input
@@ -203,20 +212,20 @@ export function QiniuImagePickerDialog({
                 />
               </div>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 当前目录: {prefix || '根目录'}。上传时会自动附带日期目录，避免文件名冲突。
               </p>
 
-              <ScrollArea className="h-[420px] rounded-lg border border-border">
+              <ScrollArea className="border-border h-[420px] rounded-lg border">
                 <div className="p-4">
                   {loadImagesMutation.isPending && items.length === 0 ? (
-                    <div className="flex h-[340px] items-center justify-center text-sm text-muted-foreground">
+                    <div className="text-muted-foreground flex h-[340px] items-center justify-center text-sm">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       正在加载图片...
                     </div>
                   ) : items.length === 0 ? (
-                    <div className="flex h-[340px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
-                      <ImagePlus className="h-8 w-8 text-muted-foreground/70" />
+                    <div className="text-muted-foreground flex h-[340px] flex-col items-center justify-center gap-3 text-center text-sm">
+                      <ImagePlus className="text-muted-foreground/70 h-8 w-8" />
                       <div>
                         <p>当前目录下还没有图片。</p>
                         <p>可以先上传一张，或者换一个目录前缀再刷新。</p>
@@ -228,18 +237,24 @@ export function QiniuImagePickerDialog({
                         <button
                           key={item.key}
                           type="button"
-                          className="overflow-hidden rounded-lg border border-border bg-white text-left transition hover:border-primary/40 hover:shadow-sm"
+                          className="border-border bg-card hover:border-primary/40 overflow-hidden rounded-lg border text-left transition hover:shadow-sm"
                           onClick={() => {
                             onSelect(item.url);
                             onOpenChange(false);
                           }}
                         >
-                          <div className="aspect-[4/3] bg-muted">
-                            <img src={item.url} alt={item.key} className="h-full w-full object-cover" />
+                          <div className="bg-muted aspect-[4/3]">
+                            <img
+                              src={item.url}
+                              alt={item.key}
+                              className="h-full w-full object-cover"
+                            />
                           </div>
                           <div className="space-y-1 p-3">
-                            <p className="line-clamp-2 break-all text-sm font-semibold text-foreground">{item.key}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-foreground line-clamp-2 break-all text-sm font-semibold">
+                              {item.key}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
                               {formatFileSize(item.size)} · {formatUploadedAt(item.uploadedAt)}
                             </p>
                           </div>
@@ -253,7 +268,7 @@ export function QiniuImagePickerDialog({
           )}
         </div>
 
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="border-border border-t px-6 py-4">
           {marker && qiniuSettings?.configured ? (
             <Button
               type="button"
@@ -263,7 +278,9 @@ export function QiniuImagePickerDialog({
             >
               {loadImagesMutation.isPending ? '加载中...' : '加载更多'}
             </Button>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             关闭
           </Button>

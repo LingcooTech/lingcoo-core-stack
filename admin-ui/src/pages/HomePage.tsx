@@ -67,17 +67,17 @@ export function HomePage() {
     <div className="space-y-8">
       <section className="space-y-4">
         {isLoading ? (
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="h-8 w-44 animate-pulse rounded bg-gray-100" />
-            <div className="mt-4 h-5 w-2/3 animate-pulse rounded bg-gray-100" />
+          <div className="border-border bg-card overflow-hidden rounded-2xl border p-6 shadow-sm">
+            <div className="bg-muted h-8 w-44 animate-pulse rounded" />
+            <div className="bg-muted mt-4 h-5 w-2/3 animate-pulse rounded" />
             <div className="mt-6 grid gap-4 md:grid-cols-[112px,minmax(0,1fr),180px]">
-              <div className="h-24 w-24 animate-pulse rounded-[22%] bg-gray-100" />
+              <div className="bg-muted h-24 w-24 animate-pulse rounded-[22%]" />
               <div className="space-y-4">
-                <div className="h-5 w-40 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-3/4 animate-pulse rounded bg-gray-100" />
+                <div className="bg-muted h-5 w-40 animate-pulse rounded" />
+                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                <div className="bg-muted h-4 w-3/4 animate-pulse rounded" />
               </div>
-              <div className="h-32 animate-pulse rounded-2xl bg-gray-100" />
+              <div className="bg-muted h-32 animate-pulse rounded-2xl" />
             </div>
           </div>
         ) : hotApps.length === 0 ? (
@@ -88,10 +88,10 @@ export function HomePage() {
           />
         ) : (
           <div className="space-y-3">
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md">
-            <div
-              className="flex transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
+            <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-md">
+              <div
+                className="flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${activeHotIndex * 100}%)` }}
               >
                 {hotApps.map((app) => {
                   const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
@@ -102,7 +102,7 @@ export function HomePage() {
                       <div className="relative overflow-hidden">
                         {app.coverUrl ? (
                           <div
-                            className="absolute inset-0 bg-cover bg-center opacity-8"
+                            className="opacity-8 absolute inset-0 bg-cover bg-center"
                             style={{ backgroundImage: `url(${app.coverUrl})` }}
                           />
                         ) : null}
@@ -114,10 +114,10 @@ export function HomePage() {
                               <img
                                 src={app.iconUrl}
                                 alt={app.name}
-                                className="h-28 w-28 rounded-[22%] border border-gray-100 bg-white object-contain p-1 shadow-md"
+                                className="border-border bg-card h-28 w-28 rounded-[22%] border object-contain p-1 shadow-md"
                               />
                             ) : (
-                              <div className="flex h-28 w-28 items-center justify-center rounded-[22%] border border-gray-100 bg-white text-3xl font-semibold text-gray-400 shadow-md">
+                              <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-[22%] border text-3xl font-semibold shadow-md">
                                 {getInitials(app.name)}
                               </div>
                             )}
@@ -130,15 +130,15 @@ export function HomePage() {
                                   {app.category}
                                 </Badge>
                               ) : null}
-                              <Badge className="bg-white text-gray-700 hover:bg-white">
+                              <Badge className="bg-card text-foreground hover:bg-card">
                                 {getAppTypeLabel(app.type)}
                               </Badge>
                             </div>
 
-                            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-gray-900">
+                            <h2 className="text-foreground mt-3 text-2xl font-semibold tracking-tight">
                               {app.name}
                             </h2>
-                            <p className="mt-3 max-w-2xl text-[15px] leading-7 text-gray-600">
+                            <p className="text-muted-foreground mt-3 max-w-2xl text-[15px] leading-7">
                               {app.tagline || app.description || '高质量应用入口。'}
                             </p>
 
@@ -152,13 +152,19 @@ export function HomePage() {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">起始价格</p>
-                            <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+                          <div className="border-border bg-card/95 rounded-2xl border p-5 shadow-sm">
+                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                              起始价格
+                            </p>
+                            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
                               {priceLabel}
                             </p>
-                            <p className="mt-2 text-sm leading-6 text-gray-500">
-                              {activeOffers.length > 1 ? `${activeOffers.length} 个套餐可选` : activeOffers.length === 1 ? '当前仅有一个套餐' : '暂无上架中的售卖方案'}
+                            <p className="text-muted-foreground mt-2 text-sm leading-6">
+                              {activeOffers.length > 1
+                                ? `${activeOffers.length} 个套餐可选`
+                                : activeOffers.length === 1
+                                  ? '当前仅有一个套餐'
+                                  : '暂无上架中的售卖方案'}
                             </p>
                           </div>
                         </div>
@@ -173,7 +179,9 @@ export function HomePage() {
                                 onClick={() => setActiveHotIndex(index)}
                                 className={cn(
                                   'h-2.5 rounded-full transition-all',
-                                  index === activeHotIndex ? 'w-10 bg-sky-600' : 'w-2.5 bg-gray-300',
+                                  index === activeHotIndex
+                                    ? 'w-10 bg-sky-600'
+                                    : 'w-2.5 bg-gray-300',
                                 )}
                               />
                             ))}
@@ -197,8 +205,8 @@ export function HomePage() {
             className={cn(
               'shrink-0 rounded-md px-3 py-1.5 text-[15px] transition-colors',
               activeCategory === ''
-                ? 'bg-gray-100 text-gray-900 font-medium'
-                : 'text-gray-600 hover:text-gray-900',
+                ? 'bg-muted text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             全部应用
@@ -211,8 +219,8 @@ export function HomePage() {
               className={cn(
                 'shrink-0 rounded-md px-3 py-1.5 text-[15px] transition-colors',
                 activeCategory === category
-                  ? 'bg-gray-100 text-gray-900 font-medium'
-                  : 'text-gray-600 hover:text-gray-900',
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {category}

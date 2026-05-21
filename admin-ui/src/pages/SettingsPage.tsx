@@ -29,7 +29,7 @@ import {
   upsertOpenRouterSettings,
   upsertQiniuSettings,
   upsertSiteSettings,
-  upsertSmtpSettings
+  upsertSmtpSettings,
 } from '@/api/settings';
 import type {
   AiChatCompletionResult,
@@ -44,11 +44,24 @@ import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -58,12 +71,12 @@ const smtpSchema = z.object({
   secure: z.boolean().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
-  from: z.string().email('请输入有效邮箱').or(z.literal(''))
+  from: z.string().email('请输入有效邮箱').or(z.literal('')),
 });
 
 const optionalUrlField = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : value),
-  z.union([z.string().url('请输入有效链接'), z.literal('')])
+  z.union([z.string().url('请输入有效链接'), z.literal('')]),
 );
 
 const qiniuSchema = z.object({
@@ -72,7 +85,7 @@ const qiniuSchema = z.object({
   bucketName: z.string().optional(),
   publicBaseUrl: optionalUrlField,
   uploadHost: optionalUrlField,
-  defaultPrefix: z.string().optional()
+  defaultPrefix: z.string().optional(),
 });
 
 const optionalSiteLinkField = z.preprocess(
@@ -83,15 +96,15 @@ const optionalSiteLinkField = z.preprocess(
       z.string().url('请输入有效链接'),
       z.string().startsWith('mailto:'),
       z.string().startsWith('tel:'),
-      z.literal('')
+      z.literal(''),
     ])
-    .refine((value) => Boolean(value) || value === '', '请输入有效链接')
+    .refine((value) => Boolean(value) || value === '', '请输入有效链接'),
 );
 
 const siteLinkSchema = z.object({
   label: z.string().trim().min(1, '请输入链接名称').max(60, '名称不能超过 60 个字符'),
   url: optionalSiteLinkField.refine((value) => Boolean(value), '请输入链接地址'),
-  openInNewTab: z.boolean().optional()
+  openInNewTab: z.boolean().optional(),
 });
 
 const siteNavigationChildSchema = siteLinkSchema;
@@ -101,18 +114,25 @@ const siteNavigationItemSchema = z
     label: z.string().trim().min(1, '请输入一级菜单名称').max(60, '名称不能超过 60 个字符'),
     url: optionalSiteLinkField,
     openInNewTab: z.boolean().optional(),
-    children: z.array(siteNavigationChildSchema).max(12, '二级菜单最多 12 项')
+    children: z.array(siteNavigationChildSchema).max(12, '二级菜单最多 12 项'),
   })
-  .refine((value) => Boolean(value.url) || value.children.length > 0, '一级菜单至少配置链接或一个二级菜单');
+  .refine(
+    (value) => Boolean(value.url) || value.children.length > 0,
+    '一级菜单至少配置链接或一个二级菜单',
+  );
 
 const siteSchema = z.object({
   siteName: z.string().trim().min(1, '请输入站点名称').max(120, '站点名称不能超过 120 个字符'),
   logoUrl: optionalSiteLinkField,
   faviconUrl: optionalSiteLinkField,
   headerNavigation: z.array(siteNavigationItemSchema).max(12, '顶部导航最多保留 12 项'),
-  footerCopyright: z.string().trim().min(1, '请输入页脚版权').max(255, '页脚版权不能超过 255 个字符'),
+  footerCopyright: z
+    .string()
+    .trim()
+    .min(1, '请输入页脚版权')
+    .max(255, '页脚版权不能超过 255 个字符'),
   filingInfo: z.string().trim().max(255, '备案信息不能超过 255 个字符'),
-  footerLinks: z.array(siteLinkSchema).max(12, '最多保留 12 个页脚链接')
+  footerLinks: z.array(siteLinkSchema).max(12, '最多保留 12 个页脚链接'),
 });
 
 const openrouterSchema = z.object({
@@ -120,7 +140,7 @@ const openrouterSchema = z.object({
   baseUrl: optionalUrlField,
   siteUrl: optionalUrlField,
   siteName: z.string().optional(),
-  defaultModel: z.string().optional()
+  defaultModel: z.string().optional(),
 });
 
 const contentImportSchema = z.object({
@@ -131,8 +151,16 @@ const contentImportSchema = z.object({
 });
 
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
-const testSubjectSchema = z.string().trim().min(1, '请输入测试邮件主题').max(200, '主题不能超过 200 个字符');
-const testBodySchema = z.string().trim().min(1, '请输入测试邮件正文').max(10_000, '正文不能超过 10000 个字符');
+const testSubjectSchema = z
+  .string()
+  .trim()
+  .min(1, '请输入测试邮件主题')
+  .max(200, '主题不能超过 200 个字符');
+const testBodySchema = z
+  .string()
+  .trim()
+  .min(1, '请输入测试邮件正文')
+  .max(10_000, '正文不能超过 10000 个字符');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
 type QiniuValues = z.infer<typeof qiniuSchema>;
@@ -152,7 +180,7 @@ function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolea
     secure: Boolean(values.secure),
     ...(user ? { user } : {}),
     ...(options.includePassword && password ? { password } : {}),
-    ...(from ? { from } : {})
+    ...(from ? { from } : {}),
   };
 }
 
@@ -170,7 +198,7 @@ function buildQiniuPayload(values: QiniuValues, options: { includeSecretKey: boo
     ...(bucketName ? { bucketName } : {}),
     ...(publicBaseUrl ? { publicBaseUrl } : {}),
     ...(uploadHost ? { uploadHost } : {}),
-    ...(defaultPrefix ? { defaultPrefix } : {})
+    ...(defaultPrefix ? { defaultPrefix } : {}),
   };
 }
 
@@ -186,16 +214,16 @@ function buildSitePayload(values: SiteValues) {
       children: item.children.map((child) => ({
         label: child.label.trim(),
         url: child.url.trim(),
-        openInNewTab: Boolean(child.openInNewTab)
-      }))
+        openInNewTab: Boolean(child.openInNewTab),
+      })),
     })),
     footerCopyright: values.footerCopyright.trim(),
     filingInfo: values.filingInfo.trim(),
     footerLinks: values.footerLinks.map((item) => ({
       label: item.label.trim(),
       url: item.url.trim(),
-      openInNewTab: Boolean(item.openInNewTab)
-    }))
+      openInNewTab: Boolean(item.openInNewTab),
+    })),
   };
 }
 
@@ -211,11 +239,14 @@ function buildOpenRouterPayload(values: OpenRouterValues, options: { includeApiK
     ...(baseUrl ? { baseUrl } : {}),
     ...(siteUrl ? { siteUrl } : {}),
     ...(siteName ? { siteName } : {}),
-    ...(defaultModel ? { defaultModel } : {})
+    ...(defaultModel ? { defaultModel } : {}),
   };
 }
 
-function buildContentImportPayload(values: ContentImportValues, options: { includeWordPressPassword: boolean; includeNotionToken: boolean }) {
+function buildContentImportPayload(
+  values: ContentImportValues,
+  options: { includeWordPressPassword: boolean; includeNotionToken: boolean },
+) {
   const wordpressSiteUrl = values.wordpressSiteUrl?.trim();
   const wordpressUsername = values.wordpressUsername?.trim();
   const wordpressAppPassword = values.wordpressAppPassword?.trim();
@@ -225,7 +256,9 @@ function buildContentImportPayload(values: ContentImportValues, options: { inclu
     wordpress: {
       ...(wordpressSiteUrl ? { siteUrl: wordpressSiteUrl } : {}),
       ...(wordpressUsername ? { username: wordpressUsername } : {}),
-      ...(options.includeWordPressPassword && wordpressAppPassword ? { appPassword: wordpressAppPassword } : {}),
+      ...(options.includeWordPressPassword && wordpressAppPassword
+        ? { appPassword: wordpressAppPassword }
+        : {}),
     },
     notion: {
       ...(options.includeNotionToken && notionApiToken ? { apiToken: notionApiToken } : {}),
@@ -289,44 +322,55 @@ export function SettingsPage() {
   const [testTo, setTestTo] = useState('');
   const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
   const [testBody, setTestBody] = useState(
-    ['这是一封来自 fd-core-stack 的测试邮件。', '', '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。'].join('\n')
+    [
+      '这是一封来自 fd-core-stack 的测试邮件。',
+      '',
+      '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。',
+    ].join('\n'),
   );
   const [openrouterModels, setOpenrouterModels] = useState<AiModelSummary[]>([]);
   const [openrouterModelsLoaded, setOpenrouterModelsLoaded] = useState(false);
-  const [openrouterConnectionResult, setOpenrouterConnectionResult] = useState<OpenRouterTestConnectionResult | null>(null);
-  const [wordpressConnectionResult, setWordpressConnectionResult] = useState<ContentImportWordPressTestResult | null>(null);
-  const [notionConnectionResult, setNotionConnectionResult] = useState<ContentImportNotionTestResult | null>(null);
-  const [openrouterTestMessage, setOpenrouterTestMessage] = useState('Hello, translate this to Chinese.');
-  const [openrouterChatResult, setOpenrouterChatResult] = useState<AiChatCompletionResult | null>(null);
+  const [openrouterConnectionResult, setOpenrouterConnectionResult] =
+    useState<OpenRouterTestConnectionResult | null>(null);
+  const [wordpressConnectionResult, setWordpressConnectionResult] =
+    useState<ContentImportWordPressTestResult | null>(null);
+  const [notionConnectionResult, setNotionConnectionResult] =
+    useState<ContentImportNotionTestResult | null>(null);
+  const [openrouterTestMessage, setOpenrouterTestMessage] = useState(
+    'Hello, translate this to Chinese.',
+  );
+  const [openrouterChatResult, setOpenrouterChatResult] = useState<AiChatCompletionResult | null>(
+    null,
+  );
 
   const { data: aiProvidersData } = useQuery({
     queryKey: ['admin-ai-providers'],
-    queryFn: getAiProviders
+    queryFn: getAiProviders,
   });
 
   const { data: smtpData, isLoading: smtpLoading } = useQuery({
     queryKey: ['system-settings', 'smtp'],
-    queryFn: getSmtpSettings
+    queryFn: getSmtpSettings,
   });
 
   const { data: siteData, isLoading: siteLoading } = useQuery({
     queryKey: ['system-settings', 'site'],
-    queryFn: getSiteSettings
+    queryFn: getSiteSettings,
   });
 
   const { data: contentImportData, isLoading: contentImportLoading } = useQuery({
     queryKey: ['system-settings', 'content-import'],
-    queryFn: getContentImportSettings
+    queryFn: getContentImportSettings,
   });
 
   const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
     queryKey: ['system-settings', 'qiniu'],
-    queryFn: getQiniuSettings
+    queryFn: getQiniuSettings,
   });
 
   const { data: openrouterData, isLoading: openrouterLoading } = useQuery({
     queryKey: ['system-settings', 'ai', 'openrouter'],
-    queryFn: getOpenRouterSettings
+    queryFn: getOpenRouterSettings,
   });
 
   const smtpForm = useForm<SmtpValues>({
@@ -337,8 +381,8 @@ export function SettingsPage() {
       secure: true,
       user: '',
       password: '',
-      from: ''
-    }
+      from: '',
+    },
   });
 
   const qiniuForm = useForm<QiniuValues>({
@@ -349,8 +393,8 @@ export function SettingsPage() {
       bucketName: '',
       publicBaseUrl: '',
       uploadHost: 'https://upload.qiniup.com',
-      defaultPrefix: ''
-    }
+      defaultPrefix: '',
+    },
   });
 
   const siteForm = useForm<SiteValues>({
@@ -362,28 +406,25 @@ export function SettingsPage() {
       headerNavigation: [],
       footerCopyright: '© {year} FutureDecade. All rights reserved.',
       filingInfo: '',
-      footerLinks: []
-    }
+      footerLinks: [],
+    },
   });
 
   const headerNavigation = siteForm.watch('headerNavigation') ?? [];
   const {
     fields: siteLinkFields,
     append: appendSiteLink,
-    remove: removeSiteLink
+    remove: removeSiteLink,
   } = useFieldArray({
     control: siteForm.control,
-    name: 'footerLinks'
+    name: 'footerLinks',
   });
 
   const appendHeaderNavigation = () => {
     siteForm.setValue(
       'headerNavigation',
-      [
-        ...headerNavigation,
-        { label: '', url: '', openInNewTab: false, children: [] }
-      ],
-      { shouldDirty: true, shouldValidate: true }
+      [...headerNavigation, { label: '', url: '', openInNewTab: false, children: [] }],
+      { shouldDirty: true, shouldValidate: true },
     );
   };
 
@@ -391,7 +432,7 @@ export function SettingsPage() {
     siteForm.setValue(
       'headerNavigation',
       headerNavigation.filter((_, itemIndex) => itemIndex !== index),
-      { shouldDirty: true, shouldValidate: true }
+      { shouldDirty: true, shouldValidate: true },
     );
   };
 
@@ -402,11 +443,11 @@ export function SettingsPage() {
         itemIndex === index
           ? {
               ...item,
-              children: [...item.children, { label: '', url: '', openInNewTab: false }]
+              children: [...item.children, { label: '', url: '', openInNewTab: false }],
             }
-          : item
+          : item,
       ),
-      { shouldDirty: true, shouldValidate: true }
+      { shouldDirty: true, shouldValidate: true },
     );
   };
 
@@ -417,11 +458,13 @@ export function SettingsPage() {
         itemIndex === parentIndex
           ? {
               ...item,
-              children: item.children.filter((_, currentChildIndex) => currentChildIndex !== childIndex)
+              children: item.children.filter(
+                (_, currentChildIndex) => currentChildIndex !== childIndex,
+              ),
             }
-          : item
+          : item,
       ),
-      { shouldDirty: true, shouldValidate: true }
+      { shouldDirty: true, shouldValidate: true },
     );
   };
 
@@ -432,8 +475,8 @@ export function SettingsPage() {
       baseUrl: OPENROUTER_DEFAULT_BASE_URL,
       siteUrl: '',
       siteName: 'fd-core-stack',
-      defaultModel: ''
-    }
+      defaultModel: '',
+    },
   });
 
   const contentImportForm = useForm<ContentImportValues>({
@@ -443,7 +486,7 @@ export function SettingsPage() {
       wordpressUsername: '',
       wordpressAppPassword: '',
       notionApiToken: '',
-    }
+    },
   });
 
   useEffect(() => {
@@ -457,7 +500,7 @@ export function SettingsPage() {
       secure: smtpData.values.secure,
       user: smtpData.values.user,
       password: '',
-      from: smtpData.values.from
+      from: smtpData.values.from,
     });
   }, [smtpData, smtpForm]);
 
@@ -472,7 +515,7 @@ export function SettingsPage() {
       bucketName: qiniuData.values.bucketName,
       publicBaseUrl: qiniuData.values.publicBaseUrl,
       uploadHost: qiniuData.values.uploadHost,
-      defaultPrefix: qiniuData.values.defaultPrefix
+      defaultPrefix: qiniuData.values.defaultPrefix,
     });
   }, [qiniuData, qiniuForm]);
 
@@ -488,7 +531,7 @@ export function SettingsPage() {
       headerNavigation: siteData.values.headerNavigation,
       footerCopyright: siteData.values.footerCopyright,
       filingInfo: siteData.values.filingInfo,
-      footerLinks: siteData.values.footerLinks
+      footerLinks: siteData.values.footerLinks,
     });
   }, [siteData, siteForm]);
 
@@ -515,7 +558,7 @@ export function SettingsPage() {
       baseUrl: OPENROUTER_DEFAULT_BASE_URL,
       siteUrl: openrouterData.values.siteUrl,
       siteName: openrouterData.values.siteName,
-      defaultModel: openrouterData.values.defaultModel
+      defaultModel: openrouterData.values.defaultModel,
     });
   }, [openrouterData, openrouterForm]);
 
@@ -523,19 +566,22 @@ export function SettingsPage() {
     buildOpenRouterPayload(
       {
         ...values,
-        baseUrl: OPENROUTER_DEFAULT_BASE_URL
+        baseUrl: OPENROUTER_DEFAULT_BASE_URL,
       },
       {
-        includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey)
-      }
+        includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey),
+      },
     );
 
-  const buildCurrentOpenRouterPayload = () => buildManagedOpenRouterPayload(openrouterForm.getValues());
+  const buildCurrentOpenRouterPayload = () =>
+    buildManagedOpenRouterPayload(openrouterForm.getValues());
 
   const selectedOpenRouterModelId = openrouterForm.watch('defaultModel');
-  const selectedOpenRouterModel = openrouterModels.find((item) => item.id === selectedOpenRouterModelId) ?? null;
+  const selectedOpenRouterModel =
+    openrouterModels.find((item) => item.id === selectedOpenRouterModelId) ?? null;
   const hasSelectedOpenRouterModelOption =
-    !selectedOpenRouterModelId || openrouterModels.some((item) => item.id === selectedOpenRouterModelId);
+    !selectedOpenRouterModelId ||
+    openrouterModels.some((item) => item.id === selectedOpenRouterModelId);
 
   const saveSmtpMutation = useMutation({
     mutationFn: upsertSmtpSettings,
@@ -548,10 +594,10 @@ export function SettingsPage() {
         secure: result.values.secure,
         user: result.values.user,
         password: '',
-        from: result.values.from
+        from: result.values.from,
       });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
   });
 
   const clearSmtpMutation = useMutation({
@@ -561,7 +607,7 @@ export function SettingsPage() {
       setClearSmtpOpen(false);
       await qc.invalidateQueries({ queryKey: ['system-settings', 'smtp'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
   });
 
   const testSmtpMutation = useMutation({
@@ -569,7 +615,7 @@ export function SettingsPage() {
     onSuccess: (result) => {
       toast.success(`测试邮件已发送到 ${result.to}`);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败'),
   });
 
   const saveSiteMutation = useMutation({
@@ -579,16 +625,16 @@ export function SettingsPage() {
       qc.setQueryData(['system-settings', 'site'], result);
       qc.setQueryData(['public-site-settings'], result.values);
       siteForm.reset({
-      siteName: result.values.siteName,
-      logoUrl: result.values.logoUrl,
-      faviconUrl: result.values.faviconUrl,
-      headerNavigation: result.values.headerNavigation,
-      footerCopyright: result.values.footerCopyright,
-      filingInfo: result.values.filingInfo,
-      footerLinks: result.values.footerLinks
-    });
+        siteName: result.values.siteName,
+        logoUrl: result.values.logoUrl,
+        faviconUrl: result.values.faviconUrl,
+        headerNavigation: result.values.headerNavigation,
+        footerCopyright: result.values.footerCopyright,
+        filingInfo: result.values.filingInfo,
+        footerLinks: result.values.footerLinks,
+      });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
   });
 
   const clearSiteMutation = useMutation({
@@ -598,10 +644,10 @@ export function SettingsPage() {
       setClearSiteOpen(false);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['system-settings', 'site'] }),
-        qc.invalidateQueries({ queryKey: ['public-site-settings'] })
+        qc.invalidateQueries({ queryKey: ['public-site-settings'] }),
       ]);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败'),
   });
 
   const saveContentImportMutation = useMutation({
@@ -616,7 +662,7 @@ export function SettingsPage() {
         notionApiToken: '',
       });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
   });
 
   const clearContentImportMutation = useMutation({
@@ -628,16 +674,18 @@ export function SettingsPage() {
       setNotionConnectionResult(null);
       await qc.invalidateQueries({ queryKey: ['system-settings', 'content-import'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
   });
 
   const testWordPressImportMutation = useMutation({
     mutationFn: testWordPressImportSettings,
     onSuccess: (result) => {
       setWordpressConnectionResult(result);
-      toast.success(`WordPress 连接成功：${result.mode === 'authenticated' ? '已认证' : '公开访问'}`);
+      toast.success(
+        `WordPress 连接成功：${result.mode === 'authenticated' ? '已认证' : '公开访问'}`,
+      );
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
   });
 
   const testNotionImportMutation = useMutation({
@@ -646,7 +694,7 @@ export function SettingsPage() {
       setNotionConnectionResult(result);
       toast.success('Notion 连接成功');
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
   });
 
   const saveQiniuMutation = useMutation({
@@ -660,10 +708,10 @@ export function SettingsPage() {
         bucketName: result.values.bucketName,
         publicBaseUrl: result.values.publicBaseUrl,
         uploadHost: result.values.uploadHost,
-        defaultPrefix: result.values.defaultPrefix
+        defaultPrefix: result.values.defaultPrefix,
       });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
   });
 
   const clearQiniuMutation = useMutation({
@@ -673,7 +721,7 @@ export function SettingsPage() {
       setClearQiniuOpen(false);
       await qc.invalidateQueries({ queryKey: ['system-settings', 'qiniu'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
   });
 
   const testQiniuMutation = useMutation({
@@ -681,7 +729,7 @@ export function SettingsPage() {
     onSuccess: (result) => {
       toast.success(`七牛云连接成功，Bucket: ${result.bucketName}`);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
   });
 
   const saveOpenRouterMutation = useMutation({
@@ -694,7 +742,7 @@ export function SettingsPage() {
         baseUrl: OPENROUTER_DEFAULT_BASE_URL,
         siteUrl: result.values.siteUrl,
         siteName: result.values.siteName,
-        defaultModel: result.values.defaultModel
+        defaultModel: result.values.defaultModel,
       });
       setOpenrouterModelsLoaded(false);
       await qc.invalidateQueries({ queryKey: ['admin-ai-providers'] });
@@ -704,11 +752,11 @@ export function SettingsPage() {
           baseUrl: OPENROUTER_DEFAULT_BASE_URL,
           siteUrl: result.values.siteUrl,
           siteName: result.values.siteName,
-          defaultModel: result.values.defaultModel
-        })
+          defaultModel: result.values.defaultModel,
+        }),
       );
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
   });
 
   const clearOpenRouterMutation = useMutation({
@@ -722,10 +770,10 @@ export function SettingsPage() {
       setOpenrouterChatResult(null);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['system-settings', 'ai', 'openrouter'] }),
-        qc.invalidateQueries({ queryKey: ['admin-ai-providers'] })
+        qc.invalidateQueries({ queryKey: ['admin-ai-providers'] }),
       ]);
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
   });
 
   const previewOpenRouterModelsMutation = useMutation({
@@ -744,7 +792,7 @@ export function SettingsPage() {
       setOpenrouterModelsLoaded(true);
       setOpenrouterModels([]);
       toast.error(err instanceof Error ? err.message : '拉取模型列表失败');
-    }
+    },
   });
 
   const testOpenRouterMutation = useMutation({
@@ -754,7 +802,7 @@ export function SettingsPage() {
       toast.success(`OpenRouter 连接成功，共发现 ${result.modelCount} 个模型`);
       previewOpenRouterModelsMutation.mutate(buildCurrentOpenRouterPayload());
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败')
+    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
   });
 
   const previewOpenRouterChatMutation = useMutation({
@@ -768,24 +816,26 @@ export function SettingsPage() {
     onError: (err) => {
       setOpenrouterChatResult(null);
       toast.error(err instanceof Error ? err.message : '对话测试失败');
-    }
+    },
   });
 
   useEffect(() => {
-    if (!openrouterData?.configured || previewOpenRouterModelsMutation.isPending || openrouterModelsLoaded) {
+    if (
+      !openrouterData?.configured ||
+      previewOpenRouterModelsMutation.isPending ||
+      openrouterModelsLoaded
+    ) {
       return;
     }
 
     previewOpenRouterModelsMutation.mutate(
-      buildManagedOpenRouterPayload(
-        {
-          apiKey: '',
-          baseUrl: OPENROUTER_DEFAULT_BASE_URL,
-          siteUrl: openrouterData.values.siteUrl,
-          siteName: openrouterData.values.siteName,
-          defaultModel: openrouterData.values.defaultModel
-        }
-      )
+      buildManagedOpenRouterPayload({
+        apiKey: '',
+        baseUrl: OPENROUTER_DEFAULT_BASE_URL,
+        siteUrl: openrouterData.values.siteUrl,
+        siteName: openrouterData.values.siteName,
+        defaultModel: openrouterData.values.defaultModel,
+      }),
     );
   }, [openrouterData, openrouterModelsLoaded, previewOpenRouterModelsMutation]);
 
@@ -809,16 +859,20 @@ export function SettingsPage() {
     }
 
     testSmtpMutation.mutate({
-      ...buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) }),
+      ...buildSmtpPayload(values, {
+        includePassword: Boolean(smtpForm.formState.dirtyFields.password),
+      }),
       to: parsedTo.data,
       subject: parsedSubject.data,
-      text: parsedBody.data
+      text: parsedBody.data,
     });
   });
 
   const handleTestQiniu = qiniuForm.handleSubmit((values) => {
     testQiniuMutation.mutate(
-      buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
+      buildQiniuPayload(values, {
+        includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
+      }),
     );
   });
 
@@ -849,14 +903,16 @@ export function SettingsPage() {
       messages: [
         {
           role: 'user',
-          content: message
-        }
+          content: message,
+        },
       ],
-      maxTokens: 400
+      maxTokens: 400,
     });
   });
 
-  const configuredAiProviders = aiProvidersData?.items.filter((item) => item.configured).length ?? (openrouterData?.configured ? 1 : 0);
+  const configuredAiProviders =
+    aiProvidersData?.items.filter((item) => item.configured).length ??
+    (openrouterData?.configured ? 1 : 0);
   const totalAiProviders = aiProvidersData?.items.length ?? 1;
   const handleTestWordPressImport = contentImportForm.handleSubmit((values) => {
     testWordPressImportMutation.mutate({
@@ -877,10 +933,10 @@ export function SettingsPage() {
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
         <Tabs defaultValue="site" className="max-w-5xl space-y-5">
-          <div className="rounded-lg border border-border bg-white p-6 shadow-sm">
+          <div className="border-border bg-card rounded-lg border p-6 shadow-sm">
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
-              <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
+              <h2 className="text-foreground text-lg font-semibold">系统设置</h2>
+              <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
                 <TabsTrigger value="site" className="min-w-[108px] rounded-md">
                   品牌与页脚
                 </TabsTrigger>
@@ -901,24 +957,35 @@ export function SettingsPage() {
           </div>
 
           <TabsContent value="site" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill tone={siteData?.configured ? 'ok' : 'neutral'} label={siteData?.configured ? '品牌设置已自定义' : '使用默认站点展示'} />
-                  <StatusPill tone={siteData?.source === 'database' ? 'ok' : 'neutral'} label={`来源: ${siteData?.source === 'database' ? '数据库' : '默认值'}`} />
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                  <StatusPill
+                    tone={siteData?.configured ? 'ok' : 'neutral'}
+                    label={siteData?.configured ? '品牌设置已自定义' : '使用默认站点展示'}
+                  />
+                  <StatusPill
+                    tone={siteData?.source === 'database' ? 'ok' : 'neutral'}
+                    label={`来源: ${siteData?.source === 'database' ? '数据库' : '默认值'}`}
+                  />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">品牌与页脚</h2>
+                <h2 className="text-foreground text-lg font-semibold">品牌与页脚</h2>
               </div>
 
               {siteLoading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : (
                 <Form {...siteForm}>
-                  <form onSubmit={siteForm.handleSubmit((values) => saveSiteMutation.mutate(buildSitePayload(values)))} className="space-y-6">
+                  <form
+                    onSubmit={siteForm.handleSubmit((values) =>
+                      saveSiteMutation.mutate(buildSitePayload(values)),
+                    )}
+                    className="space-y-6"
+                  >
                     <div className="grid gap-6 lg:grid-cols-2">
                       <FormField
                         control={siteForm.control}
@@ -941,7 +1008,10 @@ export function SettingsPage() {
                           <FormItem>
                             <FormLabel>页脚版权</FormLabel>
                             <FormControl>
-                              <Input placeholder="© {year} FutureDecade. All rights reserved." {...field} />
+                              <Input
+                                placeholder="© {year} FutureDecade. All rights reserved."
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -976,7 +1046,7 @@ export function SettingsPage() {
                                 onChange={field.onChange}
                                 defaultPrefix="site-assets/logo"
                                 previewAlt="site logo"
-                                previewClassName="h-20 w-40 rounded-md border bg-white object-contain p-2"
+                                previewClassName="h-20 w-40 rounded-md border bg-card object-contain p-2"
                                 dialogTitle="选择站点 Logo"
                                 dialogDescription="支持从七牛云已有图片中选择，或直接上传新的站点 Logo。"
                               />
@@ -998,7 +1068,7 @@ export function SettingsPage() {
                                 onChange={field.onChange}
                                 defaultPrefix="site-assets/favicon"
                                 previewAlt="site favicon"
-                                previewClassName="h-16 w-16 rounded-md border bg-white object-contain p-2"
+                                previewClassName="h-16 w-16 rounded-md border bg-card object-contain p-2"
                                 dialogTitle="选择站点 Favicon"
                                 dialogDescription="建议上传方形透明背景图标，保存后会同步到浏览器标签页图标。"
                               />
@@ -1009,9 +1079,9 @@ export function SettingsPage() {
                       />
                     </div>
 
-                    <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                    <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-sm font-semibold text-foreground">顶部导航菜单</h3>
+                        <h3 className="text-foreground text-sm font-semibold">顶部导航菜单</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1025,13 +1095,22 @@ export function SettingsPage() {
 
                       <div className="space-y-3">
                         {headerNavigation.map((item, index) => (
-                          <div key={`site-nav-${index}`} className="rounded-lg border border-border bg-white p-4">
+                          <div
+                            key={`site-nav-${index}`}
+                            className="border-border bg-card rounded-lg border p-4"
+                          >
                             <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
                               <div className="space-y-2">
                                 <FormLabel>一级菜单名称</FormLabel>
-                                <Input placeholder="应用中心" {...siteForm.register(`headerNavigation.${index}.label`)} />
-                                <p className="text-xs text-destructive">
-                                  {siteForm.formState.errors.headerNavigation?.[index]?.label?.message}
+                                <Input
+                                  placeholder="应用中心"
+                                  {...siteForm.register(`headerNavigation.${index}.label`)}
+                                />
+                                <p className="text-destructive text-xs">
+                                  {
+                                    siteForm.formState.errors.headerNavigation?.[index]?.label
+                                      ?.message
+                                  }
                                 </p>
                               </div>
 
@@ -1041,13 +1120,21 @@ export function SettingsPage() {
                                   placeholder="/ or https://...，有二级菜单时可留空"
                                   {...siteForm.register(`headerNavigation.${index}.url`)}
                                 />
-                                <p className="text-xs text-destructive">
-                                  {siteForm.formState.errors.headerNavigation?.[index]?.url?.message}
+                                <p className="text-destructive text-xs">
+                                  {
+                                    siteForm.formState.errors.headerNavigation?.[index]?.url
+                                      ?.message
+                                  }
                                 </p>
                               </div>
 
                               <div className="space-y-3">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => removeHeaderNavigation(index)}>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeHeaderNavigation(index)}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                   删除
                                 </Button>
@@ -1055,12 +1142,17 @@ export function SettingsPage() {
                                   control={siteForm.control}
                                   name={`headerNavigation.${index}.openInNewTab`}
                                   render={({ field }) => (
-                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                    <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
                                       <FormControl>
-                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
                                       </FormControl>
                                       <div>
-                                        <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                        <FormLabel className="cursor-pointer text-sm">
+                                          新窗口打开
+                                        </FormLabel>
                                       </div>
                                     </FormItem>
                                   )}
@@ -1068,9 +1160,11 @@ export function SettingsPage() {
                               </div>
                             </div>
 
-                            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-4">
+                            <div className="border-border bg-muted/60 mt-4 space-y-3 rounded-lg border border-dashed p-4">
                               <div className="flex items-center justify-between gap-4">
-                                <p className="text-sm font-semibold text-foreground">二级下拉菜单</p>
+                                <p className="text-foreground text-sm font-semibold">
+                                  二级下拉菜单
+                                </p>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -1088,16 +1182,21 @@ export function SettingsPage() {
                                   {item.children.map((_, childIndex) => (
                                     <div
                                       key={`site-nav-${index}-child-${childIndex}`}
-                                      className="grid gap-4 rounded-lg border border-border bg-white p-4 lg:grid-cols-[minmax(0,160px),minmax(0,1fr),auto] lg:items-start"
+                                      className="border-border bg-card grid gap-4 rounded-lg border p-4 lg:grid-cols-[minmax(0,160px),minmax(0,1fr),auto] lg:items-start"
                                     >
                                       <div className="space-y-2">
                                         <FormLabel>二级菜单名称</FormLabel>
                                         <Input
                                           placeholder="购买授权"
-                                          {...siteForm.register(`headerNavigation.${index}.children.${childIndex}.label`)}
+                                          {...siteForm.register(
+                                            `headerNavigation.${index}.children.${childIndex}.label`,
+                                          )}
                                         />
-                                        <p className="text-xs text-destructive">
-                                          {siteForm.formState.errors.headerNavigation?.[index]?.children?.[childIndex]?.label?.message}
+                                        <p className="text-destructive text-xs">
+                                          {
+                                            siteForm.formState.errors.headerNavigation?.[index]
+                                              ?.children?.[childIndex]?.label?.message
+                                          }
                                         </p>
                                       </div>
 
@@ -1105,10 +1204,15 @@ export function SettingsPage() {
                                         <FormLabel>二级菜单链接</FormLabel>
                                         <Input
                                           placeholder="/ or https://..."
-                                          {...siteForm.register(`headerNavigation.${index}.children.${childIndex}.url`)}
+                                          {...siteForm.register(
+                                            `headerNavigation.${index}.children.${childIndex}.url`,
+                                          )}
                                         />
-                                        <p className="text-xs text-destructive">
-                                          {siteForm.formState.errors.headerNavigation?.[index]?.children?.[childIndex]?.url?.message}
+                                        <p className="text-destructive text-xs">
+                                          {
+                                            siteForm.formState.errors.headerNavigation?.[index]
+                                              ?.children?.[childIndex]?.url?.message
+                                          }
                                         </p>
                                       </div>
 
@@ -1117,7 +1221,9 @@ export function SettingsPage() {
                                           type="button"
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => removeHeaderNavigationChild(index, childIndex)}
+                                          onClick={() =>
+                                            removeHeaderNavigationChild(index, childIndex)
+                                          }
                                         >
                                           <Trash2 className="h-4 w-4" />
                                           删除
@@ -1126,12 +1232,17 @@ export function SettingsPage() {
                                           control={siteForm.control}
                                           name={`headerNavigation.${index}.children.${childIndex}.openInNewTab`}
                                           render={({ field }) => (
-                                            <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                            <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
                                               <FormControl>
-                                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                <Checkbox
+                                                  checked={field.value}
+                                                  onCheckedChange={field.onChange}
+                                                />
                                               </FormControl>
                                               <div>
-                                                <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                                <FormLabel className="cursor-pointer text-sm">
+                                                  新窗口打开
+                                                </FormLabel>
                                               </div>
                                             </FormItem>
                                           )}
@@ -1143,8 +1254,9 @@ export function SettingsPage() {
                               ) : null}
                             </div>
 
-                            {typeof siteForm.formState.errors.headerNavigation?.[index]?.message === 'string' ? (
-                              <p className="mt-3 text-xs text-destructive">
+                            {typeof siteForm.formState.errors.headerNavigation?.[index]?.message ===
+                            'string' ? (
+                              <p className="text-destructive mt-3 text-xs">
                                 {siteForm.formState.errors.headerNavigation[index]?.message}
                               </p>
                             ) : null}
@@ -1152,18 +1264,22 @@ export function SettingsPage() {
                         ))}
 
                         {typeof siteForm.formState.errors.headerNavigation?.message === 'string' ? (
-                          <p className="text-sm text-destructive">{siteForm.formState.errors.headerNavigation.message}</p>
+                          <p className="text-destructive text-sm">
+                            {siteForm.formState.errors.headerNavigation.message}
+                          </p>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                    <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-sm font-semibold text-foreground">Footer 菜单链接</h3>
+                        <h3 className="text-foreground text-sm font-semibold">Footer 菜单链接</h3>
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => appendSiteLink({ label: '', url: '', openInNewTab: false })}
+                          onClick={() =>
+                            appendSiteLink({ label: '', url: '', openInNewTab: false })
+                          }
                           disabled={siteLinkFields.length >= 12}
                         >
                           <Plus className="h-4 w-4" />
@@ -1173,7 +1289,10 @@ export function SettingsPage() {
 
                       <div className="space-y-3">
                         {siteLinkFields.map((field, index) => (
-                          <div key={field.id} className="rounded-lg border border-border bg-white p-4">
+                          <div
+                            key={field.id}
+                            className="border-border bg-card rounded-lg border p-4"
+                          >
                             <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
                               <div className="space-y-2">
                                 <FormLabel>名称</FormLabel>
@@ -1181,7 +1300,7 @@ export function SettingsPage() {
                                   placeholder="应用中心"
                                   {...siteForm.register(`footerLinks.${index}.label`)}
                                 />
-                                <p className="text-xs text-destructive">
+                                <p className="text-destructive text-xs">
                                   {siteForm.formState.errors.footerLinks?.[index]?.label?.message}
                                 </p>
                               </div>
@@ -1192,13 +1311,18 @@ export function SettingsPage() {
                                   placeholder="/ or https://..."
                                   {...siteForm.register(`footerLinks.${index}.url`)}
                                 />
-                                <p className="text-xs text-destructive">
+                                <p className="text-destructive text-xs">
                                   {siteForm.formState.errors.footerLinks?.[index]?.url?.message}
                                 </p>
                               </div>
 
                               <div className="space-y-3">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => removeSiteLink(index)}>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeSiteLink(index)}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                   删除
                                 </Button>
@@ -1206,12 +1330,17 @@ export function SettingsPage() {
                                   control={siteForm.control}
                                   name={`footerLinks.${index}.openInNewTab`}
                                   render={({ field }) => (
-                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-3 py-2">
+                                    <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
                                       <FormControl>
-                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                        <Checkbox
+                                          checked={field.value}
+                                          onCheckedChange={field.onChange}
+                                        />
                                       </FormControl>
                                       <div>
-                                        <FormLabel className="cursor-pointer text-sm">新窗口打开</FormLabel>
+                                        <FormLabel className="cursor-pointer text-sm">
+                                          新窗口打开
+                                        </FormLabel>
                                       </div>
                                     </FormItem>
                                   )}
@@ -1222,7 +1351,9 @@ export function SettingsPage() {
                         ))}
 
                         {typeof siteForm.formState.errors.footerLinks?.message === 'string' ? (
-                          <p className="text-sm text-destructive">{siteForm.formState.errors.footerLinks.message}</p>
+                          <p className="text-destructive text-sm">
+                            {siteForm.formState.errors.footerLinks.message}
+                          </p>
                         ) : null}
                       </div>
                     </div>
@@ -1231,7 +1362,12 @@ export function SettingsPage() {
                       <Button type="submit" disabled={saveSiteMutation.isPending}>
                         {saveSiteMutation.isPending ? '保存中...' : '保存品牌与页脚'}
                       </Button>
-                      <Button type="button" variant="outline" disabled={clearSiteMutation.isPending} onClick={() => setClearSiteOpen(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearSiteMutation.isPending}
+                        onClick={() => setClearSiteOpen(true)}
+                      >
                         重置为默认配置
                       </Button>
                     </div>
@@ -1242,22 +1378,31 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="smtp" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill tone={smtpData?.configured ? 'ok' : 'neutral'} label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'} />
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
                   <StatusPill
-                    tone={smtpData?.source === 'database' ? 'ok' : smtpData?.source === 'env' ? 'warn' : 'neutral'}
+                    tone={smtpData?.configured ? 'ok' : 'neutral'}
+                    label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'}
+                  />
+                  <StatusPill
+                    tone={
+                      smtpData?.source === 'database'
+                        ? 'ok'
+                        : smtpData?.source === 'env'
+                          ? 'warn'
+                          : 'neutral'
+                    }
                     label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
+                <h2 className="text-foreground text-lg font-semibold">SMTP 配置</h2>
               </div>
 
               {smtpLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : (
@@ -1265,8 +1410,10 @@ export function SettingsPage() {
                   <form
                     onSubmit={smtpForm.handleSubmit((values) =>
                       saveSmtpMutation.mutate(
-                        buildSmtpPayload(values, { includePassword: Boolean(smtpForm.formState.dirtyFields.password) })
-                      )
+                        buildSmtpPayload(values, {
+                          includePassword: Boolean(smtpForm.formState.dirtyFields.password),
+                        }),
+                      ),
                     )}
                     className="space-y-5"
                   >
@@ -1341,7 +1488,11 @@ export function SettingsPage() {
                             <Input
                               type="password"
                               autoComplete="new-password"
-                              placeholder={smtpData?.secrets.password.configured ? '已保存，留空保持不变' : '请输入 SMTP 密码'}
+                              placeholder={
+                                smtpData?.secrets.password.configured
+                                  ? '已保存，留空保持不变'
+                                  : '请输入 SMTP 密码'
+                              }
                               {...field}
                             />
                           </FormControl>
@@ -1354,7 +1505,7 @@ export function SettingsPage() {
                       control={smtpForm.control}
                       name="secure"
                       render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-md border border-border bg-gray-50 px-4 py-3">
+                        <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-4 py-3">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
@@ -1367,13 +1518,18 @@ export function SettingsPage() {
                       <Button type="submit" disabled={saveSmtpMutation.isPending}>
                         {saveSmtpMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
                       </Button>
-                      <Button type="button" variant="outline" disabled={clearSmtpMutation.isPending} onClick={() => setClearSmtpOpen(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearSmtpMutation.isPending}
+                        onClick={() => setClearSmtpOpen(true)}
+                      >
                         清空数据库配置
                       </Button>
                     </div>
 
-                    <div className="rounded-lg border border-border bg-gray-50/70 p-4">
-                      <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
+                    <div className="border-border bg-muted/70 rounded-lg border p-4">
+                      <h3 className="text-foreground text-sm font-semibold">发送测试邮件</h3>
                       <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <Input
                           type="email"
@@ -1398,7 +1554,12 @@ export function SettingsPage() {
                         />
                       </div>
                       <div className="mt-3 flex justify-end">
-                        <Button type="button" variant="secondary" disabled={testSmtpMutation.isPending} onClick={handleSendTestEmail}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={testSmtpMutation.isPending}
+                          onClick={handleSendTestEmail}
+                        >
                           {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
                         </Button>
                       </div>
@@ -1410,22 +1571,31 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="qiniu" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill tone={qiniuData?.configured ? 'ok' : 'neutral'} label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'} />
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
                   <StatusPill
-                    tone={qiniuData?.source === 'database' ? 'ok' : qiniuData?.source === 'env' ? 'warn' : 'neutral'}
+                    tone={qiniuData?.configured ? 'ok' : 'neutral'}
+                    label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'}
+                  />
+                  <StatusPill
+                    tone={
+                      qiniuData?.source === 'database'
+                        ? 'ok'
+                        : qiniuData?.source === 'env'
+                          ? 'warn'
+                          : 'neutral'
+                    }
                     label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
+                <h2 className="text-foreground text-lg font-semibold">七牛云存储</h2>
               </div>
 
               {qiniuLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : (
@@ -1433,8 +1603,10 @@ export function SettingsPage() {
                   <form
                     onSubmit={qiniuForm.handleSubmit((values) =>
                       saveQiniuMutation.mutate(
-                        buildQiniuPayload(values, { includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey) })
-                      )
+                        buildQiniuPayload(values, {
+                          includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
+                        }),
+                      ),
                     )}
                     className="space-y-5"
                   >
@@ -1517,7 +1689,11 @@ export function SettingsPage() {
                             <Input
                               type="password"
                               autoComplete="new-password"
-                              placeholder={qiniuData?.secrets.secretKey.configured ? '已保存，留空保持不变' : '请输入 Secret Key'}
+                              placeholder={
+                                qiniuData?.secrets.secretKey.configured
+                                  ? '已保存，留空保持不变'
+                                  : '请输入 Secret Key'
+                              }
                               {...field}
                             />
                           </FormControl>
@@ -1530,10 +1706,20 @@ export function SettingsPage() {
                       <Button type="submit" disabled={saveQiniuMutation.isPending}>
                         {saveQiniuMutation.isPending ? '保存中...' : '保存七牛云配置'}
                       </Button>
-                      <Button type="button" variant="secondary" disabled={testQiniuMutation.isPending} onClick={handleTestQiniu}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={testQiniuMutation.isPending}
+                        onClick={handleTestQiniu}
+                      >
                         {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
                       </Button>
-                      <Button type="button" variant="outline" disabled={clearQiniuMutation.isPending} onClick={() => setClearQiniuOpen(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearQiniuMutation.isPending}
+                        onClick={() => setClearQiniuOpen(true)}
+                      >
                         清空数据库配置
                       </Button>
                     </div>
@@ -1544,19 +1730,25 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="content" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill tone={contentImportData?.configured ? 'ok' : 'neutral'} label={contentImportData?.configured ? '导入配置已保存' : '尚未配置导入连接'} />
-                  <StatusPill tone={contentImportData?.source === 'database' ? 'ok' : 'neutral'} label={`来源: ${contentImportData?.source === 'database' ? '数据库' : '未配置'}`} />
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                  <StatusPill
+                    tone={contentImportData?.configured ? 'ok' : 'neutral'}
+                    label={contentImportData?.configured ? '导入配置已保存' : '尚未配置导入连接'}
+                  />
+                  <StatusPill
+                    tone={contentImportData?.source === 'database' ? 'ok' : 'neutral'}
+                    label={`来源: ${contentImportData?.source === 'database' ? '数据库' : '未配置'}`}
+                  />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">内容导入连接</h2>
+                <h2 className="text-foreground text-lg font-semibold">内容导入连接</h2>
               </div>
 
               {contentImportLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : (
@@ -1565,33 +1757,54 @@ export function SettingsPage() {
                     onSubmit={contentImportForm.handleSubmit((values) =>
                       saveContentImportMutation.mutate(
                         buildContentImportPayload(values, {
-                          includeWordPressPassword: Boolean(contentImportForm.formState.dirtyFields.wordpressAppPassword),
-                          includeNotionToken: Boolean(contentImportForm.formState.dirtyFields.notionApiToken),
-                        })
-                      )
+                          includeWordPressPassword: Boolean(
+                            contentImportForm.formState.dirtyFields.wordpressAppPassword,
+                          ),
+                          includeNotionToken: Boolean(
+                            contentImportForm.formState.dirtyFields.notionApiToken,
+                          ),
+                        }),
+                      ),
                     )}
                     className="space-y-6"
                   >
                     <div className="grid gap-6 xl:grid-cols-2">
-                      <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                      <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
                         <div className="space-y-1">
-                          <h3 className="text-sm font-semibold text-foreground">WordPress</h3>
-                          <p className="text-xs text-muted-foreground">用于内容管理页面按文章 URL 导入 WordPress 文章。</p>
+                          <h3 className="text-foreground text-sm font-semibold">WordPress</h3>
+                          <p className="text-muted-foreground text-xs">
+                            用于内容管理页面按文章 URL 导入 WordPress 文章。
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label>站点 URL</Label>
-                          <Input placeholder="https://your-site.com" {...contentImportForm.register('wordpressSiteUrl')} />
+                          <Input
+                            placeholder="https://your-site.com"
+                            {...contentImportForm.register('wordpressSiteUrl')}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>用户名</Label>
-                          <Input placeholder="可选，用于受保护 REST API" {...contentImportForm.register('wordpressUsername')} />
+                          <Input
+                            placeholder="可选，用于受保护 REST API"
+                            {...contentImportForm.register('wordpressUsername')}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>应用密码</Label>
-                          <Input type="password" placeholder="可选" {...contentImportForm.register('wordpressAppPassword')} />
+                          <Input
+                            type="password"
+                            placeholder="可选"
+                            {...contentImportForm.register('wordpressAppPassword')}
+                          />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" onClick={handleTestWordPressImport} disabled={testWordPressImportMutation.isPending}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleTestWordPressImport}
+                            disabled={testWordPressImportMutation.isPending}
+                          >
                             {testWordPressImportMutation.isPending ? '测试中...' : '测试连接'}
                           </Button>
                           {wordpressConnectionResult ? (
@@ -1607,23 +1820,38 @@ export function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-4 rounded-lg border border-border bg-gray-50/70 p-4">
+                      <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
                         <div className="space-y-1">
-                          <h3 className="text-sm font-semibold text-foreground">Notion</h3>
-                          <p className="text-xs text-muted-foreground">用于内容管理页面按页面 URL 导入 Notion 页面。</p>
+                          <h3 className="text-foreground text-sm font-semibold">Notion</h3>
+                          <p className="text-muted-foreground text-xs">
+                            用于内容管理页面按页面 URL 导入 Notion 页面。
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label>API Token</Label>
-                          <Input type="password" placeholder="secret_xxx / ntn_xxx" {...contentImportForm.register('notionApiToken')} />
+                          <Input
+                            type="password"
+                            placeholder="secret_xxx / ntn_xxx"
+                            {...contentImportForm.register('notionApiToken')}
+                          />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" onClick={handleTestNotionImport} disabled={testNotionImportMutation.isPending}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleTestNotionImport}
+                            disabled={testNotionImportMutation.isPending}
+                          >
                             {testNotionImportMutation.isPending ? '测试中...' : '测试连接'}
                           </Button>
                           {notionConnectionResult ? (
                             <StatusPill
                               tone="ok"
-                              label={notionConnectionResult.workspace || notionConnectionResult.userName || '连接成功'}
+                              label={
+                                notionConnectionResult.workspace ||
+                                notionConnectionResult.userName ||
+                                '连接成功'
+                              }
                             />
                           ) : null}
                         </div>
@@ -1634,7 +1862,12 @@ export function SettingsPage() {
                       <Button type="submit" disabled={saveContentImportMutation.isPending}>
                         {saveContentImportMutation.isPending ? '保存中...' : '保存内容导入配置'}
                       </Button>
-                      <Button type="button" variant="outline" disabled={clearContentImportMutation.isPending} onClick={() => setClearContentImportOpen(true)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearContentImportMutation.isPending}
+                        onClick={() => setClearContentImportOpen(true)}
+                      >
                         清空配置
                       </Button>
                     </div>
@@ -1645,9 +1878,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="ai" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-white p-6 shadow-sm">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
                   <StatusPill
                     tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
                     label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
@@ -1657,29 +1890,35 @@ export function SettingsPage() {
                     label={openrouterData?.configured ? 'OpenRouter 已配置' : 'OpenRouter 未配置'}
                   />
                   <StatusPill
-                    tone={openrouterData?.source === 'database' ? 'ok' : openrouterData?.source === 'env' ? 'warn' : 'neutral'}
+                    tone={
+                      openrouterData?.source === 'database'
+                        ? 'ok'
+                        : openrouterData?.source === 'env'
+                          ? 'warn'
+                          : 'neutral'
+                    }
                     label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">AI API Hub</h2>
+                <h2 className="text-foreground text-lg font-semibold">AI API Hub</h2>
               </div>
 
               {openrouterLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
                   ))}
                 </div>
               ) : (
                 <Form {...openrouterForm}>
                   <form
                     onSubmit={openrouterForm.handleSubmit((values) =>
-                      saveOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values))
+                      saveOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values)),
                     )}
                     className="space-y-5"
                   >
-                    <div className="rounded-lg border border-border bg-gray-50/70 p-4">
-                      <h3 className="text-sm font-semibold text-foreground">OpenRouter</h3>
+                    <div className="border-border bg-muted/70 rounded-lg border p-4">
+                      <h3 className="text-foreground text-sm font-semibold">OpenRouter</h3>
                     </div>
 
                     <FormField
@@ -1692,7 +1931,11 @@ export function SettingsPage() {
                             <Input
                               type="password"
                               autoComplete="new-password"
-                              placeholder={openrouterData?.secrets.apiKey.configured ? '已保存，留空保持不变' : '请输入 OpenRouter API Key'}
+                              placeholder={
+                                openrouterData?.secrets.apiKey.configured
+                                  ? '已保存，留空保持不变'
+                                  : '请输入 OpenRouter API Key'
+                              }
                               {...field}
                             />
                           </FormControl>
@@ -1705,7 +1948,12 @@ export function SettingsPage() {
                       <Button type="submit" disabled={saveOpenRouterMutation.isPending}>
                         {saveOpenRouterMutation.isPending ? '保存中...' : '保存 OpenRouter 配置'}
                       </Button>
-                      <Button type="button" variant="secondary" disabled={testOpenRouterMutation.isPending} onClick={handleTestOpenRouter}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={testOpenRouterMutation.isPending}
+                        onClick={handleTestOpenRouter}
+                      >
                         {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
                       </Button>
                       <Button
@@ -1727,21 +1975,33 @@ export function SettingsPage() {
                     </div>
 
                     {openrouterConnectionResult ? (
-                      <div className="rounded-lg border border-border bg-white p-4">
+                      <div className="border-border bg-card rounded-lg border p-4">
                         <div className="flex flex-wrap items-center gap-3">
                           <StatusPill tone="ok" label="连接成功" />
-                          <StatusPill tone="info" label={`${openrouterConnectionResult.modelCount} 个模型`} />
+                          <StatusPill
+                            tone="info"
+                            label={`${openrouterConnectionResult.modelCount} 个模型`}
+                          />
                           <StatusPill
                             tone={openrouterConnectionResult.defaultModel ? 'info' : 'neutral'}
-                            label={openrouterConnectionResult.defaultModel ? `当前默认模型: ${openrouterConnectionResult.defaultModel}` : '当前未设置默认模型'}
+                            label={
+                              openrouterConnectionResult.defaultModel
+                                ? `当前默认模型: ${openrouterConnectionResult.defaultModel}`
+                                : '当前未设置默认模型'
+                            }
                           />
                         </div>
                         {openrouterConnectionResult.sampleModels.length ? (
-                        <div className="mt-3">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">示例模型</p>
+                          <div className="mt-3">
+                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                              示例模型
+                            </p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {openrouterConnectionResult.sampleModels.map((item) => (
-                                <span key={item} className="rounded-full border border-border bg-gray-50 px-3 py-1 text-xs text-muted-foreground">
+                                <span
+                                  key={item}
+                                  className="border-border bg-muted text-muted-foreground rounded-full border px-3 py-1 text-xs"
+                                >
                                   {item}
                                 </span>
                               ))}
@@ -1751,11 +2011,14 @@ export function SettingsPage() {
                       </div>
                     ) : null}
 
-                    <div className="space-y-4 rounded-lg border border-border bg-white p-4">
+                    <div className="border-border bg-card space-y-4 rounded-lg border p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-foreground">默认模型</h3>
+                        <h3 className="text-foreground text-sm font-semibold">默认模型</h3>
                         {openrouterModelsLoaded ? (
-                          <StatusPill tone={openrouterModels.length ? 'info' : 'neutral'} label={`${openrouterModels.length} 个模型`} />
+                          <StatusPill
+                            tone={openrouterModels.length ? 'info' : 'neutral'}
+                            label={`${openrouterModels.length} 个模型`}
+                          />
                         ) : null}
                       </div>
 
@@ -1765,16 +2028,32 @@ export function SettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>默认模型</FormLabel>
-                            <Select value={field.value || '__unset__'} onValueChange={(value) => field.onChange(value === '__unset__' ? '' : value)}>
+                            <Select
+                              value={field.value || '__unset__'}
+                              onValueChange={(value) =>
+                                field.onChange(value === '__unset__' ? '' : value)
+                              }
+                            >
                               <FormControl>
-                                <SelectTrigger disabled={previewOpenRouterModelsMutation.isPending || (!openrouterModels.length && !field.value)}>
-                                  <SelectValue placeholder={openrouterModels.length ? '选择默认模型' : '先拉取模型列表'} />
+                                <SelectTrigger
+                                  disabled={
+                                    previewOpenRouterModelsMutation.isPending ||
+                                    (!openrouterModels.length && !field.value)
+                                  }
+                                >
+                                  <SelectValue
+                                    placeholder={
+                                      openrouterModels.length ? '选择默认模型' : '先拉取模型列表'
+                                    }
+                                  />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="__unset__">暂不设置默认模型</SelectItem>
                                 {!hasSelectedOpenRouterModelOption && field.value ? (
-                                  <SelectItem value={field.value}>当前已保存模型（当前列表中未返回）</SelectItem>
+                                  <SelectItem value={field.value}>
+                                    当前已保存模型（当前列表中未返回）
+                                  </SelectItem>
                                 ) : null}
                                 {openrouterModels.map((model) => (
                                   <SelectItem key={model.id} value={model.id}>
@@ -1789,46 +2068,78 @@ export function SettingsPage() {
                       />
 
                       {selectedOpenRouterModel ? (
-                        <div className="rounded-lg border border-border bg-gray-50/70 p-4 text-sm">
+                        <div className="border-border bg-muted/70 rounded-lg border p-4 text-sm">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="font-semibold text-foreground">{selectedOpenRouterModel.name || selectedOpenRouterModel.id}</p>
-                              <p className="text-xs font-mono text-muted-foreground">{selectedOpenRouterModel.id}</p>
+                              <p className="text-foreground font-semibold">
+                                {selectedOpenRouterModel.name || selectedOpenRouterModel.id}
+                              </p>
+                              <p className="text-muted-foreground font-mono text-xs">
+                                {selectedOpenRouterModel.id}
+                              </p>
                             </div>
-                            <StatusPill tone="info" label={selectedOpenRouterModel.modality || 'text'} />
+                            <StatusPill
+                              tone="info"
+                              label={selectedOpenRouterModel.modality || 'text'}
+                            />
                           </div>
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">上下文</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                上下文
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens
+                              </p>
                             </div>
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">最大输出</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)} tokens</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                最大输出
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)}{' '}
+                                tokens
+                              </p>
                             </div>
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输入价格</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.promptPricing)}</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                输入价格
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatPricePerMillion(selectedOpenRouterModel.promptPricing)}
+                              </p>
                             </div>
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输出价格</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatPricePerMillion(selectedOpenRouterModel.completionPricing)}</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                输出价格
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatPricePerMillion(selectedOpenRouterModel.completionPricing)}
+                              </p>
                             </div>
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输入模态</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.inputModalities)}</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                输入模态
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatModalities(selectedOpenRouterModel.inputModalities)}
+                              </p>
                             </div>
-                            <div className="rounded-md border border-border bg-white px-3 py-2">
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">输出模态</p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">{formatModalities(selectedOpenRouterModel.outputModalities)}</p>
+                            <div className="border-border bg-card rounded-md border px-3 py-2">
+                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                                输出模态
+                              </p>
+                              <p className="text-foreground mt-1 text-sm font-semibold">
+                                {formatModalities(selectedOpenRouterModel.outputModalities)}
+                              </p>
                             </div>
                           </div>
                         </div>
                       ) : null}
                     </div>
 
-                    <div className="space-y-4 rounded-lg border border-border bg-white p-4">
-                      <h3 className="text-sm font-semibold text-foreground">模型测试</h3>
+                    <div className="border-border bg-card space-y-4 rounded-lg border p-4">
+                      <h3 className="text-foreground text-sm font-semibold">模型测试</h3>
                       <Textarea
                         value={openrouterTestMessage}
                         onChange={(event) => setOpenrouterTestMessage(event.target.value)}
@@ -1839,14 +2150,16 @@ export function SettingsPage() {
                         <Button
                           type="button"
                           variant="secondary"
-                          disabled={previewOpenRouterChatMutation.isPending || !selectedOpenRouterModelId}
+                          disabled={
+                            previewOpenRouterChatMutation.isPending || !selectedOpenRouterModelId
+                          }
                           onClick={handleRunOpenRouterChatTest}
                         >
                           {previewOpenRouterChatMutation.isPending ? '发送中...' : '发送测试'}
                         </Button>
                       </div>
                       {openrouterChatResult ? (
-                        <div className="rounded-lg border border-border bg-gray-50/70 p-4">
+                        <div className="border-border bg-muted/70 rounded-lg border p-4">
                           <div className="flex flex-wrap items-center gap-3">
                             <StatusPill tone="ok" label={openrouterChatResult.model} />
                             <StatusPill
@@ -1854,11 +2167,15 @@ export function SettingsPage() {
                               label={`Prompt ${openrouterChatResult.usage.promptTokens ?? 0} / Completion ${openrouterChatResult.usage.completionTokens ?? 0}`}
                             />
                           </div>
-                          <ScrollArea className="mt-4 h-[220px] rounded-lg border border-border bg-white">
+                          <ScrollArea className="border-border bg-card mt-4 h-[220px] rounded-lg border">
                             <div className="space-y-3 p-4 text-sm">
-                              <p className="whitespace-pre-wrap leading-6 text-foreground">{openrouterChatResult.content}</p>
+                              <p className="text-foreground whitespace-pre-wrap leading-6">
+                                {openrouterChatResult.content}
+                              </p>
                               {openrouterChatResult.finishReason ? (
-                                <p className="text-xs text-muted-foreground">结束原因：{openrouterChatResult.finishReason}</p>
+                                <p className="text-muted-foreground text-xs">
+                                  结束原因：{openrouterChatResult.finishReason}
+                                </p>
                               ) : null}
                             </div>
                           </ScrollArea>

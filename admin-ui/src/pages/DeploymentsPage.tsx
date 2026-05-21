@@ -6,8 +6,20 @@ import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
 import { ApiError } from '@/api/client';
-import type { DeploymentSummary, DeploymentsResponse, IssueDeploymentTokenResult } from '@/api/types';
-import { createDeployment, deactivateDeployment, issueDeploymentToken, listMyDeployments, listMyEntitlements, requestDeploymentAction, updateDeployment } from '@/api/user';
+import type {
+  DeploymentSummary,
+  DeploymentsResponse,
+  IssueDeploymentTokenResult,
+} from '@/api/types';
+import {
+  createDeployment,
+  deactivateDeployment,
+  issueDeploymentToken,
+  listMyDeployments,
+  listMyEntitlements,
+  requestDeploymentAction,
+  updateDeployment,
+} from '@/api/user';
 import { DeploymentEditDialog } from '@/components/portal/DeploymentEditDialog';
 import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
@@ -33,11 +45,7 @@ function normalizeDeploymentPolicy(metaInput: unknown) {
   const policy = normalizeMeta(meta.deploymentPolicy);
   const rawMax = policy.maxActiveDeployments;
   const parsedMax =
-    typeof rawMax === 'number'
-      ? rawMax
-      : typeof rawMax === 'string'
-        ? Number(rawMax)
-        : Number.NaN;
+    typeof rawMax === 'number' ? rawMax : typeof rawMax === 'string' ? Number(rawMax) : Number.NaN;
   const source =
     typeof policy.domainBindingSource === 'string' &&
     policy.domainBindingSource.trim() &&
@@ -53,12 +61,16 @@ function normalizeDeploymentPolicy(metaInput: unknown) {
     maxActiveDeployments: Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
     domainBindingMode: mode,
     domainBindingSource: mode === 'none' ? 'none' : source,
-    domainBindingScope: policy.domainBindingScope === 'exact_host' ? 'exact_host' : 'registrable_domain',
+    domainBindingScope:
+      policy.domainBindingScope === 'exact_host' ? 'exact_host' : 'registrable_domain',
   } as const;
 }
 
 function isEffectiveEntitlement(item: { status: string; expiresAt: string | null }) {
-  return item.status === 'active' && (!item.expiresAt || new Date(item.expiresAt).getTime() >= Date.now());
+  return (
+    item.status === 'active' &&
+    (!item.expiresAt || new Date(item.expiresAt).getTime() >= Date.now())
+  );
 }
 
 export function DeploymentsPage() {
@@ -67,7 +79,10 @@ export function DeploymentsPage() {
   const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
   const [editingDeployment, setEditingDeployment] = useState<DeploymentSummary | null>(null);
   const appsQuery = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
-  const entitlementsQuery = useQuery({ queryKey: ['my-entitlements'], queryFn: listMyEntitlements });
+  const entitlementsQuery = useQuery({
+    queryKey: ['my-entitlements'],
+    queryFn: listMyEntitlements,
+  });
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
 
   const apps = appsQuery.data?.items ?? [];
@@ -89,66 +104,67 @@ export function DeploymentsPage() {
                 appName: app.name,
                 manifest,
                 defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
-                entitlements: []
-              }
+                entitlements: [],
+              },
             ];
-          })
+          }),
       ),
-    [apps]
+    [apps],
   );
 
-  const deployableApps = useMemo<DeployableAppOption[]>(
-    () => {
-      const activeDeploymentCountByEntitlementId = new Map<string, number>();
-      for (const deployment of deployments) {
-        if (deployment.status !== 'active' || !deployment.entitlement?.id) {
-          continue;
-        }
-        activeDeploymentCountByEntitlementId.set(
-          deployment.entitlement.id,
-          (activeDeploymentCountByEntitlementId.get(deployment.entitlement.id) ?? 0) + 1,
-        );
+  const deployableApps = useMemo<DeployableAppOption[]>(() => {
+    const activeDeploymentCountByEntitlementId = new Map<string, number>();
+    for (const deployment of deployments) {
+      if (deployment.status !== 'active' || !deployment.entitlement?.id) {
+        continue;
       }
+      activeDeploymentCountByEntitlementId.set(
+        deployment.entitlement.id,
+        (activeDeploymentCountByEntitlementId.get(deployment.entitlement.id) ?? 0) + 1,
+      );
+    }
 
-      return apps
-        .filter((app) => getAppDeliveryMode(app) === 'one_click')
-        .map((app) => {
-          const manifest = getDeliveryManifest(app);
-          const appEntitlements = entitlements
-            .filter((entitlement) => entitlement.app?.code === app.code && isEffectiveEntitlement(entitlement))
-            .map((entitlement) => {
-              const policy = normalizeDeploymentPolicy(entitlement.meta);
-              const binding = normalizeMeta(normalizeMeta(entitlement.meta).domainBinding);
-              return {
-                id: entitlement.id,
-                planCode: entitlement.plan?.code ?? '',
-                planName: entitlement.plan?.name ?? '未命名套餐',
-                expiresAt: entitlement.expiresAt,
-                activeDeploymentCount: activeDeploymentCountByEntitlementId.get(entitlement.id) ?? 0,
-                boundDomain: typeof binding.boundValue === 'string' && binding.boundValue.trim()
+    return apps
+      .filter((app) => getAppDeliveryMode(app) === 'one_click')
+      .map((app) => {
+        const manifest = getDeliveryManifest(app);
+        const appEntitlements = entitlements
+          .filter(
+            (entitlement) =>
+              entitlement.app?.code === app.code && isEffectiveEntitlement(entitlement),
+          )
+          .map((entitlement) => {
+            const policy = normalizeDeploymentPolicy(entitlement.meta);
+            const binding = normalizeMeta(normalizeMeta(entitlement.meta).domainBinding);
+            return {
+              id: entitlement.id,
+              planCode: entitlement.plan?.code ?? '',
+              planName: entitlement.plan?.name ?? '未命名套餐',
+              expiresAt: entitlement.expiresAt,
+              activeDeploymentCount: activeDeploymentCountByEntitlementId.get(entitlement.id) ?? 0,
+              boundDomain:
+                typeof binding.boundValue === 'string' && binding.boundValue.trim()
                   ? binding.boundValue.trim()
                   : null,
-                ...policy,
-              };
-            });
-          return {
-            appCode: app.code,
-            appName: app.name,
-            appType: app.type,
-            featureCount: summaryMap.get(app.code)?.length ?? 0,
-            manifest,
-            defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
-            entitlements: appEntitlements,
-          };
-        })
-        .filter((app) => app.entitlements.length > 0);
-    },
-    [apps, deployments, entitlements, summaryMap]
-  );
+              ...policy,
+            };
+          });
+        return {
+          appCode: app.code,
+          appName: app.name,
+          appType: app.type,
+          featureCount: summaryMap.get(app.code)?.length ?? 0,
+          manifest,
+          defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+          entitlements: appEntitlements,
+        };
+      })
+      .filter((app) => app.entitlements.length > 0);
+  }, [apps, deployments, entitlements, summaryMap]);
 
   const cacheDeployment = (deployment: DeploymentSummary) => {
     qc.setQueryData<DeploymentsResponse>(['my-deployments'], (current) => ({
-      items: [deployment, ...(current?.items ?? []).filter((item) => item.id !== deployment.id)]
+      items: [deployment, ...(current?.items ?? []).filter((item) => item.id !== deployment.id)],
     }));
   };
 
@@ -161,7 +177,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '创建部署记录失败');
-    }
+    },
   });
 
   const updateDeploymentMutation = useMutation({
@@ -175,7 +191,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '更新部署配置失败');
-    }
+    },
   });
 
   const issueTokenMutation = useMutation({
@@ -195,13 +211,13 @@ export function DeploymentsPage() {
                         status: 'active',
                         expiresAt: result.expiresAt,
                         usedAt: null,
-                        createdAt: new Date().toISOString()
-                      }
+                        createdAt: new Date().toISOString(),
+                      },
                     }
-                  : deployment
-              )
+                  : deployment,
+              ),
             }
-          : current
+          : current,
       );
       setIssuedToken(result);
       toast.success('部署令牌已签发');
@@ -211,23 +227,24 @@ export function DeploymentsPage() {
       const details =
         err instanceof ApiError ? (err.details as DeploymentIssueDetails | undefined) : undefined;
       if (details?.code === 'deployment_config_incomplete') {
-        const target = deployments.find((deployment) => deployment.id === variables.deploymentId) ?? null;
+        const target =
+          deployments.find((deployment) => deployment.id === variables.deploymentId) ?? null;
         const missingLabels = [
           ...(details.missingDomains ?? []).map((item) => item.label).filter(Boolean),
-          ...(details.missingFields ?? []).map((item) => item.label).filter(Boolean)
+          ...(details.missingFields ?? []).map((item) => item.label).filter(Boolean),
         ].slice(0, 3);
 
         setEditingDeployment(target);
         toast.error(
           missingLabels.length > 0
             ? `当前 deployment 缺少必填配置：${missingLabels.join('、')}。请先补充后再签发 token。`
-            : '当前 deployment 缺少新的必填配置，请先补充后再签发 token。'
+            : '当前 deployment 缺少新的必填配置，请先补充后再签发 token。',
         );
         return;
       }
 
       toast.error(err instanceof Error ? err.message : '签发部署令牌失败');
-    }
+    },
   });
 
   const deactivateDeploymentMutation = useMutation({
@@ -240,7 +257,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '停用 deployment 失败');
-    }
+    },
   });
 
   const requestRuntimeUpdateMutation = useMutation({
@@ -252,7 +269,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '提交前端更新动作失败');
-    }
+    },
   });
 
   const requestWordpressUpdateMutation = useMutation({
@@ -264,7 +281,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '提交 WP 资产更新动作失败');
-    }
+    },
   });
 
   const ignoreRuntimeUpdateMutation = useMutation({
@@ -276,7 +293,7 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '提交忽略前端更新动作失败');
-    }
+    },
   });
 
   const ignoreWordpressUpdateMutation = useMutation({
@@ -288,19 +305,25 @@ export function DeploymentsPage() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '提交忽略 WP 资产更新动作失败');
-    }
+    },
   });
 
-  const handleWizardCreate = async (payload: Parameters<typeof createDeployment>[0]): Promise<{ id: string }> => {
+  const handleWizardCreate = async (
+    payload: Parameters<typeof createDeployment>[0],
+  ): Promise<{ id: string }> => {
     return await createDeploymentMutation.mutateAsync(payload);
   };
 
-  const handleWizardIssueToken = async (params: { deploymentId: string; expiresInHours: number }): Promise<IssueDeploymentTokenResult> => {
+  const handleWizardIssueToken = async (params: {
+    deploymentId: string;
+    expiresInHours: number;
+  }): Promise<IssueDeploymentTokenResult> => {
     return await issueTokenMutation.mutateAsync(params);
   };
 
-  const editingAppOption =
-    editingDeployment?.app?.code ? oneClickAppMap.get(editingDeployment.app.code) ?? null : null;
+  const editingAppOption = editingDeployment?.app?.code
+    ? (oneClickAppMap.get(editingDeployment.app.code) ?? null)
+    : null;
   const activeDeployments = deployments.filter((deployment) => deployment.status === 'active');
   const tokenReadyDeployments = deployments.filter((deployment) => Boolean(deployment.latestToken));
   const requestedAppCode = searchParams.get('app')?.trim() || '';
@@ -308,9 +331,11 @@ export function DeploymentsPage() {
     ? requestedAppCode
     : undefined;
   const initialDeployApp = initialDeployAppCode
-    ? deployableApps.find((option) => option.appCode === initialDeployAppCode) ?? null
+    ? (deployableApps.find((option) => option.appCode === initialDeployAppCode) ?? null)
     : null;
-  const requestedApp = requestedAppCode ? apps.find((app) => app.code === requestedAppCode) ?? null : null;
+  const requestedApp = requestedAppCode
+    ? (apps.find((app) => app.code === requestedAppCode) ?? null)
+    : null;
   const requestedAppUnavailable =
     Boolean(requestedAppCode) &&
     !initialDeployAppCode &&
@@ -321,10 +346,10 @@ export function DeploymentsPage() {
     <div className="space-y-5">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">部署管理</h1>
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">部署管理</h1>
           {initialDeployApp ? <Badge variant="secondary">{initialDeployApp.appName}</Badge> : null}
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-muted-foreground text-sm">
           {initialDeployApp
             ? `正在为 ${initialDeployApp.appName} 创建部署记录。`
             : '选择支持一键部署的应用并完成部署配置。'}
@@ -333,16 +358,17 @@ export function DeploymentsPage() {
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              {requestedApp?.name ?? requestedAppCode} 当前没有可用部署授权。可能是授权已过期、被撤销，或订单尚未同步。
+              {requestedApp?.name ?? requestedAppCode}{' '}
+              当前没有可用部署授权。可能是授权已过期、被撤销，或订单尚未同步。
             </span>
           </div>
         ) : null}
       </div>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
-        <Card className="rounded-xl border-gray-200 bg-white">
-          <CardContent className="flex items-center justify-center gap-3 p-10 text-gray-500">
-            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
+        <Card className="border-border bg-card rounded-xl">
+          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
+            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
             正在加载部署数据...
           </CardContent>
         </Card>
@@ -350,7 +376,9 @@ export function DeploymentsPage() {
         <Card className="rounded-xl border-red-200 bg-red-50">
           <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-red-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{loadError instanceof Error ? loadError.message : '部署数据加载失败，请稍后重试。'}</span>
+            <span>
+              {loadError instanceof Error ? loadError.message : '部署数据加载失败，请稍后重试。'}
+            </span>
           </CardContent>
         </Card>
       ) : deployableApps.length === 0 && deployments.length === 0 ? (
@@ -365,25 +393,33 @@ export function DeploymentsPage() {
             {[
               { label: '可部署应用', value: String(deployableApps.length) },
               { label: '激活部署', value: String(activeDeployments.length) },
-              { label: '已签发 Token', value: String(tokenReadyDeployments.length) }
+              { label: '已签发 Token', value: String(tokenReadyDeployments.length) },
             ].map((item) => (
-              <div key={item.label} className="rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
-                <p className="text-sm font-medium text-gray-500">{item.label}</p>
-                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-gray-900">{item.value}</p>
+              <div
+                key={item.label}
+                className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+              >
+                <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
+                <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+                  {item.value}
+                </p>
               </div>
             ))}
           </div>
 
           {deployments.length > 0 ? (
             <section className="space-y-5">
-              <h2 className="text-2xl font-semibold tracking-tight text-gray-900">部署记录</h2>
+              <h2 className="text-foreground text-2xl font-semibold tracking-tight">部署记录</h2>
               <div className="grid gap-4">
                 {deployments.map((deployment) => (
                   <DeploymentRecordCard
                     key={deployment.id}
                     deployment={deployment}
                     issuedToken={issuedToken}
-                    issuing={issueTokenMutation.isPending && issueTokenMutation.variables?.deploymentId === deployment.id}
+                    issuing={
+                      issueTokenMutation.isPending &&
+                      issueTokenMutation.variables?.deploymentId === deployment.id
+                    }
                     applyingRuntimeUpdate={
                       requestRuntimeUpdateMutation.isPending &&
                       requestRuntimeUpdateMutation.variables === deployment.id
@@ -404,7 +440,9 @@ export function DeploymentsPage() {
                       deactivateDeploymentMutation.isPending &&
                       deactivateDeploymentMutation.variables?.deploymentId === deployment.id
                     }
-                    onIssueToken={(deploymentId) => issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })}
+                    onIssueToken={(deploymentId) =>
+                      issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })
+                    }
                     onEdit={(target) => setEditingDeployment(target)}
                     onApplyRuntimeUpdate={(target) => {
                       requestRuntimeUpdateMutation.mutate(target.id);
@@ -419,7 +457,11 @@ export function DeploymentsPage() {
                       ignoreWordpressUpdateMutation.mutate(target.id);
                     }}
                     onDeactivate={(target) => {
-                      if (!window.confirm(`停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`)) {
+                      if (
+                        !window.confirm(
+                          `停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`,
+                        )
+                      ) {
                         return;
                       }
                       deactivateDeploymentMutation.mutate({ deploymentId: target.id });
@@ -433,9 +475,11 @@ export function DeploymentsPage() {
           {deployableApps.length > 0 ? (
             <section className="space-y-5">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-semibold tracking-tight text-gray-900">开始部署</h2>
+                <h2 className="text-foreground text-2xl font-semibold tracking-tight">开始部署</h2>
                 {!initialDeployApp ? (
-                  <p className="text-sm text-gray-500">未预选应用时，可在向导第一步选择应用。</p>
+                  <p className="text-muted-foreground text-sm">
+                    未预选应用时，可在向导第一步选择应用。
+                  </p>
                 ) : null}
               </div>
               <DeploymentWizard
@@ -452,7 +496,8 @@ export function DeploymentsPage() {
               <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
-                  当前没有可用于新建 deployment 的授权。已有部署记录仍保留在上方；需要新增客户站点时，请购买新的授权实例。
+                  当前没有可用于新建 deployment
+                  的授权。已有部署记录仍保留在上方；需要新增客户站点时，请购买新的授权实例。
                 </span>
               </CardContent>
             </Card>

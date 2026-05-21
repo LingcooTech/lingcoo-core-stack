@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, formatTime } from '@/lib/utils';
@@ -111,18 +111,28 @@ function ticketMessageAuthorLabel(message: SupportTicketMessage) {
   return message.author?.displayName?.trim() || message.author?.email || '我';
 }
 
-function MetaField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+function MetaField({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2.5">
-      <p className="text-[11px] font-medium text-gray-500">{label}</p>
-      <p className={cn('mt-1 text-sm text-gray-900', mono && 'font-mono text-xs')}>{value || '—'}</p>
+    <div className="border-border bg-muted/70 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-[11px] font-medium">{label}</p>
+      <p className={cn('text-foreground mt-1 text-sm', mono && 'font-mono text-xs')}>
+        {value || '—'}
+      </p>
     </div>
   );
 }
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-sm text-gray-500">暂无会话记录。</p>;
+    return <p className="text-muted-foreground text-sm">暂无会话记录。</p>;
   }
 
   return (
@@ -134,11 +144,15 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
             <div
               className={cn(
                 'max-w-[88%] rounded-2xl border px-4 py-3 shadow-sm',
-                isUser ? 'border-blue-200 bg-blue-50 text-slate-900' : 'border-gray-200 bg-white text-slate-900'
+                isUser
+                  ? 'text-foreground border-blue-200 bg-blue-50'
+                  : 'border-border bg-card text-foreground',
               )}
             >
-              <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                <span className="font-semibold text-gray-700">{ticketMessageAuthorLabel(message)}</span>
+              <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
+                <span className="text-foreground font-semibold">
+                  {ticketMessageAuthorLabel(message)}
+                </span>
                 <span>{formatTime(message.createdAt)}</span>
               </div>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
@@ -155,7 +169,7 @@ export function NotificationDetailDialog({
   ticketDetail,
   isTicketLoading,
   ticketErrorMessage,
-  onOpenChange
+  onOpenChange,
 }: {
   notification: NotificationItem | null;
   ticketDetail?: SupportTicketDetail;
@@ -169,18 +183,18 @@ export function NotificationDetailDialog({
 
   const isTicketNotification = notification.category === 'ticket';
   const shouldShowOpenButton = notification.category === 'ticket';
-  const ctaLabel =
-    shouldShowOpenButton
-      ? '进入工单页处理'
-      : notification.ctaLabel ?? '';
+  const ctaLabel = shouldShowOpenButton ? '进入工单页处理' : (notification.ctaLabel ?? '');
 
   return (
     <Dialog open={Boolean(notification)} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-4xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-gray-200 px-6 py-5">
+        <DialogHeader className="border-border border-b px-6 py-5">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone={notificationTone(notification.level)} label={notificationCategoryLabel(notification.category)} />
-            <p className="text-xs text-slate-500">{formatTime(notification.createdAt)}</p>
+            <StatusPill
+              tone={notificationTone(notification.level)}
+              label={notificationCategoryLabel(notification.category)}
+            />
+            <p className="text-muted-foreground text-xs">{formatTime(notification.createdAt)}</p>
           </div>
           <DialogTitle className="mt-3 text-2xl tracking-tight">{notification.title}</DialogTitle>
           <DialogDescription className="mt-2 leading-6">
@@ -194,43 +208,66 @@ export function NotificationDetailDialog({
               isTicketLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-lg bg-gray-100" />
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-lg" />
                   ))}
                 </div>
               ) : ticketDetail ? (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <StatusPill tone={ticketStatusTone(ticketDetail.ticket.status)} label={ticketStatusLabel(ticketDetail.ticket.status)} />
-                    <StatusPill tone={ticketPriorityTone(ticketDetail.ticket.priority)} label={ticketPriorityLabel(ticketDetail.ticket.priority)} />
+                    <StatusPill
+                      tone={ticketStatusTone(ticketDetail.ticket.status)}
+                      label={ticketStatusLabel(ticketDetail.ticket.status)}
+                    />
+                    <StatusPill
+                      tone={ticketPriorityTone(ticketDetail.ticket.priority)}
+                      label={ticketPriorityLabel(ticketDetail.ticket.priority)}
+                    />
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <MetaField label="工单号" value={ticketDetail.ticket.ticketNo} mono />
                     <MetaField label="应用" value={ticketDetail.ticket.app?.name ?? '未关联'} />
-                    <MetaField label="订单号" value={ticketDetail.ticket.order?.orderNo ?? '未关联'} mono />
-                    <MetaField label="安装实例" value={ticketDetail.ticket.install?.extensionInstallId ?? '未关联'} mono />
-                    <MetaField label="部署" value={ticketDetail.ticket.deployment?.label ?? '未关联'} />
-                    <MetaField label="最近活动" value={formatTime(ticketDetail.ticket.lastActivityAt)} />
+                    <MetaField
+                      label="订单号"
+                      value={ticketDetail.ticket.order?.orderNo ?? '未关联'}
+                      mono
+                    />
+                    <MetaField
+                      label="安装实例"
+                      value={ticketDetail.ticket.install?.extensionInstallId ?? '未关联'}
+                      mono
+                    />
+                    <MetaField
+                      label="部署"
+                      value={ticketDetail.ticket.deployment?.label ?? '未关联'}
+                    />
+                    <MetaField
+                      label="最近活动"
+                      value={formatTime(ticketDetail.ticket.lastActivityAt)}
+                    />
                   </div>
 
                   <div className="space-y-3">
-                    <p className="text-sm font-semibold text-gray-900">会话记录</p>
+                    <p className="text-foreground text-sm font-semibold">会话记录</p>
                     <TicketMessageList messages={ticketDetail.messages} />
                   </div>
                 </>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm leading-6 text-slate-700">{notification.body}</p>
+                  <p className="text-foreground text-sm leading-6">{notification.body}</p>
                   <p className="text-sm text-amber-700">
-                    {ticketErrorMessage || '暂时无法加载关联工单详情，你仍然可以进入工单页继续处理。'}
+                    {ticketErrorMessage ||
+                      '暂时无法加载关联工单详情，你仍然可以进入工单页继续处理。'}
                   </p>
                   <JsonViewer data={notification.meta} label="通知元数据" />
                 </div>
               )
             ) : (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-                  <p className="whitespace-pre-wrap text-sm leading-7 text-slate-800">{notification.body}</p>
+                <div className="border-border bg-card rounded-2xl border px-5 py-4 shadow-sm">
+                  <p className="text-foreground whitespace-pre-wrap text-sm leading-7">
+                    {notification.body}
+                  </p>
                 </div>
                 <JsonViewer data={notification.meta} label="通知元数据" />
               </div>
@@ -238,7 +275,7 @@ export function NotificationDetailDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-t border-gray-200 px-6 py-4">
+        <DialogFooter className="border-border border-t px-6 py-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             关闭
           </Button>

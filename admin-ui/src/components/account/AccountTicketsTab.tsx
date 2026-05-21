@@ -118,9 +118,9 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/70 px-3 py-2.5">
-      <p className="text-[11px] font-medium text-gray-500">{label}</p>
-      <p className={cn('mt-1 text-sm text-gray-900', mono && 'font-mono text-xs')}>
+    <div className="border-border bg-muted/70 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-[11px] font-medium">{label}</p>
+      <p className={cn('text-foreground mt-1 text-sm', mono && 'font-mono text-xs')}>
         {value || '—'}
       </p>
     </div>
@@ -129,7 +129,7 @@ function MetaField({
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-sm text-gray-500">暂无会话记录。</p>;
+    return <p className="text-muted-foreground text-sm">暂无会话记录。</p>;
   }
 
   return (
@@ -142,12 +142,12 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
               className={cn(
                 'max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm',
                 isUser
-                  ? 'border-blue-200 bg-blue-50 text-slate-900'
-                  : 'border-gray-200 bg-white text-slate-900',
+                  ? 'text-foreground border-blue-200 bg-blue-50'
+                  : 'border-border bg-card text-foreground',
               )}
             >
-              <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                <span className="font-semibold text-gray-700">{messageAuthorLabel(message)}</span>
+              <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
+                <span className="text-foreground font-semibold">{messageAuthorLabel(message)}</span>
                 <span>{formatTime(message.createdAt)}</span>
               </div>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
@@ -179,7 +179,7 @@ function TicketDetailPanel({
   const { ticket, messages } = detail;
 
   return (
-    <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
+    <Card className="border-border bg-card rounded-xl shadow-sm">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -211,16 +211,16 @@ function TicketDetailPanel({
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900">会话记录</p>
-            <p className="text-xs text-gray-500">{messages.length} 条消息</p>
+            <p className="text-foreground text-sm font-semibold">会话记录</p>
+            <p className="text-muted-foreground text-xs">{messages.length} 条消息</p>
           </div>
           <TicketMessageList messages={messages} />
         </div>
 
         {ticket.status !== 'closed' ? (
-          <div className="space-y-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4">
+          <div className="border-border bg-muted/60 space-y-3 rounded-xl border border-dashed p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-gray-900">继续补充问题</p>
+              <p className="text-foreground text-sm font-semibold">继续补充问题</p>
               <Button
                 type="button"
                 variant="outline"
@@ -323,9 +323,11 @@ export function AccountTicketsTab() {
       className: 'min-w-[260px]',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="font-mono text-[11px] font-semibold text-slate-600">{row.ticketNo}</p>
-          <p className="text-sm font-semibold text-slate-900">{row.subject}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-muted-foreground font-mono text-[11px] font-semibold">
+            {row.ticketNo}
+          </p>
+          <p className="text-foreground text-sm font-semibold">{row.subject}</p>
+          <p className="text-muted-foreground text-xs">
             {row.app?.name ?? '未关联应用'}
             {row.order?.orderNo ? ` · 订单 ${row.order.orderNo}` : ''}
           </p>
@@ -355,8 +357,8 @@ export function AccountTicketsTab() {
       header: '最近活动',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-xs text-slate-700">{formatTime(row.lastActivityAt)}</p>
-          <p className="text-[11px] text-slate-500">{row.messageCount} 条消息</p>
+          <p className="text-foreground text-xs">{formatTime(row.lastActivityAt)}</p>
+          <p className="text-muted-foreground text-[11px]">{row.messageCount} 条消息</p>
         </div>
       ),
     },
@@ -383,10 +385,12 @@ export function AccountTicketsTab() {
   return (
     <div className="space-y-5">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 shadow-sm">
+        <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3.5 shadow-sm">
           <div>
-            <p className="text-sm font-semibold text-gray-900">我的工单</p>
-            <p className="text-xs text-gray-500">查看处理进度、补充信息或关闭已处理完成的工单。</p>
+            <p className="text-foreground text-sm font-semibold">我的工单</p>
+            <p className="text-muted-foreground text-xs">
+              查看处理进度、补充信息或关闭已处理完成的工单。
+            </p>
           </div>
           <Button asChild>
             <Link to="/tickets/new">发起新工单</Link>
@@ -432,7 +436,7 @@ export function AccountTicketsTab() {
           onClearAll={clearFilters}
         />
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <DataTable
             columns={columns}
             data={tickets}
@@ -468,10 +472,10 @@ export function AccountTicketsTab() {
           isClosing={closeMutation.isPending}
         />
       ) : selectedTicketNo && ticketDetailQuery.isLoading ? (
-        <Card className="rounded-xl border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card rounded-xl shadow-sm">
           <CardContent className="space-y-3 p-6">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-10 animate-pulse rounded-lg bg-gray-100" />
+              <div key={index} className="bg-muted h-10 animate-pulse rounded-lg" />
             ))}
           </CardContent>
         </Card>

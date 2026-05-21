@@ -117,7 +117,7 @@ export function DashboardPage() {
                 <Link
                   key={link.href}
                   to={link.href}
-                  className="border-border hover:border-primary/30 animate-fadeInUp group flex flex-col gap-3 rounded-xl border bg-white p-4 no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                  className="border-border hover:border-primary/30 animate-fadeInUp bg-card group flex flex-col gap-3 rounded-xl border p-4 no-underline transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                   style={{ animationDelay: `${200 + index * 50}ms` }}
                 >
                   <div
@@ -141,7 +141,7 @@ export function DashboardPage() {
                 查看全部 →
               </Link>
             </div>
-            <div className="border-border overflow-hidden rounded-xl border bg-white">
+            <div className="border-border bg-card overflow-hidden rounded-xl border">
               {orders.slice(0, 5).map((order, idx) => (
                 <div
                   key={order.orderNo}
@@ -228,7 +228,7 @@ function PaymentStatusCard({
   return (
     <Link
       to={href}
-      className="border-border hover:border-primary/30 flex items-center justify-between gap-3 rounded-xl border bg-white p-4 no-underline transition-colors"
+      className="border-border hover:border-primary/30 bg-card flex items-center justify-between gap-3 rounded-xl border p-4 no-underline transition-colors"
     >
       <div>
         <p className="text-foreground text-sm font-semibold">{name}</p>

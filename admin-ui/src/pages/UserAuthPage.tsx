@@ -8,13 +8,20 @@ import { z } from 'zod';
 import { login, register } from '@/api/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
 const formSchema = z.object({
   email: z.string().email('请输入有效邮箱'),
-  password: z.string().min(8, '密码至少 8 位')
+  password: z.string().min(8, '密码至少 8 位'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -34,12 +41,15 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '', password: '' }
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const result = mode === 'register' ? await register(values.email, values.password) : await login(values.email, values.password);
+      const result =
+        mode === 'register'
+          ? await register(values.email, values.password)
+          : await login(values.email, values.password);
       authLogin(result.token);
       if (result.user.emailVerified === false) {
         toast.success(mode === 'register' ? '注册成功，请验证邮箱' : '登录成功，请先验证邮箱');
@@ -55,9 +65,11 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="w-full border-gray-200/80">
+      <Card className="border-border/80 w-full">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-2xl font-semibold">{mode === 'register' ? '创建用户账号' : '登录用户中心'}</CardTitle>
+          <CardTitle className="text-2xl font-semibold">
+            {mode === 'register' ? '创建用户账号' : '登录用户中心'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -69,7 +81,12 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
                   <FormItem>
                     <FormLabel>邮箱</FormLabel>
                     <FormControl>
-                      <Input type="email" autoComplete="email" placeholder="you@example.com" {...field} />
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -94,17 +111,21 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? '处理中...' : mode === 'register' ? '注册并继续' : '登录并继续'}
+                {form.formState.isSubmitting
+                  ? '处理中...'
+                  : mode === 'register'
+                    ? '注册并继续'
+                    : '登录并继续'}
               </Button>
             </form>
           </Form>
 
-          <div className="mt-5 text-sm text-muted-foreground">
+          <div className="text-muted-foreground mt-5 text-sm">
             {mode === 'login' ? (
               <div className="mb-3">
                 <Link
                   to={`/forgot-password${form.getValues('email') ? `?email=${encodeURIComponent(form.getValues('email'))}` : ''}`}
-                  className="font-bold text-primary hover:underline"
+                  className="text-primary font-bold hover:underline"
                 >
                   忘记密码？
                 </Link>
@@ -114,9 +135,9 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
             <Link
               to={{
                 pathname: mode === 'register' ? '/login' : '/register',
-                search: location.search
+                search: location.search,
               }}
-              className="font-bold text-primary hover:underline"
+              className="text-primary font-bold hover:underline"
             >
               {mode === 'register' ? '直接登录' : '立即注册'}
             </Link>
