@@ -23,13 +23,13 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
       <img
         src={app.iconUrl}
         alt={app.name}
-        className="border-border bg-card h-20 w-20 rounded-xl border object-contain p-1 shadow-sm"
+        className="border-border bg-card h-12 w-12 shrink-0 rounded-lg border object-contain p-1"
       />
     );
   }
 
   return (
-    <div className="bg-muted text-muted-foreground flex h-20 w-20 items-center justify-center rounded-xl text-2xl font-semibold shadow-sm">
+    <div className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-sm font-semibold">
       {getInitials(app.name)}
     </div>
   );
@@ -40,56 +40,42 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
   const priceLabel = formatOfferStartingPriceLabel(activeOffers);
 
   return (
-    <div className="relative overflow-hidden p-5">
-      {app.coverUrl ? (
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-cover bg-center opacity-[0.08]"
-          style={{ backgroundImage: `url(${app.coverUrl})` }}
-        />
-      ) : null}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-slate-50 via-blue-50/50 to-white" />
-
-      <div className="relative flex flex-col items-center text-center">
-        <div className="mb-4 flex justify-center">
-          <AppIdentity app={app} />
+    <div className="flex h-full flex-col p-5">
+      <div className="flex items-start gap-3">
+        <AppIdentity app={app} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {app.category ? (
+              <Badge variant="outline" className="text-muted-foreground text-[11px] font-medium">
+                {app.category}
+              </Badge>
+            ) : null}
+            <Badge variant="outline" className="text-muted-foreground text-[11px] font-medium">
+              {getAppTypeLabel(app.type)}
+            </Badge>
+          </div>
+          <h3 className="text-foreground mt-2 line-clamp-1 text-[15px] font-semibold tracking-tight">
+            {app.name}
+          </h3>
         </div>
+      </div>
 
-        <div className="mb-2.5 flex flex-wrap items-center justify-center gap-2">
-          {app.category ? (
-            <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
-          ) : null}
-          <Badge className="bg-muted text-foreground hover:bg-muted">
-            {getAppTypeLabel(app.type)}
-          </Badge>
-        </div>
+      <p className="text-muted-foreground mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-6">
+        {app.tagline || app.description || '应用详情暂未补充。'}
+      </p>
 
-        <h3 className="text-foreground mb-1.5 line-clamp-1 text-base font-semibold transition-colors duration-200 group-hover:text-blue-600">
-          {app.name}
-        </h3>
-
-        <p className="text-muted-foreground mb-4 line-clamp-2 min-h-[40px] text-sm leading-6">
-          {app.tagline || app.description || '应用详情暂未补充。'}
-        </p>
-
-        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-          <span className="border-border bg-muted text-muted-foreground rounded-full border px-3 py-1 text-xs font-medium">
-            {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
-          </span>
-        </div>
-
-        <div className="space-y-1">
-          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+      <div className="border-border mt-4 flex items-end justify-between gap-3 border-t pt-3">
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.12em]">
             起始价格
           </p>
-          <p
-            className={cn(
-              'text-lg font-semibold',
-              priceLabel === '免费' ? 'text-green-600' : 'text-foreground',
-            )}
-          >
+          <p className="text-foreground mt-1 text-[17px] font-semibold tabular-nums leading-none">
             {priceLabel}
           </p>
         </div>
+        <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+          {activeOffers.length > 0 ? `${activeOffers.length} 个方案` : '即将开放'}
+        </span>
       </div>
     </div>
   );
@@ -97,7 +83,7 @@ function AppCardBody({ app }: { app: AppWithDetails }) {
 
 export function AppCard({ app, href, footer, className }: AppCardProps) {
   const rootClassName = cn(
-    'border-border bg-card group overflow-hidden rounded-xl border shadow-sm transition-all duration-300 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50',
+    'border-border hover:border-foreground/20 bg-card group overflow-hidden rounded-xl border transition-colors',
     className,
   );
 

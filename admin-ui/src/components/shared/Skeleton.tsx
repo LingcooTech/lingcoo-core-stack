@@ -65,17 +65,25 @@ export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: nu
 
 export function SkeletonAppCard() {
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border p-5 shadow-sm">
-      <div className="flex flex-col items-center text-center">
-        <Skeleton variant="circular" className="mb-4 h-20 w-20" />
-        <div className="mb-3 flex gap-2">
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-5 w-20 rounded-full" />
+    <div className="border-border bg-card overflow-hidden rounded-xl border p-5">
+      <div className="flex items-start gap-3">
+        <Skeleton className="h-12 w-12 shrink-0 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <div className="flex gap-1.5">
+            <Skeleton className="h-4 w-12 rounded-full" />
+            <Skeleton className="h-4 w-16 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-24" />
         </div>
-        <Skeleton className="mb-2 h-5 w-32" />
-        <Skeleton className="mb-1 h-4 w-full" />
-        <Skeleton className="mb-4 h-4 w-3/4" />
-        <Skeleton className="h-6 w-24" />
+      </div>
+      <Skeleton className="mt-3 h-3 w-full" />
+      <Skeleton className="mt-1.5 h-3 w-2/3" />
+      <div className="border-border mt-4 flex items-end justify-between border-t pt-3">
+        <div className="space-y-1.5">
+          <Skeleton className="h-2.5 w-12" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <Skeleton className="h-3 w-14" />
       </div>
     </div>
   );
