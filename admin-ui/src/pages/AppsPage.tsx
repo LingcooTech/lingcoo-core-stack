@@ -263,11 +263,7 @@ export function AppsPage() {
 
   return (
     <div className="space-y-5 p-6">
-      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight">应用列表</h1>
-        </div>
-
+      <header className="flex items-center justify-end">
         <Button asChild>
           <Link to="/admin/apps/new">
             <Plus className="h-4 w-4" />

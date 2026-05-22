@@ -10,11 +10,11 @@ export function Shell() {
     <div
       className="grid min-h-screen w-full"
       style={{
-        gridTemplateColumns: collapsed ? '84px minmax(0,1fr)' : '268px minmax(0,1fr)',
+        gridTemplateColumns: collapsed ? '72px minmax(0,1fr)' : '240px minmax(0,1fr)',
       }}
     >
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-      <div className="flex min-h-screen flex-col overflow-hidden bg-[#f8fafc]">
+      <div className="bg-background flex min-h-screen flex-col overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-auto">
           <RouteSlot />

@@ -89,37 +89,32 @@ export function InstallsPage() {
   ];
 
   return (
-    <div>
-      <div className="p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">安装实例</h1>
-      </div>
-      <div className="space-y-4 px-6 pb-6">
-        <FilterChipBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="搜索安装 ID、用户、应用..."
+    <div className="space-y-4 p-6">
+      <FilterChipBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="搜索安装 ID、用户、应用..."
+      />
+
+      <div className="border-border bg-card overflow-hidden rounded-lg border">
+        <DataTable
+          columns={installColumns}
+          data={installs}
+          isLoading={installsQuery.isLoading}
+          emptyMessage="暂无安装记录"
+          getRowId={(row) => row.id}
         />
+      </div>
 
-        <div className="border-border bg-card overflow-hidden rounded-lg border">
-          <DataTable
-            columns={installColumns}
-            data={installs}
-            isLoading={installsQuery.isLoading}
-            emptyMessage="暂无安装记录"
-            getRowId={(row) => row.id}
-          />
-        </div>
-
-        <div className="mt-4">
-          <PaginationBar
-            total={totalInstalls}
-            page={page}
-            pageSize={PAGE_SIZE}
-            isLoading={installsQuery.isLoading}
-            itemLabel="条安装记录"
-            onPageChange={setPage}
-          />
-        </div>
+      <div className="mt-4">
+        <PaginationBar
+          total={totalInstalls}
+          page={page}
+          pageSize={PAGE_SIZE}
+          isLoading={installsQuery.isLoading}
+          itemLabel="条安装记录"
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

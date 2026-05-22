@@ -227,92 +227,87 @@ export function OrdersPage() {
   const detail: OrderDetail | undefined = orderDetailQuery.data;
 
   return (
-    <div className="space-y-4">
-      <div className="px-6 pt-5">
-        <h1 className="text-foreground text-[2rem] font-semibold tracking-tight">订单管理</h1>
-      </div>
-      <div className="space-y-3.5 px-6 pb-6">
-        <FilterChipBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="搜索订单号、用户、应用..."
-          chips={chips}
-          onClearAll={clearFilters}
-        />
+    <div className="space-y-4 px-6 py-5">
+      <FilterChipBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="搜索订单号、用户、应用..."
+        chips={chips}
+        onClearAll={clearFilters}
+      />
 
-        <BulkActionBar
-          selectedCount={selectedRowIds.size}
-          onClear={() => setSelectedRowIds(new Set())}
-        >
-          <BulkActionButton onClick={runBulkReconcile} disabled={bulkRunning}>
-            <RefreshCw className={`size-3.5 ${bulkRunning ? 'animate-spin' : ''}`} />
-            {bulkRunning ? '同步中...' : '批量同步'}
-          </BulkActionButton>
-        </BulkActionBar>
+      <BulkActionBar
+        selectedCount={selectedRowIds.size}
+        onClear={() => setSelectedRowIds(new Set())}
+      >
+        <BulkActionButton onClick={runBulkReconcile} disabled={bulkRunning}>
+          <RefreshCw className={`size-3.5 ${bulkRunning ? 'animate-spin' : ''}`} />
+          {bulkRunning ? '同步中...' : '批量同步'}
+        </BulkActionButton>
+      </BulkActionBar>
 
-        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-          <DataTable
-            columns={orderColumns}
-            data={orders}
-            isLoading={ordersQuery.isLoading}
-            emptyMessage="暂无订单"
-            getRowId={(row) => row.orderNo}
-            enableRowSelection
-            selectedRowIds={selectedRowIds}
-            onSelectionChange={setSelectedRowIds}
-          />
-        </div>
-
-        <PaginationBar
-          total={totalOrders}
-          page={page}
-          pageSize={PAGE_SIZE}
+      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <DataTable
+          columns={orderColumns}
+          data={orders}
           isLoading={ordersQuery.isLoading}
-          itemLabel="条订单"
-          onPageChange={setPage}
+          emptyMessage="暂无订单"
+          getRowId={(row) => row.orderNo}
+          enableRowSelection
+          selectedRowIds={selectedRowIds}
+          onSelectionChange={setSelectedRowIds}
         />
-
-        {selectedOrderNo && (
-          <Sheet
-            open
-            onOpenChange={(open) => {
-              if (!open) setSelectedOrderNo(null);
-            }}
-          >
-            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-              <SheetHeader className="border-border border-b">
-                <SheetTitle className="font-mono text-sm">{selectedOrderNo}</SheetTitle>
-                <SheetDescription>订单详情</SheetDescription>
-                <div className="mt-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => reconcileMutation.mutate(selectedOrderNo)}
-                    disabled={reconcileMutation.isPending}
-                  >
-                    <RefreshCw
-                      className={`mr-1.5 size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
-                    />
-                    {reconcileMutation.isPending ? '同步中...' : '同步订单'}
-                  </Button>
-                </div>
-              </SheetHeader>
-
-              <div className="px-4 pb-6">
-                {orderDetailQuery.isLoading ? (
-                  <div className="space-y-2">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="bg-muted h-8 animate-pulse rounded" />
-                    ))}
-                  </div>
-                ) : detail ? (
-                  <OrderDetailSection detail={detail} />
-                ) : null}
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
       </div>
+
+      <PaginationBar
+        total={totalOrders}
+        page={page}
+        pageSize={PAGE_SIZE}
+        isLoading={ordersQuery.isLoading}
+        itemLabel="条订单"
+        onPageChange={setPage}
+      />
+
+      {selectedOrderNo && (
+        <Sheet
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedOrderNo(null);
+          }}
+        >
+          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
+            <SheetHeader className="border-border border-b">
+              <SheetTitle className="font-mono text-sm">{selectedOrderNo}</SheetTitle>
+              <SheetDescription>订单详情</SheetDescription>
+              <div className="mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => reconcileMutation.mutate(selectedOrderNo)}
+                  disabled={reconcileMutation.isPending}
+                >
+                  <RefreshCw
+                    className={`mr-1.5 size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
+                  />
+                  {reconcileMutation.isPending ? '同步中...' : '同步订单'}
+                </Button>
+              </div>
+            </SheetHeader>
+
+            <div className="px-4 pb-6">
+              {orderDetailQuery.isLoading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-muted h-8 animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : detail ? (
+                <OrderDetailSection detail={detail} />
+              ) : null}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

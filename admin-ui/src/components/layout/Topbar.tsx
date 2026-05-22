@@ -1,6 +1,6 @@
-import { ExternalLink, Search } from 'lucide-react';
+import { ChevronRight, ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
@@ -15,58 +15,56 @@ export function Topbar() {
 
   return (
     <>
-      <header className="border-border bg-card/80 sticky top-0 z-20 flex min-h-[64px] shrink-0 items-center justify-between gap-4 border-b px-5 backdrop-blur-sm">
-        {/* Left */}
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <header className="border-border bg-card/70 sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4 backdrop-blur-md">
+        {/* Breadcrumb */}
+        <nav aria-label="面包屑" className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px]">
+          {section ? (
+            <>
+              <span className="text-muted-foreground/80 hidden sm:inline">
+                {section.groupLabel}
+              </span>
+              <ChevronRight className="text-muted-foreground/40 hidden h-3.5 w-3.5 sm:inline" />
+              <span className="text-foreground truncate font-semibold">{section.title}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">FD Core Stack</span>
+          )}
+        </nav>
+
+        {/* Right actions */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/* Search / command palette trigger */}
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="text-muted-foreground hover:border-primary/30 border-border bg-card flex h-10 w-full max-w-[440px] cursor-pointer items-center gap-3 rounded-full border px-3.5 text-left text-sm shadow-sm transition-colors"
+            className="text-muted-foreground border-border bg-muted/50 hover:bg-muted hover:text-foreground inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-[12px] transition-colors"
+            title="搜索 / 跳转 (⌘K)"
           >
-            <Search className="h-3.5 w-3.5 shrink-0" />
-            <span className="flex-1">搜索...</span>
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider">
-              <kbd className="border-border bg-card inline-flex h-5 min-w-5 items-center justify-center rounded border px-1.5 font-mono text-[10px]">
-                /
-              </kbd>
-            </span>
+            <Search className="h-3.5 w-3.5" />
+            <span className="text-muted-foreground/80 hidden md:inline">搜索...</span>
+            <kbd className="border-border bg-card text-muted-foreground/80 ml-1 hidden h-4 items-center rounded border px-1 font-mono text-[10px] md:inline-flex">
+              ⌘K
+            </kbd>
           </button>
-        </div>
 
-        {/* Right actions */}
-        <div className="flex shrink-0 items-center gap-2">
-          {section?.heroActions.map((action) => (
-            <a
-              key={action.href}
-              href={action.href}
-              target={action.external ? '_blank' : undefined}
-              rel={action.external ? 'noreferrer' : undefined}
-              className={cn(
-                'inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline transition-all',
-                action.tone === 'primary'
-                  ? 'from-primary border-transparent bg-gradient-to-br to-blue-600 text-white shadow-sm hover:shadow'
-                  : 'border-border text-foreground hover:bg-muted bg-card shadow-sm',
-              )}
-            >
-              <span>{action.label}</span>
-              {action.external && <ExternalLink className="h-3 w-3" />}
-              {action.shortcut && (
-                <span className="border-current/20 bg-current/10 inline-flex h-4 items-center justify-center rounded border px-1 font-mono text-[9px]">
-                  {action.shortcut}
-                </span>
-              )}
-            </a>
-          ))}
-
-          <a
-            href="/"
-            className="border-border text-foreground hover:bg-muted bg-card inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline shadow-sm transition-colors"
-          >
-            <span className="bg-muted inline-flex h-5 w-5 items-center justify-center rounded text-[9px] font-semibold">
-              ST
-            </span>
-            <span>状态</span>
-          </a>
+          {/* Section primary action (if any) */}
+          {section?.heroActions
+            .filter((action) => action.tone === 'primary')
+            .slice(0, 1)
+            .map((action) => (
+              <Link
+                key={action.href}
+                to={action.href}
+                target={action.external ? '_blank' : undefined}
+                rel={action.external ? 'noreferrer' : undefined}
+                className={cn(
+                  'bg-primary hover:bg-primary/90 inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium text-white shadow-sm transition-colors',
+                )}
+              >
+                <span>{action.label}</span>
+                {action.external && <ExternalLink className="h-3 w-3" />}
+              </Link>
+            ))}
 
           <ThemeToggle />
         </div>
