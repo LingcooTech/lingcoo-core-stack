@@ -40,6 +40,7 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { OrderCard } from '@/components/portal/OrderCard';
 import { StatusPill } from '@/components/shared/StatusPill';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -54,7 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
-import { cn, formatAmount, formatTime } from '@/lib/utils';
+import { cn, formatAmount, formatTime, getInitials } from '@/lib/utils';
 
 const accountTabValues = ['profile', 'notifications', 'orders', 'apps', 'tickets'] as const;
 type AccountTab = (typeof accountTabValues)[number];
@@ -93,21 +94,6 @@ function isEffectiveEntitlement(item: HydratedEntitlement) {
 
 function normalizeAccountTab(value: string | null): AccountTab {
   return accountTabValues.includes(value as AccountTab) ? (value as AccountTab) : 'profile';
-}
-
-function ProfileInfoCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="px-5 py-4">
-      <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-        {label}
-      </p>
-      <p
-        className={`text-foreground mt-2 break-all text-[13px] font-medium ${mono ? 'font-mono' : ''}`}
-      >
-        {value}
-      </p>
-    </div>
-  );
 }
 
 function AccountProfileTab() {
@@ -212,24 +198,37 @@ function AccountProfileTab() {
 
   return (
     <div className="space-y-6">
-      <div className="border-border bg-card grid grid-cols-1 divide-y rounded-xl border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <ProfileInfoCell label="登录邮箱" value={currentUser.email} mono />
-        <ProfileInfoCell
-          label="账户角色"
-          value={currentUser.role === 'admin' ? '管理员' : '普通用户'}
-        />
-        <div className="px-5 py-4">
-          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
-            邮箱验证
-          </p>
-          <div className="mt-2">
-            <StatusPill
-              tone={currentUser.emailVerified ? 'ok' : 'warn'}
-              label={currentUser.emailVerified ? '已验证' : '待验证'}
-            />
+      <Card className="border-border bg-card overflow-hidden rounded-xl">
+        <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6">
+          <Avatar className="h-16 w-16 shrink-0">
+            <AvatarFallback className="text-lg font-semibold">
+              {getInitials(currentUser.displayName || currentUser.email)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-foreground truncate text-xl font-semibold tracking-tight">
+                {currentUser.displayName || currentUser.email.split('@')[0]}
+              </h2>
+              <StatusPill
+                tone={currentUser.role === 'admin' ? 'info' : 'neutral'}
+                label={currentUser.role === 'admin' ? '管理员' : '普通用户'}
+              />
+              <StatusPill
+                tone={currentUser.emailVerified ? 'ok' : 'warn'}
+                label={currentUser.emailVerified ? '邮箱已验证' : '邮箱待验证'}
+              />
+            </div>
+            <p className="text-muted-foreground inline-flex items-center gap-2 font-mono text-[13px]">
+              <span className="truncate">{currentUser.email}</span>
+            </p>
+            <p className="text-muted-foreground/80 text-[12px]">
+              用户 ID
+              <span className="text-muted-foreground ml-2 font-mono">{currentUser.id}</span>
+            </p>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-5 xl:grid-cols-2">
         <Card>

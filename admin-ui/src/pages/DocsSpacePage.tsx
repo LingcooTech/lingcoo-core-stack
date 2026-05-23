@@ -80,8 +80,8 @@ export function DocsSpacePage() {
   const breadcrumb = buildBreadcrumb(space.title, page.path, page.title);
 
   return (
-    <div className="lg:grid lg:grid-cols-[260px,minmax(0,1fr),220px] lg:gap-8">
-      <div className="hidden lg:block">
+    <div className="min-[960px]:grid min-[960px]:grid-cols-[240px,minmax(0,1fr),200px] min-[960px]:gap-6 xl:gap-8">
+      <div className="hidden min-[960px]:block">
         <div className="sticky top-[88px] max-h-[calc(100vh-104px)]">
           <DocsSidebar
             spaceTitle={space.title}
@@ -93,7 +93,7 @@ export function DocsSpacePage() {
         </div>
       </div>
 
-      <main className="min-w-0 space-y-6 lg:max-w-[760px]">
+      <main className="min-w-0 space-y-6 min-[960px]:max-w-[760px]">
         <nav
           className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs"
           aria-label="面包屑"
@@ -205,7 +205,7 @@ export function DocsSpacePage() {
         </div>
       </main>
 
-      <aside className="hidden lg:block">
+      <aside className="hidden min-[960px]:block">
         <div className="sticky top-[88px]">
           <ArticleToc items={toc} pathname={location.pathname} />
         </div>

@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth';
 import { adminNavigationGroups, adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
 import { resolveIcon } from '@/lib/section-icons';
@@ -130,11 +131,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const meta = adminSectionMeta[key];
               const Icon = resolveIcon(meta.icon);
               const isActive = currentSection === key;
-              return (
+              const link = (
                 <Link
                   key={key}
                   to={meta.href}
-                  title={collapsed ? meta.navTitle : undefined}
                   className={cn(
                     'relative mb-0.5 flex items-center rounded-md no-underline transition-colors',
                     collapsed
@@ -159,6 +159,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   {!collapsed ? <span className="truncate">{meta.navTitle}</span> : null}
                 </Link>
               );
+              if (collapsed) {
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>{link}</TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      {meta.navTitle}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+              return link;
             })}
           </div>
         ))}

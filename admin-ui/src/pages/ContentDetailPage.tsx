@@ -142,10 +142,10 @@ export function ContentDetailPage() {
         ) : null}
       </header>
 
-      <div className="mx-auto max-w-[1080px] lg:grid lg:grid-cols-[minmax(0,1fr),220px] lg:gap-12">
+      <div className="mx-auto max-w-[1040px] lg:grid lg:grid-cols-[minmax(0,1fr),200px] lg:gap-12">
         <section
           className={cn(
-            'prose prose-slate dark:prose-invert prose-lg mx-auto max-w-none',
+            'prose prose-slate dark:prose-invert prose-lg mx-auto max-w-[760px]',
             'prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight',
             'prose-h2:mt-12 prose-h2:mb-4 prose-h2:text-[24px]',
             'prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-[20px]',
@@ -156,7 +156,6 @@ export function ContentDetailPage() {
             'prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0',
             'prose-img:rounded-xl prose-img:shadow-sm prose-img:my-8',
             'prose-li:my-1.5 prose-li:leading-relaxed',
-            'lg:max-w-none',
           )}
         >
           <ReactMarkdown
@@ -222,7 +221,7 @@ export function ContentDetailPage() {
       </div>
 
       {related.length > 0 ? (
-        <section className="mx-auto max-w-[1080px] space-y-4">
+        <section className="mx-auto max-w-[1040px] space-y-4">
           <div className="flex items-end justify-between">
             <h2 className="text-foreground text-xl font-semibold tracking-tight">相关推荐</h2>
             <Button variant="ghost" asChild size="sm" className="text-muted-foreground">
