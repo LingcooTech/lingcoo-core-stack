@@ -1,11 +1,24 @@
 import { useQueries } from '@tanstack/react-query';
-import { ArrowUpRight, CreditCard, Package, ShieldCheck, Zap } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Bell,
+  Boxes,
+  CreditCard,
+  KeyRound,
+  LifeBuoy,
+  Package,
+  Receipt,
+  ShieldCheck,
+  Users,
+  Wallet,
+  Zap,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { listOrders } from '@/api/admin';
+import { listAdminTickets, listOrders, listUsers } from '@/api/admin';
 import { listAppsAdmin } from '@/api/apps';
 import { getPaymentSettings } from '@/api/payments';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
-import { cn, formatAmount } from '@/lib/utils';
+import { cn, formatAmount, formatTime } from '@/lib/utils';
 
 export function DashboardPage() {
   const results = useQueries({
@@ -13,13 +26,27 @@ export function DashboardPage() {
       { queryKey: ['payment-settings'], queryFn: getPaymentSettings },
       { queryKey: ['orders', { limit: 50 }], queryFn: () => listOrders({ limit: 50 }) },
       { queryKey: ['apps'], queryFn: listAppsAdmin },
+      {
+        queryKey: ['dashboard-tickets'],
+        queryFn: () => listAdminTickets({ status: 'waiting_staff', limit: 5 }),
+        staleTime: 30_000,
+      },
+      {
+        queryKey: ['dashboard-users'],
+        queryFn: () => listUsers({ limit: 5 }),
+        staleTime: 30_000,
+      },
     ],
   });
 
-  const [paymentsResult, ordersResult, appsResult] = results;
+  const [paymentsResult, ordersResult, appsResult, ticketsResult, usersResult] = results;
   const paymentData = paymentsResult.data;
   const orders = ordersResult.data?.items ?? [];
   const apps = appsResult.data?.items ?? [];
+  const pendingTickets = ticketsResult.data?.items ?? [];
+  const pendingTicketsTotal = ticketsResult.data?.total ?? 0;
+  const allUsers = usersResult.data?.items ?? [];
+  const unverifiedUsers = allUsers.filter((u) => !u.emailVerified);
 
   const paidOrders = orders.filter((o) => o.status === 'paid');
   const pendingOrders = orders.filter((o) => ['pending', 'processing'].includes(o.status));
@@ -29,12 +56,73 @@ export function DashboardPage() {
 
   const wechat = paymentData?.items.find((i) => i.code === 'wechat_pay');
   const alipay = paymentData?.items.find((i) => i.code === 'alipay');
+  const unconfiguredChannels = [
+    wechat?.configured ? null : '微信支付',
+    alipay?.configured ? null : '支付宝',
+  ].filter(Boolean) as string[];
+
+  const todoItems = [
+    pendingOrders.length > 0
+      ? {
+          key: 'orders',
+          icon: Receipt,
+          tone: 'warn' as const,
+          title: `${pendingOrders.length} 笔订单待处理`,
+          description: '待支付或处理中的订单可能需要补单同步',
+          href: '/admin/orders',
+        }
+      : null,
+    pendingTicketsTotal > 0
+      ? {
+          key: 'tickets',
+          icon: LifeBuoy,
+          tone: 'warn' as const,
+          title: `${pendingTicketsTotal} 张工单待回复`,
+          description: pendingTickets[0]?.subject
+            ? `最近："${pendingTickets[0].subject.slice(0, 30)}"`
+            : '用户已提交但未分配/未回复',
+          href: '/admin/tickets',
+        }
+      : null,
+    unconfiguredChannels.length > 0
+      ? {
+          key: 'channels',
+          icon: Wallet,
+          tone: 'info' as const,
+          title: `${unconfiguredChannels.length} 个支付通道未配置`,
+          description: unconfiguredChannels.join(' / '),
+          href: '/admin/payments',
+        }
+      : null,
+    unverifiedUsers.length > 0
+      ? {
+          key: 'users',
+          icon: Users,
+          tone: 'info' as const,
+          title: `${unverifiedUsers.length} 个用户邮箱未验证`,
+          description: '最近注册用户尚未完成邮箱验证',
+          href: '/admin/users',
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    icon: typeof Receipt;
+    tone: 'warn' | 'info';
+    title: string;
+    description: string;
+    href: string;
+  }>;
 
   const quickLinks = [
     { label: '支付配置', href: '/admin/payments', icon: CreditCard },
     { label: '应用管理', href: '/admin/apps', icon: Package },
+    { label: '密钥管理', href: '/admin/secrets', icon: KeyRound },
     { label: '授权管理', href: '/admin/licenses', icon: ShieldCheck },
     { label: '订单管理', href: '/admin/orders', icon: Zap },
+    { label: '工单管理', href: '/admin/tickets', icon: LifeBuoy },
+    { label: '用户管理', href: '/admin/users', icon: Users },
+    { label: '安装实例', href: '/admin/installs', icon: Boxes },
+    { label: '通知管理', href: '/admin/notifications', icon: Bell },
   ];
 
   return (
@@ -50,6 +138,54 @@ export function DashboardPage() {
           alert={pendingOrders.length > 0}
         />
       </div>
+
+      <section className="space-y-2.5">
+        <SectionTitle title="待处理事项" />
+        {todoItems.length === 0 ? (
+          <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-lg border px-4 py-3 text-[13px]">
+            <ShieldCheck className="text-emerald-500" />
+            目前没有需要处理的事项
+          </div>
+        ) : (
+          <div className="border-border bg-card overflow-hidden rounded-lg border">
+            {todoItems.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.key}
+                  to={item.href}
+                  className={cn(
+                    'hover:bg-muted/40 flex items-center justify-between gap-3 px-4 py-3 no-underline transition-colors',
+                    idx > 0 && 'border-border border-t',
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                        item.tone === 'warn'
+                          ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300'
+                          : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300',
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate text-[13px] font-medium">
+                        {item.title}
+                      </p>
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="text-muted-foreground/60 h-4 w-4 shrink-0" />
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <section className="space-y-2.5">
         <SectionTitle title="支付通道" />
@@ -71,20 +207,17 @@ export function DashboardPage() {
 
       <section className="space-y-2.5">
         <SectionTitle title="快捷入口" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="flex flex-wrap gap-1.5">
           {quickLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link
                 key={link.href}
                 to={link.href}
-                className="border-border hover:border-foreground/20 bg-card group flex items-center justify-between gap-3 rounded-lg border p-3.5 no-underline transition-colors"
+                className="border-border bg-card hover:bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] no-underline transition-colors"
               >
-                <div className="flex items-center gap-2.5">
-                  <Icon className="text-muted-foreground group-hover:text-foreground h-4 w-4 transition-colors" />
-                  <p className="text-foreground text-[13px] font-medium">{link.label}</p>
-                </div>
-                <ArrowUpRight className="text-muted-foreground/60 group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
+                <Icon className="text-muted-foreground h-3.5 w-3.5" strokeWidth={1.75} />
+                {link.label}
               </Link>
             );
           })}
@@ -117,7 +250,8 @@ export function DashboardPage() {
                     {order.orderNo}
                   </p>
                   <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
-                    {order.user?.email ?? order.userId} · {order.app?.name ?? order.appId}
+                    {order.user?.email ?? order.userId} · {order.app?.name ?? order.appId} ·{' '}
+                    {formatTime(order.createdAt)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
