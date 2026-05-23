@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { KeyRound, LoaderCircle } from 'lucide-react';
+import { ArrowRight, KeyRound, LoaderCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { listApps } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
@@ -79,7 +81,14 @@ export function MyAccessPage() {
         <EmptyState
           icon={KeyRound}
           title="还没有已购应用"
-          description="还没有已购应用，去应用中心选购吧。"
+          description="去应用中心挑一款工具，开通后会自动出现在这里。"
+          action={
+            <Button asChild size="sm">
+              <Link to="/">
+                浏览应用 <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <section className="space-y-5">

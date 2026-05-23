@@ -53,6 +53,17 @@ export function HomePage() {
             icon={Sparkles}
             title="暂无应用"
             description="当前筛选条件下没有应用，请切换分类后再查看。"
+            action={
+              activeCategory ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('')}
+                  className="text-foreground border-border hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors"
+                >
+                  显示全部应用
+                </button>
+              ) : null
+            }
           />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

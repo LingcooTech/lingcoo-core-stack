@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileSearch, LoaderCircle } from 'lucide-react';
+import { ArrowRight, FileSearch, LoaderCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listMyOrders, syncMyOrder } from '@/api/user';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { OrderCard } from '@/components/portal/OrderCard';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatAmount } from '@/lib/utils';
 
@@ -70,7 +72,14 @@ export function MyOrdersPage() {
             <EmptyState
               icon={FileSearch}
               title="还没有订单记录"
-              description="还没有订单记录，去应用中心看看吧。"
+              description="浏览应用并完成购买后，订单会出现在这里。"
+              action={
+                <Button asChild size="sm">
+                  <Link to="/">
+                    去应用中心 <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              }
             />
           ) : (
             orders.map((order) => (

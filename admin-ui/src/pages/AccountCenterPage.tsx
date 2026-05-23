@@ -1,9 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellRing, FileSearch, KeyRound, LoaderCircle, UserCircle2 } from 'lucide-react';
+import {
+  ArrowRight,
+  Bell,
+  BellRing,
+  FileSearch,
+  KeyRound,
+  LoaderCircle,
+  RefreshCw,
+  UserCircle2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -177,6 +186,12 @@ function AccountProfileTab() {
         icon={UserCircle2}
         title="无法加载个人资料"
         description="当前用户资料暂时不可用，请刷新页面后重试。"
+        action={
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            刷新页面
+          </Button>
+        }
       />
     );
   }
@@ -381,7 +396,14 @@ function AccountOrdersTab() {
             <EmptyState
               icon={FileSearch}
               title="还没有订单记录"
-              description="还没有订单记录，去应用中心看看吧。"
+              description="浏览应用并完成购买后，订单会出现在这里。"
+              action={
+                <Button asChild size="sm">
+                  <Link to="/">
+                    去应用中心 <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              }
             />
           ) : (
             orders.map((order) => (
@@ -773,7 +795,14 @@ function AccountAppsTab() {
         <EmptyState
           icon={KeyRound}
           title="还没有已购应用"
-          description="还没有已购应用，去应用中心选购吧。"
+          description="去应用中心挑一款工具，开通后会自动出现在这里。"
+          action={
+            <Button asChild size="sm">
+              <Link to="/">
+                浏览应用 <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <section className="space-y-5">

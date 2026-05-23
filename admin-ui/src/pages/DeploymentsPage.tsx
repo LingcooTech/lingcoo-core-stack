@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Boxes, LoaderCircle, Rocket } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, ArrowRight, Boxes, LoaderCircle, Rocket } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { listApps } from '@/api/apps';
@@ -25,6 +25,7 @@ import { DeploymentRecordCard } from '@/components/portal/DeploymentRecordCard';
 import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/DeploymentWizard';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
 
@@ -386,6 +387,13 @@ export function DeploymentsPage() {
           icon={Boxes}
           title="暂无可部署的应用"
           description="购买支持一键部署的应用后，即可在这里开始部署。"
+          action={
+            <Button asChild size="sm">
+              <Link to="/">
+                浏览应用 <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <>
