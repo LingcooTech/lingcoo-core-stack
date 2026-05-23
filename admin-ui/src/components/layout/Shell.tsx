@@ -23,10 +23,14 @@ export function Shell() {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
-          className="w-[260px] border-r-0 p-0 lg:hidden"
+          className="w-[240px] border-r-0 p-0 sm:max-w-[240px] lg:hidden"
           aria-describedby={undefined}
         >
-          <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
+          <Sidebar
+            collapsed={false}
+            onToggle={() => setMobileOpen(false)}
+            showCollapseToggle={false}
+          />
         </SheetContent>
       </Sheet>
 

@@ -35,9 +35,10 @@ import { cn, getInitials } from '@/lib/utils';
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  showCollapseToggle?: boolean;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -97,25 +98,27 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
           )}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
-            collapsed
-              ? 'border-border bg-card absolute inset-x-3 top-4 z-10 h-8 w-auto border opacity-0 shadow-sm transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
-              : 'ml-auto h-7 w-7 shrink-0',
-          )}
-          onClick={onToggle}
-          aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-        >
-          {collapsed ? (
-            <ChevronsRight className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronsLeft className="h-3.5 w-3.5" />
-          )}
-        </Button>
+        {showCollapseToggle ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
+              collapsed
+                ? 'border-border bg-card absolute inset-x-3 top-4 z-10 h-8 w-auto border opacity-0 shadow-sm transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
+                : 'ml-auto h-7 w-7 shrink-0',
+            )}
+            onClick={onToggle}
+            aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
+          >
+            {collapsed ? (
+              <ChevronsRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsLeft className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        ) : null}
       </div>
 
       {/* Nav */}

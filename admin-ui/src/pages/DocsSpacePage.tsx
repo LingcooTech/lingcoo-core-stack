@@ -86,7 +86,7 @@ export function DocsSpacePage() {
   const breadcrumb = buildBreadcrumb(space.title, page.path, page.title);
 
   return (
-    <div className="min-[960px]:grid min-[960px]:grid-cols-[240px,minmax(0,1fr),200px] min-[960px]:gap-6 xl:gap-8">
+    <div className="min-[960px]:grid min-[960px]:grid-cols-[280px_minmax(0,1fr)] min-[960px]:gap-8 min-[1280px]:grid-cols-[280px_minmax(0,1fr)_220px] min-[1280px]:gap-10">
       <div className="hidden min-[960px]:block">
         <div className="sticky top-[88px] max-h-[calc(100vh-104px)]">
           <DocsSidebar
@@ -99,7 +99,7 @@ export function DocsSpacePage() {
         </div>
       </div>
 
-      <main className="min-w-0 space-y-6 min-[960px]:max-w-[760px]">
+      <main className="min-w-0 space-y-6 min-[960px]:max-w-none">
         <div className="flex items-center gap-2 min-[960px]:hidden">
           <Button
             variant="outline"
@@ -223,7 +223,7 @@ export function DocsSpacePage() {
         </div>
       </main>
 
-      <aside className="hidden min-[960px]:block">
+      <aside className="hidden min-[1280px]:block">
         <div className="sticky top-[88px]">
           <ArticleToc items={toc} pathname={location.pathname} />
         </div>
