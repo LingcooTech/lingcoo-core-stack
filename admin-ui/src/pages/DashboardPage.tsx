@@ -61,6 +61,35 @@ export function DashboardPage() {
     alipay?.configured ? null : '支付宝',
   ].filter(Boolean) as string[];
 
+  const onboardingSteps = [
+    {
+      key: 'payments',
+      title: '配置至少一个支付通道',
+      description: '配置微信支付或支付宝，让用户能完成购买。',
+      href: '/admin/payments',
+      done: Boolean(wechat?.configured || alipay?.configured),
+    },
+    {
+      key: 'apps',
+      title: '创建第一个应用',
+      description: '应用是授权和订单的载体，至少创建一个才能开始售卖。',
+      href: '/admin/apps',
+      done: apps.length > 0,
+    },
+    {
+      key: 'content',
+      title: '发布第一篇内容',
+      description: '在内容中心写一篇教程或观点文章，让公开站点不空白。',
+      href: '/admin/content',
+      done: false, // 暂无内容数 query，先恒 false；用户可通过点 CTA 跳过
+    },
+  ];
+  const showOnboarding =
+    !appsResult.isLoading &&
+    !paymentsResult.isLoading &&
+    onboardingSteps.filter((s) => s.done).length < onboardingSteps.length &&
+    (apps.length === 0 || (!wechat?.configured && !alipay?.configured));
+
   const todoItems = [
     pendingOrders.length > 0
       ? {
@@ -127,6 +156,59 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 p-6">
+      {showOnboarding ? (
+        <section className="border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.08] rounded-xl border p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-foreground text-base font-semibold tracking-tight">
+                欢迎来到 fd-core-stack 后台
+              </h3>
+              <p className="text-muted-foreground mt-0.5 text-[12px]">
+                完成下面 3 步即可让系统开始运转
+              </p>
+            </div>
+            <span className="text-muted-foreground text-[11px] tabular-nums">
+              {onboardingSteps.filter((s) => s.done).length} / {onboardingSteps.length} 已完成
+            </span>
+          </div>
+          <ol className="space-y-2">
+            {onboardingSteps.map((step, idx) => (
+              <li
+                key={step.key}
+                className={cn(
+                  'border-border bg-card flex items-center justify-between gap-3 rounded-lg border p-3',
+                  step.done && 'opacity-60',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold',
+                      step.done ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    {step.done ? '✓' : idx + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-foreground truncate text-[13px] font-medium">{step.title}</p>
+                    <p className="text-muted-foreground truncate text-[11px]">{step.description}</p>
+                  </div>
+                </div>
+                {!step.done ? (
+                  <Link
+                    to={step.href}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium no-underline transition-colors"
+                  >
+                    去配置
+                    <ArrowUpRight className="h-3 w-3" />
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MetricCard label="接入应用" value={apps.length} loading={appsResult.isLoading} />
         <MetricCard label="活跃密钥" value={activeSecrets.length} loading={appsResult.isLoading} />
