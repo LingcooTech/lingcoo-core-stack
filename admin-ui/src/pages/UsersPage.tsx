@@ -193,7 +193,7 @@ export function UsersPage() {
             <Button
               size="sm"
               variant="outline"
-              className="text-xs text-amber-600 hover:text-amber-700"
+              className="text-xs"
               disabled={isSelf(row)}
               onClick={() => setConfirmAction({ type: 'suspend', user: row })}
             >
@@ -203,7 +203,7 @@ export function UsersPage() {
             <Button
               size="sm"
               variant="outline"
-              className="text-xs text-green-600 hover:text-green-700"
+              className="text-xs"
               onClick={() => setConfirmAction({ type: 'activate', user: row })}
             >
               激活
@@ -212,7 +212,7 @@ export function UsersPage() {
           <Button
             size="sm"
             variant="outline"
-            className="text-xs text-red-600 hover:text-red-700"
+            className="text-destructive hover:text-destructive text-xs"
             onClick={() => setResetConfirm(row)}
           >
             重置密码

@@ -42,7 +42,7 @@ export function EntitlementProductCard({
     <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5">
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="text-primary rounded-lg bg-blue-50 p-3">
+          <div className="text-muted-foreground bg-muted rounded-lg p-3">
             <Boxes className="h-5 w-5" />
           </div>
           <div>
@@ -95,7 +95,7 @@ export function EntitlementProductCard({
               variant="secondary"
               className="inline-flex items-center gap-1.5"
             >
-              <KeyRound className="h-3 w-3 text-emerald-600" />
+              <KeyRound className="text-muted-foreground h-3 w-3" />
               {formatFeatureName(featureName)}
             </Badge>
           ))}

@@ -213,7 +213,7 @@ export function LicensesPage() {
           <Button
             size="sm"
             variant="outline"
-            className="text-xs text-red-600 hover:text-red-700"
+            className="text-destructive hover:text-destructive text-xs"
             disabled={revokeMutation.isPending}
             onClick={() => setEntitlementToRevoke(row)}
           >

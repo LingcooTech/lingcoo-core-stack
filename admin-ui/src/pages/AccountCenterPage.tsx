@@ -630,8 +630,8 @@ function AccountNotificationsTab() {
               <Card
                 key={item.id}
                 className={cn(
-                  'border-border bg-card rounded-xl shadow-sm transition',
-                  item.status === 'unread' ? 'border-sky-200 bg-sky-50/30' : '',
+                  'border-border bg-card rounded-xl transition-colors',
+                  item.status === 'unread' && 'border-foreground/30 bg-muted/30',
                 )}
               >
                 <CardContent className="space-y-3 p-5">
@@ -639,7 +639,7 @@ function AccountNotificationsTab() {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {item.status === 'unread' ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                          <span className="bg-foreground text-background inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold">
                             <BellRing className="h-3 w-3" />
                             未读
                           </span>

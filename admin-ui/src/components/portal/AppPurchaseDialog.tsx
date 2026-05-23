@@ -202,7 +202,7 @@ export function AppPurchaseDialog({
             <span
               className={`inline-flex items-center rounded-full px-3 py-1.5 font-medium ${
                 step === 'plan' && !sessionCode
-                  ? 'bg-sky-50 text-sky-700'
+                  ? 'bg-foreground text-background'
                   : 'bg-muted text-muted-foreground'
               }`}
             >
@@ -211,7 +211,7 @@ export function AppPurchaseDialog({
             <span
               className={`inline-flex items-center rounded-full px-3 py-1.5 font-medium ${
                 (step === 'payment' && !sessionCode) || sessionCode
-                  ? 'bg-sky-50 text-sky-700'
+                  ? 'bg-foreground text-background'
                   : 'bg-muted text-muted-foreground'
               }`}
             >
@@ -293,8 +293,8 @@ export function AppPurchaseDialog({
                           onClick={() => setSelectedOfferCode(offer.code)}
                           className={`rounded-xl border p-4 text-left transition-colors ${
                             selectedOffer?.code === offer.code
-                              ? 'border-sky-200 bg-sky-50/70'
-                              : 'border-border bg-card hover:border-gray-300'
+                              ? 'border-foreground bg-muted/40'
+                              : 'border-border bg-card hover:border-foreground/20'
                           }`}
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -364,7 +364,7 @@ export function AppPurchaseDialog({
                           onClick={() => setProviderPreference(provider.value)}
                           className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
                             providerPreference === provider.value
-                              ? 'border-sky-200 bg-sky-50 text-sky-700'
+                              ? 'border-foreground bg-muted/40 text-foreground'
                               : 'border-border bg-card text-muted-foreground hover:text-foreground'
                           }`}
                         >
@@ -420,7 +420,7 @@ export function AppPurchaseDialog({
                   </div>
                 ) : isPaid ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                       <CheckCircle2 className="h-7 w-7" />
                     </div>
                     <h3 className="text-foreground mt-4 text-xl font-semibold">支付已完成</h3>
@@ -469,7 +469,7 @@ export function AppPurchaseDialog({
                   </div>
                 ) : paymentAction?.type === 'qr_code' ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-sky-700">
+                    <div className="bg-muted text-muted-foreground mb-4 flex h-12 w-12 items-center justify-center rounded-full">
                       <QrCode className="h-6 w-6" />
                     </div>
                     <img
@@ -483,7 +483,7 @@ export function AppPurchaseDialog({
                   </div>
                 ) : paymentAction?.type === 'redirect_url' ? (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-sky-700">
+                    <div className="bg-muted text-muted-foreground mb-4 flex h-12 w-12 items-center justify-center rounded-full">
                       <CreditCard className="h-6 w-6" />
                     </div>
                     <h3 className="text-foreground text-lg font-semibold">打开支付宝支付窗口</h3>

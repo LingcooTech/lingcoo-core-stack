@@ -368,8 +368,9 @@ export function DeploymentWizard({
                 <div
                   className={cn(
                     'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
-                    isActive && 'bg-primary text-primary-foreground',
-                    isDone && 'bg-green-50 text-green-700',
+                    isActive && 'bg-foreground text-background',
+                    isDone &&
+                      'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
                     !isActive && !isDone && 'bg-muted text-muted-foreground',
                   )}
                 >
@@ -795,9 +796,11 @@ export function DeploymentWizard({
 
         {step === 3 && (
           <>
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-              <p className="text-sm font-bold text-green-800">部署记录已创建成功</p>
-              <p className="mt-1 text-sm text-green-700">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                部署记录已创建成功
+              </p>
+              <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300/80">
                 部署名称：<span className="font-bold">{label}</span>
               </p>
             </div>

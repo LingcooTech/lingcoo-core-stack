@@ -144,7 +144,7 @@ export function SecretsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-red-600 hover:text-red-700"
+                      className="text-destructive hover:text-destructive"
                       onClick={() =>
                         setPendingRevoke({
                           appCode: app.code,
@@ -177,9 +177,11 @@ export function SecretsPage() {
           </DialogHeader>
           {secretResult && (
             <div className="space-y-3">
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs">
-                <p className="mb-1 font-semibold text-amber-800">appCode: {secretResult.appCode}</p>
-                <p className="mb-1 font-semibold text-amber-800">
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs dark:border-amber-500/20 dark:bg-amber-500/10">
+                <p className="mb-1 font-semibold text-amber-800 dark:text-amber-300">
+                  appCode: {secretResult.appCode}
+                </p>
+                <p className="mb-1 font-semibold text-amber-800 dark:text-amber-300">
                   secretId: {secretResult.secretId}
                 </p>
               </div>

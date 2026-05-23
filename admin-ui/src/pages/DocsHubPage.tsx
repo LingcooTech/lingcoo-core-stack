@@ -18,7 +18,9 @@ export function DocsHubPage() {
     <div className="space-y-6">
       <section className="border-border bg-card rounded-xl border p-6 shadow-sm">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-sky-700">文档中心</p>
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.14em]">
+            文档中心
+          </p>
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">
             产品文档与开发指南
           </h1>

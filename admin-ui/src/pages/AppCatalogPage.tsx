@@ -308,16 +308,18 @@ export function AppCatalogPage() {
               <div className="min-w-0 text-center md:text-left">
                 <div className="mb-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                   {app.category ? (
-                    <Badge className="bg-sky-50 text-sky-700 hover:bg-sky-50">{app.category}</Badge>
+                    <Badge variant="outline" className="text-muted-foreground font-medium">
+                      {app.category}
+                    </Badge>
                   ) : null}
-                  <Badge className="bg-card text-foreground hover:bg-card">
+                  <Badge variant="outline" className="text-muted-foreground font-medium">
                     {getAppTypeLabel(app.type)}
                   </Badge>
-                  <Badge className="bg-card text-foreground hover:bg-card">
+                  <Badge variant="outline" className="text-muted-foreground font-medium">
                     {getAppStatusLabel(app.status)}
                   </Badge>
                   {preferredOffer?.badge ? (
-                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                    <Badge variant="outline" className="text-foreground font-medium">
                       {preferredOffer.badge}
                     </Badge>
                   ) : null}
@@ -364,16 +366,14 @@ export function AppCatalogPage() {
                   {heroPriceDescription}
                 </p>
                 {hasActiveEntitlement ? (
-                  <p className="mt-2 text-xs font-medium text-emerald-600">
-                    当前账户已拥有有效授权
-                  </p>
+                  <p className="text-foreground mt-2 text-xs font-medium">当前账户已拥有有效授权</p>
                 ) : hasHistoricalEntitlement ? (
-                  <p className="mt-2 text-xs font-medium text-amber-700">
+                  <p className="text-muted-foreground mt-2 text-xs font-medium">
                     当前账户曾拥有授权，但已失效或被撤销
                   </p>
                 ) : null}
                 {appDetail.trialDays > 0 && offers.length === 0 ? (
-                  <p className="mt-2 text-xs text-emerald-600">
+                  <p className="text-muted-foreground mt-2 text-xs">
                     支持 {appDetail.trialDays} 天免费试用
                   </p>
                 ) : null}
@@ -501,7 +501,7 @@ export function AppCatalogPage() {
                     onClick={() => setActiveTab(tab.key)}
                     className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                       activeTab === tab.key
-                        ? 'bg-blue-50 text-blue-600'
+                        ? 'bg-foreground text-background'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
@@ -566,7 +566,7 @@ export function AppCatalogPage() {
                         href={screenshot.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="border-border bg-card hover:shadow-slate-900/8 group overflow-hidden rounded-xl border shadow-sm shadow-slate-900/5 transition-colors hover:border-sky-200 hover:shadow-lg"
+                        className="border-border bg-card hover:border-foreground/20 group overflow-hidden rounded-xl border transition-colors"
                       >
                         <div className="bg-muted aspect-[16/10] overflow-hidden">
                           <img
@@ -695,9 +695,12 @@ export function AppCatalogPage() {
                       {resourceCards.map((resource) => {
                         const isInternal = resource.url.startsWith('/');
                         const card = (
-                          <div className="border-border bg-card hover:shadow-slate-900/8 rounded-xl border p-5 shadow-sm shadow-slate-900/5 transition-colors hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-lg">
+                          <div className="border-border bg-card hover:border-foreground/20 rounded-xl border p-5 transition-colors">
                             <div className="flex items-center gap-2">
-                              <Badge className="bg-card text-foreground hover:bg-card">
+                              <Badge
+                                variant="outline"
+                                className="text-muted-foreground font-medium"
+                              >
                                 {resource.typeLabel}
                               </Badge>
                               <p className="text-foreground text-sm font-semibold">
@@ -779,7 +782,7 @@ export function AppCatalogPage() {
                   <ul className="text-muted-foreground mt-3 space-y-2 text-sm">
                     {systemRequirements.map((requirement) => (
                       <li key={requirement} className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-500" />
+                        <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4" />
                         <span>{requirement}</span>
                       </li>
                     ))}

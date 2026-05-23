@@ -41,7 +41,9 @@ export function ContentHubPage() {
     <div className="space-y-6">
       <section className="border-border bg-card rounded-xl border p-6 shadow-sm">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-sky-700">内容中心</p>
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.14em]">
+            内容中心
+          </p>
           <h1 className="text-foreground text-3xl font-semibold tracking-tight">
             文章、观点与教程
           </h1>

@@ -355,7 +355,7 @@ export function DeploymentsPage() {
             : '选择支持一键部署的应用并完成部署配置。'}
         </p>
         {requestedAppUnavailable ? (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               {requestedApp?.name ?? requestedAppCode}{' '}
@@ -373,8 +373,8 @@ export function DeploymentsPage() {
           </CardContent>
         </Card>
       ) : loadError ? (
-        <Card className="rounded-xl border-red-200 bg-red-50">
-          <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-red-800">
+        <Card className="rounded-xl border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10">
+          <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-red-800 dark:text-red-300">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               {loadError instanceof Error ? loadError.message : '部署数据加载失败，请稍后重试。'}
@@ -492,8 +492,8 @@ export function DeploymentsPage() {
               />
             </section>
           ) : (
-            <Card className="rounded-xl border-amber-200 bg-amber-50">
-              <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800">
+            <Card className="rounded-xl border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10">
+              <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800 dark:text-amber-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   当前没有可用于新建 deployment

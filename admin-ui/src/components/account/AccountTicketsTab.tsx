@@ -140,9 +140,9 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
           <div key={message.id} className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
             <div
               className={cn(
-                'max-w-[85%] rounded-xl border px-4 py-3 shadow-sm',
+                'max-w-[85%] rounded-xl border px-4 py-3',
                 isUser
-                  ? 'text-foreground border-blue-200 bg-blue-50'
+                  ? 'border-foreground/15 bg-muted text-foreground'
                   : 'border-border bg-card text-foreground',
               )}
             >

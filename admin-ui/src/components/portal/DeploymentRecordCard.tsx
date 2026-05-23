@@ -344,7 +344,7 @@ export function DeploymentRecordCard({
             </p>
           ) : null}
           {deployment.pendingAction ? (
-            <p className="mt-3 text-xs text-blue-700">
+            <p className="text-muted-foreground mt-3 text-xs">
               待执行动作：{getActionLabel(deployment.pendingAction.kind)}
               {deployment.pendingAction.requestedAt
                 ? ` · ${formatTime(deployment.pendingAction.requestedAt)}`

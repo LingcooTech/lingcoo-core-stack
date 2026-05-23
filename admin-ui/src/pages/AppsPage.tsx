@@ -576,8 +576,8 @@ export function AppsPage() {
         }}
       >
         {pendingDangerAction?.kind === 'purge' ? (
-          <div className="space-y-4 rounded-md border border-red-200 bg-red-50 p-4">
-            <div className="space-y-1 text-sm text-red-700">
+          <div className="space-y-4 rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10">
+            <div className="space-y-1 text-sm text-red-700 dark:text-red-300">
               <p>会清空：展示内容、Features、Offers、Secrets、Delivery Settings。</p>
               <p>会保留但停用：应用主体、Plans、订单、结账、订阅、部署、事件、用户数据。</p>
             </div>
