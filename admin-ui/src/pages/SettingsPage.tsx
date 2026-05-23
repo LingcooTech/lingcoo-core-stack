@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -334,6 +334,8 @@ const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function SettingsPage() {
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState('site');
+  const [settingsQuery, setSettingsQuery] = useState('');
   const [clearSiteOpen, setClearSiteOpen] = useState(false);
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
   const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
@@ -1007,10 +1009,20 @@ export function SettingsPage() {
     <div>
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
-        <Tabs defaultValue="site" className="max-w-5xl space-y-5">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-5xl space-y-5">
           <div className="border-border bg-card rounded-lg border p-6 shadow-sm">
-            <div className="space-y-3">
-              <h2 className="text-foreground text-lg font-semibold">系统设置</h2>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-foreground text-lg font-semibold">系统设置</h2>
+                <SettingsSearch
+                  query={settingsQuery}
+                  onQueryChange={setSettingsQuery}
+                  onJump={(tab) => {
+                    setActiveTab(tab);
+                    setSettingsQuery('');
+                  }}
+                />
+              </div>
               <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
                 <TabsTrigger value="site" className="min-w-[108px] rounded-md">
                   品牌与页脚
@@ -2547,6 +2559,136 @@ export function SettingsPage() {
         confirmText={clearContentImportMutation.isPending ? '清空中...' : '确认清空'}
         onConfirm={() => clearContentImportMutation.mutate()}
       />
+    </div>
+  );
+}
+
+interface SettingsSearchHit {
+  tab: string;
+  tabLabel: string;
+  field: string;
+  keywords: string[];
+}
+
+const SETTINGS_SEARCH_INDEX: SettingsSearchHit[] = [
+  { tab: 'site', tabLabel: '品牌与页脚', field: '站点名称', keywords: ['站点', 'name', '名称'] },
+  {
+    tab: 'site',
+    tabLabel: '品牌与页脚',
+    field: 'Logo / Favicon',
+    keywords: ['logo', 'favicon', '图标', '徽标'],
+  },
+  {
+    tab: 'site',
+    tabLabel: '品牌与页脚',
+    field: '主题色',
+    keywords: ['颜色', 'color', '主题色', '品牌色'],
+  },
+  {
+    tab: 'site',
+    tabLabel: '品牌与页脚',
+    field: '导航菜单',
+    keywords: ['导航', 'navigation', '菜单', '顶栏'],
+  },
+  {
+    tab: 'site',
+    tabLabel: '品牌与页脚',
+    field: '页脚',
+    keywords: ['footer', '页脚', '版权', 'beian', '备案'],
+  },
+  {
+    tab: 'public-pages',
+    tabLabel: '公共页面',
+    field: '内容中心 Hub',
+    keywords: ['内容中心', 'hub', '文章', '观点'],
+  },
+  {
+    tab: 'public-pages',
+    tabLabel: '公共页面',
+    field: '文档中心 Hub',
+    keywords: ['文档中心', 'docs hub', '产品文档'],
+  },
+  {
+    tab: 'smtp',
+    tabLabel: 'SMTP',
+    field: 'SMTP 主机 / 端口',
+    keywords: ['smtp', '邮件', '邮箱', 'host', 'port', '发件'],
+  },
+  {
+    tab: 'smtp',
+    tabLabel: 'SMTP',
+    field: '发送测试邮件',
+    keywords: ['测试邮件', 'test', '发件人'],
+  },
+  {
+    tab: 'qiniu',
+    tabLabel: '七牛云',
+    field: '七牛存储',
+    keywords: ['七牛', 'qiniu', '存储', '媒体', 'oss', '上传'],
+  },
+  {
+    tab: 'content',
+    tabLabel: '内容导入',
+    field: 'WordPress 连接',
+    keywords: ['wordpress', 'wp', '导入'],
+  },
+  { tab: 'content', tabLabel: '内容导入', field: 'Notion 连接', keywords: ['notion', '笔记'] },
+  {
+    tab: 'content',
+    tabLabel: '内容导入',
+    field: '微信公众号',
+    keywords: ['微信', '公众号', 'wechat', 'mp'],
+  },
+  {
+    tab: 'ai',
+    tabLabel: 'AI Hub',
+    field: 'OpenRouter / Provider',
+    keywords: ['ai', 'openrouter', 'provider', 'gpt', 'claude', 'gemini', 'model', 'llm'],
+  },
+];
+
+function SettingsSearch({
+  query,
+  onQueryChange,
+  onJump,
+}: {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onJump: (tab: string) => void;
+}) {
+  const trimmed = query.trim().toLowerCase();
+  const hits =
+    trimmed.length > 0
+      ? SETTINGS_SEARCH_INDEX.filter((h) => {
+          const haystack = [h.field, h.tabLabel, ...h.keywords].join(' ').toLowerCase();
+          return haystack.includes(trimmed);
+        }).slice(0, 8)
+      : [];
+
+  return (
+    <div className="relative w-full max-w-[320px]">
+      <Search className="text-muted-foreground/60 pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+      <Input
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+        placeholder="搜索设置项…"
+        className="h-9 pl-8 text-[12px]"
+      />
+      {hits.length > 0 ? (
+        <div className="border-border bg-card absolute left-0 right-0 top-full z-30 mt-1 max-h-[260px] overflow-y-auto rounded-lg border p-1 shadow-lg">
+          {hits.map((hit) => (
+            <button
+              key={`${hit.tab}-${hit.field}`}
+              type="button"
+              onClick={() => onJump(hit.tab)}
+              className="hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-[12px] transition-colors"
+            >
+              <span className="text-foreground truncate font-medium">{hit.field}</span>
+              <span className="text-muted-foreground shrink-0 text-[11px]">{hit.tabLabel}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
