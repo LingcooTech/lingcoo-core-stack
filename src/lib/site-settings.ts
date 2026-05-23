@@ -25,6 +25,7 @@ export type SiteSettings = {
   siteName: string;
   logoUrl: string;
   faviconUrl: string;
+  brandPrimaryColor: string;
   headerNavigation: SiteNavigationItem[];
   footerCopyright: string;
   filingInfo: string;
@@ -43,7 +44,7 @@ const DEFAULT_COPYRIGHT = '© {year} FutureDecade. All rights reserved.';
 const DEFAULT_HEADER_NAVIGATION: SiteNavigationItem[] = [
   { label: '应用中心', url: '/', openInNewTab: false, children: [] },
   { label: '文档中心', url: '/docs', openInNewTab: false, children: [] },
-  { label: '内容中心', url: '/content', openInNewTab: false, children: [] }
+  { label: '内容中心', url: '/content', openInNewTab: false, children: [] },
 ];
 const DEFAULT_FOOTER_LINKS: SiteFooterLink[] = [
   { label: '应用中心', url: '/', openInNewTab: false },
@@ -52,7 +53,7 @@ const DEFAULT_FOOTER_LINKS: SiteFooterLink[] = [
   { label: '我的订单', url: '/orders', openInNewTab: false },
   { label: '我的应用', url: '/access', openInNewTab: false },
   { label: '隐私政策', url: '/apps/ai-translate-workflow/privacy', openInNewTab: false },
-  { label: '支持页', url: '/apps/ai-translate-workflow/support', openInNewTab: false }
+  { label: '支持页', url: '/apps/ai-translate-workflow/support', openInNewTab: false },
 ];
 
 function normalizeString(value: unknown) {
@@ -113,6 +114,12 @@ function normalizeSiteUrl(value: unknown) {
   return isAllowedSiteUrl(raw) ? raw : '';
 }
 
+function normalizeBrandPrimaryColor(value: unknown): string {
+  const raw = normalizeString(value);
+  if (!raw) return '';
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw.toLowerCase() : '';
+}
+
 function normalizeFooterLinks(value: unknown): SiteFooterLink[] {
   if (!Array.isArray(value)) {
     return [];
@@ -131,7 +138,7 @@ function normalizeFooterLinks(value: unknown): SiteFooterLink[] {
       return {
         label,
         url,
-        openInNewTab: normalizeBoolean(raw.openInNewTab)
+        openInNewTab: normalizeBoolean(raw.openInNewTab),
       } satisfies SiteFooterLink;
     })
     .filter((item): item is SiteFooterLink => Boolean(item))
@@ -145,7 +152,7 @@ function cloneFooterLinks(links: SiteFooterLink[]) {
 function cloneHeaderNavigation(items: SiteNavigationItem[]) {
   return items.map((item) => ({
     ...item,
-    children: cloneFooterLinks(item.children)
+    children: cloneFooterLinks(item.children),
   }));
 }
 
@@ -173,7 +180,7 @@ function normalizeHeaderNavigation(value: unknown): SiteNavigationItem[] {
         label,
         url,
         openInNewTab: normalizeBoolean(raw.openInNewTab),
-        children
+        children,
       } satisfies SiteNavigationItem;
     })
     .filter((item): item is SiteNavigationItem => Boolean(item))
@@ -187,10 +194,11 @@ function buildDefaultSiteSettings(env: AppEnv): SiteSettings {
     siteName: envSiteName && envSiteName !== 'fd-core-stack' ? envSiteName : DEFAULT_SITE_NAME,
     logoUrl: '',
     faviconUrl: '',
+    brandPrimaryColor: '',
     headerNavigation: cloneHeaderNavigation(DEFAULT_HEADER_NAVIGATION),
     footerCopyright: DEFAULT_COPYRIGHT,
     filingInfo: '',
-    footerLinks: cloneFooterLinks(DEFAULT_FOOTER_LINKS)
+    footerLinks: cloneFooterLinks(DEFAULT_FOOTER_LINKS),
   };
 }
 
@@ -201,7 +209,7 @@ function isSameSiteSettings(left: SiteSettings, right: SiteSettings) {
 export class SiteSettingsService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getDefaults() {
@@ -228,10 +236,14 @@ export class SiteSettingsService {
       siteName: normalizeString(raw.siteName).slice(0, 120) || defaults.siteName,
       logoUrl: normalizeSiteUrl(raw.logoUrl),
       faviconUrl: normalizeSiteUrl(raw.faviconUrl),
-      headerNavigation: headerNavigation.length ? cloneHeaderNavigation(headerNavigation) : cloneHeaderNavigation(defaults.headerNavigation),
-      footerCopyright: normalizeString(raw.footerCopyright).slice(0, 255) || defaults.footerCopyright,
+      brandPrimaryColor: normalizeBrandPrimaryColor(raw.brandPrimaryColor),
+      headerNavigation: headerNavigation.length
+        ? cloneHeaderNavigation(headerNavigation)
+        : cloneHeaderNavigation(defaults.headerNavigation),
+      footerCopyright:
+        normalizeString(raw.footerCopyright).slice(0, 255) || defaults.footerCopyright,
       filingInfo: normalizeString(raw.filingInfo).slice(0, 255),
-      footerLinks: cloneFooterLinks(footerLinks)
+      footerLinks: cloneFooterLinks(footerLinks),
     };
   }
 
@@ -252,7 +264,7 @@ export class SiteSettingsService {
     return {
       configured: databaseSettings ? !isSameSiteSettings(databaseSettings, defaults) : false,
       source: databaseSettings ? 'database' : 'none',
-      values
+      values,
     };
   }
 
@@ -261,6 +273,7 @@ export class SiteSettingsService {
       siteName?: string;
       logoUrl?: string;
       faviconUrl?: string;
+      brandPrimaryColor?: string;
       headerNavigation?: Array<{
         label: string;
         url?: string;
@@ -279,7 +292,7 @@ export class SiteSettingsService {
         openInNewTab?: boolean;
       }>;
     },
-    updatedByUserId: string
+    updatedByUserId: string,
   ) {
     const next = this.normalizeSettings(input);
     const now = new Date();
@@ -292,7 +305,7 @@ export class SiteSettingsService {
         isEncrypted: false,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -300,8 +313,8 @@ export class SiteSettingsService {
           value: next,
           isEncrypted: false,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
 
     return this.getOverview();

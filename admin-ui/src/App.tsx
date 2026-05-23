@@ -17,7 +17,11 @@ import { DocsShell } from '@/components/layout/DocsShell';
 import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { AuthProvider, useAuth } from '@/lib/auth';
-import { PUBLIC_SITE_SETTINGS_QUERY_KEY, syncDocumentFavicon } from '@/lib/site-settings';
+import {
+  PUBLIC_SITE_SETTINGS_QUERY_KEY,
+  syncBrandPrimaryColor,
+  syncDocumentFavicon,
+} from '@/lib/site-settings';
 import { ThemeProvider } from '@/lib/theme';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -98,6 +102,10 @@ function SiteAppearanceSync() {
     syncDocumentFavicon(data?.faviconUrl);
   }, [data?.faviconUrl]);
 
+  useEffect(() => {
+    syncBrandPrimaryColor(data?.brandPrimaryColor);
+  }, [data?.brandPrimaryColor]);
+
   return null;
 }
 
@@ -111,6 +119,10 @@ function SiteSettingsBootstrap({ children }: { children: ReactNode }) {
   useEffect(() => {
     syncDocumentFavicon(siteSettingsQuery.data?.faviconUrl);
   }, [siteSettingsQuery.data?.faviconUrl]);
+
+  useEffect(() => {
+    syncBrandPrimaryColor(siteSettingsQuery.data?.brandPrimaryColor);
+  }, [siteSettingsQuery.data?.brandPrimaryColor]);
 
   if (siteSettingsQuery.isLoading && !siteSettingsQuery.data) {
     return (

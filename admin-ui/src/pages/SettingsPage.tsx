@@ -125,6 +125,10 @@ const siteSchema = z.object({
   siteName: z.string().trim().min(1, '请输入站点名称').max(120, '站点名称不能超过 120 个字符'),
   logoUrl: optionalSiteLinkField,
   faviconUrl: optionalSiteLinkField,
+  brandPrimaryColor: z
+    .string()
+    .trim()
+    .regex(/^(#[0-9a-fA-F]{6}|)$/, '请输入 #RRGGBB 形式的颜色值或留空'),
   headerNavigation: z.array(siteNavigationItemSchema).max(12, '顶部导航最多保留 12 项'),
   footerCopyright: z
     .string()
@@ -207,6 +211,7 @@ function buildSitePayload(values: SiteValues) {
     siteName: values.siteName.trim(),
     logoUrl: values.logoUrl.trim(),
     faviconUrl: values.faviconUrl.trim(),
+    brandPrimaryColor: values.brandPrimaryColor.trim(),
     headerNavigation: values.headerNavigation.map((item) => ({
       label: item.label.trim(),
       url: item.url.trim(),
@@ -403,6 +408,7 @@ export function SettingsPage() {
       siteName: 'FD Stack',
       logoUrl: '',
       faviconUrl: '',
+      brandPrimaryColor: '',
       headerNavigation: [],
       footerCopyright: '© {year} FutureDecade. All rights reserved.',
       filingInfo: '',
@@ -528,6 +534,7 @@ export function SettingsPage() {
       siteName: siteData.values.siteName,
       logoUrl: siteData.values.logoUrl,
       faviconUrl: siteData.values.faviconUrl,
+      brandPrimaryColor: siteData.values.brandPrimaryColor ?? '',
       headerNavigation: siteData.values.headerNavigation,
       footerCopyright: siteData.values.footerCopyright,
       filingInfo: siteData.values.filingInfo,
@@ -628,6 +635,7 @@ export function SettingsPage() {
         siteName: result.values.siteName,
         logoUrl: result.values.logoUrl,
         faviconUrl: result.values.faviconUrl,
+        brandPrimaryColor: result.values.brandPrimaryColor ?? '',
         headerNavigation: result.values.headerNavigation,
         footerCopyright: result.values.footerCopyright,
         filingInfo: result.values.filingInfo,
@@ -1078,6 +1086,48 @@ export function SettingsPage() {
                         )}
                       />
                     </div>
+
+                    <FormField
+                      control={siteForm.control}
+                      name="brandPrimaryColor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>品牌主色</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="color"
+                                value={field.value || '#000000'}
+                                onChange={(event) => field.onChange(event.target.value)}
+                                aria-label="选择品牌主色"
+                                className="border-border bg-card h-10 w-10 shrink-0 cursor-pointer rounded-md border p-1"
+                              />
+                              <Input
+                                placeholder="#000000（留空使用系统默认）"
+                                value={field.value}
+                                onChange={(event) => field.onChange(event.target.value)}
+                                className="max-w-[220px] font-mono text-[13px]"
+                              />
+                              {field.value && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => field.onChange('')}
+                                >
+                                  重置
+                                </Button>
+                              )}
+                            </div>
+                          </FormControl>
+                          <p className="text-muted-foreground text-[12px] leading-5">
+                            填入 #RRGGBB 形式的十六进制颜色，会作为前后台 primary
+                            色注入到所有页面；留空则使用系统默认。
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
                       <div className="flex items-center justify-between gap-4">

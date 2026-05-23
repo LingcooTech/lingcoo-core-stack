@@ -81,7 +81,13 @@ export interface CurrentUserProfile {
 
 export interface VerifyEmailResponse {
   verified: boolean;
-  user: { id: string; email: string; displayName: string | null; role: string; emailVerified: boolean };
+  user: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    role: string;
+    emailVerified: boolean;
+  };
 }
 
 export interface ResendVerificationResponse {
@@ -247,6 +253,7 @@ export interface SiteSettingsOverview {
     siteName: string;
     logoUrl: string;
     faviconUrl: string;
+    brandPrimaryColor: string;
     headerNavigation: SiteNavigationItem[];
     footerCopyright: string;
     filingInfo: string;
@@ -832,7 +839,15 @@ export interface SupportTicket {
   orderId: string | null;
   installId: string | null;
   deploymentId: string | null;
-  category: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+  category:
+    | 'account'
+    | 'billing'
+    | 'access'
+    | 'install'
+    | 'deployment'
+    | 'bug'
+    | 'feature'
+    | 'other';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   status: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
   subject: string;
@@ -1012,12 +1027,20 @@ export interface DeploymentSummary {
   availableWordpressAssetReleases: Record<string, string | null>;
   pendingAction: {
     id: string;
-    kind: 'apply_runtime_images' | 'apply_wordpress_assets' | 'ignore_runtime_images' | 'ignore_wordpress_assets';
+    kind:
+      | 'apply_runtime_images'
+      | 'apply_wordpress_assets'
+      | 'ignore_runtime_images'
+      | 'ignore_wordpress_assets';
     requestedAt: string | null;
   } | null;
   lastAction: {
     id: string;
-    kind: 'apply_runtime_images' | 'apply_wordpress_assets' | 'ignore_runtime_images' | 'ignore_wordpress_assets';
+    kind:
+      | 'apply_runtime_images'
+      | 'apply_wordpress_assets'
+      | 'ignore_runtime_images'
+      | 'ignore_wordpress_assets';
     status: 'completed' | 'failed';
     message: string | null;
     finishedAt: string | null;
