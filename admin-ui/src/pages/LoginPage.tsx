@@ -68,11 +68,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="bg-muted flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="bg-background relative flex min-h-screen items-center justify-center p-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.10),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.08),_transparent_44%)] dark:bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.14),_transparent_44%)]"
+      />
+      <div className="relative w-full max-w-sm">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="bg-foreground text-background flex h-12 w-12 items-center justify-center rounded-lg text-base font-bold">
+          <div className="bg-foreground text-background flex h-12 w-12 items-center justify-center rounded-lg text-base font-bold shadow-lg">
             FD
           </div>
           <div className="text-center">
@@ -82,9 +86,9 @@ export function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-card border-border rounded-lg border p-6 shadow-sm">
-          <h2 className="mb-1 text-base font-semibold">
-            {isRegisterMode ? '创建管理员账号' : '登录'}
+        <div className="bg-card/95 border-border rounded-xl border p-7 shadow-xl backdrop-blur-xl">
+          <h2 className="text-foreground mb-1 text-lg font-semibold tracking-tight">
+            {isRegisterMode ? '创建管理员账号' : '欢迎回来'}
           </h2>
           <p className="text-muted-foreground mb-5 text-xs">
             {isRegisterMode ? '这是系统首次启动，请创建管理员账号。' : '使用管理员账号登录后台。'}

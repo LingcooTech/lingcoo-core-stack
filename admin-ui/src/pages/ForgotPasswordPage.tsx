@@ -74,7 +74,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="border-border/80 w-full">
+      <Card className="bg-card/95 border-border w-full shadow-xl backdrop-blur-xl">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">找回密码</CardTitle>
         </CardHeader>
