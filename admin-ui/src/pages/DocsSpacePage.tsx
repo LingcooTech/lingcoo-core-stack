@@ -118,7 +118,7 @@ export function DocsSpacePage() {
                   className={cn(
                     'block rounded-xl px-3 py-2 text-sm transition',
                     isActive
-                      ? 'bg-slate-900 text-white'
+                      ? 'bg-foreground text-background'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                   style={{ paddingLeft: `${12 + item.depth * 14}px` }}
@@ -150,7 +150,7 @@ export function DocsSpacePage() {
           </header>
 
           <section className="border-border bg-card rounded-xl border px-6 py-6 shadow-sm">
-            <div className="prose prose-slate prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed max-w-none">
+            <div className="prose prose-slate dark:prose-invert prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed max-w-none">
               <ReactMarkdown
                 rehypePlugins={[rehypeRaw]}
                 remarkPlugins={[remarkGfm]}

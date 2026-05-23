@@ -66,7 +66,7 @@ export function ContentDetailPage() {
       </header>
 
       <section className="border-border bg-card rounded-xl border p-6 shadow-sm">
-        <div className="prose prose-slate prose-headings:font-semibold prose-p:leading-relaxed max-w-none">
+        <div className="prose prose-slate dark:prose-invert prose-headings:font-semibold prose-p:leading-relaxed max-w-none">
           <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
             {item.content}
           </ReactMarkdown>

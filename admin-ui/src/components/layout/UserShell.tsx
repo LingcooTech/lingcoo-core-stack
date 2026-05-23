@@ -138,7 +138,7 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
-      <header className="bg-card/88 sticky top-0 z-30 border-b border-white/70 shadow-sm backdrop-blur-xl">
+      <header className="bg-card/88 border-border sticky top-0 z-30 border-b backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
@@ -265,7 +265,7 @@ export function UserShell() {
                 >
                   <Bell className="h-4 w-4" />
                   {unreadNotificationCount > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                    <span className="bg-destructive text-destructive-foreground absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold">
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </span>
                   ) : null}
@@ -299,7 +299,7 @@ export function UserShell() {
                       <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-5 py-5">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 shadow-sm transition"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -396,7 +396,7 @@ export function UserShell() {
                       <DropdownMenuSeparator className="my-3" />
 
                       <DropdownMenuItem
-                        className="rounded-xl px-3 py-3 text-[15px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
+                        className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-xl px-3 py-3 text-[15px]"
                         onSelect={(event) => {
                           event.preventDefault();
                           logout();
@@ -508,7 +508,7 @@ export function UserShell() {
                       <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-white/80 shadow-sm transition"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
                           onClick={() => navigate('/account?tab=profile')}
                           aria-label="打开账户设置"
                         >
@@ -542,7 +542,7 @@ export function UserShell() {
                           <Bell className="text-muted-foreground h-4 w-4" />
                           消息通知
                           {unreadNotificationCount > 0 ? (
-                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                            <span className="bg-destructive text-destructive-foreground ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold">
                               {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                             </span>
                           ) : null}
@@ -597,10 +597,10 @@ export function UserShell() {
                             管理后台
                           </button>
                         ) : null}
-                        <div className="mx-1 border-t border-slate-100" />
+                        <div className="border-border mx-1 border-t" />
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium text-rose-600 transition hover:bg-rose-50"
+                          className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition-colors"
                           onClick={logout}
                         >
                           <LogOut className="h-4 w-4" />

@@ -248,17 +248,13 @@
   }
 
   body {
-    @apply bg-slate-50 text-gray-900;
+    @apply bg-background text-foreground;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-feature-settings: 'kern' 1;
     -webkit-text-size-adjust: 100%;
-  }
-
-  .dark body {
-    @apply bg-gray-900 text-gray-200;
   }
 
   html {
