@@ -13,7 +13,7 @@ export function Shell() {
     <div
       className={cn(
         'grid min-h-screen w-full grid-cols-1',
-        collapsed ? 'lg:grid-cols-[72px,minmax(0,1fr)]' : 'lg:grid-cols-[240px,minmax(0,1fr)]',
+        collapsed ? 'lg:grid-cols-[72px_minmax(0,1fr)]' : 'lg:grid-cols-[240px_minmax(0,1fr)]',
       )}
     >
       <div className="hidden lg:block">
