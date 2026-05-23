@@ -16,7 +16,7 @@ export function OrderCard({
   syncing?: boolean;
 }) {
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5">
+    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">

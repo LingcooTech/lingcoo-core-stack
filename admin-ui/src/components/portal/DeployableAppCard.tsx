@@ -14,11 +14,11 @@ export function DeployableAppCard({
   featureCount: number;
 }) {
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5 transition hover:shadow-lg">
+    <Card className="border-border bg-card hover:border-foreground/20 rounded-lg transition-colors">
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-amber-50 p-3 text-amber-600">
+            <div className="bg-muted text-muted-foreground rounded-lg p-3">
               <ServerCog className="h-5 w-5" />
             </div>
             <div>

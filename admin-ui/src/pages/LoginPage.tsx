@@ -72,7 +72,7 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="from-primary shadow-primary/20 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br to-blue-500 text-base font-bold text-white shadow-lg">
+          <div className="bg-foreground text-background flex h-12 w-12 items-center justify-center rounded-lg text-base font-bold">
             FD
           </div>
           <div className="text-center">

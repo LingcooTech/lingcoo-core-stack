@@ -46,7 +46,7 @@ export function DocsHubPage() {
             <Link
               key={space.id}
               to={`/docs/${space.slug}`}
-              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm shadow-slate-900/5 transition"
+              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm transition"
             >
               <Card className="border-0 shadow-none">
                 <CardContent className="space-y-3 p-0">

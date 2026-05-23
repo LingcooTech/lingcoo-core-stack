@@ -39,7 +39,7 @@ export function EntitlementProductCard({
   const stateLabel = accessState === 'active' ? '有效授权' : '授权已失效';
 
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm shadow-gray-900/5">
+    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm">
       <CardHeader className="space-y-3">
         <div className="flex items-center gap-3">
           <div className="text-muted-foreground bg-muted rounded-lg p-3">

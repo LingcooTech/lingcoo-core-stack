@@ -296,10 +296,10 @@ export function AppCatalogPage() {
                   <img
                     src={app.iconUrl}
                     alt={app.name}
-                    className="border-border bg-card h-28 w-28 rounded-xl border object-contain p-1 shadow-lg"
+                    className="border-border bg-card h-28 w-28 rounded-xl border object-contain p-1"
                   />
                 ) : (
-                  <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-xl border text-3xl font-semibold shadow-lg">
+                  <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-xl border text-3xl font-semibold">
                     {getInitials(app.name)}
                   </div>
                 )}
@@ -492,7 +492,7 @@ export function AppCatalogPage() {
       <section className="py-1">
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1 lg:max-w-[calc(100%-300px-1.5rem)]">
-            <div className="border-border bg-card rounded-xl border p-2 shadow-sm shadow-slate-900/5">
+            <div className="border-border bg-card rounded-xl border p-2 shadow-sm">
               <nav className="flex gap-2 overflow-x-auto" aria-label="Tabs">
                 {visibleTabs.map((tab) => (
                   <button
@@ -520,7 +520,7 @@ export function AppCatalogPage() {
                     </ReactMarkdown>
                   </div>
                 ) : (
-                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm shadow-slate-900/5">
+                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
                     <p className="text-muted-foreground text-sm leading-7">
                       {app.description || app.tagline || '该应用暂未提供详细介绍。'}
                     </p>
@@ -534,7 +534,7 @@ export function AppCatalogPage() {
                     {app.highlights.map((highlight, index) => (
                       <div
                         key={index}
-                        className="border-border bg-card rounded-xl border p-5 shadow-sm shadow-slate-900/5"
+                        className="border-border bg-card rounded-xl border p-5 shadow-sm"
                       >
                         <div className="bg-card flex h-11 w-11 items-center justify-center rounded-xl text-xl shadow-sm">
                           {highlight.icon || '✦'}
@@ -612,7 +612,7 @@ export function AppCatalogPage() {
                     {appDetail.subscriptionPlans.map((plan, index) => (
                       <div
                         key={`${plan.period}-${plan.price}-${index}`}
-                        className="border-border bg-card rounded-xl border p-5 shadow-sm shadow-slate-900/5"
+                        className="border-border bg-card rounded-xl border p-5 shadow-sm"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <h3 className="text-foreground text-base font-semibold">
@@ -631,7 +631,7 @@ export function AppCatalogPage() {
                     ))}
                   </div>
                 ) : appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl ? (
-                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm shadow-slate-900/5">
+                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
                     <p className="text-muted-foreground text-sm leading-7">
                       当前应用采用站外购买方式
                       {appDetail.price ? `，参考价格为 ${appDetail.price}` : ''}
@@ -750,7 +750,7 @@ export function AppCatalogPage() {
 
           <aside className="w-full shrink-0 lg:w-[300px]">
             <div className="space-y-4 lg:sticky lg:top-20">
-              <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+              <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                 <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                   应用信息
                 </h3>
@@ -775,7 +775,7 @@ export function AppCatalogPage() {
               </div>
 
               {systemRequirements.length > 0 ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     系统要求
                   </h3>
@@ -791,7 +791,7 @@ export function AppCatalogPage() {
               ) : null}
 
               {technicalNotes ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     技术说明
                   </h3>
@@ -805,7 +805,7 @@ export function AppCatalogPage() {
 
               {appDetail.purchaseType === 'onsite_subscription' &&
               appDetail.subscriptionPlans.length > 0 ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     订阅套餐
                   </h3>
@@ -835,7 +835,7 @@ export function AppCatalogPage() {
               ) : null}
 
               {usageInstructions ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     使用说明
                   </h3>
@@ -848,7 +848,7 @@ export function AppCatalogPage() {
               ) : null}
 
               {notes ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm shadow-slate-900/5">
+                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     注意事项
                   </h3>

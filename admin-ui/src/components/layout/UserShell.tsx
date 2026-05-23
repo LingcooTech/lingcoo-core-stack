@@ -138,7 +138,7 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
-      <header className="bg-card/88 sticky top-0 z-30 border-b border-white/70 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+      <header className="bg-card/88 sticky top-0 z-30 border-b border-white/70 shadow-sm backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
@@ -150,7 +150,7 @@ export function UserShell() {
                     className="border-border/90 bg-card h-9 w-9 rounded-xl border object-contain p-1.5 shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-gray-950 via-gray-800 to-blue-600 text-[13px] font-semibold tracking-wide text-white shadow-lg shadow-gray-900/15">
+                  <div className="bg-foreground text-background flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-semibold tracking-wide">
                     {getInitials(siteName)}
                   </div>
                 )}
@@ -429,7 +429,7 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="border-border bg-card mt-3 rounded-xl border p-4 shadow-lg shadow-slate-900/5 lg:hidden">
+            <div className="border-border bg-card mt-3 rounded-xl border p-4 shadow-lg lg:hidden">
               <div className="space-y-3">
                 <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
                   导航

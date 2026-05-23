@@ -87,7 +87,7 @@ export function ContentHubPage() {
             <Link
               key={item.id}
               to={`/content/${item.slug}`}
-              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm shadow-slate-900/5 transition"
+              className="border-border bg-card hover:border-border block rounded-xl border p-5 shadow-sm transition"
             >
               <div className="space-y-3">
                 <div className="text-muted-foreground flex items-center justify-between gap-3 text-xs">

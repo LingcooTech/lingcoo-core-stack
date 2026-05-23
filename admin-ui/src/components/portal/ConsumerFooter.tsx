@@ -31,7 +31,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
                   className="border-border bg-card h-10 w-10 rounded-xl border object-contain p-1.5 shadow-sm"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 via-gray-800 to-blue-600 text-sm font-semibold tracking-wide text-white shadow-lg shadow-gray-900/10">
+                <div className="bg-foreground text-background flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold tracking-wide">
                   {getInitials(siteName)}
                 </div>
               )}
