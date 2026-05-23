@@ -11,6 +11,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { adminCommandItems } from '@/lib/foundation';
+import { resolveIcon } from '@/lib/section-icons';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -149,14 +150,19 @@ function PaletteItem({
   onSelect: (item: CommandItemModel) => void;
   recent?: boolean;
 }) {
+  const Icon = resolveIcon(item.icon);
   return (
     <CommandItem
       value={[item.label, item.note, ...item.keywords].join(' ')}
       onSelect={() => onSelect(item)}
       className="flex items-center gap-3"
     >
-      <span className="border-border bg-muted text-muted-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-semibold">
-        {recent ? <Clock className="h-3.5 w-3.5" strokeWidth={1.75} /> : item.icon}
+      <span className="border-border bg-muted text-muted-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md border">
+        {recent ? (
+          <Clock className="h-3.5 w-3.5" strokeWidth={1.75} />
+        ) : (
+          <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+        )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="text-foreground block text-[13px] font-medium leading-tight">

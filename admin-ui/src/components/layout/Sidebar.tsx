@@ -27,6 +27,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/lib/auth';
 import { adminNavigationGroups, adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
+import { resolveIcon } from '@/lib/section-icons';
 import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { cn, getInitials } from '@/lib/utils';
 
@@ -127,6 +128,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             )}
             {group.items.map((key) => {
               const meta = adminSectionMeta[key];
+              const Icon = resolveIcon(meta.icon);
               const isActive = currentSection === key;
               return (
                 <Link
@@ -146,20 +148,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   {isActive && !collapsed ? (
                     <span className="bg-primary absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r" />
                   ) : null}
-                  {collapsed ? (
-                    <span
-                      className={cn(
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[13px] font-semibold transition-colors',
-                        isActive
-                          ? 'bg-primary/10 text-primary'
-                          : 'bg-muted/60 text-muted-foreground/90',
-                      )}
-                    >
-                      {meta.navAbbr}
-                    </span>
-                  ) : (
-                    <span className="truncate">{meta.navTitle}</span>
-                  )}
+                  <Icon
+                    className={cn(
+                      'shrink-0',
+                      collapsed ? 'h-[18px] w-[18px]' : 'h-4 w-4',
+                      isActive ? 'text-primary' : 'text-muted-foreground/70',
+                    )}
+                    strokeWidth={1.75}
+                  />
+                  {!collapsed ? <span className="truncate">{meta.navTitle}</span> : null}
                 </Link>
               );
             })}
