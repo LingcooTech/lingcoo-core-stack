@@ -40,7 +40,6 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { EntitlementProductCard } from '@/components/portal/EntitlementProductCard';
 import { OrderCard } from '@/components/portal/OrderCard';
 import { StatusPill } from '@/components/shared/StatusPill';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -94,6 +93,21 @@ function isEffectiveEntitlement(item: HydratedEntitlement) {
 
 function normalizeAccountTab(value: string | null): AccountTab {
   return accountTabValues.includes(value as AccountTab) ? (value as AccountTab) : 'profile';
+}
+
+function ProfileInfoCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="px-5 py-4">
+      <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+        {label}
+      </p>
+      <p
+        className={`text-foreground mt-2 break-all text-[13px] font-medium ${mono ? 'font-mono' : ''}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 function AccountProfileTab() {
@@ -197,34 +211,30 @@ function AccountProfileTab() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
-          <p className="text-muted-foreground text-sm font-medium">登录邮箱</p>
-          <p className="text-foreground mt-2 break-all text-sm font-semibold">
-            {currentUser.email}
+    <div className="space-y-6">
+      <div className="border-border bg-card grid grid-cols-1 divide-y rounded-xl border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <ProfileInfoCell label="登录邮箱" value={currentUser.email} mono />
+        <ProfileInfoCell
+          label="账户角色"
+          value={currentUser.role === 'admin' ? '管理员' : '普通用户'}
+        />
+        <div className="px-5 py-4">
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+            邮箱验证
           </p>
-        </div>
-        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
-          <p className="text-muted-foreground text-sm font-medium">账户角色</p>
-          <p className="text-foreground mt-2 text-sm font-semibold">
-            {currentUser.role === 'admin' ? '管理员' : '普通用户'}
-          </p>
-        </div>
-        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
-          <p className="text-muted-foreground text-sm font-medium">邮箱验证</p>
           <div className="mt-2">
-            <Badge variant={currentUser.emailVerified ? 'default' : 'secondary'}>
-              {currentUser.emailVerified ? '已验证' : '待验证'}
-            </Badge>
+            <StatusPill
+              tone={currentUser.emailVerified ? 'ok' : 'warn'}
+              label={currentUser.emailVerified ? '已验证' : '待验证'}
+            />
           </div>
         </div>
       </div>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <Card className="border-border bg-card rounded-xl shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl tracking-tight">个人资料</CardTitle>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">个人资料</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...profileForm}>
@@ -232,7 +242,7 @@ function AccountProfileTab() {
                 onSubmit={profileForm.handleSubmit((values) =>
                   updateProfileMutation.mutate(values),
                 )}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <FormField
                   control={profileForm.control}
@@ -248,7 +258,7 @@ function AccountProfileTab() {
                   )}
                 />
 
-                <Button type="submit" disabled={updateProfileMutation.isPending}>
+                <Button type="submit" size="sm" disabled={updateProfileMutation.isPending}>
                   {updateProfileMutation.isPending ? '保存中...' : '保存个人资料'}
                 </Button>
               </form>
@@ -256,17 +266,17 @@ function AccountProfileTab() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card rounded-xl shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl tracking-tight">密码与安全</CardTitle>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">密码与安全</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-5">
             <Form {...passwordForm}>
               <form
                 onSubmit={passwordForm.handleSubmit((values) =>
                   changePasswordMutation.mutate(values),
                 )}
-                className="space-y-5"
+                className="space-y-4"
               >
                 <FormField
                   control={passwordForm.control}
@@ -308,22 +318,27 @@ function AccountProfileTab() {
                   )}
                 />
 
-                <Button type="submit" disabled={changePasswordMutation.isPending}>
+                <Button type="submit" size="sm" disabled={changePasswordMutation.isPending}>
                   {changePasswordMutation.isPending ? '修改中...' : '修改密码'}
                 </Button>
               </form>
             </Form>
 
-            <div className="border-border bg-muted/70 rounded-lg border border-dashed p-4">
-              <p className="text-foreground text-sm font-semibold">忘记当前密码？</p>
+            <div className="border-border flex items-center justify-between gap-3 border-t pt-4">
+              <div className="min-w-0">
+                <p className="text-foreground text-[13px] font-medium">忘记当前密码？</p>
+                <p className="text-muted-foreground mt-0.5 text-[12px]">
+                  我们会向 {currentUser.email} 发送重置链接。
+                </p>
+              </div>
               <Button
                 type="button"
+                size="sm"
                 variant="outline"
-                className="mt-3"
                 disabled={sendResetEmailMutation.isPending}
                 onClick={() => sendResetEmailMutation.mutate()}
               >
-                {sendResetEmailMutation.isPending ? '发送中...' : '发送找回密码邮件'}
+                {sendResetEmailMutation.isPending ? '发送中...' : '发送邮件'}
               </Button>
             </div>
           </CardContent>
@@ -353,42 +368,43 @@ function AccountOrdersTab() {
   const pendingOrders = orders.filter((order) => order.status !== 'paid');
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <div className="space-y-6">
+      <div className="border-border bg-card grid grid-cols-3 divide-x rounded-xl border">
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
           { label: '待同步', value: String(pendingOrders.length) },
         ].map((item) => (
-          <div
-            key={item.label}
-            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
-          >
-            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+          <div key={item.label} className="px-5 py-4">
+            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+              {item.label}
+            </p>
+            <p className="text-foreground mt-1.5 text-[24px] font-semibold tabular-nums leading-none">
               {item.value}
             </p>
           </div>
         ))}
       </div>
 
-      <section className="space-y-5">
+      <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">我的订单</h2>
-          <p className="text-muted-foreground text-sm">
-            已支付 {paidOrders.length} 笔，累计{' '}
-            {formatAmount(
-              paidOrders.reduce((sum, order) => sum + order.amount, 0),
-              paidOrders[0]?.currency ?? 'CNY',
-            )}
-          </p>
+          <h2 className="text-foreground text-base font-semibold">订单记录</h2>
+          {paidOrders.length > 0 && (
+            <p className="text-muted-foreground text-[12px] tabular-nums">
+              已支付 {paidOrders.length} 笔 · 累计{' '}
+              {formatAmount(
+                paidOrders.reduce((sum, order) => sum + order.amount, 0),
+                paidOrders[0]?.currency ?? 'CNY',
+              )}
+            </p>
+          )}
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {ordersQuery.isLoading ? (
-            <Card className="border-border bg-card rounded-xl">
+            <Card>
               <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-                <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+                <LoaderCircle className="text-muted-foreground h-5 w-5 animate-spin" />
                 正在加载订单记录...
               </CardContent>
             </Card>
@@ -764,20 +780,19 @@ function AccountAppsTab() {
   const activeSummaryMap = new Map(summary.map((entry) => [entry.appCode, entry]));
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-6">
+      <div className="border-border bg-card grid grid-cols-2 divide-x rounded-xl border xl:grid-cols-4">
         {[
           { label: '已购应用', value: String(summary.length) },
           { label: '激活授权', value: String(activeItems.length) },
           { label: '可部署应用', value: String(deployableCount) },
           { label: '失效/撤销', value: String(inactiveItems.length) },
         ].map((item) => (
-          <div
-            key={item.label}
-            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
-          >
-            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+          <div key={item.label} className="px-5 py-4">
+            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+              {item.label}
+            </p>
+            <p className="text-foreground mt-1.5 text-[24px] font-semibold tabular-nums leading-none">
               {item.value}
             </p>
           </div>
@@ -785,9 +800,9 @@ function AccountAppsTab() {
       </div>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="border-border bg-card rounded-xl">
+        <Card>
           <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+            <LoaderCircle className="text-muted-foreground h-5 w-5 animate-spin" />
             正在加载已购应用...
           </CardContent>
         </Card>
@@ -805,9 +820,9 @@ function AccountAppsTab() {
           }
         />
       ) : (
-        <section className="space-y-5">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">我的应用</h2>
-          <div className="grid gap-5 lg:grid-cols-2">
+        <section className="space-y-4">
+          <h2 className="text-foreground text-base font-semibold">已购产品</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
             {appCodes.map((appCode) => {
               const entry = activeSummaryMap.get(appCode) ?? null;
               const relatedItems = items.filter((item) => item.app?.code === appCode);
@@ -859,31 +874,35 @@ export function AccountCenterPage() {
   const currentTab = normalizeAccountTab(searchParams.get('tab'));
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <h1 className="text-foreground text-3xl font-semibold tracking-tight">个人中心</h1>
-      </div>
+    <div className="space-y-6">
+      <header className="space-y-3 pt-2">
+        <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+          <UserCircle2 className="h-3.5 w-3.5" />
+          个人中心
+        </div>
+        <h1 className="text-foreground text-3xl font-semibold tracking-tight">账户与订单</h1>
+      </header>
 
       <Tabs
         value={currentTab}
         onValueChange={(nextValue) => setSearchParams({ tab: normalizeAccountTab(nextValue) })}
-        className="space-y-5"
+        className="space-y-6"
       >
-        <div className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm">
-          <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
-            <TabsTrigger value="profile" className="min-w-[108px] rounded-md">
+        <div className="border-border bg-background/80 sticky top-12 z-10 -mx-1 border-b px-1 py-2 backdrop-blur-md">
+          <TabsList className="h-auto w-full justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="profile" className="text-[13px]">
               个人资料
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="min-w-[108px] rounded-md">
+            <TabsTrigger value="notifications" className="text-[13px]">
               消息通知
             </TabsTrigger>
-            <TabsTrigger value="orders" className="min-w-[108px] rounded-md">
+            <TabsTrigger value="orders" className="text-[13px]">
               我的订单
             </TabsTrigger>
-            <TabsTrigger value="apps" className="min-w-[108px] rounded-md">
+            <TabsTrigger value="apps" className="text-[13px]">
               我的应用
             </TabsTrigger>
-            <TabsTrigger value="tickets" className="min-w-[108px] rounded-md">
+            <TabsTrigger value="tickets" className="text-[13px]">
               我的工单
             </TabsTrigger>
           </TabsList>
