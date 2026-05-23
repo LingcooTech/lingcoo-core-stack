@@ -137,7 +137,7 @@ export function UserShell() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.06),_transparent_24%),linear-gradient(180deg,hsl(222.2_84%_4.9%)_0%,hsl(217.2_32.6%_10%)_46%,hsl(222.2_84%_4.9%)_100%)]">
       <header className="bg-card/88 border-border sticky top-0 z-30 border-b backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">

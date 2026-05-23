@@ -7,46 +7,34 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
 import { getPublicDocPage } from '@/api/docs';
-import type { DocPageTreeNode } from '@/api/types';
+import { ArticleToc } from '@/components/portal/ArticleToc';
+import { DocsFeedback } from '@/components/docs/DocsFeedback';
+import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { EmptyState } from '@/components/portal/EmptyState';
+import { CodeBlock } from '@/components/shared/CodeBlock';
 import { Button } from '@/components/ui/button';
+import { extractToc, headingId } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 
-function flattenDocTree(
-  nodes: DocPageTreeNode[],
-  depth = 0,
-): Array<DocPageTreeNode & { depth: number }> {
-  const result: Array<DocPageTreeNode & { depth: number }> = [];
-  for (const node of nodes) {
-    result.push({ ...node, depth });
-    result.push(...flattenDocTree(node.children, depth + 1));
+function resolveEditUrl(space: { meta?: Record<string, unknown> }, pagePath: string) {
+  const editBase = space.meta?.editBaseUrl;
+  if (typeof editBase !== 'string' || !editBase.trim()) return null;
+  return `${editBase.replace(/\/$/, '')}/${pagePath}.md`;
+}
+
+function buildBreadcrumb(spaceTitle: string, pagePath: string, pageTitle: string) {
+  const segments = pagePath.split('/').filter(Boolean);
+  if (segments.length <= 1) {
+    return [
+      { label: spaceTitle, isCurrent: false },
+      { label: pageTitle, isCurrent: true },
+    ];
   }
-  return result;
-}
-
-function extractToc(content: string) {
-  return content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => /^#{2,4}\s+/.test(line))
-    .map((line) => {
-      const matched = line.match(/^(#{2,4})\s+(.+)$/);
-      const level = matched?.[1]?.length ?? 2;
-      const text = matched?.[2]?.trim() ?? '';
-      const id = text
-        .toLowerCase()
-        .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-      return { level, text, id };
-    })
-    .filter((item) => item.text && item.id);
-}
-
-function headingId(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return [
+    { label: spaceTitle, isCurrent: false },
+    ...segments.slice(0, -1).map((seg) => ({ label: seg, isCurrent: false })),
+    { label: pageTitle, isCurrent: true },
+  ];
 }
 
 export function DocsSpacePage() {
@@ -88,125 +76,140 @@ export function DocsSpacePage() {
   }
 
   const { space, tree, page, previousPage, nextPage } = pageQuery.data;
-  const flatTree = flattenDocTree(tree);
+  const editUrl = resolveEditUrl(space, page.path);
+  const breadcrumb = buildBreadcrumb(space.title, page.path, page.title);
 
   return (
-    <div className="space-y-5">
-      <Button variant="ghost" asChild className="text-muted-foreground px-0">
-        <Link to="/docs">
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          返回文档中心
-        </Link>
-      </Button>
-
-      <div className="grid gap-6 lg:grid-cols-[260px,minmax(0,1fr),220px]">
-        <aside className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-          <div className="border-border border-b px-4 py-4">
-            <p className="text-foreground text-sm font-semibold">{space.title}</p>
-            {space.description ? (
-              <p className="text-muted-foreground mt-1 text-xs leading-5">{space.description}</p>
-            ) : null}
-          </div>
-          <nav className="space-y-1 px-2 py-3">
-            {flatTree.map((item) => {
-              const href = `/docs/${space.slug}/${item.path}`;
-              const isActive = page.path === item.path;
-              return (
-                <Link
-                  key={item.id}
-                  to={href}
-                  className={cn(
-                    'block rounded-xl px-3 py-2 text-sm transition',
-                    isActive
-                      ? 'bg-foreground text-background'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                  style={{ paddingLeft: `${12 + item.depth * 14}px` }}
-                >
-                  {item.title}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-
-        <main className="space-y-5">
-          <header className="border-border bg-card rounded-xl border px-5 py-5 shadow-sm">
-            <div className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Link to="/docs" className="hover:text-foreground">
-                文档中心
-              </Link>
-              <ChevronRight className="h-3 w-3" />
-              <span>{space.title}</span>
-            </div>
-            <h1 className="text-foreground mt-3 text-3xl font-semibold tracking-tight">
-              {page.title}
-            </h1>
-            {page.summary ? (
-              <p className="text-muted-foreground mt-2 max-w-3xl text-sm leading-7">
-                {page.summary}
-              </p>
-            ) : null}
-          </header>
-
-          <section className="border-border bg-card rounded-xl border px-6 py-6 shadow-sm">
-            <div className="prose prose-slate dark:prose-invert prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed max-w-none">
-              <ReactMarkdown
-                rehypePlugins={[rehypeRaw]}
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h2: ({ children }) => <h2 id={headingId(String(children))}>{children}</h2>,
-                  h3: ({ children }) => <h3 id={headingId(String(children))}>{children}</h3>,
-                  h4: ({ children }) => <h4 id={headingId(String(children))}>{children}</h4>,
-                }}
-              >
-                {page.content}
-              </ReactMarkdown>
-            </div>
-          </section>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {previousPage ? (
-              <Button variant="outline" asChild>
-                <Link to={`/docs/${space.slug}/${previousPage.path}`}>
-                  上一页：{previousPage.title}
-                </Link>
-              </Button>
-            ) : (
-              <span />
-            )}
-            {nextPage ? (
-              <Button variant="outline" asChild>
-                <Link to={`/docs/${space.slug}/${nextPage.path}`}>下一页：{nextPage.title}</Link>
-              </Button>
-            ) : null}
-          </div>
-        </main>
-
-        <aside className="hidden lg:block">
-          <div className="border-border bg-card sticky top-20 rounded-xl border px-4 py-4 shadow-sm">
-            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.16em]">
-              目录
-            </p>
-            <div className="mt-3 space-y-2">
-              {toc.length === 0 ? (
-                <p className="text-muted-foreground text-sm">当前页暂无二级标题。</p>
-              ) : (
-                toc.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`${location.pathname}#${item.id}`}
-                    className="text-muted-foreground hover:text-foreground block text-sm transition"
-                    style={{ paddingLeft: `${(item.level - 2) * 12}px` }}
-                  >
-                    {item.text}
-                  </a>
-                ))
-              )}
-            </div>
-          </div>
-        </aside>
+    <div className="lg:grid lg:grid-cols-[260px,minmax(0,1fr),220px] lg:gap-8">
+      <div className="hidden lg:block">
+        <div className="sticky top-[88px] max-h-[calc(100vh-104px)]">
+          <DocsSidebar
+            spaceTitle={space.title}
+            spaceDescription={space.description}
+            spaceSlug={space.slug}
+            tree={tree}
+            currentPath={page.path}
+          />
+        </div>
       </div>
+
+      <main className="min-w-0 space-y-6 lg:max-w-[760px]">
+        <nav
+          className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs"
+          aria-label="面包屑"
+        >
+          <Link to="/docs" className="hover:text-foreground">
+            文档中心
+          </Link>
+          {breadcrumb.map((crumb, index) => (
+            <span key={`${crumb.label}-${index}`} className="inline-flex items-center gap-2">
+              <ChevronRight className="h-3 w-3" />
+              <span className={crumb.isCurrent ? 'text-foreground font-medium' : ''}>
+                {crumb.label}
+              </span>
+            </span>
+          ))}
+        </nav>
+
+        <header className="space-y-3">
+          <h1 className="text-foreground text-3xl font-semibold leading-tight tracking-tight md:text-4xl md:leading-[1.2]">
+            {page.title}
+          </h1>
+          {page.summary ? (
+            <p className="text-muted-foreground text-[15px] leading-7">{page.summary}</p>
+          ) : null}
+        </header>
+
+        <section
+          className={cn(
+            'prose prose-slate dark:prose-invert prose-lg max-w-none',
+            'prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight',
+            'prose-h2:mt-12 prose-h2:mb-4 prose-h2:text-[24px]',
+            'prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-[20px]',
+            'prose-p:leading-[1.85] prose-p:text-[16px]',
+            'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
+            'prose-blockquote:border-l-primary prose-blockquote:bg-muted/40 prose-blockquote:not-italic prose-blockquote:px-5 prose-blockquote:py-3 prose-blockquote:rounded-r-lg',
+            'prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.92em]',
+            'prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0',
+            'prose-img:rounded-xl prose-img:shadow-sm prose-img:my-8',
+            'prose-li:my-1.5 prose-li:leading-relaxed',
+          )}
+        >
+          <ReactMarkdown
+            rehypePlugins={[rehypeRaw]}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h2: ({ children }) => <h2 id={headingId(String(children))}>{children}</h2>,
+              h3: ({ children }) => <h3 id={headingId(String(children))}>{children}</h3>,
+              h4: ({ children }) => <h4 id={headingId(String(children))}>{children}</h4>,
+              code: ({
+                inline,
+                className,
+                children,
+                ...rest
+              }: {
+                inline?: boolean;
+                className?: string;
+                children?: React.ReactNode;
+              } & React.HTMLAttributes<HTMLElement>) => {
+                if (inline) {
+                  return (
+                    <code className={className} {...rest}>
+                      {children}
+                    </code>
+                  );
+                }
+                const language = /language-(\w+)/.exec(className ?? '')?.[1];
+                return <CodeBlock language={language}>{children}</CodeBlock>;
+              },
+              img: ({ src, alt }) => (
+                <img src={src} alt={alt} loading="lazy" className="rounded-xl shadow-sm" />
+              ),
+            }}
+          >
+            {page.content}
+          </ReactMarkdown>
+        </section>
+
+        <DocsFeedback spaceSlug={space.slug} pagePath={page.path} editUrl={editUrl} />
+
+        <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t pt-6">
+          {previousPage ? (
+            <Button variant="outline" asChild>
+              <Link
+                to={`/docs/${space.slug}/${previousPage.path}`}
+                className="max-w-[280px] text-left"
+              >
+                <span className="block w-full">
+                  <span className="text-muted-foreground block text-[11px]">上一页</span>
+                  <span className="block truncate text-sm font-medium">{previousPage.title}</span>
+                </span>
+              </Link>
+            </Button>
+          ) : (
+            <span />
+          )}
+          {nextPage ? (
+            <Button variant="outline" asChild>
+              <Link
+                to={`/docs/${space.slug}/${nextPage.path}`}
+                className="max-w-[280px] text-right"
+              >
+                <span className="block w-full">
+                  <span className="text-muted-foreground block text-[11px]">下一页</span>
+                  <span className="block truncate text-sm font-medium">{nextPage.title}</span>
+                </span>
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </main>
+
+      <aside className="hidden lg:block">
+        <div className="sticky top-[88px]">
+          <ArticleToc items={toc} pathname={location.pathname} />
+        </div>
+      </aside>
     </div>
   );
 }

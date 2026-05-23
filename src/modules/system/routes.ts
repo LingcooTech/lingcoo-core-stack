@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { PublicPagesSettingsService } from '../../lib/public-pages-settings';
 import { SiteSettingsService } from '../../lib/site-settings';
 import { moduleNames } from '../names';
 
@@ -6,7 +7,7 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
   app.get('/health', async () => {
     return {
       status: 'ok',
-      version: app.appEnv.APP_VERSION
+      version: app.appEnv.APP_VERSION,
     };
   });
 
@@ -16,7 +17,7 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
 
     return {
       status: 'ready',
-      version: app.appEnv.APP_VERSION
+      version: app.appEnv.APP_VERSION,
     };
   });
 
@@ -24,17 +25,21 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
     return {
       name: app.appEnv.APP_NAME,
       version: app.appEnv.APP_VERSION,
-      environment: app.appEnv.NODE_ENV
+      environment: app.appEnv.NODE_ENV,
     };
   });
 
   app.get('/v1/system/modules', async () => {
     return {
-      items: [...moduleNames]
+      items: [...moduleNames],
     };
   });
 
   app.get('/v1/system/site-settings', async () => {
-    return new SiteSettingsService(app.db, app.appEnv).getPublicSettings();
+    const [site, publicPages] = await Promise.all([
+      new SiteSettingsService(app.db, app.appEnv).getPublicSettings(),
+      new PublicPagesSettingsService(app.db, app.appEnv).getPublicSettings(),
+    ]);
+    return { ...site, publicPages };
   });
 };

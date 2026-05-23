@@ -136,6 +136,17 @@ export const siteSettingsSchema = z.object({
   footerLinks: z.array(siteFooterLinkSchema).max(12).optional(),
 });
 
+const hubContentSchema = z.object({
+  eyebrow: optionalTrimmedString(60),
+  title: optionalTrimmedString(120),
+  description: optionalTrimmedString(500),
+});
+
+export const publicPagesSettingsSchema = z.object({
+  contentHub: hubContentSchema.optional(),
+  docsHub: hubContentSchema.optional(),
+});
+
 export const contentImportSettingsSchema = z.object({
   wordpress: z
     .object({

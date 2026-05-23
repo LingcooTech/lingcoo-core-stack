@@ -7,6 +7,7 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { DeliverySettingsService } from '../../lib/delivery-settings';
 import { ContentImportSettingsService } from '../../lib/content-import-settings';
 import { PaymentSettingsService } from '../../lib/payment-settings';
+import { PublicPagesSettingsService } from '../../lib/public-pages-settings';
 import { QiniuSettingsService } from '../../lib/qiniu-settings';
 import { SiteSettingsService } from '../../lib/site-settings';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
@@ -31,11 +32,12 @@ import {
   qiniuListImagesQuerySchema,
   qiniuSettingsSchema,
   siteSettingsSchema,
+  publicPagesSettingsSchema,
   qiniuTestConnectionSchema,
   qiniuUploadTokenSchema,
   smtpSettingsSchema,
   smtpTestEmailSchema,
-  wechatPaymentSettingsSchema
+  wechatPaymentSettingsSchema,
 } from './schemas';
 
 // Resolve admin-ui/dist relative to this module's compiled location
@@ -46,7 +48,8 @@ let spaHtml: string;
 try {
   spaHtml = readFileSync(path.join(adminUiDist, 'index.html'), 'utf-8');
 } catch {
-  spaHtml = '<!DOCTYPE html><html><body><p>Admin UI not built. Run <code>npm run build:admin</code>.</p></body></html>';
+  spaHtml =
+    '<!DOCTYPE html><html><body><p>Admin UI not built. Run <code>npm run build:admin</code>.</p></body></html>';
 }
 
 const SPA_CSP = [
@@ -54,7 +57,7 @@ const SPA_CSP = [
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https:"
+  "connect-src 'self' https:",
 ].join('; ');
 
 export const adminRoutes: FastifyPluginAsync = async (app) => {
@@ -64,15 +67,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     await app.register(fastifyStatic, {
       root: assetsDir,
       prefix: '/assets/',
-      decorateReply: false
+      decorateReply: false,
     });
   }
 
   // SPA handler — serves index.html for all /admin* HTML routes
   const sendSPA = async (_request: unknown, reply: FastifyReply) => {
-    reply
-      .type('text/html; charset=utf-8')
-      .header('Content-Security-Policy', SPA_CSP);
+    reply.type('text/html; charset=utf-8').header('Content-Security-Policy', SPA_CSP);
     return reply.send(spaHtml);
   };
 
@@ -123,7 +124,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/bootstrap-status', async () => {
     return {
-      hasAdmin: (await new AuthRepository(app.db).countAdmins()) > 0
+      hasAdmin: (await new AuthRepository(app.db).countAdmins()) > 0,
     };
   });
 
@@ -143,36 +144,60 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new SiteSettingsService(app.db, app.appEnv).getOverview();
   });
 
-  app.get('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async () => {
-    return new ContentImportSettingsService(app.db, app.appEnv).getOverview();
-  });
+  app.get(
+    '/v1/admin/system-settings/content-import',
+    { preHandler: app.requireAdmin },
+    async () => {
+      return new ContentImportSettingsService(app.db, app.appEnv).getOverview();
+    },
+  );
 
-  app.get('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminAppCodeParamsSchema.parse(request.params);
-    return new DeliverySettingsService(app.db, app.appEnv).getOverview(params.appCode);
-  });
+  app.get(
+    '/v1/admin/delivery-settings/:appCode',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminAppCodeParamsSchema.parse(request.params);
+      return new DeliverySettingsService(app.db, app.appEnv).getOverview(params.appCode);
+    },
+  );
 
-  app.put('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminAppCodeParamsSchema.parse(request.params);
-    const payload = adminUpsertDeliverySettingsSchema.parse(request.body);
-    return new DeliverySettingsService(app.db, app.appEnv).upsertSettings(params.appCode, payload, request.user.sub);
-  });
+  app.put(
+    '/v1/admin/delivery-settings/:appCode',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminAppCodeParamsSchema.parse(request.params);
+      const payload = adminUpsertDeliverySettingsSchema.parse(request.body);
+      return new DeliverySettingsService(app.db, app.appEnv).upsertSettings(
+        params.appCode,
+        payload,
+        request.user.sub,
+      );
+    },
+  );
 
-  app.delete('/v1/admin/delivery-settings/:appCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminAppCodeParamsSchema.parse(request.params);
-    await new DeliverySettingsService(app.db, app.appEnv).deleteSettings(params.appCode);
-    return { ok: true };
-  });
+  app.delete(
+    '/v1/admin/delivery-settings/:appCode',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminAppCodeParamsSchema.parse(request.params);
+      await new DeliverySettingsService(app.db, app.appEnv).deleteSettings(params.appCode);
+      return { ok: true };
+    },
+  );
 
   app.get('/v1/admin/orders', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListOrdersQuerySchema.parse(request.query);
     return new AdminService(app.db, app.appEnv).listOrders(query);
   });
 
-  app.post('/v1/admin/orders/:orderNo/reconcile', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminOrderParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).reconcileOrder(params.orderNo);
-  });
+  app.post(
+    '/v1/admin/orders/:orderNo/reconcile',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminOrderParamsSchema.parse(request.params);
+      return new AdminService(app.db, app.appEnv).reconcileOrder(params.orderNo);
+    },
+  );
 
   app.get('/v1/admin/orders/:orderNo', { preHandler: app.requireAdmin }, async (request) => {
     const params = adminOrderParamsSchema.parse(request.params);
@@ -194,10 +219,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new AdminService(app.db, app.appEnv).grantEntitlement(payload, request.user.sub);
   });
 
-  app.post('/v1/admin/entitlements/:entitlementId/revoke', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminEntitlementParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).revokeEntitlement(params.entitlementId, request.user.sub);
-  });
+  app.post(
+    '/v1/admin/entitlements/:entitlementId/revoke',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminEntitlementParamsSchema.parse(request.params);
+      return new AdminService(app.db, app.appEnv).revokeEntitlement(
+        params.entitlementId,
+        request.user.sub,
+      );
+    },
+  );
 
   app.get('/v1/admin/events', { preHandler: app.requireAdmin }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
@@ -209,31 +241,53 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new AdminService(app.db, app.appEnv).listBillingWebhookEvents(query);
   });
 
-  app.put('/v1/admin/payment-settings/wechat', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = wechatPaymentSettingsSchema.parse(request.body);
-    return new PaymentSettingsService(app.db, app.appEnv).upsertWechatSettings(payload, request.user.sub);
-  });
+  app.put(
+    '/v1/admin/payment-settings/wechat',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = wechatPaymentSettingsSchema.parse(request.body);
+      return new PaymentSettingsService(app.db, app.appEnv).upsertWechatSettings(
+        payload,
+        request.user.sub,
+      );
+    },
+  );
 
-  app.put('/v1/admin/payment-settings/alipay', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = alipayPaymentSettingsSchema.parse(request.body);
-    return new PaymentSettingsService(app.db, app.appEnv).upsertAlipaySettings(payload, request.user.sub);
-  });
+  app.put(
+    '/v1/admin/payment-settings/alipay',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = alipayPaymentSettingsSchema.parse(request.body);
+      return new PaymentSettingsService(app.db, app.appEnv).upsertAlipaySettings(
+        payload,
+        request.user.sub,
+      );
+    },
+  );
 
-  app.delete('/v1/admin/payment-settings/:provider', { preHandler: app.requireAdmin }, async (request) => {
-    const params = paymentProviderParamsSchema.parse(request.params);
-    await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
-    return { ok: true };
-  });
+  app.delete(
+    '/v1/admin/payment-settings/:provider',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = paymentProviderParamsSchema.parse(request.params);
+      await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
+      return { ok: true };
+    },
+  );
 
   app.put('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async (request) => {
     const payload = smtpSettingsSchema.parse(request.body);
     return new SmtpSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
   });
 
-  app.post('/v1/admin/system-settings/smtp/test', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = smtpTestEmailSchema.parse(request.body);
-    return new SmtpSettingsService(app.db, app.appEnv).sendTestEmail(payload);
-  });
+  app.post(
+    '/v1/admin/system-settings/smtp/test',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = smtpTestEmailSchema.parse(request.body);
+      return new SmtpSettingsService(app.db, app.appEnv).sendTestEmail(payload);
+    },
+  );
 
   app.delete('/v1/admin/system-settings/smtp', { preHandler: app.requireAdmin }, async () => {
     await new SmtpSettingsService(app.db, app.appEnv).clearSettings();
@@ -245,10 +299,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new QiniuSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
   });
 
-  app.post('/v1/admin/system-settings/qiniu/test', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = qiniuTestConnectionSchema.parse(request.body);
-    return new QiniuSettingsService(app.db, app.appEnv).testConnection(payload);
-  });
+  app.post(
+    '/v1/admin/system-settings/qiniu/test',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = qiniuTestConnectionSchema.parse(request.body);
+      return new QiniuSettingsService(app.db, app.appEnv).testConnection(payload);
+    },
+  );
 
   app.delete('/v1/admin/system-settings/qiniu', { preHandler: app.requireAdmin }, async () => {
     await new QiniuSettingsService(app.db, app.appEnv).clearSettings();
@@ -265,35 +323,83 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return { ok: true };
   });
 
-  app.put('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = contentImportSettingsSchema.parse(request.body);
-    return new ContentImportSettingsService(app.db, app.appEnv).upsertSettings(payload, request.user.sub);
+  app.get('/v1/admin/system-settings/public-pages', { preHandler: app.requireAdmin }, async () => {
+    return new PublicPagesSettingsService(app.db, app.appEnv).getOverview();
   });
 
-  app.delete('/v1/admin/system-settings/content-import', { preHandler: app.requireAdmin }, async () => {
-    await new ContentImportSettingsService(app.db, app.appEnv).clearSettings();
-    return { ok: true };
-  });
+  app.put(
+    '/v1/admin/system-settings/public-pages',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = publicPagesSettingsSchema.parse(request.body);
+      return new PublicPagesSettingsService(app.db, app.appEnv).upsertSettings(
+        payload,
+        request.user.sub,
+      );
+    },
+  );
 
-  app.post('/v1/admin/system-settings/content-import/wordpress/test', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = contentImportWordPressTestSchema.parse(request.body);
-    return new ContentImportSettingsService(app.db, app.appEnv).testWordPressConnection(payload);
-  });
+  app.delete(
+    '/v1/admin/system-settings/public-pages',
+    { preHandler: app.requireAdmin },
+    async () => {
+      await new PublicPagesSettingsService(app.db, app.appEnv).clearSettings();
+      return { ok: true };
+    },
+  );
 
-  app.post('/v1/admin/system-settings/content-import/notion/test', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = contentImportNotionTestSchema.parse(request.body);
-    return new ContentImportSettingsService(app.db, app.appEnv).testNotionConnection(payload);
-  });
+  app.put(
+    '/v1/admin/system-settings/content-import',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = contentImportSettingsSchema.parse(request.body);
+      return new ContentImportSettingsService(app.db, app.appEnv).upsertSettings(
+        payload,
+        request.user.sub,
+      );
+    },
+  );
+
+  app.delete(
+    '/v1/admin/system-settings/content-import',
+    { preHandler: app.requireAdmin },
+    async () => {
+      await new ContentImportSettingsService(app.db, app.appEnv).clearSettings();
+      return { ok: true };
+    },
+  );
+
+  app.post(
+    '/v1/admin/system-settings/content-import/wordpress/test',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = contentImportWordPressTestSchema.parse(request.body);
+      return new ContentImportSettingsService(app.db, app.appEnv).testWordPressConnection(payload);
+    },
+  );
+
+  app.post(
+    '/v1/admin/system-settings/content-import/notion/test',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = contentImportNotionTestSchema.parse(request.body);
+      return new ContentImportSettingsService(app.db, app.appEnv).testNotionConnection(payload);
+    },
+  );
 
   app.get('/v1/admin/media/qiniu/images', { preHandler: app.requireAdmin }, async (request) => {
     const query = qiniuListImagesQuerySchema.parse(request.query);
     return new QiniuSettingsService(app.db, app.appEnv).listImages(query);
   });
 
-  app.post('/v1/admin/media/qiniu/upload-token', { preHandler: app.requireAdmin }, async (request) => {
-    const payload = qiniuUploadTokenSchema.parse(request.body);
-    return new QiniuSettingsService(app.db, app.appEnv).createUploadToken(payload);
-  });
+  app.post(
+    '/v1/admin/media/qiniu/upload-token',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const payload = qiniuUploadTokenSchema.parse(request.body);
+      return new QiniuSettingsService(app.db, app.appEnv).createUploadToken(payload);
+    },
+  );
 
   // ─── User Management ────────────────────────────────────────────────────
 
@@ -310,7 +416,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.put('/v1/admin/users/:userId', { preHandler: app.requireAdmin }, async (request) => {
     const params = adminUserIdParamsSchema.parse(request.params);
     const payload = adminUpdateUserSchema.parse(request.body);
-    return new AdminService(app.db, app.appEnv).updateUser(params.userId, payload, request.user.sub);
+    return new AdminService(app.db, app.appEnv).updateUser(
+      params.userId,
+      payload,
+      request.user.sub,
+    );
   });
 
   app.post('/v1/admin/users/:userId/suspend', { preHandler: app.requireAdmin }, async (request) => {
@@ -318,13 +428,24 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     return new AdminService(app.db, app.appEnv).suspendUser(params.userId, request.user.sub);
   });
 
-  app.post('/v1/admin/users/:userId/activate', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminUserIdParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).activateUser(params.userId, request.user.sub);
-  });
+  app.post(
+    '/v1/admin/users/:userId/activate',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminUserIdParamsSchema.parse(request.params);
+      return new AdminService(app.db, app.appEnv).activateUser(params.userId, request.user.sub);
+    },
+  );
 
-  app.post('/v1/admin/users/:userId/reset-password', { preHandler: app.requireAdmin }, async (request) => {
-    const params = adminUserIdParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).resetUserPassword(params.userId, request.user.sub);
-  });
+  app.post(
+    '/v1/admin/users/:userId/reset-password',
+    { preHandler: app.requireAdmin },
+    async (request) => {
+      const params = adminUserIdParamsSchema.parse(request.params);
+      return new AdminService(app.db, app.appEnv).resetUserPassword(
+        params.userId,
+        request.user.sub,
+      );
+    },
+  );
 };

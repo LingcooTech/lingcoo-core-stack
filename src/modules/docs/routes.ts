@@ -16,6 +16,10 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     return new DocsService(app.db).listPublicSpaces();
   });
 
+  app.get('/v1/docs/search-index', async () => {
+    return new DocsService(app.db).listSearchIndex();
+  });
+
   app.get('/v1/docs/spaces/:spaceSlug', async (request) => {
     const params = publicDocSpaceSlugParamsSchema.parse(request.params);
     return new DocsService(app.db).getPublicSpace(params.spaceSlug);

@@ -3,13 +3,22 @@ import { BookOpen, LoaderCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { listPublicDocSpaces } from '@/api/docs';
+import { getPublicSiteSettings } from '@/api/settings';
 import { EmptyState } from '@/components/portal/EmptyState';
+import { PUBLIC_SITE_SETTINGS_QUERY_KEY, getDocsHubContent } from '@/lib/site-settings';
 
 export function DocsHubPage() {
   const docsQuery = useQuery({
     queryKey: ['public-doc-spaces'],
     queryFn: listPublicDocSpaces,
   });
+
+  const { data: siteSettings } = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000,
+  });
+  const hub = getDocsHubContent(siteSettings);
 
   const items = docsQuery.data?.items ?? [];
 
@@ -18,14 +27,12 @@ export function DocsHubPage() {
       <header className="space-y-3 pt-2">
         <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
           <BookOpen className="h-3.5 w-3.5" />
-          文档中心
+          {hub.eyebrow}
         </div>
         <h1 className="text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
-          产品文档与开发指南
+          {hub.title}
         </h1>
-        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">
-          统一汇集 fd-core-stack 本身以及各应用的产品文档、接入说明、安装指南与常见问题。
-        </p>
+        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">{hub.description}</p>
         {items.length > 0 && (
           <p className="text-muted-foreground text-[12px] tabular-nums">
             共 {items.length} 个文档空间

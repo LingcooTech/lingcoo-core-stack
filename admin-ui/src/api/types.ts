@@ -261,7 +261,26 @@ export interface SiteSettingsOverview {
   };
 }
 
-export type PublicSiteSettings = SiteSettingsOverview['values'];
+export type PublicSiteSettings = SiteSettingsOverview['values'] & {
+  publicPages?: PublicPagesSettings;
+};
+
+export interface HubPageContent {
+  eyebrow: string;
+  title: string;
+  description: string;
+}
+
+export interface PublicPagesSettings {
+  contentHub: HubPageContent;
+  docsHub: HubPageContent;
+}
+
+export interface PublicPagesSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'none';
+  values: PublicPagesSettings;
+}
 
 export interface AiProviderStatus {
   code: string;

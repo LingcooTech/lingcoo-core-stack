@@ -9,12 +9,14 @@ import { z } from 'zod';
 import {
   clearContentImportSettings,
   clearOpenRouterSettings,
+  clearPublicPagesSettings,
   clearQiniuSettings,
   clearSiteSettings,
   clearSmtpSettings,
   getContentImportSettings,
   getAiProviders,
   getOpenRouterSettings,
+  getPublicPagesSettings,
   getQiniuSettings,
   getSiteSettings,
   getSmtpSettings,
@@ -27,6 +29,7 @@ import {
   testQiniuSettings,
   upsertContentImportSettings,
   upsertOpenRouterSettings,
+  upsertPublicPagesSettings,
   upsertQiniuSettings,
   upsertSiteSettings,
   upsertSmtpSettings,
@@ -154,6 +157,17 @@ const contentImportSchema = z.object({
   notionApiToken: z.string().optional(),
 });
 
+const hubContentSchema = z.object({
+  eyebrow: z.string().trim().max(60, '不能超过 60 个字符').optional(),
+  title: z.string().trim().max(120, '不能超过 120 个字符').optional(),
+  description: z.string().trim().max(500, '不能超过 500 个字符').optional(),
+});
+
+const publicPagesSchema = z.object({
+  contentHub: hubContentSchema,
+  docsHub: hubContentSchema,
+});
+
 const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
 const testSubjectSchema = z
   .string()
@@ -171,6 +185,7 @@ type QiniuValues = z.infer<typeof qiniuSchema>;
 type SiteValues = z.infer<typeof siteSchema>;
 type OpenRouterValues = z.infer<typeof openrouterSchema>;
 type ContentImportValues = z.infer<typeof contentImportSchema>;
+type PublicPagesValues = z.infer<typeof publicPagesSchema>;
 
 function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
   const host = values.host?.trim();
@@ -324,6 +339,7 @@ export function SettingsPage() {
   const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
   const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
   const [clearContentImportOpen, setClearContentImportOpen] = useState(false);
+  const [clearPublicPagesOpen, setClearPublicPagesOpen] = useState(false);
   const [testTo, setTestTo] = useState('');
   const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
   const [testBody, setTestBody] = useState(
@@ -376,6 +392,11 @@ export function SettingsPage() {
   const { data: openrouterData, isLoading: openrouterLoading } = useQuery({
     queryKey: ['system-settings', 'ai', 'openrouter'],
     queryFn: getOpenRouterSettings,
+  });
+
+  const { data: publicPagesData, isLoading: publicPagesLoading } = useQuery({
+    queryKey: ['system-settings', 'public-pages'],
+    queryFn: getPublicPagesSettings,
   });
 
   const smtpForm = useForm<SmtpValues>({
@@ -495,6 +516,14 @@ export function SettingsPage() {
     },
   });
 
+  const publicPagesForm = useForm<PublicPagesValues>({
+    resolver: zodResolver(publicPagesSchema),
+    defaultValues: {
+      contentHub: { eyebrow: '', title: '', description: '' },
+      docsHub: { eyebrow: '', title: '', description: '' },
+    },
+  });
+
   useEffect(() => {
     if (!smtpData) {
       return;
@@ -554,6 +583,17 @@ export function SettingsPage() {
       notionApiToken: '',
     });
   }, [contentImportData, contentImportForm]);
+
+  useEffect(() => {
+    if (!publicPagesData) {
+      return;
+    }
+
+    publicPagesForm.reset({
+      contentHub: { ...publicPagesData.values.contentHub },
+      docsHub: { ...publicPagesData.values.docsHub },
+    });
+  }, [publicPagesData, publicPagesForm]);
 
   useEffect(() => {
     if (!openrouterData) {
@@ -652,6 +692,33 @@ export function SettingsPage() {
       setClearSiteOpen(false);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['system-settings', 'site'] }),
+        qc.invalidateQueries({ queryKey: ['public-site-settings'] }),
+      ]);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败'),
+  });
+
+  const savePublicPagesMutation = useMutation({
+    mutationFn: upsertPublicPagesSettings,
+    onSuccess: async (result) => {
+      toast.success('公共页面文案已保存');
+      qc.setQueryData(['system-settings', 'public-pages'], result);
+      await qc.invalidateQueries({ queryKey: ['public-site-settings'] });
+      publicPagesForm.reset({
+        contentHub: { ...result.values.contentHub },
+        docsHub: { ...result.values.docsHub },
+      });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
+  });
+
+  const clearPublicPagesMutation = useMutation({
+    mutationFn: clearPublicPagesSettings,
+    onSuccess: async () => {
+      toast.success('公共页面文案已重置为默认值');
+      setClearPublicPagesOpen(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['system-settings', 'public-pages'] }),
         qc.invalidateQueries({ queryKey: ['public-site-settings'] }),
       ]);
     },
@@ -947,6 +1014,9 @@ export function SettingsPage() {
               <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
                 <TabsTrigger value="site" className="min-w-[108px] rounded-md">
                   品牌与页脚
+                </TabsTrigger>
+                <TabsTrigger value="public-pages" className="min-w-[108px] rounded-md">
+                  公共页面
                 </TabsTrigger>
                 <TabsTrigger value="smtp" className="min-w-[108px] rounded-md">
                   SMTP
@@ -1419,6 +1489,181 @@ export function SettingsPage() {
                         onClick={() => setClearSiteOpen(true)}
                       >
                         重置为默认配置
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="public-pages" className="mt-0">
+            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                  <StatusPill
+                    tone={publicPagesData?.configured ? 'ok' : 'neutral'}
+                    label={publicPagesData?.configured ? '公共页面文案已自定义' : '使用默认文案'}
+                  />
+                  <StatusPill
+                    tone={publicPagesData?.source === 'database' ? 'ok' : 'neutral'}
+                    label={`来源: ${publicPagesData?.source === 'database' ? '数据库' : '默认值'}`}
+                  />
+                </div>
+                <h2 className="text-foreground text-lg font-semibold">内容中心 / 文档中心 文案</h2>
+                <p className="text-muted-foreground text-sm">
+                  配置消费侧「内容中心」「文档中心」Hub
+                  页头部展示的栏目标签、主标题与副标题描述。留空则使用系统默认值。
+                </p>
+              </div>
+
+              {publicPagesLoading ? (
+                <div className="space-y-3">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                  ))}
+                </div>
+              ) : (
+                <Form {...publicPagesForm}>
+                  <form
+                    onSubmit={publicPagesForm.handleSubmit((values) =>
+                      savePublicPagesMutation.mutate({
+                        contentHub: {
+                          eyebrow: values.contentHub?.eyebrow?.trim() || '',
+                          title: values.contentHub?.title?.trim() || '',
+                          description: values.contentHub?.description?.trim() || '',
+                        },
+                        docsHub: {
+                          eyebrow: values.docsHub?.eyebrow?.trim() || '',
+                          title: values.docsHub?.title?.trim() || '',
+                          description: values.docsHub?.description?.trim() || '',
+                        },
+                      }),
+                    )}
+                    className="space-y-6"
+                  >
+                    <div className="border-border space-y-4 rounded-lg border p-5">
+                      <div>
+                        <h3 className="text-foreground text-base font-semibold">内容中心 Hub</h3>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          访问路径：
+                          <code className="bg-muted/60 rounded px-1 py-0.5">/content</code>
+                        </p>
+                      </div>
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="contentHub.eyebrow"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>栏目标签（Eyebrow）</FormLabel>
+                            <FormControl>
+                              <Input placeholder="内容中心" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="contentHub.title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>主标题</FormLabel>
+                            <FormControl>
+                              <Input placeholder="文章、观点与教程" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="contentHub.description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>副标题描述</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={3}
+                                placeholder="汇集产品动态、观点文章、操作教程与最佳实践..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="border-border space-y-4 rounded-lg border p-5">
+                      <div>
+                        <h3 className="text-foreground text-base font-semibold">文档中心 Hub</h3>
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          访问路径：<code className="bg-muted/60 rounded px-1 py-0.5">/docs</code>
+                        </p>
+                      </div>
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="docsHub.eyebrow"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>栏目标签（Eyebrow）</FormLabel>
+                            <FormControl>
+                              <Input placeholder="文档中心" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="docsHub.title"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>主标题</FormLabel>
+                            <FormControl>
+                              <Input placeholder="产品文档与开发指南" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={publicPagesForm.control}
+                        name="docsHub.description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>副标题描述</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={3}
+                                placeholder="统一汇集 fd-core-stack 本身以及各应用的产品文档、接入说明..."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="submit" disabled={savePublicPagesMutation.isPending}>
+                        {savePublicPagesMutation.isPending ? '保存中...' : '保存公共页面文案'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setClearPublicPagesOpen(true)}
+                        disabled={!publicPagesData?.configured}
+                      >
+                        重置为默认值
                       </Button>
                     </div>
                   </form>
@@ -2249,6 +2494,17 @@ export function SettingsPage() {
         confirmVariant="destructive"
         isConfirming={clearSiteMutation.isPending}
         onConfirm={() => clearSiteMutation.mutate()}
+      />
+
+      <ConfirmActionDialog
+        open={clearPublicPagesOpen}
+        onOpenChange={setClearPublicPagesOpen}
+        title="重置公共页面文案？"
+        description="这会清空数据库中的内容中心 / 文档中心 Hub 文案配置，并恢复系统默认文案。"
+        confirmText={clearPublicPagesMutation.isPending ? '重置中...' : '确认重置'}
+        confirmVariant="destructive"
+        isConfirming={clearPublicPagesMutation.isPending}
+        onConfirm={() => clearPublicPagesMutation.mutate()}
       />
 
       <ConfirmActionDialog

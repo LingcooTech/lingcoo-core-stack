@@ -1,10 +1,22 @@
-import type { PublicSiteSettings, SiteNavigationItem } from '@/api/types';
+import type { HubPageContent, PublicSiteSettings, SiteNavigationItem } from '@/api/types';
 
 export const PUBLIC_SITE_SETTINGS_QUERY_KEY = ['public-site-settings'] as const;
 export const DEFAULT_FAVICON_HREF = '/favicon.svg';
 export const DEFAULT_HEADER_NAVIGATION: SiteNavigationItem[] = [
   { label: '应用中心', url: '/', openInNewTab: false, children: [] },
 ];
+
+export const DEFAULT_CONTENT_HUB: HubPageContent = {
+  eyebrow: '内容中心',
+  title: '文章、观点与教程',
+  description: '汇集产品动态、观点文章、操作教程与最佳实践，帮助你更好地理解和使用平台。',
+};
+
+export const DEFAULT_DOCS_HUB: HubPageContent = {
+  eyebrow: '文档中心',
+  title: '产品文档与开发指南',
+  description: '统一汇集 fd-core-stack 本身以及各应用的产品文档、接入说明、安装指南与常见问题。',
+};
 
 export function isExternalSiteUrl(url: string) {
   return /^(https?:|mailto:|tel:)/i.test(url);
@@ -89,4 +101,30 @@ export function getSiteHeaderNavigation(
   settings?: Pick<PublicSiteSettings, 'headerNavigation'> | null,
 ) {
   return settings?.headerNavigation?.length ? settings.headerNavigation : DEFAULT_HEADER_NAVIGATION;
+}
+
+function pickHubField(value: string | undefined | null, fallback: string) {
+  return value?.trim() || fallback;
+}
+
+export function getContentHubContent(
+  settings?: Pick<PublicSiteSettings, 'publicPages'> | null,
+): HubPageContent {
+  const raw = settings?.publicPages?.contentHub;
+  return {
+    eyebrow: pickHubField(raw?.eyebrow, DEFAULT_CONTENT_HUB.eyebrow),
+    title: pickHubField(raw?.title, DEFAULT_CONTENT_HUB.title),
+    description: pickHubField(raw?.description, DEFAULT_CONTENT_HUB.description),
+  };
+}
+
+export function getDocsHubContent(
+  settings?: Pick<PublicSiteSettings, 'publicPages'> | null,
+): HubPageContent {
+  const raw = settings?.publicPages?.docsHub;
+  return {
+    eyebrow: pickHubField(raw?.eyebrow, DEFAULT_DOCS_HUB.eyebrow),
+    title: pickHubField(raw?.title, DEFAULT_DOCS_HUB.title),
+    description: pickHubField(raw?.description, DEFAULT_DOCS_HUB.description),
+  };
 }

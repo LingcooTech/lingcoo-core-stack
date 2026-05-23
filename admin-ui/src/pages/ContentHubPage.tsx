@@ -4,9 +4,11 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { listPublishedContent } from '@/api/content';
+import { getPublicSiteSettings } from '@/api/settings';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PUBLIC_SITE_SETTINGS_QUERY_KEY, getContentHubContent } from '@/lib/site-settings';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 12;
@@ -19,6 +21,13 @@ export function ContentHubPage() {
   useEffect(() => {
     setPage(1);
   }, [deferredSearch]);
+
+  const { data: siteSettings } = useQuery({
+    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
+    queryFn: getPublicSiteSettings,
+    staleTime: 5 * 60_000,
+  });
+  const hub = getContentHubContent(siteSettings);
 
   const query = useMemo(
     () => ({
@@ -43,14 +52,12 @@ export function ContentHubPage() {
       <header className="space-y-3 pt-2">
         <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
           <FileText className="h-3.5 w-3.5" />
-          内容中心
+          {hub.eyebrow}
         </div>
         <h1 className="text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
-          文章、观点与教程
+          {hub.title}
         </h1>
-        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">
-          汇集产品动态、观点文章、操作教程与最佳实践，帮助你更好地理解和使用平台。
-        </p>
+        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">{hub.description}</p>
       </header>
 
       <div className="border-border bg-card/50 sticky top-12 z-10 -mx-1 flex items-center gap-3 border-b px-1 py-2 backdrop-blur-md">

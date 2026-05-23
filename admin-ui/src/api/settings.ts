@@ -6,6 +6,8 @@ import type {
   ContentImportNotionTestResult,
   ContentImportSettingsOverview,
   ContentImportWordPressTestResult,
+  HubPageContent,
+  PublicPagesSettingsOverview,
   PublicSiteSettings,
   QiniuSettingsOverview,
   QiniuTestConnectionResult,
@@ -160,6 +162,28 @@ export async function upsertSiteSettings(
 
 export async function clearSiteSettings(): Promise<void> {
   await apiClient('/v1/admin/system-settings/site', { method: 'DELETE' });
+}
+
+export interface PublicPagesSettingsInput {
+  contentHub?: Partial<HubPageContent>;
+  docsHub?: Partial<HubPageContent>;
+}
+
+export async function getPublicPagesSettings(): Promise<PublicPagesSettingsOverview> {
+  return apiClient<PublicPagesSettingsOverview>('/v1/admin/system-settings/public-pages');
+}
+
+export async function upsertPublicPagesSettings(
+  payload: PublicPagesSettingsInput,
+): Promise<PublicPagesSettingsOverview> {
+  return apiClient<PublicPagesSettingsOverview>('/v1/admin/system-settings/public-pages', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function clearPublicPagesSettings(): Promise<void> {
+  await apiClient('/v1/admin/system-settings/public-pages', { method: 'DELETE' });
 }
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {

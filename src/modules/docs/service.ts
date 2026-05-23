@@ -91,16 +91,18 @@ export class DocsService {
     }
   }
 
-  private buildPageTree(pages: Array<{
-    id: string;
-    parentId: string | null;
-    slug: string;
-    path: string;
-    title: string;
-    summary: string | null;
-    status: DocPageStatus;
-    sortOrder: number;
-  }>) {
+  private buildPageTree(
+    pages: Array<{
+      id: string;
+      parentId: string | null;
+      slug: string;
+      path: string;
+      title: string;
+      summary: string | null;
+      status: DocPageStatus;
+      sortOrder: number;
+    }>,
+  ) {
     const nodeMap = new Map<string, DocPageNode>();
 
     for (const page of pages) {
@@ -121,7 +123,9 @@ export class DocsService {
     }
 
     const sortNodes = (nodes: DocPageNode[]) => {
-      nodes.sort((left, right) => left.sortOrder - right.sortOrder || left.title.localeCompare(right.title));
+      nodes.sort(
+        (left, right) => left.sortOrder - right.sortOrder || left.title.localeCompare(right.title),
+      );
       for (const node of nodes) {
         sortNodes(node.children);
       }
@@ -270,7 +274,7 @@ export class DocsService {
         input.status === 'published'
           ? input.publishedAt
             ? new Date(input.publishedAt)
-            : existing?.publishedAt ?? new Date()
+            : (existing?.publishedAt ?? new Date())
           : null,
       meta: input.meta ?? existing?.meta ?? {},
     };
@@ -285,7 +289,9 @@ export class DocsService {
     const result = await Promise.all(
       spaces.map(async (space) => ({
         ...space,
-        pageCount: (await this.repository.listPagesBySpace(space.id)).filter((page) => page.status === 'published').length,
+        pageCount: (await this.repository.listPagesBySpace(space.id)).filter(
+          (page) => page.status === 'published',
+        ).length,
       })),
     );
 
@@ -298,7 +304,9 @@ export class DocsService {
       throw httpError(404, 'Doc space not found');
     }
 
-    const pages = (await this.repository.listPagesBySpace(space.id)).filter((page) => page.status === 'published');
+    const pages = (await this.repository.listPagesBySpace(space.id)).filter(
+      (page) => page.status === 'published',
+    );
     const tree = this.buildPageTree(
       pages.map((page) => ({
         id: page.id,
@@ -340,7 +348,38 @@ export class DocsService {
       tree,
       page,
       previousPage: currentIndex > 0 ? ordered[currentIndex - 1] : null,
-      nextPage: currentIndex >= 0 && currentIndex < ordered.length - 1 ? ordered[currentIndex + 1] : null,
+      nextPage:
+        currentIndex >= 0 && currentIndex < ordered.length - 1 ? ordered[currentIndex + 1] : null,
     };
+  }
+
+  async listSearchIndex() {
+    const spaces = (await this.repository.listPublicSpaces()).filter(
+      (space) => space.status === 'active',
+    );
+    const items: Array<{
+      spaceSlug: string;
+      spaceTitle: string;
+      pagePath: string;
+      pageTitle: string;
+      summary: string | null;
+    }> = [];
+
+    for (const space of spaces) {
+      const pages = (await this.repository.listPagesBySpace(space.id)).filter(
+        (page) => page.status === 'published',
+      );
+      for (const page of pages) {
+        items.push({
+          spaceSlug: space.slug,
+          spaceTitle: space.title,
+          pagePath: page.path,
+          pageTitle: page.title,
+          summary: page.summary ?? null,
+        });
+      }
+    }
+
+    return { items };
   }
 }
