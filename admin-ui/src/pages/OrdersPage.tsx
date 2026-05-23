@@ -276,10 +276,16 @@ export function OrdersPage() {
           }}
         >
           <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-            <SheetHeader className="border-border border-b">
-              <SheetTitle className="font-mono text-sm">{selectedOrderNo}</SheetTitle>
-              <SheetDescription>订单详情</SheetDescription>
-              <div className="mt-2">
+            <SheetHeader className="border-border border-b px-6 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <SheetDescription className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                    订单详情
+                  </SheetDescription>
+                  <SheetTitle className="text-foreground mt-1 truncate font-mono text-[15px] font-semibold">
+                    {selectedOrderNo}
+                  </SheetTitle>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
@@ -287,17 +293,17 @@ export function OrdersPage() {
                   disabled={reconcileMutation.isPending}
                 >
                   <RefreshCw
-                    className={`mr-1.5 size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
+                    className={`size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
                   />
-                  {reconcileMutation.isPending ? '同步中...' : '同步订单'}
+                  {reconcileMutation.isPending ? '同步中' : '同步订单'}
                 </Button>
               </div>
             </SheetHeader>
 
-            <div className="px-4 pb-6">
+            <div className="px-6 py-5">
               {orderDetailQuery.isLoading ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
                     <div key={i} className="bg-muted h-8 animate-pulse rounded" />
                   ))}
                 </div>
@@ -316,107 +322,147 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
   const { item, paymentAttempts, entitlements, events } = detail;
 
   return (
-    <div className="space-y-4 text-sm">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <InfoBlock label="订单号" value={item.orderNo} mono />
-        <InfoBlock label="状态" value={item.status} />
+    <div className="space-y-5 text-sm">
+      <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
+        <InfoBlock
+          label="状态"
+          render={<StatusPill tone={statusToTone(item.status)} label={item.status} />}
+        />
         <InfoBlock label="渠道" value={item.provider ?? '—'} />
-        <InfoBlock label="金额" value={formatAmount(item.amount, item.currency)} />
+        <InfoBlock
+          label="金额"
+          value={formatAmount(item.amount, item.currency)}
+          valueClassName="text-[15px] font-semibold tabular-nums"
+        />
         <InfoBlock label="用户" value={item.user?.email ?? item.userId} />
-        <InfoBlock label="应用" value={item.app?.code ?? '—'} mono />
-        <InfoBlock label="应用" value={item.app?.name ?? item.appId} />
+        <InfoBlock label="应用名" value={item.app?.name ?? item.appId} />
+        <InfoBlock label="应用 Code" value={item.app?.code ?? '—'} mono />
         <InfoBlock label="套餐" value={item.plan?.name ?? item.planId} />
         <InfoBlock label="支付时间" value={formatTime(item.paidAt)} />
-      </div>
+        <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
+      </section>
 
       {item.checkoutSession && (
-        <div className="bg-muted/30 border-border rounded-md border p-3">
-          <p className="mb-2 text-xs font-semibold">Checkout Session</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+        <DetailSection title="Checkout Session">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
             <InfoBlock label="Code" value={item.checkoutSession.sessionCode} mono />
             <InfoBlock label="状态" value={item.checkoutSession.status} />
             <InfoBlock label="渠道" value={item.checkoutSession.provider ?? '—'} />
             <InfoBlock label="动作" value={item.checkoutSession.actionType ?? '—'} />
           </div>
-          <JsonViewer data={item.checkoutSession.actionPayload} label="actionPayload" />
-        </div>
+          <div className="mt-3">
+            <JsonViewer data={item.checkoutSession.actionPayload} label="actionPayload" />
+          </div>
+        </DetailSection>
       )}
 
       {paymentAttempts.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold">支付尝试 ({paymentAttempts.length})</p>
+        <DetailSection title={`支付尝试 (${paymentAttempts.length})`}>
           <div className="space-y-2">
             {paymentAttempts.map((attempt) => (
-              <div key={attempt.id} className="bg-muted/30 border-border rounded-md border p-3">
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs font-bold">{attempt.attemptNo}</span>
+              <div key={attempt.id} className="border-border rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[12px] font-semibold">{attempt.attemptNo}</span>
                   <StatusPill tone={statusToTone(attempt.status)} label={attempt.status} />
-                  <span className="text-muted-foreground text-[10px]">
+                  <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
                     {formatTime(attempt.createdAt)}
                   </span>
                 </div>
                 {attempt.providerReference && (
-                  <p className="text-muted-foreground font-mono text-[10px]">
+                  <p className="text-muted-foreground mt-1.5 font-mono text-[10px]">
                     {attempt.providerReference}
                   </p>
                 )}
-                <div className="mt-1 flex gap-3">
+                <div className="mt-2 flex gap-3">
                   <JsonViewer data={attempt.requestPayload} label="请求" />
                   <JsonViewer data={attempt.responsePayload} label="响应" />
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </DetailSection>
       )}
 
       {entitlements.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold">关联权益 ({entitlements.length})</p>
+        <DetailSection title={`关联权益 (${entitlements.length})`}>
           <div className="flex flex-wrap gap-2">
             {entitlements.map((e) => (
               <div
                 key={e.id}
-                className="bg-muted/30 border-border flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs"
+                className="border-border bg-card flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
               >
                 <span className="font-mono">{e.plan?.code ?? e.id}</span>
                 <StatusPill tone={statusToTone(e.status)} label={e.status} />
               </div>
             ))}
           </div>
-        </div>
+        </DetailSection>
       )}
 
       {events.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold">关联事件 ({events.length})</p>
-          <div className="space-y-1">
+        <DetailSection title={`关联事件 (${events.length})`}>
+          <div className="border-border divide-border divide-y overflow-hidden rounded-md border">
             {events.map((ev, idx) => (
-              <div
-                key={idx}
-                className="border-border flex items-center gap-3 border-b py-1 text-xs last:border-0"
-              >
-                <span className="text-muted-foreground w-28 shrink-0 text-[10px]">
+              <div key={idx} className="flex items-start gap-3 px-3 py-2 text-xs">
+                <span className="text-muted-foreground w-28 shrink-0 text-[10px] tabular-nums">
                   {formatTime(ev.eventTime)}
                 </span>
-                <span className="font-mono font-bold">{ev.eventName}</span>
-                <JsonViewer data={ev.properties} label="props" />
+                <span className="text-foreground font-mono text-[11px] font-semibold">
+                  {ev.eventName}
+                </span>
+                <div className="ml-auto">
+                  <JsonViewer data={ev.properties} label="props" />
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        </DetailSection>
       )}
     </div>
   );
 }
 
-function InfoBlock({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
+    <section>
+      <h3 className="text-muted-foreground mb-2 text-[11px] font-semibold uppercase tracking-wider">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function InfoBlock({
+  label,
+  value,
+  mono,
+  valueClassName,
+  render,
+}: {
+  label: string;
+  value?: string;
+  mono?: boolean;
+  valueClassName?: string;
+  render?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
       <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
         {label}
       </p>
-      <p className={`mt-0.5 text-xs ${mono ? 'font-mono' : 'font-medium'} truncate`}>{value}</p>
+      <div className="mt-1">
+        {render ?? (
+          <p
+            className={
+              valueClassName ??
+              `text-foreground truncate text-xs ${mono ? 'font-mono' : 'font-medium'}`
+            }
+          >
+            {value}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
