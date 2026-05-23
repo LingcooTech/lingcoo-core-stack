@@ -41,3 +41,22 @@ export async function getPublicDocPage(
 export async function getDocsSearchIndex(): Promise<DocsSearchIndexResponse> {
   return apiClient<DocsSearchIndexResponse>('/v1/docs/search-index');
 }
+
+export interface DocFeedbackInput {
+  spaceSlug: string;
+  pagePath: string;
+  helpful: boolean;
+  comment?: string;
+}
+
+export interface DocFeedbackResult {
+  ok: boolean;
+  id: string;
+}
+
+export async function submitDocFeedback(payload: DocFeedbackInput): Promise<DocFeedbackResult> {
+  return apiClient<DocFeedbackResult>('/v1/docs/feedback', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

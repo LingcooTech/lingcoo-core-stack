@@ -6,6 +6,7 @@ import {
   docSpaceIdParamsSchema,
   publicDocPageQuerySchema,
   publicDocSpaceSlugParamsSchema,
+  submitDocFeedbackSchema,
   upsertDocPageSchema,
   upsertDocSpaceSchema,
 } from './schemas';
@@ -18,6 +19,23 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/docs/search-index', async () => {
     return new DocsService(app.db).listSearchIndex();
+  });
+
+  app.post('/v1/docs/feedback', async (request) => {
+    const payload = submitDocFeedbackSchema.parse(request.body);
+    let userId: string | null = null;
+    try {
+      await request.jwtVerify();
+      userId = request.user?.sub ?? null;
+    } catch {
+      // 匿名反馈允许，留空 userId
+    }
+    const userAgent = request.headers['user-agent'];
+    return new DocsService(app.db).submitFeedback({
+      ...payload,
+      userId,
+      userAgent: typeof userAgent === 'string' ? userAgent : null,
+    });
   });
 
   app.get('/v1/docs/spaces/:spaceSlug', async (request) => {

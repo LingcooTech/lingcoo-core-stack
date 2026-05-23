@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
-import { docPages, docSpaces } from '../../db/schema';
+import { docFeedback, docPages, docSpaces } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class DocsRepository {
@@ -15,13 +15,17 @@ export class DocsRepository {
         or(
           ilike(docSpaces.title, pattern),
           ilike(docSpaces.slug, pattern),
-          ilike(docSpaces.description, pattern)
-        )!
+          ilike(docSpaces.description, pattern),
+        )!,
       );
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
-    return this.db.select().from(docSpaces).where(where).orderBy(asc(docSpaces.sortOrder), asc(docSpaces.title));
+    return this.db
+      .select()
+      .from(docSpaces)
+      .where(where)
+      .orderBy(asc(docSpaces.sortOrder), asc(docSpaces.title));
   }
 
   async listPublicSpaces() {
@@ -104,5 +108,19 @@ export class DocsRepository {
       .where(eq(docPages.id, id))
       .returning();
     return page ?? null;
+  }
+
+  async createFeedback(input: typeof docFeedback.$inferInsert) {
+    const [row] = await this.db.insert(docFeedback).values(input).returning();
+    return row;
+  }
+
+  async listFeedbackByPage(spaceSlug: string, pagePath: string, limit = 50) {
+    return this.db
+      .select()
+      .from(docFeedback)
+      .where(and(eq(docFeedback.spaceSlug, spaceSlug), eq(docFeedback.pagePath, pagePath)))
+      .orderBy(desc(docFeedback.createdAt))
+      .limit(limit);
   }
 }

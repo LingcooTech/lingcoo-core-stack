@@ -11,44 +11,75 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
-  varchar
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
-export const sourceTypeEnum = pgEnum('entitlement_source_type', ['subscription', 'order', 'grant', 'trial']);
-export const recordStatusEnum = pgEnum('record_status', ['active', 'inactive', 'cancelled', 'expired']);
+export const sourceTypeEnum = pgEnum('entitlement_source_type', [
+  'subscription',
+  'order',
+  'grant',
+  'trial',
+]);
+export const recordStatusEnum = pgEnum('record_status', [
+  'active',
+  'inactive',
+  'cancelled',
+  'expired',
+]);
 export const paymentProviderEnum = pgEnum('payment_provider', ['wechat_pay', 'alipay']);
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'paid', 'failed', 'cancelled', 'refunded']);
+export const orderStatusEnum = pgEnum('order_status', [
+  'pending',
+  'paid',
+  'failed',
+  'cancelled',
+  'refunded',
+]);
 export const checkoutSessionStatusEnum = pgEnum('checkout_session_status', [
   'pending',
   'paid',
   'failed',
   'cancelled',
-  'expired'
+  'expired',
 ]);
 export const checkoutActionTypeEnum = pgEnum('checkout_action_type', ['qr_code', 'redirect_url']);
 export const paymentAttemptStatusEnum = pgEnum('payment_attempt_status', [
   'prepared',
   'paid',
   'failed',
-  'cancelled'
+  'cancelled',
 ]);
-export const contentSourceEnum = pgEnum('content_source', ['manual', 'wordpress', 'notion', 'wechat']);
+export const contentSourceEnum = pgEnum('content_source', [
+  'manual',
+  'wordpress',
+  'notion',
+  'wechat',
+]);
 export const contentStatusEnum = pgEnum('content_status', ['draft', 'published', 'archived']);
 export const docSpaceTypeEnum = pgEnum('doc_space_type', ['product', 'app', 'internal']);
 export const docSpaceStatusEnum = pgEnum('doc_space_status', ['active', 'hidden', 'archived']);
 export const docPageStatusEnum = pgEnum('doc_page_status', ['draft', 'published', 'archived']);
-export const notificationLevelEnum = pgEnum('notification_level', ['info', 'success', 'warning', 'error']);
+export const notificationLevelEnum = pgEnum('notification_level', [
+  'info',
+  'success',
+  'warning',
+  'error',
+]);
 export const notificationStatusEnum = pgEnum('notification_status', ['unread', 'read', 'archived']);
 export const supportTicketStatusEnum = pgEnum('support_ticket_status', [
   'waiting_staff',
   'waiting_user',
   'resolved',
-  'closed'
+  'closed',
 ]);
-export const supportTicketPriorityEnum = pgEnum('support_ticket_priority', ['low', 'normal', 'high', 'urgent']);
+export const supportTicketPriorityEnum = pgEnum('support_ticket_priority', [
+  'low',
+  'normal',
+  'high',
+  'urgent',
+]);
 export const supportTicketCategoryEnum = pgEnum('support_ticket_category', [
   'account',
   'billing',
@@ -57,12 +88,12 @@ export const supportTicketCategoryEnum = pgEnum('support_ticket_category', [
   'deployment',
   'bug',
   'feature',
-  'other'
+  'other',
 ]);
 export const supportTicketMessageAuthorTypeEnum = pgEnum('support_ticket_message_author_type', [
   'user',
   'admin',
-  'system'
+  'system',
 ]);
 
 export const users = pgTable('users', {
@@ -74,16 +105,18 @@ export const users = pgTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const systemSettings = pgTable('system_settings', {
   key: varchar('key', { length: 128 }).primaryKey(),
-  value: jsonb('value').notNull().default(sql`'{}'::jsonb`),
+  value: jsonb('value')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   isEncrypted: boolean('is_encrypted').notNull().default(false),
   updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const apps = pgTable('apps', {
@@ -95,17 +128,27 @@ export const apps = pgTable('apps', {
   content: text('content'),
   iconUrl: varchar('icon_url', { length: 500 }),
   coverUrl: varchar('cover_url', { length: 500 }),
-  screenshots: jsonb('screenshots').notNull().default(sql`'[]'::jsonb`),
-  highlights: jsonb('highlights').notNull().default(sql`'[]'::jsonb`),
-  faq: jsonb('faq').notNull().default(sql`'[]'::jsonb`),
-  links: jsonb('links').notNull().default(sql`'[]'::jsonb`),
+  screenshots: jsonb('screenshots')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  highlights: jsonb('highlights')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  faq: jsonb('faq')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  links: jsonb('links')
+    .notNull()
+    .default(sql`'[]'::jsonb`),
   category: varchar('category', { length: 64 }),
   sortOrder: integer('sort_order').notNull().default(0),
   type: varchar('type', { length: 64 }).notNull().default('web_app'),
   status: recordStatusEnum('status').notNull().default('active'),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const contentItems = pgTable(
@@ -124,15 +167,23 @@ export const contentItems = pgTable(
     status: contentStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     importedAt: timestamp('imported_at', { withTimezone: true }),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    sourceTypeSourceIdIdx: index('content_items_source_type_source_id_idx').on(table.sourceType, table.sourceId),
-    statusPublishedAtIdx: index('content_items_status_published_at_idx').on(table.status, table.publishedAt),
-    sourceUrlIdx: index('content_items_source_url_idx').on(table.sourceUrl)
-  })
+    sourceTypeSourceIdIdx: index('content_items_source_type_source_id_idx').on(
+      table.sourceType,
+      table.sourceId,
+    ),
+    statusPublishedAtIdx: index('content_items_status_published_at_idx').on(
+      table.status,
+      table.publishedAt,
+    ),
+    sourceUrlIdx: index('content_items_source_url_idx').on(table.sourceUrl),
+  }),
 );
 
 export const docSpaces = pgTable(
@@ -147,14 +198,16 @@ export const docSpaces = pgTable(
     appId: uuid('app_id').references(() => apps.id, { onDelete: 'set null' }),
     sortOrder: integer('sort_order').notNull().default(0),
     status: docSpaceStatusEnum('status').notNull().default('active'),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     appIdx: index('doc_spaces_app_id_idx').on(table.appId),
-    statusSortIdx: index('doc_spaces_status_sort_idx').on(table.status, table.sortOrder)
-  })
+    statusSortIdx: index('doc_spaces_status_sort_idx').on(table.status, table.sortOrder),
+  }),
 );
 
 export const docPages = pgTable(
@@ -173,15 +226,42 @@ export const docPages = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     status: docPageStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    spacePathUniqueIdx: uniqueIndex('doc_pages_space_path_unique_idx').on(table.spaceId, table.path),
-    spaceParentSortIdx: index('doc_pages_space_parent_sort_idx').on(table.spaceId, table.parentId, table.sortOrder),
-    statusPublishedIdx: index('doc_pages_status_published_idx').on(table.status, table.publishedAt)
-  })
+    spacePathUniqueIdx: uniqueIndex('doc_pages_space_path_unique_idx').on(
+      table.spaceId,
+      table.path,
+    ),
+    spaceParentSortIdx: index('doc_pages_space_parent_sort_idx').on(
+      table.spaceId,
+      table.parentId,
+      table.sortOrder,
+    ),
+    statusPublishedIdx: index('doc_pages_status_published_idx').on(table.status, table.publishedAt),
+  }),
+);
+
+export const docFeedback = pgTable(
+  'doc_feedback',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    spaceSlug: varchar('space_slug', { length: 160 }).notNull(),
+    pagePath: varchar('page_path', { length: 500 }).notNull(),
+    helpful: boolean('helpful').notNull(),
+    comment: text('comment'),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    userAgent: varchar('user_agent', { length: 500 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    spacePathIdx: index('doc_feedback_space_path_idx').on(table.spaceSlug, table.pagePath),
+    createdAtIdx: index('doc_feedback_created_at_idx').on(table.createdAt),
+  }),
 );
 
 export const authIdentities = pgTable('auth_identities', {
@@ -191,7 +271,7 @@ export const authIdentities = pgTable('auth_identities', {
     .references(() => users.id, { onDelete: 'cascade' }),
   provider: varchar('provider', { length: 64 }).notNull(),
   providerUserId: varchar('provider_user_id', { length: 255 }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const passwordCredentials = pgTable('password_credentials', {
@@ -202,7 +282,7 @@ export const passwordCredentials = pgTable('password_credentials', {
     .unique(),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const emailVerificationCodes = pgTable('email_verification_codes', {
@@ -212,7 +292,7 @@ export const emailVerificationCodes = pgTable('email_verification_codes', {
     .references(() => users.id, { onDelete: 'cascade' }),
   code: varchar('code', { length: 6 }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const passwordResetCodes = pgTable('password_reset_codes', {
@@ -222,7 +302,7 @@ export const passwordResetCodes = pgTable('password_reset_codes', {
     .references(() => users.id, { onDelete: 'cascade' }),
   code: varchar('code', { length: 6 }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const appSecrets = pgTable('app_secrets', {
@@ -236,18 +316,20 @@ export const appSecrets = pgTable('app_secrets', {
   status: recordStatusEnum('status').notNull().default('active'),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const appDeliverySettings = pgTable('app_delivery_settings', {
   appId: uuid('app_id')
     .primaryKey()
     .references(() => apps.id, { onDelete: 'cascade' }),
-  value: jsonb('value').notNull().default(sql`'{}'::jsonb`),
+  value: jsonb('value')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   isEncrypted: boolean('is_encrypted').notNull().default(false),
   updatedByUserId: uuid('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const aiUsageEvents = pgTable(
@@ -270,17 +352,19 @@ export const aiUsageEvents = pgTable(
     promptTokens: integer('prompt_tokens').notNull().default(0),
     completionTokens: integer('completion_tokens').notNull().default(0),
     totalTokens: integer('total_tokens').notNull().default(0),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     userAppCreatedIdx: index('ai_usage_events_user_app_created_idx').on(
       table.userId,
       table.appId,
-      table.createdAt
+      table.createdAt,
     ),
-    appCreatedIdx: index('ai_usage_events_app_created_idx').on(table.appId, table.createdAt)
-  })
+    appCreatedIdx: index('ai_usage_events_app_created_idx').on(table.appId, table.createdAt),
+  }),
 );
 
 export const plans = pgTable('plans', {
@@ -295,9 +379,11 @@ export const plans = pgTable('plans', {
   priceAmount: integer('price_amount').notNull().default(0),
   currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
   interval: intervalEnum('interval').notNull(),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const features = pgTable('features', {
@@ -309,7 +395,7 @@ export const features = pgTable('features', {
   name: varchar('name', { length: 120 }).notNull(),
   kind: varchar('kind', { length: 32 }).notNull().default('boolean'),
   status: recordStatusEnum('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const planFeatures = pgTable(
@@ -321,11 +407,13 @@ export const planFeatures = pgTable(
     featureId: uuid('feature_id')
       .notNull()
       .references(() => features.id, { onDelete: 'cascade' }),
-    value: jsonb('value').notNull().default(sql`'{}'::jsonb`)
+    value: jsonb('value')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.planId, table.featureId] })
-  })
+    pk: primaryKey({ columns: [table.planId, table.featureId] }),
+  }),
 );
 
 export const appOffers = pgTable(
@@ -348,11 +436,11 @@ export const appOffers = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     status: recordStatusEnum('status').notNull().default('active'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    appCodeKey: uniqueIndex('app_offers_app_id_code_idx').on(table.appId, table.code)
-  })
+    appCodeKey: uniqueIndex('app_offers_app_id_code_idx').on(table.appId, table.code),
+  }),
 );
 
 export const customers = pgTable('customers', {
@@ -362,7 +450,7 @@ export const customers = pgTable('customers', {
     .references(() => users.id, { onDelete: 'cascade' }),
   provider: varchar('provider', { length: 32 }).notNull(),
   providerCustomerId: varchar('provider_customer_id', { length: 128 }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const subscriptions = pgTable('subscriptions', {
@@ -379,7 +467,7 @@ export const subscriptions = pgTable('subscriptions', {
   currentPeriodStart: timestamp('current_period_start', { withTimezone: true }),
   currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
   cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const orders = pgTable('orders', {
@@ -400,10 +488,12 @@ export const orders = pgTable('orders', {
   amount: integer('amount').notNull(),
   currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
   status: orderStatusEnum('status').notNull().default('pending'),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const checkoutSessions = pgTable('checkout_sessions', {
@@ -425,14 +515,18 @@ export const checkoutSessions = pgTable('checkout_sessions', {
   provider: paymentProviderEnum('provider').notNull(),
   status: checkoutSessionStatusEnum('status').notNull().default('pending'),
   actionType: checkoutActionTypeEnum('action_type').notNull(),
-  actionPayload: jsonb('action_payload').notNull().default(sql`'{}'::jsonb`),
+  actionPayload: jsonb('action_payload')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   successUrl: varchar('success_url', { length: 2048 }),
   cancelUrl: varchar('cancel_url', { length: 2048 }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const paymentAttempts = pgTable(
@@ -450,17 +544,21 @@ export const paymentAttempts = pgTable(
     actionType: checkoutActionTypeEnum('action_type').notNull(),
     status: paymentAttemptStatusEnum('status').notNull().default('prepared'),
     providerReference: varchar('provider_reference', { length: 128 }),
-    requestPayload: jsonb('request_payload').notNull().default(sql`'{}'::jsonb`),
-    responsePayload: jsonb('response_payload').notNull().default(sql`'{}'::jsonb`),
+    requestPayload: jsonb('request_payload')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    responsePayload: jsonb('response_payload')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     sessionAttemptKey: uniqueIndex('payment_attempts_session_attempt_idx').on(
       table.checkoutSessionId,
-      table.attemptNo
-    )
-  })
+      table.attemptNo,
+    ),
+  }),
 );
 
 export const entitlements = pgTable('entitlements', {
@@ -479,8 +577,10 @@ export const entitlements = pgTable('entitlements', {
   status: recordStatusEnum('status').notNull().default('active'),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const installs = pgTable('installs', {
@@ -496,7 +596,7 @@ export const installs = pgTable('installs', {
   status: recordStatusEnum('status').notNull().default('active'),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const deployments = pgTable('deployments', {
@@ -511,13 +611,17 @@ export const deployments = pgTable('deployments', {
   label: varchar('label', { length: 120 }).notNull(),
   environment: varchar('environment', { length: 32 }).notNull().default('production'),
   serverHost: varchar('server_host', { length: 255 }),
-  installPath: varchar('install_path', { length: 255 }).notNull().default('/opt/fd-headless-wp-system'),
+  installPath: varchar('install_path', { length: 255 })
+    .notNull()
+    .default('/opt/fd-headless-wp-system'),
   status: recordStatusEnum('status').notNull().default('active'),
   lastTokenIssuedAt: timestamp('last_token_issued_at', { withTimezone: true }),
   lastDeployedAt: timestamp('last_deployed_at', { withTimezone: true }),
-  meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+  meta: jsonb('meta')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const deploymentTokens = pgTable(
@@ -533,13 +637,15 @@ export const deploymentTokens = pgTable(
     status: recordStatusEnum('status').notNull().default('active'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     usedAt: timestamp('used_at', { withTimezone: true }),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    tokenHashKey: uniqueIndex('deployment_tokens_token_hash_idx').on(table.tokenHash)
-  })
+    tokenHashKey: uniqueIndex('deployment_tokens_token_hash_idx').on(table.tokenHash),
+  }),
 );
 
 export const supportTickets = pgTable(
@@ -558,30 +664,38 @@ export const supportTickets = pgTable(
     priority: supportTicketPriorityEnum('priority').notNull().default('normal'),
     status: supportTicketStatusEnum('status').notNull().default('waiting_staff'),
     subject: varchar('subject', { length: 200 }).notNull(),
-    assignedAdminUserId: uuid('assigned_admin_user_id').references(() => users.id, { onDelete: 'set null' }),
-    lastReplyAuthorType: supportTicketMessageAuthorTypeEnum('last_reply_author_type').notNull().default('user'),
+    assignedAdminUserId: uuid('assigned_admin_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    lastReplyAuthorType: supportTicketMessageAuthorTypeEnum('last_reply_author_type')
+      .notNull()
+      .default('user'),
     lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     firstRespondedAt: timestamp('first_responded_at', { withTimezone: true }),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     closedAt: timestamp('closed_at', { withTimezone: true }),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     userStatusLastActivityIdx: index('support_tickets_user_status_last_activity_idx').on(
       table.userId,
       table.status,
-      table.lastActivityAt
+      table.lastActivityAt,
     ),
     statusPriorityLastActivityIdx: index('support_tickets_status_priority_last_activity_idx').on(
       table.status,
       table.priority,
-      table.lastActivityAt
+      table.lastActivityAt,
     ),
     appIdx: index('support_tickets_app_id_idx').on(table.appId),
-    assignedAdminIdx: index('support_tickets_assigned_admin_user_id_idx').on(table.assignedAdminUserId)
-  })
+    assignedAdminIdx: index('support_tickets_assigned_admin_user_id_idx').on(
+      table.assignedAdminUserId,
+    ),
+  }),
 );
 
 export const supportTicketMessages = pgTable(
@@ -595,13 +709,18 @@ export const supportTicketMessages = pgTable(
     authorType: supportTicketMessageAuthorTypeEnum('author_type').notNull(),
     isInternal: boolean('is_internal').notNull().default(false),
     body: text('body').notNull().default(''),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    ticketCreatedIdx: index('support_ticket_messages_ticket_created_idx').on(table.ticketId, table.createdAt),
-    authorIdx: index('support_ticket_messages_author_user_id_idx').on(table.authorUserId)
-  })
+    ticketCreatedIdx: index('support_ticket_messages_ticket_created_idx').on(
+      table.ticketId,
+      table.createdAt,
+    ),
+    authorIdx: index('support_ticket_messages_author_user_id_idx').on(table.authorUserId),
+  }),
 );
 
 export const events = pgTable('events', {
@@ -611,7 +730,9 @@ export const events = pgTable('events', {
   installId: uuid('install_id').references(() => installs.id, { onDelete: 'set null' }),
   eventName: varchar('event_name', { length: 120 }).notNull(),
   eventTime: timestamp('event_time', { withTimezone: true }).notNull().defaultNow(),
-  properties: jsonb('properties').notNull().default(sql`'{}'::jsonb`)
+  properties: jsonb('properties')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
 });
 
 export const notifications = pgTable(
@@ -631,18 +752,28 @@ export const notifications = pgTable(
     sourceEventId: uuid('source_event_id').references(() => events.id, { onDelete: 'set null' }),
     sourceEventName: varchar('source_event_name', { length: 120 }),
     dedupeKey: varchar('dedupe_key', { length: 255 }),
-    meta: jsonb('meta').notNull().default(sql`'{}'::jsonb`),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     readAt: timestamp('read_at', { withTimezone: true }),
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userStatusCreatedIdx: index('notifications_user_status_created_idx').on(table.userId, table.status, table.createdAt),
-    userCategoryCreatedIdx: index('notifications_user_category_created_idx').on(table.userId, table.category, table.createdAt),
+    userStatusCreatedIdx: index('notifications_user_status_created_idx').on(
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+    userCategoryCreatedIdx: index('notifications_user_category_created_idx').on(
+      table.userId,
+      table.category,
+      table.createdAt,
+    ),
     sourceEventIdx: index('notifications_source_event_idx').on(table.sourceEventId),
-    dedupeKeyIdx: uniqueIndex('notifications_dedupe_key_idx').on(table.dedupeKey)
-  })
+    dedupeKeyIdx: uniqueIndex('notifications_dedupe_key_idx').on(table.dedupeKey),
+  }),
 );
 
 export const billingWebhookEvents = pgTable(
@@ -653,14 +784,16 @@ export const billingWebhookEvents = pgTable(
     providerEventId: varchar('provider_event_id', { length: 128 }).notNull(),
     type: varchar('type', { length: 64 }).notNull(),
     status: recordStatusEnum('status').notNull().default('active'),
-    payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+    payload: jsonb('payload')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     processedAt: timestamp('processed_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     providerEventKey: uniqueIndex('billing_webhook_events_provider_event_idx').on(
       table.provider,
-      table.providerEventId
-    )
-  })
+      table.providerEventId,
+    ),
+  }),
 );

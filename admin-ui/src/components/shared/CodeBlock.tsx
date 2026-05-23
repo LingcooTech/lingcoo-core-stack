@@ -1,5 +1,5 @@
 import { Check, Copy } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
@@ -20,15 +20,95 @@ function getCodeString(children: ReactNode): string {
   return '';
 }
 
+const SHIKI_LANG_ALIAS: Record<string, string> = {
+  js: 'javascript',
+  jsx: 'jsx',
+  ts: 'typescript',
+  tsx: 'tsx',
+  sh: 'bash',
+  shell: 'bash',
+  zsh: 'bash',
+  yml: 'yaml',
+  py: 'python',
+  rb: 'ruby',
+  rs: 'rust',
+  cs: 'csharp',
+  md: 'markdown',
+  'c++': 'cpp',
+  text: 'text',
+  plaintext: 'text',
+};
+
+const SUPPORTED_LANGS = new Set([
+  'javascript',
+  'jsx',
+  'typescript',
+  'tsx',
+  'json',
+  'bash',
+  'html',
+  'css',
+  'scss',
+  'python',
+  'go',
+  'rust',
+  'sql',
+  'yaml',
+  'toml',
+  'xml',
+  'markdown',
+  'java',
+  'kotlin',
+  'swift',
+  'c',
+  'cpp',
+  'csharp',
+  'php',
+  'ruby',
+  'dockerfile',
+  'diff',
+  'text',
+]);
+
+function normalizeLang(raw?: string): string {
+  if (!raw) return 'text';
+  const lower = raw.toLowerCase();
+  const aliased = SHIKI_LANG_ALIAS[lower] ?? lower;
+  return SUPPORTED_LANGS.has(aliased) ? aliased : 'text';
+}
+
 /**
- * Markdown 代码块通用渲染：保留浏览器默认等宽字体，
- * 提供右上角语言徽标 + 一键复制 + 成功反馈。
- *
- * 真·语法高亮（shiki / prism）可作为后续增强，目前先保证可读性与交互。
+ * Markdown 代码块：shiki 双主题高亮 + 一键复制。
+ * shiki 通过 dynamic import 异步加载，未就绪时退化为纯文本 pre。
  */
 export function CodeBlock({ language, children, className }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const [html, setHtml] = useState<string | null>(null);
   const code = getCodeString(children).replace(/\n$/, '');
+  const lang = normalizeLang(language);
+
+  useEffect(() => {
+    let cancelled = false;
+    void import('shiki')
+      .then(async (shiki) => {
+        try {
+          const result = await shiki.codeToHtml(code, {
+            lang,
+            themes: { light: 'github-light', dark: 'github-dark' },
+            defaultColor: 'light',
+          });
+          if (!cancelled) setHtml(result);
+        } catch {
+          if (!cancelled) setHtml(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setHtml(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [code, lang]);
 
   const handleCopy = async () => {
     try {
@@ -44,19 +124,19 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
   return (
     <div
       className={cn(
-        'group relative my-6 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-sm',
+        'border-border bg-card group relative my-6 overflow-hidden rounded-xl border shadow-sm',
         className,
       )}
     >
-      <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-2">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+      <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2">
+        <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
           {language || 'code'}
         </span>
         <button
           type="button"
           onClick={handleCopy}
           aria-label="复制代码"
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-slate-400 transition-colors hover:text-slate-100"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors"
         >
           {copied ? (
             <>
@@ -71,9 +151,16 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
           )}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 text-[13px] leading-6 text-slate-100">
-        <code className="font-mono">{code}</code>
-      </pre>
+      {html ? (
+        <div
+          className="codeblock-shiki overflow-x-auto text-[13px] leading-6"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      ) : (
+        <pre className="bg-muted/20 text-foreground overflow-x-auto p-4 text-[13px] leading-6">
+          <code className="font-mono">{code}</code>
+        </pre>
+      )}
     </div>
   );
 }

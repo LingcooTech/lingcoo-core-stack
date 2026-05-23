@@ -100,10 +100,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           variant="ghost"
           size="icon"
           className={cn(
-            'text-muted-foreground hover:bg-muted hover:text-foreground h-7 w-7 rounded-md',
+            'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
             collapsed
-              ? 'absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/brand:opacity-100'
-              : 'ml-auto shrink-0',
+              ? 'border-border bg-card absolute inset-x-3 top-4 z-10 h-8 w-auto border opacity-0 shadow-sm transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
+              : 'ml-auto h-7 w-7 shrink-0',
           )}
           onClick={onToggle}
           aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
@@ -134,7 +134,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   to={meta.href}
                   title={collapsed ? meta.navTitle : undefined}
                   className={cn(
-                    'relative mb-0.5 flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium no-underline transition-colors',
+                    'relative mb-0.5 flex items-center rounded-md no-underline transition-colors',
+                    collapsed
+                      ? 'h-10 justify-center px-1'
+                      : 'h-9 gap-2.5 px-2.5 text-[13px] font-medium',
                     isActive
                       ? 'bg-card text-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
@@ -143,15 +146,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   {isActive && !collapsed ? (
                     <span className="bg-primary absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r" />
                   ) : null}
-                  <span
-                    className={cn(
-                      'flex h-4 w-4 shrink-0 items-center justify-center text-[11px] transition-colors',
-                      isActive ? 'text-primary' : 'text-muted-foreground/80',
-                    )}
-                  >
-                    {meta.icon}
-                  </span>
-                  {!collapsed && <span className="truncate">{meta.navTitle}</span>}
+                  {collapsed ? (
+                    <span
+                      className={cn(
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[13px] font-semibold transition-colors',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted/60 text-muted-foreground/90',
+                      )}
+                    >
+                      {meta.navAbbr}
+                    </span>
+                  ) : (
+                    <span className="truncate">{meta.navTitle}</span>
+                  )}
                 </Link>
               );
             })}

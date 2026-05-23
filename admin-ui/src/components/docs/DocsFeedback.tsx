@@ -1,7 +1,9 @@
+import { useMutation } from '@tanstack/react-query';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { submitDocFeedback } from '@/api/docs';
 import { Button } from '@/components/ui/button';
 
 interface DocsFeedbackProps {
@@ -14,19 +16,25 @@ interface DocsFeedbackProps {
 
 /**
  * 文档页底部反馈条：👍 / 👎 + （可选）GitHub 编辑链接。
- * 目前仅做客户端反馈提示；后续可接入 /v1/docs/feedback 端点持久化。
+ * 点击会写入 doc_feedback 表，后续可在管理后台聚合查看。
  */
 export function DocsFeedback({ spaceSlug, pagePath, editUrl }: DocsFeedbackProps) {
   const [submitted, setSubmitted] = useState<'helpful' | 'unhelpful' | null>(null);
 
+  const mutation = useMutation({
+    mutationFn: submitDocFeedback,
+    onSuccess: (_data, variables) => {
+      setSubmitted(variables.helpful ? 'helpful' : 'unhelpful');
+      toast.success(variables.helpful ? '感谢反馈！' : '已记录，会尽快改进');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : '反馈提交失败');
+    },
+  });
+
   const handleSubmit = (kind: 'helpful' | 'unhelpful') => {
-    if (submitted) return;
-    setSubmitted(kind);
-    toast.success(kind === 'helpful' ? '感谢反馈！' : '已记录，会尽快改进');
-    // 留点 hook 给未来后端：console 中带上必要 context，便于 debug
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('[docs-feedback]', { spaceSlug, pagePath, kind });
-    }
+    if (submitted || mutation.isPending) return;
+    mutation.mutate({ spaceSlug, pagePath, helpful: kind === 'helpful' });
   };
 
   return (
@@ -46,7 +54,7 @@ export function DocsFeedback({ spaceSlug, pagePath, editUrl }: DocsFeedbackProps
           <Button
             variant={submitted === 'helpful' ? 'default' : 'outline'}
             size="sm"
-            disabled={Boolean(submitted)}
+            disabled={Boolean(submitted) || mutation.isPending}
             onClick={() => handleSubmit('helpful')}
           >
             <ThumbsUp className="h-3.5 w-3.5" />
@@ -55,7 +63,7 @@ export function DocsFeedback({ spaceSlug, pagePath, editUrl }: DocsFeedbackProps
           <Button
             variant={submitted === 'unhelpful' ? 'default' : 'outline'}
             size="sm"
-            disabled={Boolean(submitted)}
+            disabled={Boolean(submitted) || mutation.isPending}
             onClick={() => handleSubmit('unhelpful')}
           >
             <ThumbsDown className="h-3.5 w-3.5" />

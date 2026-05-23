@@ -462,3 +462,27 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Shiki —— 在 CodeBlock 中双主题渲染（github-light + github-dark）。
+ * defaultColor: 'light' 时浅色直接落到 color，深色挂在 --shiki-dark CSS 变量；
+ * 这里仅在 .dark 下接管颜色，并把 shiki 自带的 padding/border 收掉。
+ * ────────────────────────────────────────────────────────────────── */
+.codeblock-shiki pre.shiki {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 0;
+  border: 0;
+  background-color: hsl(var(--card));
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.dark .codeblock-shiki pre.shiki,
+.dark .codeblock-shiki pre.shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}

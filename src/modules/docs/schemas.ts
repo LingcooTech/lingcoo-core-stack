@@ -46,3 +46,10 @@ export const upsertDocPageSchema = z.object({
   publishedAt: z.string().datetime().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
 });
+
+export const submitDocFeedbackSchema = z.object({
+  spaceSlug: z.string().trim().min(1).max(160),
+  pagePath: z.string().trim().min(1).max(500),
+  helpful: z.boolean(),
+  comment: z.string().trim().max(2000).optional(),
+});

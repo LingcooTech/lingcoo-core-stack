@@ -382,4 +382,34 @@ export class DocsService {
 
     return { items };
   }
+
+  async submitFeedback(input: {
+    spaceSlug: string;
+    pagePath: string;
+    helpful: boolean;
+    comment?: string;
+    userId?: string | null;
+    userAgent?: string | null;
+  }) {
+    const space = await this.repository.findSpaceBySlug(input.spaceSlug);
+    if (!space || space.status !== 'active') {
+      throw httpError(404, 'Doc space not found');
+    }
+
+    const page = await this.repository.findPageByPath(space.id, input.pagePath);
+    if (!page || page.status !== 'published') {
+      throw httpError(404, 'Doc page not found');
+    }
+
+    const row = await this.repository.createFeedback({
+      spaceSlug: input.spaceSlug,
+      pagePath: input.pagePath,
+      helpful: input.helpful,
+      comment: input.comment?.trim() || null,
+      userId: input.userId ?? null,
+      userAgent: input.userAgent?.slice(0, 500) ?? null,
+    });
+
+    return { ok: true, id: row.id };
+  }
 }

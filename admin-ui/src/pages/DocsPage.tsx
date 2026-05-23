@@ -45,6 +45,7 @@ const EMPTY_SPACE_FORM = {
   title: '',
   description: '',
   iconUrl: '',
+  editBaseUrl: '',
   type: 'product' as 'product' | 'app' | 'internal',
   appId: '',
   sortOrder: '0',
@@ -104,6 +105,8 @@ export function DocsPage() {
       title: space.title,
       description: space.description ?? '',
       iconUrl: space.iconUrl ?? '',
+      editBaseUrl:
+        typeof space.meta?.editBaseUrl === 'string' ? (space.meta.editBaseUrl as string) : '',
       type: space.type,
       appId: space.appId ?? '',
       sortOrder: String(space.sortOrder),
@@ -154,6 +157,15 @@ export function DocsPage() {
 
   const saveSpaceMutation = useMutation({
     mutationFn: async () => {
+      const editBaseUrl = spaceForm.editBaseUrl.trim();
+      const existingMeta = selectedSpaceQuery.data?.space.meta ?? {};
+      const meta = editBaseUrl
+        ? { ...existingMeta, editBaseUrl }
+        : (() => {
+            const { editBaseUrl: _omit, ...rest } = existingMeta as Record<string, unknown>;
+            return rest;
+          })();
+
       const payload = {
         slug: spaceForm.slug,
         title: spaceForm.title,
@@ -163,6 +175,7 @@ export function DocsPage() {
         appId: spaceForm.appId || undefined,
         sortOrder: Number.parseInt(spaceForm.sortOrder || '0', 10) || 0,
         status: spaceForm.status,
+        meta,
       };
 
       return selectedSpaceId ? updateDocSpace(selectedSpaceId, payload) : createDocSpace(payload);
@@ -426,6 +439,22 @@ export function DocsPage() {
                       setSpaceForm((prev) => ({ ...prev, description: event.target.value }))
                     }
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>「在 GitHub 编辑」base URL</Label>
+                  <Input
+                    placeholder="https://github.com/foo/docs/edit/main"
+                    value={spaceForm.editBaseUrl}
+                    onChange={(event) =>
+                      setSpaceForm((prev) => ({ ...prev, editBaseUrl: event.target.value }))
+                    }
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    填写后，前台文档页底部会出现「在 GitHub 编辑此页」链接；URL 会拼接为
+                    <code className="bg-muted/60 mx-1 rounded px-1 py-0.5">{`{base}/{页面 path}.md`}</code>
+                    。留空则不显示。
+                  </p>
                 </div>
 
                 <Button
