@@ -1,4 +1,4 @@
-import { ChevronRight, ExternalLink, Search } from 'lucide-react';
+import { ChevronRight, ExternalLink, Menu, Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CommandPalette } from '@/components/shared/CommandPalette';
@@ -6,7 +6,11 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
 import { cn } from '@/lib/utils';
 
-export function Topbar() {
+interface TopbarProps {
+  onMenuClick?: () => void;
+}
+
+export function Topbar({ onMenuClick }: TopbarProps) {
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
@@ -16,20 +20,32 @@ export function Topbar() {
   return (
     <>
       <header className="border-border bg-card/70 sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4 backdrop-blur-md">
-        {/* Breadcrumb */}
-        <nav aria-label="面包屑" className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px]">
-          {section ? (
-            <>
-              <span className="text-muted-foreground/80 hidden sm:inline">
-                {section.groupLabel}
-              </span>
-              <ChevronRight className="text-muted-foreground/40 hidden h-3.5 w-3.5 sm:inline" />
-              <span className="text-foreground truncate font-semibold">{section.title}</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">FD Core Stack</span>
-          )}
-        </nav>
+        {/* Mobile hamburger + Breadcrumb */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {onMenuClick ? (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              aria-label="打开侧边栏"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+          ) : null}
+          <nav aria-label="面包屑" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+            {section ? (
+              <>
+                <span className="text-muted-foreground/80 hidden sm:inline">
+                  {section.groupLabel}
+                </span>
+                <ChevronRight className="text-muted-foreground/40 hidden h-3.5 w-3.5 sm:inline" />
+                <span className="text-foreground truncate font-semibold">{section.title}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">FD Core Stack</span>
+            )}
+          </nav>
+        </div>
 
         {/* Right actions */}
         <div className="flex shrink-0 items-center gap-1.5">

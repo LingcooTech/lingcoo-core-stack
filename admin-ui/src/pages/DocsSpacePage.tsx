@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ChevronRight, FileText, LoaderCircle } from 'lucide-react';
-import { useMemo } from 'react';
+import { ArrowLeft, ChevronRight, FileText, LoaderCircle, Menu } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -13,6 +13,7 @@ import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { CodeBlock } from '@/components/shared/CodeBlock';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { extractToc, headingId } from '@/lib/markdown';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,11 @@ export function DocsSpacePage() {
   const params = useParams<{ spaceSlug: string; '*': string }>();
   const location = useLocation();
   const currentPath = params['*']?.trim() || '';
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [currentPath]);
 
   const pageQuery = useQuery({
     queryKey: ['public-doc-page', params.spaceSlug, currentPath],
@@ -94,6 +100,18 @@ export function DocsSpacePage() {
       </div>
 
       <main className="min-w-0 space-y-6 min-[960px]:max-w-[760px]">
+        <div className="flex items-center gap-2 min-[960px]:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu className="h-3.5 w-3.5" />
+            文档目录
+          </Button>
+        </div>
+
         <nav
           className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs"
           aria-label="面包屑"
@@ -210,6 +228,24 @@ export function DocsSpacePage() {
           <ArticleToc items={toc} pathname={location.pathname} />
         </div>
       </aside>
+
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent
+          side="left"
+          className="w-[280px] p-3 min-[960px]:hidden"
+          aria-describedby={undefined}
+        >
+          <div className="h-full pt-2">
+            <DocsSidebar
+              spaceTitle={space.title}
+              spaceDescription={space.description}
+              spaceSlug={space.slug}
+              tree={tree}
+              currentPath={page.path}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
