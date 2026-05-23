@@ -139,14 +139,13 @@ export function OrdersPage() {
   const orderColumns: Column<HydratedOrder>[] = [
     {
       key: 'order',
-      header: '订单',
+      header: '订单号',
       cell: (row) => (
-        <div>
-          <p className="font-mono text-xs font-bold">{row.orderNo}</p>
-          <p className="text-muted-foreground text-[10px]">
-            {row.checkoutSession?.sessionCode ?? '—'}
+        <div className="min-w-0">
+          <p className="text-foreground truncate font-mono text-[12px] font-semibold">
+            {row.orderNo}
           </p>
-          <p className="text-muted-foreground text-[10px]">{row.app?.name ?? row.appId}</p>
+          <p className="text-muted-foreground truncate text-[10px]">{row.app?.name ?? row.appId}</p>
         </div>
       ),
     },
@@ -154,36 +153,29 @@ export function OrdersPage() {
       key: 'status',
       header: '状态',
       cell: (row) => (
-        <div className="flex flex-col gap-1">
+        <div className="inline-flex items-center gap-1.5">
           <StatusPill tone={statusToTone(row.status)} label={row.status} />
-          {row.provider && <StatusPill tone="neutral" label={row.provider} />}
-          {row.providerOrderId && (
-            <p className="text-muted-foreground max-w-[120px] truncate font-mono text-[10px]">
-              {row.providerOrderId}
-            </p>
-          )}
+          {row.provider ? (
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
+              {row.provider}
+            </span>
+          ) : null}
         </div>
       ),
     },
     {
       key: 'user',
-      header: '用户/应用',
-      cell: (row) => (
-        <div>
-          <p className="text-xs font-bold">{row.user?.email ?? row.userId}</p>
-          {row.app && <p className="text-muted-foreground font-mono text-[10px]">{row.app.code}</p>}
-        </div>
-      ),
+      header: '用户',
+      cell: (row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'amount',
       header: '金额',
       cell: (row) => (
-        <div>
-          <p className="text-xs font-bold">{formatAmount(row.amount, row.currency)}</p>
-          {row.paidAt && (
-            <p className="text-muted-foreground text-[10px]">{formatTime(row.paidAt)}</p>
-          )}
+        <div className="tabular-nums">
+          <p className="text-foreground text-[12px] font-semibold">
+            {formatAmount(row.amount, row.currency)}
+          </p>
           <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
         </div>
       ),
@@ -191,24 +183,25 @@ export function OrdersPage() {
     {
       key: 'actions',
       header: '操作',
+      className: 'w-[140px]',
       cell: (row) => (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
           <Button
             size="sm"
             variant="outline"
-            className="text-xs"
+            className="h-7 px-2 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               setSelectedOrderNo(row.orderNo);
             }}
           >
-            <Eye className="mr-1 h-3 w-3" />
+            <Eye className="h-3 w-3" />
             查看
           </Button>
           <Button
             size="sm"
-            variant="outline"
-            className="text-xs"
+            variant="ghost"
+            className="text-muted-foreground h-7 px-2 text-xs"
             disabled={reconcileMutation.isPending && reconcileMutation.variables === row.orderNo}
             onClick={(e) => {
               e.stopPropagation();
@@ -216,7 +209,7 @@ export function OrdersPage() {
             }}
           >
             {reconcileMutation.isPending && reconcileMutation.variables === row.orderNo
-              ? '同步中...'
+              ? '同步中'
               : '同步'}
           </Button>
         </div>

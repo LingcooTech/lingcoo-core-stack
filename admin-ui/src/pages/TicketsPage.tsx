@@ -423,25 +423,22 @@ export function TicketsPage() {
     {
       key: 'ticket',
       header: '工单',
-      className: 'min-w-[280px]',
+      className: 'min-w-[260px]',
       cell: (row) => (
-        <div className="space-y-1">
-          <p className="text-muted-foreground font-mono text-[11px] font-semibold">
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-[13px] font-medium">{row.subject}</p>
+          <p className="text-muted-foreground truncate font-mono text-[10px]">
             {row.ticketNo}
-          </p>
-          <p className="text-foreground text-sm font-semibold">{row.subject}</p>
-          <p className="text-muted-foreground text-xs">
-            {row.app?.name ?? '未关联应用'}
-            {row.order?.orderNo ? ` · 订单 ${row.order.orderNo}` : ''}
+            {row.app?.name ? ` · ${row.app.name}` : ''}
           </p>
         </div>
       ),
     },
     {
       key: 'status',
-      header: '状态 / 优先级',
+      header: '状态',
       cell: (row) => (
-        <div className="space-y-1.5">
+        <div className="inline-flex items-center gap-1.5">
           <StatusPill tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
           <StatusPill
             tone={ticketPriorityTone(row.priority)}
@@ -452,34 +449,33 @@ export function TicketsPage() {
     },
     {
       key: 'user',
-      header: '用户 / 分类',
-      cell: (row) => (
-        <div className="space-y-1">
-          <p className="text-foreground text-sm font-medium">{row.user?.email ?? row.userId}</p>
-          <p className="text-muted-foreground text-xs">{ticketCategoryLabel(row.category)}</p>
-        </div>
-      ),
+      header: '用户',
+      cell: (row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'assignee',
-      header: '指派',
+      header: '指派 / 更新',
       cell: (row) => (
-        <div className="space-y-1">
-          <p className="text-foreground text-sm">
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-[12px]">
             {row.assignee?.displayName ?? row.assignee?.email ?? '未分配'}
           </p>
-          <p className="text-muted-foreground text-[11px]">{formatTime(row.lastActivityAt)}</p>
+          <p className="text-muted-foreground text-[10px] tabular-nums">
+            {formatTime(row.lastActivityAt)}
+          </p>
         </div>
       ),
     },
     {
       key: 'actions',
       header: '操作',
+      className: 'w-[80px]',
       cell: (row) => (
         <Button
           type="button"
           size="sm"
           variant="outline"
+          className="h-7 px-2.5 text-xs"
           onClick={() => setSelectedTicketNo(row.ticketNo)}
         >
           处理

@@ -145,12 +145,11 @@ export function UsersPage() {
       key: 'user',
       header: '用户',
       cell: (row) => (
-        <div>
-          <p className="text-xs font-bold">{row.email}</p>
-          {row.displayName && <p className="text-muted-foreground text-xs">{row.displayName}</p>}
-          <p className="text-muted-foreground max-w-[120px] truncate font-mono text-[10px]">
-            {row.id}
-          </p>
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-[12px] font-medium">{row.email}</p>
+          {row.displayName ? (
+            <p className="text-muted-foreground truncate text-[10px]">{row.displayName}</p>
+          ) : null}
         </div>
       ),
     },
@@ -161,39 +160,45 @@ export function UsersPage() {
     },
     {
       key: 'status',
-      header: '状态',
+      header: '账户 / 邮箱',
       cell: (row) => (
-        <StatusPill tone={row.status === 'active' ? 'ok' : 'warn'} label={row.status} />
-      ),
-    },
-    {
-      key: 'emailVerified',
-      header: '邮箱验证',
-      cell: (row) => (
-        <StatusPill
-          tone={row.emailVerified ? 'ok' : 'warn'}
-          label={row.emailVerified ? 'verified' : 'unverified'}
-        />
+        <div className="inline-flex items-center gap-1.5">
+          <StatusPill tone={row.status === 'active' ? 'ok' : 'warn'} label={row.status} />
+          <StatusPill
+            tone={row.emailVerified ? 'ok' : 'warn'}
+            label={row.emailVerified ? '已验证' : '未验证'}
+          />
+        </div>
       ),
     },
     {
       key: 'createdAt',
       header: '注册时间',
-      cell: (row) => <span className="text-xs">{formatTime(row.createdAt)}</span>,
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.createdAt)}
+        </span>
+      ),
     },
     {
       key: 'actions',
       header: '操作',
+      className: 'w-[220px]',
       cell: (row) => (
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="text-xs" onClick={() => openEdit(row)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={() => openEdit(row)}
+          >
             编辑
           </Button>
           {row.status === 'active' ? (
             <Button
               size="sm"
-              variant="outline"
-              className="text-xs"
+              variant="ghost"
+              className="text-muted-foreground h-7 px-2 text-xs"
               disabled={isSelf(row)}
               onClick={() => setConfirmAction({ type: 'suspend', user: row })}
             >
@@ -202,8 +207,8 @@ export function UsersPage() {
           ) : (
             <Button
               size="sm"
-              variant="outline"
-              className="text-xs"
+              variant="ghost"
+              className="text-muted-foreground h-7 px-2 text-xs"
               onClick={() => setConfirmAction({ type: 'activate', user: row })}
             >
               激活
@@ -211,8 +216,8 @@ export function UsersPage() {
           )}
           <Button
             size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive text-xs"
+            variant="ghost"
+            className="text-destructive hover:text-destructive h-7 px-2 text-xs"
             onClick={() => setResetConfirm(row)}
           >
             重置密码
