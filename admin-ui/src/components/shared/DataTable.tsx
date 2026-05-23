@@ -161,7 +161,7 @@ export function DataTable<T extends RowData>({
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {isSorted && sortConfig && (
-                        <span className="text-primary animate-fadeIn">
+                        <span className="text-primary">
                           {sortConfig.direction === 'asc' ? '↑' : '↓'}
                         </span>
                       )}
@@ -194,9 +194,10 @@ export function DataTable<T extends RowData>({
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               data-state={row.getIsSelected() ? 'selected' : undefined}
               className={cn(
-                'animate-fadeIn transition-colors',
-                onRowClick && 'hover:bg-muted cursor-pointer',
-                row.getIsSelected() && 'bg-primary/5',
+                'transition-colors',
+                onRowClick && 'hover:bg-muted/40 cursor-pointer',
+                row.getIsSelected() &&
+                  'bg-primary/[0.04] shadow-[inset_2px_0_0_hsl(var(--primary))]',
                 rowClassName ? rowClassName(row.original) : '',
               )}
             >

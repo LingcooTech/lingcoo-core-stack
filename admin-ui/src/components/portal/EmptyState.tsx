@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 export function EmptyState({
@@ -18,17 +17,20 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <Card className={cn('border-border bg-card/80 border-dashed', className)}>
-      <CardContent className="flex flex-col items-center justify-center gap-4 p-10 text-center">
-        <div className="bg-muted text-muted-foreground rounded-lg p-4">
-          <Icon className="h-7 w-7" />
-        </div>
-        <div className="space-y-2">
-          <p className="text-foreground text-lg font-semibold">{title}</p>
-          <p className="text-muted-foreground max-w-xl text-sm leading-7">{description}</p>
-        </div>
-        {action}
-      </CardContent>
-    </Card>
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center gap-3 px-6 py-12 text-center',
+        className,
+      )}
+    >
+      <Icon className="text-muted-foreground/50 h-7 w-7" strokeWidth={1.5} />
+      <div className="space-y-1.5">
+        <p className="text-foreground text-[14px] font-semibold">{title}</p>
+        <p className="text-muted-foreground mx-auto max-w-sm text-[13px] leading-6">
+          {description}
+        </p>
+      </div>
+      {action && <div className="mt-1">{action}</div>}
+    </div>
   );
 }

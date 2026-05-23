@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          '资源状态徽章，统一架构文档中 ok/warn/danger/neutral/info 五档 tone。颜色来自 Phase B.1 的 status semantic token (bg-status-{tone}-bg / text-status-{tone}-fg / border-status-{tone}-border)，主题切换通过重映射这些 token 完成。',
+          '资源状态徽章，统一架构文档中 ok/warn/danger/neutral/info 五档 tone。Linear/Vercel 风格低饱和：浅色 50 背景 + 700 文本；深色 500/10 + 300 文本，dark 自适应。可通过 noDot 隐藏前置圆点。',
       },
     },
   },

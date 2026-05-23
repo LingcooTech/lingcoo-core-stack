@@ -6,39 +6,40 @@ interface StatusPillProps {
   tone: Tone;
   label: string;
   className?: string;
+  /** Hide the leading dot for ultra-compact rows. */
+  noDot?: boolean;
 }
 
 /**
- * 使用 Phase B.1 的 semantic status token：
- *   bg-status-{tone}-bg / text-status-{tone}-fg / border-status-{tone}-border
- * 主题切换时只需在 :root / .dark 重映射这些 token，无需改组件。
+ * Linear/Vercel-style 状态徽章：低饱和、无描边、小字号；支持 dark mode。
+ * 浅色：高级别 50 (近灰) 背景 + 700 文本；深色：透明色块 + 400 文本，确保对比。
  */
 const toneStyles: Record<Tone, string> = {
-  ok: 'bg-status-success-bg border-status-success-border text-status-success-fg',
-  warn: 'bg-status-warning-bg border-status-warning-border text-status-warning-fg',
-  danger: 'bg-status-danger-bg border-status-danger-border text-status-danger-fg',
-  neutral: 'bg-status-neutral-bg border-status-neutral-border text-status-neutral-fg',
-  info: 'bg-status-info-bg border-status-info-border text-status-info-fg',
+  ok: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  warn: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+  danger: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+  info: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
+  neutral: 'bg-muted text-muted-foreground',
 };
 
 const dotStyles: Record<Tone, string> = {
-  ok: 'bg-status-success-fg',
-  warn: 'bg-status-warning-fg',
-  danger: 'bg-status-danger-fg',
-  neutral: 'bg-status-neutral-fg',
-  info: 'bg-status-info-fg',
+  ok: 'bg-emerald-500',
+  warn: 'bg-amber-500',
+  danger: 'bg-red-500',
+  info: 'bg-blue-500',
+  neutral: 'bg-muted-foreground/50',
 };
 
-export function StatusPill({ tone, label, className }: StatusPillProps) {
+export function StatusPill({ tone, label, className, noDot }: StatusPillProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold',
+        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none',
         toneStyles[tone],
         className,
       )}
     >
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotStyles[tone])} />
+      {!noDot && <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotStyles[tone])} />}
       {label}
     </span>
   );

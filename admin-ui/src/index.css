@@ -104,30 +104,9 @@
   --animate-shake: shake 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 
   /* ════════════════════════════════════════════════════════════════════
-   * Status tones —— 对齐架构文档 ok/warn/danger/neutral/info
-   * 每个 tone 含 fg / bg / border 三态，可用 bg-status-success-bg、
-   * text-status-success-fg、border-status-success-border 等 utility。
-   * dark mode 留待 Phase B.2 ThemeProvider 时补 .dark 重映射。
+   * Status tones —— 已迁移到组件内 Tailwind 工具类（dark: 变体自适应），
+   * 不再需要 @theme token，相关组件见 StatusPill.tsx。
    * ════════════════════════════════════════════════════════════════════ */
-  --color-status-success-fg: #047857;
-  --color-status-success-bg: #ecfdf5;
-  --color-status-success-border: #a7f3d0;
-
-  --color-status-warning-fg: #b45309;
-  --color-status-warning-bg: #fffbeb;
-  --color-status-warning-border: #fde68a;
-
-  --color-status-danger-fg: #b91c1c;
-  --color-status-danger-bg: #fef2f2;
-  --color-status-danger-border: #fecaca;
-
-  --color-status-info-fg: #1d4ed8;
-  --color-status-info-bg: #eff6ff;
-  --color-status-info-border: #bfdbfe;
-
-  --color-status-neutral-fg: #475569;
-  --color-status-neutral-bg: #f8fafc;
-  --color-status-neutral-border: #e2e8f0;
 
   /* ════════════════════════════════════════════════════════════════════
    * Motion duration —— transition-duration utility:
