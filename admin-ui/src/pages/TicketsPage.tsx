@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -419,6 +420,31 @@ export function TicketsPage() {
     }
   }, [selectedTicketNo, tickets]);
 
+  const currentTicketIndex = selectedTicketNo
+    ? tickets.findIndex((ticket) => ticket.ticketNo === selectedTicketNo)
+    : -1;
+  const previousTicket = currentTicketIndex > 0 ? tickets[currentTicketIndex - 1] : null;
+  const nextTicket =
+    currentTicketIndex >= 0 && currentTicketIndex < tickets.length - 1
+      ? tickets[currentTicketIndex + 1]
+      : null;
+
+  useEffect(() => {
+    if (!selectedTicketNo) return undefined;
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.key === '[' && previousTicket) {
+        event.preventDefault();
+        setSelectedTicketNo(previousTicket.ticketNo);
+      } else if (event.key === ']' && nextTicket) {
+        event.preventDefault();
+        setSelectedTicketNo(nextTicket.ticketNo);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedTicketNo, previousTicket, nextTicket]);
+
   const columns: Column<HydratedSupportTicket>[] = [
     {
       key: 'ticket',
@@ -569,8 +595,43 @@ export function TicketsPage() {
           >
             <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
               <SheetHeader className="border-border border-b">
-                <SheetTitle className="font-mono text-sm">{selectedTicketNo}</SheetTitle>
-                <SheetDescription>工单详情与处理</SheetDescription>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <SheetTitle className="font-mono text-sm">{selectedTicketNo}</SheetTitle>
+                    <SheetDescription>
+                      工单详情与处理
+                      {currentTicketIndex >= 0 ? (
+                        <span className="ml-2 tabular-nums">
+                          ({currentTicketIndex + 1} / {tickets.length})
+                        </span>
+                      ) : null}
+                    </SheetDescription>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      disabled={!previousTicket}
+                      onClick={() => previousTicket && setSelectedTicketNo(previousTicket.ticketNo)}
+                      title="上一条 (⌘[)"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2"
+                      disabled={!nextTicket}
+                      onClick={() => nextTicket && setSelectedTicketNo(nextTicket.ticketNo)}
+                      title="下一条 (⌘])"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
               </SheetHeader>
 
               <div className="px-4 pb-6">

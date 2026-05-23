@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Eye, RefreshCw } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getOrderDetail, listOrders, reconcileOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
@@ -380,13 +381,16 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <DetailSection title={`关联权益 (${entitlements.length})`}>
           <div className="flex flex-wrap gap-2">
             {entitlements.map((e) => (
-              <div
+              <Link
                 key={e.id}
-                className="border-border bg-card flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"
+                to={`/admin/licenses?search=${encodeURIComponent(e.id)}`}
+                className="border-border bg-card hover:border-foreground/20 hover:bg-muted/40 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs no-underline transition-colors"
+                title="在授权管理中查看"
               >
-                <span className="font-mono">{e.plan?.code ?? e.id}</span>
+                <span className="text-foreground font-mono">{e.plan?.code ?? e.id}</span>
                 <StatusPill tone={statusToTone(e.status)} label={e.status} />
-              </div>
+                <ArrowUpRight className="text-muted-foreground/60 h-3 w-3" />
+              </Link>
             ))}
           </div>
         </DetailSection>
