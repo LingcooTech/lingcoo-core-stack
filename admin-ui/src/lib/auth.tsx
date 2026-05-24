@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { clearToken, getToken, setToken } from '@/api/client';
+import { canAccessAdminConsole, normalizeRole } from '@/lib/rbac';
 
 interface JwtPayload {
   sub: string;
@@ -53,7 +54,7 @@ function tokenToUser(token: string): AuthUser | null {
     id: payload.sub,
     email: payload.email ?? payload.sub,
     role: payload.role ?? 'user',
-    emailVerified: (payload as unknown as Record<string, unknown>).emailVerified === true
+    emailVerified: (payload as unknown as Record<string, unknown>).emailVerified === true,
   };
 }
 
@@ -91,11 +92,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         user,
         isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
+        isAdmin: canAccessAdminConsole(normalizeRole(user?.role)),
         isEmailVerified: user?.emailVerified ?? false,
         login,
         logout,
-        setEmailVerified
+        setEmailVerified,
       }}
     >
       {children}

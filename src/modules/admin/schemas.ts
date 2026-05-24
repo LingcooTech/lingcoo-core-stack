@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const appRoleSchema = z.enum(['user', 'support', 'finance', 'editor', 'operator', 'admin']);
+
 const optionalTrimmedString = (max: number) =>
   z
     .string()
@@ -220,18 +222,22 @@ export const adminListUsersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   search: z.string().trim().max(255).optional(),
-  role: z.enum(['user', 'admin']).optional(),
+  role: appRoleSchema.optional(),
   status: z.enum(['active', 'suspended']).optional(),
 });
 
 export const adminUpdateUserSchema = z.object({
   displayName: z.string().trim().min(1).max(120).optional(),
-  role: z.enum(['user', 'admin']).optional(),
+  role: appRoleSchema.optional(),
   status: z.enum(['active', 'suspended']).optional(),
 });
 
 export const adminUserIdParamsSchema = z.object({
   userId: z.string().uuid(),
+});
+
+export const adminJobRunParamsSchema = z.object({
+  jobId: z.string().uuid(),
 });
 
 const recordStatusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);

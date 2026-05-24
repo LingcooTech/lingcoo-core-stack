@@ -35,6 +35,12 @@ const envSchema = z.object({
   TRUST_PROXY: booleanishEnv,
   RATE_LIMIT_GLOBAL_MAX: z.coerce.number().int().positive().default(200),
   RATE_LIMIT_GLOBAL_WINDOW: z.string().default('1 minute'),
+  WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(3000),
+  WORKER_STALE_JOB_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 60 * 1000),
   PUBLIC_BASE_URL: z.url().default('http://localhost:8080'),
   CORS_ORIGIN: z.string().default('http://localhost:8080'),
   CADDY_SITE_ADDRESS: z.string().default(':80'),
@@ -83,7 +89,7 @@ const envSchema = z.object({
   OPENROUTER_BASE_URL: z.string().optional(),
   OPENROUTER_SITE_URL: z.string().optional(),
   OPENROUTER_SITE_NAME: z.string().optional(),
-  OPENROUTER_DEFAULT_MODEL: z.string().optional()
+  OPENROUTER_DEFAULT_MODEL: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

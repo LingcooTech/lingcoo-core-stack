@@ -148,6 +148,20 @@
       "when": 1779408000000,
       "tag": "0020_doc_feedback",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779552000000,
+      "tag": "0021_job_runs_and_audit_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779638400000,
+      "tag": "0022_user_role_rbac",
+      "breakpoints": true
     }
   ]
 }

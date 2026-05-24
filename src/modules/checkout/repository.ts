@@ -41,7 +41,7 @@ export class CheckoutRepository {
         completedAt: input.completedAt ?? null,
         meta: input.meta ?? {},
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .returning();
 
@@ -73,7 +73,7 @@ export class CheckoutRepository {
         requestPayload: input.requestPayload ?? {},
         responsePayload: input.responsePayload ?? {},
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .returning();
 
@@ -106,8 +106,8 @@ export class CheckoutRepository {
           eq(checkoutSessions.planId, input.planId),
           eq(checkoutSessions.provider, input.provider),
           eq(checkoutSessions.status, 'pending'),
-          or(isNull(checkoutSessions.expiresAt), gte(checkoutSessions.expiresAt, new Date()))
-        )
+          or(isNull(checkoutSessions.expiresAt), gte(checkoutSessions.expiresAt, new Date())),
+        ),
       )
       .orderBy(desc(checkoutSessions.createdAt))
       .limit(1);
@@ -120,7 +120,10 @@ export class CheckoutRepository {
       return [];
     }
 
-    return this.db.select().from(checkoutSessions).where(inArray(checkoutSessions.orderId, orderIds));
+    return this.db
+      .select()
+      .from(checkoutSessions)
+      .where(inArray(checkoutSessions.orderId, orderIds));
   }
 
   async listPaymentAttemptsByOrderIds(orderIds: string[]) {
@@ -141,7 +144,7 @@ export class CheckoutRepository {
       .set({
         status: 'paid',
         completedAt,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(and(eq(checkoutSessions.orderId, orderId), ne(checkoutSessions.status, 'paid')))
       .returning();
@@ -154,7 +157,7 @@ export class CheckoutRepository {
       .update(checkoutSessions)
       .set({
         meta,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(checkoutSessions.id, sessionId))
       .returning();
@@ -168,7 +171,31 @@ export class CheckoutRepository {
       .set({
         status: 'paid',
         providerReference: providerReference ?? null,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+      })
+      .where(eq(paymentAttempts.orderId, orderId))
+      .returning();
+  }
+
+  async markSessionCancelledByOrderId(orderId: string) {
+    const [session] = await this.db
+      .update(checkoutSessions)
+      .set({
+        status: 'cancelled',
+        updatedAt: new Date(),
+      })
+      .where(and(eq(checkoutSessions.orderId, orderId), eq(checkoutSessions.status, 'pending')))
+      .returning();
+
+    return session ?? null;
+  }
+
+  async markPaymentAttemptsCancelledByOrderId(orderId: string) {
+    return this.db
+      .update(paymentAttempts)
+      .set({
+        status: 'cancelled',
+        updatedAt: new Date(),
       })
       .where(eq(paymentAttempts.orderId, orderId))
       .returning();

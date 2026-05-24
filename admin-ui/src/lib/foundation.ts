@@ -23,6 +23,21 @@ export type AdminSectionDataScope =
   | 'operations'
   | 'observability';
 
+export type AdminSectionPermission =
+  | 'dashboard.view'
+  | 'apps.manage'
+  | 'content.manage'
+  | 'docs.manage'
+  | 'orders.view'
+  | 'payments.manage'
+  | 'settings.manage'
+  | 'users.view'
+  | 'licenses.manage'
+  | 'installs.view'
+  | 'tickets.manage'
+  | 'notifications.manage'
+  | 'observability.view';
+
 interface AdminSectionCard {
   label: string;
   value: string;
@@ -43,6 +58,7 @@ interface AdminSectionMeta {
   navNote: string;
   /** Lucide 图标组件名，通过 section-icons.tsx 的 resolveIcon() 渲染 */
   icon: string;
+  permission: AdminSectionPermission;
   title: string;
   lead: string;
   href: string;
@@ -83,12 +99,21 @@ export function resolveAdminSection(pathname: string): AdminSectionKey | undefin
   return matches[0]?.[0];
 }
 
+export function listAllowedAdminSectionKeys(
+  canAccess: (permission: AdminSectionPermission) => boolean,
+): AdminSectionKey[] {
+  return (Object.entries(adminSectionMeta) as Array<[AdminSectionKey, AdminSectionMeta]>)
+    .filter(([, meta]) => canAccess(meta.permission))
+    .map(([key]) => key);
+}
+
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   dashboard: {
     groupLabel: '概览',
     navTitle: '仪表盘',
     navNote: '',
     icon: 'LayoutDashboard',
+    permission: 'dashboard.view',
     title: '管理后台',
     lead: '',
     href: '/admin',
@@ -108,6 +133,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '应用管理',
     navNote: '',
     icon: 'Package',
+    permission: 'apps.manage',
     title: '应用管理',
     lead: '',
     href: '/admin/apps',
@@ -127,6 +153,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '内容管理',
     navNote: '',
     icon: 'FileText',
+    permission: 'content.manage',
     title: '内容管理',
     lead: '',
     href: '/admin/content',
@@ -146,6 +173,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '文档管理',
     navNote: '',
     icon: 'BookOpen',
+    permission: 'docs.manage',
     title: '文档管理',
     lead: '',
     href: '/admin/docs',
@@ -165,6 +193,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '应用密钥',
     navNote: '',
     icon: 'KeyRound',
+    permission: 'apps.manage',
     title: '应用密钥',
     lead: '',
     href: '/admin/secrets',
@@ -184,6 +213,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '订单管理',
     navNote: '',
     icon: 'Receipt',
+    permission: 'orders.view',
     title: '订单管理',
     lead: '',
     href: '/admin/orders',
@@ -203,6 +233,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '支付配置',
     navNote: '',
     icon: 'Wallet',
+    permission: 'payments.manage',
     title: '支付配置',
     lead: '',
     href: '/admin/payments',
@@ -222,6 +253,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '系统设置',
     navNote: '',
     icon: 'Settings',
+    permission: 'settings.manage',
     title: '系统设置',
     lead: '',
     href: '/admin/settings',
@@ -254,6 +286,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '用户管理',
     navNote: '',
     icon: 'Users',
+    permission: 'users.view',
     title: '用户管理',
     lead: '',
     href: '/admin/users',
@@ -273,6 +306,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '授权管理',
     navNote: '',
     icon: 'ShieldCheck',
+    permission: 'licenses.manage',
     title: '授权管理',
     lead: '',
     href: '/admin/licenses',
@@ -292,6 +326,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '安装实例',
     navNote: '',
     icon: 'Boxes',
+    permission: 'installs.view',
     title: '安装实例',
     lead: '',
     href: '/admin/installs',
@@ -311,6 +346,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '工单管理',
     navNote: '',
     icon: 'LifeBuoy',
+    permission: 'tickets.manage',
     title: '工单管理',
     lead: '',
     href: '/admin/tickets',
@@ -330,6 +366,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '通知管理',
     navNote: '',
     icon: 'Bell',
+    permission: 'notifications.manage',
     title: '通知管理',
     lead: '',
     href: '/admin/notifications',
@@ -349,6 +386,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     navTitle: '事件日志',
     navNote: '',
     icon: 'Activity',
+    permission: 'observability.view',
     title: '事件日志',
     lead: '',
     href: '/admin/observability',

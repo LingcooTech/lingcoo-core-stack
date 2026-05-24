@@ -135,7 +135,7 @@ export interface AdminUsersResponse {
 
 export interface AdminUpdateUserInput {
   displayName?: string;
-  role?: 'user' | 'admin';
+  role?: 'user' | 'support' | 'finance' | 'editor' | 'operator' | 'admin';
   status?: 'active' | 'suspended';
 }
 
@@ -667,6 +667,16 @@ export interface OrderDetail {
 
 export interface OrdersResponse extends PaginatedResponse<HydratedOrder> {}
 
+export interface OrderAdminActionResult {
+  changed: boolean;
+  order: Order;
+  action: {
+    status: 'cancelled' | 'refunded';
+    reason: string;
+    refundId?: string | null;
+  };
+}
+
 export interface CheckoutSessionCreated {
   sessionId: string;
   sessionCode: string;
@@ -996,6 +1006,55 @@ export interface BillingWebhookEvent {
 }
 
 export interface WebhooksResponse extends PaginatedResponse<BillingWebhookEvent> {}
+
+// ─── Job Runs / Audit Logs ───────────────────────────────────────────────────
+
+export interface JobRun {
+  id: string;
+  queue: string;
+  kind: string;
+  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
+  priority: number;
+  payload: unknown;
+  result: unknown;
+  error: unknown;
+  attempts: number;
+  maxAttempts: number;
+  dedupeKey: string | null;
+  availableAt: string;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdByUserId: string | null;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  traceId: string | null;
+  meta: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobRunsResponse extends PaginatedResponse<JobRun> {}
+
+export interface AuditLog {
+  id: string;
+  actorType: 'user' | 'system' | 'job';
+  actorUserId: string | null;
+  actorLabel: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  outcome: 'succeeded' | 'failed';
+  summary: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  meta: unknown;
+  createdAt: string;
+}
+
+export interface AuditLogsResponse extends PaginatedResponse<AuditLog> {}
 
 // ─── Plans (for license grants) ───────────────────────────────────────────────
 

@@ -7,7 +7,7 @@ import {
   createSupportTicketSchema,
   supportTicketListQuerySchema,
   supportTicketNoParamsSchema,
-  supportTicketReplySchema
+  supportTicketReplySchema,
 } from './schemas';
 import { TicketService } from './service';
 
@@ -16,7 +16,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     const query = supportTicketListQuerySchema.parse(request.query);
     return new TicketService(app.db).listMyTickets({
       userId: request.user.sub,
-      ...query
+      ...query,
     });
   });
 
@@ -24,7 +24,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     const payload = createSupportTicketSchema.parse(request.body);
     const result = await new TicketService(app.db).createTicket({
       userId: request.user.sub,
-      ...payload
+      ...payload,
     });
     return reply.status(201).send(result);
   });
@@ -40,7 +40,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     return new TicketService(app.db).replyMyTicket({
       ticketNo: params.ticketNo,
       userId: request.user.sub,
-      body: payload.body
+      body: payload.body,
     });
   });
 
@@ -48,48 +48,68 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     const params = supportTicketNoParamsSchema.parse(request.params);
     return new TicketService(app.db).closeMyTicket({
       ticketNo: params.ticketNo,
-      userId: request.user.sub
+      userId: request.user.sub,
     });
   });
 
-  app.get('/v1/admin/tickets', { preHandler: app.requireAdmin }, async (request) => {
-    const query = supportTicketListQuerySchema.parse(request.query);
-    return new TicketService(app.db).listAdminTickets(query);
-  });
+  app.get(
+    '/v1/admin/tickets',
+    { preHandler: app.requirePermission('tickets.manage') },
+    async (request) => {
+      const query = supportTicketListQuerySchema.parse(request.query);
+      return new TicketService(app.db).listAdminTickets(query);
+    },
+  );
 
-  app.get('/v1/admin/tickets/:ticketNo', { preHandler: app.requireAdmin }, async (request) => {
-    const params = supportTicketNoParamsSchema.parse(request.params);
-    return new TicketService(app.db).getAdminTicket(params.ticketNo);
-  });
+  app.get(
+    '/v1/admin/tickets/:ticketNo',
+    { preHandler: app.requirePermission('tickets.manage') },
+    async (request) => {
+      const params = supportTicketNoParamsSchema.parse(request.params);
+      return new TicketService(app.db).getAdminTicket(params.ticketNo);
+    },
+  );
 
-  app.post('/v1/admin/tickets/:ticketNo/messages', { preHandler: app.requireAdmin }, async (request) => {
-    const params = supportTicketNoParamsSchema.parse(request.params);
-    const payload = adminSupportTicketReplySchema.parse(request.body);
-    return new TicketService(app.db).replyAdminTicket({
-      ticketNo: params.ticketNo,
-      actorUserId: request.user.sub,
-      body: payload.body,
-      isInternal: payload.isInternal
-    });
-  });
+  app.post(
+    '/v1/admin/tickets/:ticketNo/messages',
+    { preHandler: app.requirePermission('tickets.manage') },
+    async (request) => {
+      const params = supportTicketNoParamsSchema.parse(request.params);
+      const payload = adminSupportTicketReplySchema.parse(request.body);
+      return new TicketService(app.db).replyAdminTicket({
+        ticketNo: params.ticketNo,
+        actorUserId: request.user.sub,
+        body: payload.body,
+        isInternal: payload.isInternal,
+      });
+    },
+  );
 
-  app.post('/v1/admin/tickets/:ticketNo/assign', { preHandler: app.requireAdmin }, async (request) => {
-    const params = supportTicketNoParamsSchema.parse(request.params);
-    const payload = adminAssignSupportTicketSchema.parse(request.body);
-    return new TicketService(app.db).assignTicket({
-      ticketNo: params.ticketNo,
-      actorUserId: request.user.sub,
-      assignedAdminUserId: payload.assignedAdminUserId
-    });
-  });
+  app.post(
+    '/v1/admin/tickets/:ticketNo/assign',
+    { preHandler: app.requirePermission('tickets.manage') },
+    async (request) => {
+      const params = supportTicketNoParamsSchema.parse(request.params);
+      const payload = adminAssignSupportTicketSchema.parse(request.body);
+      return new TicketService(app.db).assignTicket({
+        ticketNo: params.ticketNo,
+        actorUserId: request.user.sub,
+        assignedAdminUserId: payload.assignedAdminUserId,
+      });
+    },
+  );
 
-  app.post('/v1/admin/tickets/:ticketNo/status', { preHandler: app.requireAdmin }, async (request) => {
-    const params = supportTicketNoParamsSchema.parse(request.params);
-    const payload = adminUpdateSupportTicketStatusSchema.parse(request.body);
-    return new TicketService(app.db).updateAdminTicketStatus({
-      ticketNo: params.ticketNo,
-      actorUserId: request.user.sub,
-      status: payload.status
-    });
-  });
+  app.post(
+    '/v1/admin/tickets/:ticketNo/status',
+    { preHandler: app.requirePermission('tickets.manage') },
+    async (request) => {
+      const params = supportTicketNoParamsSchema.parse(request.params);
+      const payload = adminUpdateSupportTicketStatusSchema.parse(request.body);
+      return new TicketService(app.db).updateAdminTicketStatus({
+        ticketNo: params.ticketNo,
+        actorUserId: request.user.sub,
+        status: payload.status,
+      });
+    },
+  );
 };

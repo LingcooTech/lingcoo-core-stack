@@ -1,10 +1,14 @@
 import QRCode from 'qrcode';
 
 import type { DbClient } from '../../db/types';
-import { createCheckoutSessionCode, normalizePreparedPaymentToCheckoutAction } from '../../lib/checkout';
+import {
+  createCheckoutSessionCode,
+  normalizePreparedPaymentToCheckoutAction,
+} from '../../lib/checkout';
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { type AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
+import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
 import { AppService } from '../app/service';
 import { BillingRepository } from '../billing/repository';
 import { BillingService } from '../billing/service';
@@ -26,12 +30,12 @@ function normalizeMeta(value: unknown) {
 export class CheckoutService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private resolveEffectiveStatus(
     session: SessionRecord,
-    orderStatus: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded'
+    orderStatus: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded',
   ) {
     if (orderStatus === 'paid' || session.status === 'paid') {
       return 'paid' as const;
@@ -86,7 +90,7 @@ export class CheckoutService {
     const [order, app, plan] = await Promise.all([
       new BillingRepository(this.db).findOrderById(session.orderId),
       new AppRepository(this.db).findAppById(session.appId),
-      new LicenseRepository(this.db).getPlanById(session.planId)
+      new LicenseRepository(this.db).getPlanById(session.planId),
     ]);
 
     if (!order || !app || !plan) {
@@ -110,7 +114,9 @@ export class CheckoutService {
 
     const sessionMeta = this.getSessionMeta(detail.session.meta);
     const lastAttemptAt =
-      typeof sessionMeta.lastStatusReconcileAt === 'string' ? Date.parse(sessionMeta.lastStatusReconcileAt) : Number.NaN;
+      typeof sessionMeta.lastStatusReconcileAt === 'string'
+        ? Date.parse(sessionMeta.lastStatusReconcileAt)
+        : Number.NaN;
 
     if (!Number.isFinite(lastAttemptAt)) {
       return true;
@@ -136,7 +142,7 @@ export class CheckoutService {
 
     await new CheckoutRepository(this.db).updateSessionMeta(detail.session.id, {
       ...sessionMeta,
-      lastStatusReconcileAt: attemptedAt
+      lastStatusReconcileAt: attemptedAt,
     });
 
     try {
@@ -182,21 +188,21 @@ export class CheckoutService {
         name: input.plan.name,
         interval: input.plan.interval,
         priceAmount: input.plan.priceAmount,
-        currency: input.plan.currency
+        currency: input.plan.currency,
       },
       order: {
         id: input.order.id,
         orderNo: input.order.orderNo,
         amount: input.order.amount,
         currency: input.order.currency,
-        status: input.order.status
+        status: input.order.status,
       },
       presentation: {
         type: 'hosted_page' as const,
-        url: this.buildHostedUrl(input.session.sessionCode)
+        url: this.buildHostedUrl(input.session.sessionCode),
       },
       expiresAt: input.session.expiresAt,
-      createdAt: input.session.createdAt
+      createdAt: input.session.createdAt,
     };
   }
 
@@ -214,14 +220,18 @@ export class CheckoutService {
     const licenseService = new LicenseService(this.db);
     const selection = await appService.resolveCheckoutOffer(input.appCode, {
       planCode: input.planCode,
-      offerCode: input.offerCode
+      offerCode: input.offerCode,
     });
     const { app, plan, offer } = selection;
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
 
     if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
-      const ownership = await licenseService.findActiveOneTimeOwnership(input.userId, app.id, plan.id);
+      const ownership = await licenseService.findActiveOneTimeOwnership(
+        input.userId,
+        app.id,
+        plan.id,
+      );
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
@@ -229,17 +239,22 @@ export class CheckoutService {
 
     const provider = await this.resolveProvider(input.providerPreference);
     const reusableSession =
-      input.offerCode || offer.code !== plan.code || offer.priceAmount !== plan.priceAmount || offer.currency !== plan.currency
+      input.offerCode ||
+      offer.code !== plan.code ||
+      offer.priceAmount !== plan.priceAmount ||
+      offer.currency !== plan.currency
         ? null
         : await new CheckoutRepository(this.db).findLatestReusablePendingSession({
             userId: input.userId,
             appId: app.id,
             planId: plan.id,
-            provider
+            provider,
           });
 
     if (reusableSession) {
-      const existingOrder = await new BillingRepository(this.db).findOrderById(reusableSession.orderId);
+      const existingOrder = await new BillingRepository(this.db).findOrderById(
+        reusableSession.orderId,
+      );
       if (existingOrder?.status === 'pending') {
         await new EventService(this.db).capture({
           userId: input.userId,
@@ -249,15 +264,15 @@ export class CheckoutService {
             sessionCode: reusableSession.sessionCode,
             appCode: app.code,
             orderNo: existingOrder.orderNo,
-            provider
-          }
+            provider,
+          },
         });
 
         return this.toCreatedSessionPayload({
           session: reusableSession,
           app,
           plan,
-          order: existingOrder
+          order: existingOrder,
         });
       }
     }
@@ -268,7 +283,7 @@ export class CheckoutService {
       planCode: input.planCode,
       offerCode: input.offerCode,
       provider,
-      clientIp: input.clientIp
+      clientIp: input.clientIp,
     });
     const action = normalizePreparedPaymentToCheckoutAction(billingResult.payment);
     const sessionCode = createCheckoutSessionCode();
@@ -294,8 +309,8 @@ export class CheckoutService {
           offerPriceAmount: billingResult.offer.priceAmount,
           offerCurrency: billingResult.offer.currency,
           paymentMode: billingResult.payment.mode,
-          integrationStatus: billingResult.payment.integrationStatus
-        }
+          integrationStatus: billingResult.payment.integrationStatus,
+        },
       });
 
       await repository.createPaymentAttempt({
@@ -308,13 +323,13 @@ export class CheckoutService {
           appCode: app.code,
           planCode: plan.code,
           successUrl: input.successUrl ?? null,
-          cancelUrl: input.cancelUrl ?? null
+          cancelUrl: input.cancelUrl ?? null,
         },
         responsePayload: {
           mode: billingResult.payment.mode,
           notifyUrl: billingResult.payment.notifyUrl,
-          payload: billingResult.payment.payload
-        }
+          payload: billingResult.payment.payload,
+        },
       });
 
       await new EventService(tx as DbClient).capture({
@@ -326,8 +341,8 @@ export class CheckoutService {
           appCode: app.code,
           offerCode: billingResult.offer.code,
           orderNo: billingResult.order.orderNo,
-          provider
-        }
+          provider,
+        },
       });
 
       return created;
@@ -337,13 +352,16 @@ export class CheckoutService {
       session,
       app,
       plan,
-      order: billingResult.order
+      order: billingResult.order,
     });
   }
 
   async getOwnedSession(input: { sessionCode: string; userId: string; role?: string }) {
     const detail = await this.loadSessionDetail(input.sessionCode);
-    if (detail.session.userId !== input.userId && input.role !== 'admin') {
+    if (
+      detail.session.userId !== input.userId &&
+      !canAccessAdminConsole(normalizeRole(input.role))
+    ) {
       throw httpError(403, 'You can only view your own checkout sessions');
     }
 
@@ -356,35 +374,35 @@ export class CheckoutService {
       app: {
         code: detail.app.code,
         name: detail.app.name,
-        type: detail.app.type
+        type: detail.app.type,
       },
       product: {
         code: detail.app.code,
-        name: detail.app.name
+        name: detail.app.name,
       },
       plan: {
         code: detail.plan.code,
         name: detail.plan.name,
         interval: detail.plan.interval,
         priceAmount: detail.plan.priceAmount,
-        currency: detail.plan.currency
+        currency: detail.plan.currency,
       },
       order: {
         orderNo: detail.order.orderNo,
         amount: detail.order.amount,
         currency: detail.order.currency,
         status: detail.order.status,
-        paidAt: detail.order.paidAt
+        paidAt: detail.order.paidAt,
       },
       presentation: {
         type: 'hosted_page',
-        url: this.buildHostedUrl(detail.session.sessionCode)
+        url: this.buildHostedUrl(detail.session.sessionCode),
       },
       successUrl: detail.session.successUrl,
       cancelUrl: detail.session.cancelUrl,
       expiresAt: detail.session.expiresAt,
       completedAt: detail.session.completedAt,
-      createdAt: detail.session.createdAt
+      createdAt: detail.session.createdAt,
     };
   }
 
@@ -406,8 +424,8 @@ export class CheckoutService {
           codeUrl: String(rawAction.codeUrl ?? qrCodeText),
           qrCodeDataUrl: await QRCode.toDataURL(qrCodeText, {
             margin: 1,
-            width: 280
-          })
+            width: 280,
+          }),
         };
       }
     } else if (status === 'pending' && detail.session.actionType === 'redirect_url') {
@@ -415,7 +433,7 @@ export class CheckoutService {
       paymentAction = url
         ? {
             type: 'redirect_url',
-            url
+            url,
           }
         : null;
     }
@@ -427,29 +445,29 @@ export class CheckoutService {
       app: {
         code: detail.app.code,
         name: detail.app.name,
-        type: detail.app.type
+        type: detail.app.type,
       },
       product: {
         code: detail.app.code,
-        name: detail.app.name
+        name: detail.app.name,
       },
       plan: {
         code: detail.plan.code,
         name: detail.plan.name,
-        interval: detail.plan.interval
+        interval: detail.plan.interval,
       },
       order: {
         orderNo: detail.order.orderNo,
         subject: detail.order.subject,
         amount: detail.order.amount,
         amountYuan: (detail.order.amount / 100).toFixed(2),
-        currency: detail.order.currency
+        currency: detail.order.currency,
       },
       paymentAction,
       successUrl: detail.session.successUrl,
       cancelUrl: detail.session.cancelUrl,
       expiresAt: detail.session.expiresAt,
-      completedAt: detail.session.completedAt
+      completedAt: detail.session.completedAt,
     };
   }
 
@@ -463,7 +481,7 @@ export class CheckoutService {
       orderNo: detail.order.orderNo,
       paidAt: detail.order.paidAt,
       completedAt: detail.session.completedAt ?? detail.order.paidAt ?? null,
-      expiresAt: detail.session.expiresAt
+      expiresAt: detail.session.expiresAt,
     };
   }
 
@@ -478,16 +496,18 @@ export class CheckoutService {
               source: 'current_state' as const,
               providerOrderId: detail.order.providerOrderId ?? null,
               paidAt: detail.order.paidAt ?? null,
-              reason: 'Order already marked as paid'
-            }
+              reason: 'Order already marked as paid',
+            },
           }
-        : await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(detail.order.orderNo);
+        : await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(
+            detail.order.orderNo,
+          );
     const status = await this.getSessionStatus(sessionCode);
 
     return {
       ...status,
       changed: reconciliation.changed,
-      reconciliation: reconciliation.reconciliation
+      reconciliation: reconciliation.reconciliation,
     };
   }
 }

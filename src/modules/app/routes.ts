@@ -8,14 +8,14 @@ import {
   createAppSessionSchema,
   purgeAppConfigurationSchema,
   syncDeliveryManifestSchema,
-  upsertAppSchema
+  upsertAppSchema,
 } from './schemas';
 import { AppService } from './service';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/apps', async () => {
     return {
-      items: await new AppService(app.db).listActiveApps()
+      items: await new AppService(app.db).listActiveApps(),
     };
   });
 
@@ -32,7 +32,10 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
   app.post('/v1/apps/:appCode/session', async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
     const payload = createAppSessionSchema.parse(request.body);
-    const auth = await new AppService(app.db).authenticateAppSecret(params.appCode, payload.appSecret);
+    const auth = await new AppService(app.db).authenticateAppSecret(
+      params.appCode,
+      payload.appSecret,
+    );
 
     return {
       token: app.jwt.sign(
@@ -41,84 +44,116 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
           kind: 'app',
           appId: auth.app.id,
           appCode: auth.app.code,
-          secretId: auth.secret.id
+          secretId: auth.secret.id,
         },
         {
-          expiresIn: '12h'
-        }
+          expiresIn: '12h',
+        },
       ),
       expiresIn: 12 * 60 * 60,
       app: {
         id: auth.app.id,
         code: auth.app.code,
         name: auth.app.name,
-        type: auth.app.type
-      }
+        type: auth.app.type,
+      },
     };
   });
 
-  app.get('/v1/apps/:appCode/entitlements/me', {
-    preHandler: [app.authenticateApp, app.authenticate],
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 120,
-        timeWindow: '1 minute',
-        keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
-          buildAppCodeUserRateLimitKey(request, 'app-entitlements-me')
-      }
-    }
-  }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
-  });
+  app.get(
+    '/v1/apps/:appCode/entitlements/me',
+    {
+      preHandler: [app.authenticateApp, app.authenticate],
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 120,
+          timeWindow: '1 minute',
+          keyGenerator: (request: Parameters<typeof buildAppCodeUserRateLimitKey>[0]) =>
+            buildAppCodeUserRateLimitKey(request, 'app-entitlements-me'),
+        },
+      },
+    },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
+    },
+  );
 
-  app.get('/v1/admin/apps', { preHandler: app.requireAdmin }, async () => {
+  app.get('/v1/admin/apps', { preHandler: app.requirePermission('apps.manage') }, async () => {
     return {
-      items: await new AppService(app.db).listManagedApps()
+      items: await new AppService(app.db).listManagedApps(),
     };
   });
 
-  app.put('/v1/admin/apps/:appCode', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    const payload = upsertAppSchema.parse(request.body);
+  app.put(
+    '/v1/admin/apps/:appCode',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      const payload = upsertAppSchema.parse(request.body);
 
-    return new AppService(app.db).upsertApp(params.appCode, payload, request.user.sub);
-  });
+      return new AppService(app.db).upsertApp(params.appCode, payload, request.user.sub);
+    },
+  );
 
-  app.post('/v1/admin/apps/:appCode/archive', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).archiveApp(params.appCode, request.user.sub);
-  });
+  app.post(
+    '/v1/admin/apps/:appCode/archive',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      return new AppService(app.db).archiveApp(params.appCode, request.user.sub);
+    },
+  );
 
-  app.post('/v1/admin/apps/:appCode/purge-config', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    const payload = purgeAppConfigurationSchema.parse(request.body);
+  app.post(
+    '/v1/admin/apps/:appCode/purge-config',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      const payload = purgeAppConfigurationSchema.parse(request.body);
 
-    return new AppService(app.db).purgeAppConfiguration(
-      params.appCode,
-      payload.confirmAppCode,
-      request.user.sub
-    );
-  });
+      return new AppService(app.db).purgeAppConfiguration(
+        params.appCode,
+        payload.confirmAppCode,
+        request.user.sub,
+      );
+    },
+  );
 
-  app.post('/v1/admin/apps/:appCode/delivery-manifest/sync', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    const payload = syncDeliveryManifestSchema.parse(request.body ?? {});
+  app.post(
+    '/v1/admin/apps/:appCode/delivery-manifest/sync',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      const payload = syncDeliveryManifestSchema.parse(request.body ?? {});
 
-    return new AppService(app.db).syncDeliveryManifest(params.appCode, payload, request.user.sub);
-  });
+      return new AppService(app.db).syncDeliveryManifest(params.appCode, payload, request.user.sub);
+    },
+  );
 
-  app.post('/v1/admin/apps/:appCode/secrets', { preHandler: app.requireAdmin }, async (request, reply) => {
-    const params = appCodeParamsSchema.parse(request.params);
-    const payload = createAppSecretSchema.parse(request.body);
-    const result = await new AppService(app.db).issueSecret(params.appCode, payload, request.user.sub);
+  app.post(
+    '/v1/admin/apps/:appCode/secrets',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request, reply) => {
+      const params = appCodeParamsSchema.parse(request.params);
+      const payload = createAppSecretSchema.parse(request.body);
+      const result = await new AppService(app.db).issueSecret(
+        params.appCode,
+        payload,
+        request.user.sub,
+      );
 
-    return reply.status(201).send(result);
-  });
+      return reply.status(201).send(result);
+    },
+  );
 
-  app.post('/v1/admin/apps/:appCode/secrets/:secretId/revoke', { preHandler: app.requireAdmin }, async (request) => {
-    const params = appSecretParamsSchema.parse(request.params);
-    return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
-  });
+  app.post(
+    '/v1/admin/apps/:appCode/secrets/:secretId/revoke',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) => {
+      const params = appSecretParamsSchema.parse(request.params);
+      return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
+    },
+  );
 };

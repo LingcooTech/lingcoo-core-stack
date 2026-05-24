@@ -28,6 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth';
 import { adminNavigationGroups, adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
+import { hasPermission, normalizeRole, roleLabels } from '@/lib/rbac';
 import { resolveIcon } from '@/lib/section-icons';
 import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { cn, getInitials } from '@/lib/utils';
@@ -60,6 +61,15 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
   const accountEmail = currentUser?.email || user?.email || '';
 
   const currentSection = resolveAdminSection(location.pathname);
+  const currentRole = normalizeRole(user?.role);
+  const visibleNavigationGroups = adminNavigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((key) =>
+        hasPermission(currentRole, adminSectionMeta[key].permission),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside
@@ -123,7 +133,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
 
       {/* Nav */}
       <ScrollArea className="flex-1 px-2">
-        {adminNavigationGroups.map((group) => (
+        {visibleNavigationGroups.map((group) => (
           <div key={group.label} className="mb-3">
             {!collapsed && (
               <p className="text-muted-foreground/60 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
@@ -230,7 +240,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     <p className="text-muted-foreground mt-0.5 truncate text-xs">{accountEmail}</p>
                   ) : null}
                   <p className="text-muted-foreground/70 mt-0.5 text-[10px] font-medium uppercase tracking-wider">
-                    {user?.role === 'admin' ? '管理员' : '用户'}
+                    {roleLabels[normalizeRole(user?.role)]}
                   </p>
                 </div>
               </div>

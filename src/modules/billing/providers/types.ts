@@ -83,10 +83,52 @@ export type PaymentQueryResult =
       reason: string;
     };
 
+export type PaymentCloseResult =
+  | {
+      kind: 'closed';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    }
+  | {
+      kind: 'not_found' | 'not_closable';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    };
+
+export type PaymentRefundResult =
+  | {
+      kind: 'refunded';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      refundId?: string | null;
+      amount: number;
+      currency: string;
+      refundedAt: Date;
+      payload: Record<string, unknown>;
+      reason: string;
+    }
+  | {
+      kind: 'not_found' | 'not_refundable';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    };
+
 export interface BillingProviderAdapter {
   code: BillingProviderCode;
   isConfigured(env?: AppEnv): boolean;
   preparePayment(context: ProviderContext): Promise<PreparedPayment>;
   parseNotification(context: ProviderNotificationContext): Promise<PaymentNotificationResult>;
   queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult>;
+  closePayment(context: ProviderQueryContext): Promise<PaymentCloseResult>;
+  refundPayment(context: ProviderQueryContext): Promise<PaymentRefundResult>;
 }

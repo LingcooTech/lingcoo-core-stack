@@ -11,12 +11,20 @@ import {
   useLocation,
 } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { ShieldAlert } from 'lucide-react';
 
 import { getPublicSiteSettings } from '@/api/settings';
 import { DocsShell } from '@/components/layout/DocsShell';
 import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
+import { EmptyState } from '@/components/portal/EmptyState';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import {
+  adminSectionMeta,
+  listAllowedAdminSectionKeys,
+  type AdminSectionKey,
+} from '@/lib/foundation';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import {
   PUBLIC_SITE_SETTINGS_QUERY_KEY,
   syncBrandPrimaryColor,
@@ -175,6 +183,40 @@ function ProtectedAdminRoute() {
   return <Outlet />;
 }
 
+function ProtectedAdminSectionRoute({
+  sectionKey,
+  children,
+}: {
+  sectionKey: AdminSectionKey;
+  children: ReactNode;
+}) {
+  const { user } = useAuth();
+  const role = normalizeRole(user?.role);
+
+  if (hasPermission(role, adminSectionMeta[sectionKey].permission)) {
+    return <>{children}</>;
+  }
+
+  const fallbackSection = listAllowedAdminSectionKeys((permission) =>
+    hasPermission(role, permission),
+  )[0];
+  if (fallbackSection) {
+    return <Navigate to={adminSectionMeta[fallbackSection].href} replace />;
+  }
+
+  return (
+    <div className="p-6">
+      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <EmptyState
+          icon={ShieldAlert}
+          title="无权限访问"
+          description="当前账户没有访问该后台模块的权限，请联系管理员调整角色。"
+        />
+      </div>
+    </div>
+  );
+}
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -217,26 +259,152 @@ const router = createBrowserRouter(
       <Route path="/admin/login" element={<LoginPage />} />
       <Route element={<ProtectedAdminRoute />}>
         <Route element={<Shell />}>
-          <Route path="/admin" element={<DashboardPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="dashboard">
+                <DashboardPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
           <Route path="/admin/catalog" element={<Navigate to="/admin/apps" replace />} />
-          <Route path="/admin/apps" element={<AppsPage />} />
-          <Route path="/admin/apps/new" element={<AppEditPage />} />
-          <Route path="/admin/apps/:appCode/edit" element={<AppEditPage />} />
-          <Route path="/admin/content" element={<ContentPage />} />
-          <Route path="/admin/content/new" element={<ContentEditPage />} />
-          <Route path="/admin/content/:contentId/edit" element={<ContentEditPage />} />
-          <Route path="/admin/docs" element={<DocsPage />} />
-          <Route path="/admin/secrets" element={<SecretsPage />} />
-          <Route path="/admin/orders" element={<OrdersPage />} />
-          <Route path="/admin/payments" element={<PaymentsPage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
-          <Route path="/admin/licenses" element={<LicensesPage />} />
-          <Route path="/admin/tickets" element={<TicketsPage />} />
-          <Route path="/admin/users" element={<UsersPage />} />
-          <Route path="/admin/installs" element={<InstallsPage />} />
-          <Route path="/admin/notifications" element={<NotificationsPage />} />
+          <Route
+            path="/admin/apps"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="apps">
+                <AppsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/apps/new"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="apps">
+                <AppEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/apps/:appCode/edit"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="apps">
+                <AppEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/content"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="content">
+                <ContentPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/content/new"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="content">
+                <ContentEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/content/:contentId/edit"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="content">
+                <ContentEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/docs"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="docs">
+                <DocsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/secrets"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="secrets">
+                <SecretsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="orders">
+                <OrdersPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/payments"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="payments">
+                <PaymentsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="settings">
+                <SettingsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/licenses"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="licenses">
+                <LicensesPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/tickets"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="tickets">
+                <TicketsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="users">
+                <UsersPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/installs"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="installs">
+                <InstallsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/notifications"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="notifications">
+                <NotificationsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
           <Route path="/admin/delivery" element={<Navigate to="/admin/apps" replace />} />
-          <Route path="/admin/observability" element={<ObservabilityPage />} />
+          <Route
+            path="/admin/observability"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="observability">
+                <ObservabilityPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
           <Route path="/admin/operations" element={<Navigate to="/admin/orders" replace />} />
         </Route>
       </Route>

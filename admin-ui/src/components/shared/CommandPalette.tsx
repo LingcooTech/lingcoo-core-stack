@@ -10,7 +10,9 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { adminCommandItems } from '@/lib/foundation';
+import { adminCommandItems, adminSectionMeta } from '@/lib/foundation';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { resolveIcon } from '@/lib/section-icons';
 
 interface CommandPaletteProps {
@@ -48,7 +50,9 @@ function pushRecentId(id: string) {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [recentIds, setRecentIds] = useState<string[]>([]);
+  const currentRole = normalizeRole(user?.role);
 
   useEffect(() => {
     if (open) setRecentIds(readRecentIds());
@@ -69,7 +73,20 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return () => document.removeEventListener('keydown', down);
   }, [onOpenChange]);
 
-  const itemById = useMemo(() => new Map(adminCommandItems.map((item) => [item.id, item])), []);
+  const visibleItems = useMemo(
+    () =>
+      adminCommandItems.filter((item) =>
+        item.sectionKey
+          ? hasPermission(currentRole, adminSectionMeta[item.sectionKey].permission)
+          : true,
+      ),
+    [currentRole],
+  );
+
+  const itemById = useMemo(
+    () => new Map(visibleItems.map((item) => [item.id, item])),
+    [visibleItems],
+  );
 
   const recentItems = useMemo(
     () =>
@@ -80,12 +97,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   );
 
   const grouped = useMemo(() => {
-    return adminCommandItems.reduce<Record<string, CommandItemModel[]>>((acc, item) => {
+    return visibleItems.reduce<Record<string, CommandItemModel[]>>((acc, item) => {
       if (!acc[item.group]) acc[item.group] = [];
       acc[item.group].push(item);
       return acc;
     }, {});
-  }, []);
+  }, [visibleItems]);
 
   const handleSelect = useCallback(
     (item: CommandItemModel) => {

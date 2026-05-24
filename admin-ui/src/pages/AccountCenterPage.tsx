@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
+import { normalizeRole, roleLabels } from '@/lib/rbac';
 import { cn, formatAmount, formatTime, getInitials } from '@/lib/utils';
 
 const accountTabValues = ['profile', 'notifications', 'orders', 'apps', 'tickets'] as const;
@@ -211,8 +212,8 @@ function AccountProfileTab() {
                 {currentUser.displayName || currentUser.email.split('@')[0]}
               </h2>
               <StatusPill
-                tone={currentUser.role === 'admin' ? 'info' : 'neutral'}
-                label={currentUser.role === 'admin' ? '管理员' : '普通用户'}
+                tone={normalizeRole(currentUser.role) === 'admin' ? 'info' : 'neutral'}
+                label={roleLabels[normalizeRole(currentUser.role)]}
               />
               <StatusPill
                 tone={currentUser.emailVerified ? 'ok' : 'warn'}

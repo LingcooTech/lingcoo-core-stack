@@ -6,6 +6,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import type * as schema from '../db/schema';
 import type { AppEnv } from '../lib/env';
+import type { AppPermission } from '../lib/rbac';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -16,7 +17,13 @@ declare module 'fastify' {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
     authenticateApp: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
-    requireEmailVerified: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requirePermission: (
+      permissions: AppPermission | AppPermission[],
+    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requireEmailVerified: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void | FastifyReply>;
   }
 
   interface FastifyRequest {

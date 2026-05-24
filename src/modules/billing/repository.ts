@@ -21,7 +21,7 @@ export class BillingRepository {
       .insert(orders)
       .values({
         ...input,
-        meta: input.meta ?? {}
+        meta: input.meta ?? {},
       })
       .returning();
 
@@ -39,7 +39,11 @@ export class BillingRepository {
   }
 
   async listOrdersByUserId(userId: string) {
-    return this.db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+    return this.db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt));
   }
 
   async listRecentOrders(limit = 50) {
@@ -75,8 +79,8 @@ export class BillingRepository {
           ilike(apps.code, pattern),
           ilike(apps.name, pattern),
           ilike(plans.code, pattern),
-          ilike(plans.name, pattern)
-        )!
+          ilike(plans.name, pattern),
+        )!,
       );
     }
 
@@ -99,7 +103,7 @@ export class BillingRepository {
         .leftJoin(users, eq(orders.userId, users.id))
         .leftJoin(apps, eq(orders.appId, apps.id))
         .leftJoin(plans, eq(orders.planId, plans.id))
-        .where(where)
+        .where(where),
     ]);
 
     return {
@@ -117,14 +121,14 @@ export class BillingRepository {
   }
 
   async listRecentWebhookEvents(limit = 50) {
-    return this.db.select().from(billingWebhookEvents).orderBy(desc(billingWebhookEvents.createdAt)).limit(limit);
+    return this.db
+      .select()
+      .from(billingWebhookEvents)
+      .orderBy(desc(billingWebhookEvents.createdAt))
+      .limit(limit);
   }
 
-  async listWebhookEvents(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listWebhookEvents(query: { limit: number; offset: number; search?: string }) {
     const conditions = [];
 
     if (query.search) {
@@ -134,8 +138,8 @@ export class BillingRepository {
           ilike(billingWebhookEvents.provider, pattern),
           ilike(billingWebhookEvents.type, pattern),
           ilike(billingWebhookEvents.providerEventId, pattern),
-          ilike(billingWebhookEvents.status, pattern)
-        )!
+          ilike(billingWebhookEvents.status, pattern),
+        )!,
       );
     }
 
@@ -152,7 +156,7 @@ export class BillingRepository {
       this.db
         .select({ count: sql<number>`count(*)::int` })
         .from(billingWebhookEvents)
-        .where(where)
+        .where(where),
     ]);
 
     return {
@@ -174,9 +178,37 @@ export class BillingRepository {
         providerOrderId: input.providerOrderId ?? null,
         paidAt: input.paidAt ?? new Date(),
         updatedAt: new Date(),
-        meta: input.meta ?? {}
+        meta: input.meta ?? {},
       })
       .where(and(eq(orders.id, input.orderId), ne(orders.status, 'paid')))
+      .returning();
+
+    return order ?? null;
+  }
+
+  async markOrderCancelledIfPending(input: { orderId: string; meta?: Record<string, unknown> }) {
+    const [order] = await this.db
+      .update(orders)
+      .set({
+        status: 'cancelled',
+        updatedAt: new Date(),
+        meta: input.meta ?? {},
+      })
+      .where(and(eq(orders.id, input.orderId), eq(orders.status, 'pending')))
+      .returning();
+
+    return order ?? null;
+  }
+
+  async markOrderRefundedIfPaid(input: { orderId: string; meta?: Record<string, unknown> }) {
+    const [order] = await this.db
+      .update(orders)
+      .set({
+        status: 'refunded',
+        updatedAt: new Date(),
+        meta: input.meta ?? {},
+      })
+      .where(and(eq(orders.id, input.orderId), eq(orders.status, 'paid')))
       .returning();
 
     return order ?? null;
@@ -192,10 +224,10 @@ export class BillingRepository {
       .insert(billingWebhookEvents)
       .values({
         ...input,
-        payload: input.payload
+        payload: input.payload,
       })
       .onConflictDoNothing({
-        target: [billingWebhookEvents.provider, billingWebhookEvents.providerEventId]
+        target: [billingWebhookEvents.provider, billingWebhookEvents.providerEventId],
       })
       .returning();
 
@@ -209,8 +241,8 @@ export class BillingRepository {
       .where(
         and(
           eq(billingWebhookEvents.provider, provider),
-          eq(billingWebhookEvents.providerEventId, providerEventId)
-        )
+          eq(billingWebhookEvents.providerEventId, providerEventId),
+        ),
       )
       .limit(1);
 
@@ -221,7 +253,7 @@ export class BillingRepository {
     const [event] = await this.db
       .update(billingWebhookEvents)
       .set({
-        processedAt: new Date()
+        processedAt: new Date(),
       })
       .where(eq(billingWebhookEvents.id, id))
       .returning();

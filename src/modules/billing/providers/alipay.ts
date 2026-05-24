@@ -7,7 +7,7 @@ import {
   normalizeFormBody,
   parseRawFormBody,
   readSecretValue,
-  resolveCallbackUrl
+  resolveCallbackUrl,
 } from './shared';
 import type {
   BillingProviderAdapter,
@@ -16,7 +16,7 @@ import type {
   PreparedPayment,
   ProviderContext,
   ProviderNotificationContext,
-  ProviderQueryContext
+  ProviderQueryContext,
 } from './types';
 
 export class AlipayProvider implements BillingProviderAdapter {
@@ -29,26 +29,31 @@ export class AlipayProvider implements BillingProviderAdapter {
 
     return Boolean(
       context.ALIPAY_APP_ID &&
-        (context.ALIPAY_PRIVATE_KEY || context.ALIPAY_PRIVATE_KEY_PATH) &&
-        (context.ALIPAY_PUBLIC_KEY || context.ALIPAY_PUBLIC_KEY_PATH)
+      (context.ALIPAY_PRIVATE_KEY || context.ALIPAY_PRIVATE_KEY_PATH) &&
+      (context.ALIPAY_PUBLIC_KEY || context.ALIPAY_PUBLIC_KEY_PATH),
     );
   }
 
-  private getSdk(context: ProviderContext['env'] | ProviderNotificationContext['env'] | ProviderQueryContext['env']) {
+  private getSdk(
+    context:
+      | ProviderContext['env']
+      | ProviderNotificationContext['env']
+      | ProviderQueryContext['env'],
+  ) {
     return new AlipaySdk({
       appId: context.ALIPAY_APP_ID!,
       privateKey: readSecretValue({
         inlineValue: context.ALIPAY_PRIVATE_KEY,
         filePath: context.ALIPAY_PRIVATE_KEY_PATH,
-        label: 'ALIPAY_PRIVATE_KEY'
+        label: 'ALIPAY_PRIVATE_KEY',
       }),
       alipayPublicKey: readSecretValue({
         inlineValue: context.ALIPAY_PUBLIC_KEY,
         filePath: context.ALIPAY_PUBLIC_KEY_PATH,
-        label: 'ALIPAY_PUBLIC_KEY'
+        label: 'ALIPAY_PUBLIC_KEY',
       }),
       gateway: context.ALIPAY_GATEWAY?.trim() || undefined,
-      keyType: context.ALIPAY_KEY_TYPE ?? 'PKCS1'
+      keyType: context.ALIPAY_KEY_TYPE ?? 'PKCS1',
     });
   }
 
@@ -81,7 +86,7 @@ export class AlipayProvider implements BillingProviderAdapter {
     const notifyUrl = resolveCallbackUrl(
       context.env.ALIPAY_NOTIFY_URL,
       context.env.PUBLIC_BASE_URL,
-      '/v1/billing/providers/alipay/notify'
+      '/v1/billing/providers/alipay/notify',
     );
 
     if (this.isF2FEnabled(context.env)) {
@@ -91,8 +96,8 @@ export class AlipayProvider implements BillingProviderAdapter {
           outTradeNo: context.order.orderNo,
           subject: context.order.subject,
           body: context.order.subject,
-          totalAmount: amountFenToYuanString(context.order.amount)
-        }
+          totalAmount: amountFenToYuanString(context.order.amount),
+        },
       });
       const qrCode =
         typeof result.qrCode === 'string'
@@ -104,7 +109,7 @@ export class AlipayProvider implements BillingProviderAdapter {
       if (result.code !== '10000' || !qrCode) {
         throw httpError(
           502,
-          `Alipay create order failed: ${result.code ?? 'unknown'} ${result.sub_msg ?? result.msg ?? 'empty response'}`
+          `Alipay create order failed: ${result.code ?? 'unknown'} ${result.sub_msg ?? result.msg ?? 'empty response'}`,
         );
       }
 
@@ -122,8 +127,8 @@ export class AlipayProvider implements BillingProviderAdapter {
         payload: {
           qrCode,
           qrCodeText: qrCode,
-          codeUrl: qrCode
-        }
+          codeUrl: qrCode,
+        },
       };
     }
 
@@ -146,8 +151,8 @@ export class AlipayProvider implements BillingProviderAdapter {
         productCode: 'FAST_INSTANT_TRADE_PAY',
         subject: context.order.subject,
         body: context.order.subject,
-        totalAmount: amountFenToYuanString(context.order.amount)
-      }
+        totalAmount: amountFenToYuanString(context.order.amount),
+      },
     };
 
     const returnUrl = context.env.ALIPAY_RETURN_URL?.trim();
@@ -169,17 +174,22 @@ export class AlipayProvider implements BillingProviderAdapter {
       nextStep:
         'Open payload.checkoutUrl in a browser or extension tab. The order is activated after the Alipay async notify callback arrives.',
       payload: {
-        checkoutUrl
-      }
+        checkoutUrl,
+      },
     };
   }
 
-  async parseNotification(context: ProviderNotificationContext): Promise<PaymentNotificationResult> {
+  async parseNotification(
+    context: ProviderNotificationContext,
+  ): Promise<PaymentNotificationResult> {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'Alipay is not configured');
     }
 
-    const rawBody = typeof context.rawBody === 'string' ? context.rawBody : context.rawBody?.toString('utf8') ?? '';
+    const rawBody =
+      typeof context.rawBody === 'string'
+        ? context.rawBody
+        : (context.rawBody?.toString('utf8') ?? '');
     if (!rawBody) {
       throw httpError(400, 'Missing Alipay callback body');
     }
@@ -191,7 +201,8 @@ export class AlipayProvider implements BillingProviderAdapter {
     }
 
     const form = normalizeFormBody(context.body);
-    const providerEventId = form.notify_id || form.trade_no || form.out_trade_no || `alipay_${Date.now()}`;
+    const providerEventId =
+      form.notify_id || form.trade_no || form.out_trade_no || `alipay_${Date.now()}`;
 
     if (form.app_id && form.app_id !== context.env.ALIPAY_APP_ID) {
       throw httpError(400, 'Alipay app id mismatch');
@@ -203,7 +214,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         provider: this.code,
         providerEventId,
         payload: form,
-        reason: `Unhandled Alipay trade status: ${form.trade_status ?? 'unknown'}`
+        reason: `Unhandled Alipay trade status: ${form.trade_status ?? 'unknown'}`,
       };
     }
 
@@ -220,7 +231,7 @@ export class AlipayProvider implements BillingProviderAdapter {
       amount: amountYuanStringToFen(form.total_amount),
       currency: 'CNY',
       paidAt: this.parsePaidAt(form.gmt_payment),
-      payload: form
+      payload: form,
     };
   }
 
@@ -232,8 +243,8 @@ export class AlipayProvider implements BillingProviderAdapter {
     const result = await this.getSdk(context.env).exec('alipay.trade.query', {
       bizContent: {
         outTradeNo: context.order.orderNo,
-        tradeNo: context.order.providerOrderId?.trim() || undefined
-      }
+        tradeNo: context.order.providerOrderId?.trim() || undefined,
+      },
     });
     const payload = result as Record<string, unknown>;
     const tradeStatus =
@@ -274,7 +285,10 @@ export class AlipayProvider implements BillingProviderAdapter {
           : '';
     const msg = typeof result.msg === 'string' ? result.msg : '';
 
-    if (result.code === '10000' && (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED')) {
+    if (
+      result.code === '10000' &&
+      (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED')
+    ) {
       if (!totalAmount || !tradeNo) {
         throw httpError(400, 'Missing Alipay query payment fields');
       }
@@ -287,7 +301,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         amount: amountYuanStringToFen(totalAmount),
         currency: 'CNY',
         paidAt: this.parsePaidAt(sendPayDate),
-        payload
+        payload,
       };
     }
 
@@ -298,7 +312,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         orderNo: outTradeNo,
         providerOrderId: tradeNo,
         payload,
-        reason: tradeStatus
+        reason: tradeStatus,
       };
     }
 
@@ -309,7 +323,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         orderNo: outTradeNo,
         providerOrderId: tradeNo,
         payload,
-        reason: tradeStatus
+        reason: tradeStatus,
       };
     }
 
@@ -320,13 +334,130 @@ export class AlipayProvider implements BillingProviderAdapter {
         orderNo: context.order.orderNo,
         providerOrderId: tradeNo,
         payload,
-        reason: subMsg || 'Order not found in Alipay'
+        reason: subMsg || 'Order not found in Alipay',
       };
     }
 
     throw httpError(
       502,
-      `Alipay query order failed: ${result.code ?? 'unknown'} ${subMsg || msg || 'empty response'}`
+      `Alipay query order failed: ${result.code ?? 'unknown'} ${subMsg || msg || 'empty response'}`,
     );
+  }
+
+  async closePayment(context: ProviderQueryContext) {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'Alipay is not configured');
+    }
+
+    const result = await this.getSdk(context.env).exec('alipay.trade.close', {
+      bizContent: {
+        outTradeNo: context.order.orderNo,
+        tradeNo: context.order.providerOrderId?.trim() || undefined,
+      },
+    });
+    const payload = result as Record<string, unknown>;
+    const subMsg =
+      typeof result.subMsg === 'string'
+        ? result.subMsg
+        : typeof result.sub_msg === 'string'
+          ? result.sub_msg
+          : '';
+    const msg = typeof result.msg === 'string' ? result.msg : '';
+
+    if (result.code === '10000') {
+      return {
+        kind: 'closed' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: context.order.providerOrderId ?? null,
+        payload,
+        reason: 'Order closed in Alipay',
+      };
+    }
+
+    if (result.code === '40004') {
+      return {
+        kind: 'not_found' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: context.order.providerOrderId ?? null,
+        payload,
+        reason: subMsg || 'Order not found in Alipay',
+      };
+    }
+
+    return {
+      kind: 'not_closable' as const,
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId: context.order.providerOrderId ?? null,
+      payload,
+      reason: subMsg || msg || 'Order is not closable',
+    };
+  }
+
+  async refundPayment(context: ProviderQueryContext) {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'Alipay is not configured');
+    }
+
+    const outRequestNo = `${context.order.orderNo}_refund`;
+    const result = await this.getSdk(context.env).exec('alipay.trade.refund', {
+      bizContent: {
+        outTradeNo: context.order.orderNo,
+        tradeNo: context.order.providerOrderId?.trim() || undefined,
+        refundAmount: amountFenToYuanString(context.order.amount),
+        outRequestNo,
+      },
+    });
+    const payload = result as Record<string, unknown>;
+    const tradeNo =
+      typeof result.tradeNo === 'string'
+        ? result.tradeNo
+        : typeof result.trade_no === 'string'
+          ? result.trade_no
+          : (context.order.providerOrderId ?? null);
+    const subMsg =
+      typeof result.subMsg === 'string'
+        ? result.subMsg
+        : typeof result.sub_msg === 'string'
+          ? result.sub_msg
+          : '';
+    const msg = typeof result.msg === 'string' ? result.msg : '';
+
+    if (result.code === '10000') {
+      return {
+        kind: 'refunded' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: tradeNo,
+        refundId: outRequestNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        refundedAt: new Date(),
+        payload,
+        reason: 'Order refunded in Alipay',
+      };
+    }
+
+    if (result.code === '40004') {
+      return {
+        kind: 'not_found' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: tradeNo,
+        payload,
+        reason: subMsg || 'Order not found in Alipay',
+      };
+    }
+
+    return {
+      kind: 'not_refundable' as const,
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId: tradeNo,
+      payload,
+      reason: subMsg || msg || 'Order is not refundable',
+    };
   }
 }

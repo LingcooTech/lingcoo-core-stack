@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { useAuth } from '@/lib/auth';
 import { adminSectionMeta, resolveAdminSection } from '@/lib/foundation';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { cn } from '@/lib/utils';
 
 interface TopbarProps {
@@ -12,10 +14,12 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const location = useLocation();
+  const { user } = useAuth();
   const [commandOpen, setCommandOpen] = useState(false);
 
   const currentSection = resolveAdminSection(location.pathname);
   const section = currentSection ? adminSectionMeta[currentSection] : null;
+  const currentRole = normalizeRole(user?.role);
 
   return (
     <>
@@ -66,6 +70,15 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           {/* Section primary action (if any) */}
           {section?.heroActions
             .filter((action) => action.tone === 'primary')
+            .filter((action) => {
+              if (!action.href.startsWith('/admin')) {
+                return true;
+              }
+              const targetSection = resolveAdminSection(action.href);
+              return targetSection
+                ? hasPermission(currentRole, adminSectionMeta[targetSection].permission)
+                : true;
+            })
             .slice(0, 1)
             .map((action) => (
               <Link

@@ -48,6 +48,8 @@ import {
   getPreferredOffer,
 } from '@/lib/app-catalog-ui';
 import { formatPlanInterval } from '@/lib/catalog-utils';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
+import { useAuth } from '@/lib/auth';
 import { getInitials } from '@/lib/utils';
 
 function normalizeMeta(meta: unknown) {
@@ -136,6 +138,9 @@ type PendingDangerAction =
 
 export function AppsPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const currentRole = normalizeRole(user?.role);
+  const canManageApps = hasPermission(currentRole, 'apps.manage');
   const [pendingDangerAction, setPendingDangerAction] = useState<PendingDangerAction>(null);
   const [confirmAppCode, setConfirmAppCode] = useState('');
 
@@ -264,12 +269,14 @@ export function AppsPage() {
   return (
     <div className="space-y-5 p-6">
       <header className="flex items-center justify-end">
-        <Button asChild>
-          <Link to="/admin/apps/new">
-            <Plus className="h-4 w-4" />
-            新建应用
-          </Link>
-        </Button>
+        {canManageApps ? (
+          <Button asChild>
+            <Link to="/admin/apps/new">
+              <Plus className="h-4 w-4" />
+              新建应用
+            </Link>
+          </Button>
+        ) : null}
       </header>
 
       <div className="grid gap-4 lg:grid-cols-4">
@@ -480,44 +487,48 @@ export function AppsPage() {
                             </Link>
                           </Button>
 
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={`/admin/apps/${app.code}/edit`}>
-                              <FileEdit className="h-3.5 w-3.5" />
-                              编辑
-                            </Link>
-                          </Button>
-
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
+                          {canManageApps ? (
+                            <>
+                              <Button size="sm" variant="outline" asChild>
+                                <Link to={`/admin/apps/${app.code}/edit`}>
+                                  <FileEdit className="h-3.5 w-3.5" />
+                                  编辑
+                                </Link>
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={(event) => {
-                                  event.preventDefault();
-                                  setPendingDangerAction({ kind: 'archive', app });
-                                  setConfirmAppCode('');
-                                }}
-                              >
-                                <Archive className="mr-2 h-4 w-4" />
-                                停用归档
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onSelect={(event) => {
-                                  event.preventDefault();
-                                  setPendingDangerAction({ kind: 'purge', app });
-                                  setConfirmAppCode('');
-                                }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                永久删除配置
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="icon" variant="ghost">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onSelect={(event) => {
+                                      event.preventDefault();
+                                      setPendingDangerAction({ kind: 'archive', app });
+                                      setConfirmAppCode('');
+                                    }}
+                                  >
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    停用归档
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={(event) => {
+                                      event.preventDefault();
+                                      setPendingDangerAction({ kind: 'purge', app });
+                                      setConfirmAppCode('');
+                                    }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    永久删除配置
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>

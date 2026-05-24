@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DbClient } from '../../db/types';
 import { httpError } from '../../lib/errors';
+import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
 import { AppRepository } from '../app/repository';
 import { AuthRepository } from '../auth/repository';
 import { BillingRepository } from '../billing/repository';
@@ -12,7 +13,15 @@ import { TicketRepository } from './repository';
 
 type SupportTicketStatus = 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
 type SupportTicketPriority = 'low' | 'normal' | 'high' | 'urgent';
-type SupportTicketCategory = 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+type SupportTicketCategory =
+  | 'account'
+  | 'billing'
+  | 'access'
+  | 'install'
+  | 'deployment'
+  | 'bug'
+  | 'feature'
+  | 'other';
 type SupportTicketMessageAuthorType = 'user' | 'admin' | 'system';
 
 type TicketRecord = NonNullable<Awaited<ReturnType<TicketRepository['findTicketByTicketNo']>>>;
@@ -33,7 +42,7 @@ function readDeploymentDomainValues(meta: unknown) {
   return Object.fromEntries(
     Object.entries(values)
       .map(([key, value]) => [key, normalizeString(value)])
-      .filter(([, value]) => value.length > 0)
+      .filter(([, value]) => value.length > 0),
   );
 }
 
@@ -88,36 +97,32 @@ export class TicketService {
       ...new Set(
         tickets
           .map((ticket) => ticket.assignedAdminUserId)
-          .filter((value): value is string => Boolean(value))
-      )
+          .filter((value): value is string => Boolean(value)),
+      ),
     ];
     const appIds = [
       ...new Set(
-        tickets
-          .map((ticket) => ticket.appId)
-          .filter((value): value is string => Boolean(value))
-      )
+        tickets.map((ticket) => ticket.appId).filter((value): value is string => Boolean(value)),
+      ),
     ];
     const orderIds = [
       ...new Set(
-        tickets
-          .map((ticket) => ticket.orderId)
-          .filter((value): value is string => Boolean(value))
-      )
+        tickets.map((ticket) => ticket.orderId).filter((value): value is string => Boolean(value)),
+      ),
     ];
     const installIds = [
       ...new Set(
         tickets
           .map((ticket) => ticket.installId)
-          .filter((value): value is string => Boolean(value))
-      )
+          .filter((value): value is string => Boolean(value)),
+      ),
     ];
     const deploymentIds = [
       ...new Set(
         tickets
           .map((ticket) => ticket.deploymentId)
-          .filter((value): value is string => Boolean(value))
-      )
+          .filter((value): value is string => Boolean(value)),
+      ),
     ];
 
     const [users, apps, orders, installs, deployments, messageCounts] = await Promise.all([
@@ -126,7 +131,7 @@ export class TicketService {
       new BillingRepository(this.db).listOrdersByIds(orderIds),
       new InstallRepository(this.db).listInstallsByIds(installIds),
       new DeploymentRepository(this.db).listDeploymentsByIds(deploymentIds),
-      this.repository.listMessageCountsByTicketIds(tickets.map((ticket) => ticket.id))
+      this.repository.listMessageCountsByTicketIds(tickets.map((ticket) => ticket.id)),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -138,11 +143,15 @@ export class TicketService {
 
     return tickets.map((ticket) => {
       const user = userMap.get(ticket.userId) ?? null;
-      const assignee = ticket.assignedAdminUserId ? userMap.get(ticket.assignedAdminUserId) ?? null : null;
-      const app = ticket.appId ? appMap.get(ticket.appId) ?? null : null;
-      const order = ticket.orderId ? orderMap.get(ticket.orderId) ?? null : null;
-      const install = ticket.installId ? installMap.get(ticket.installId) ?? null : null;
-      const deployment = ticket.deploymentId ? deploymentMap.get(ticket.deploymentId) ?? null : null;
+      const assignee = ticket.assignedAdminUserId
+        ? (userMap.get(ticket.assignedAdminUserId) ?? null)
+        : null;
+      const app = ticket.appId ? (appMap.get(ticket.appId) ?? null) : null;
+      const order = ticket.orderId ? (orderMap.get(ticket.orderId) ?? null) : null;
+      const install = ticket.installId ? (installMap.get(ticket.installId) ?? null) : null;
+      const deployment = ticket.deploymentId
+        ? (deploymentMap.get(ticket.deploymentId) ?? null)
+        : null;
 
       return {
         ...ticket,
@@ -156,7 +165,7 @@ export class TicketService {
               subject: order.subject,
               amount: order.amount,
               currency: order.currency,
-              createdAt: order.createdAt
+              createdAt: order.createdAt,
             }
           : null,
         install: install
@@ -165,7 +174,7 @@ export class TicketService {
               extensionInstallId: install.extensionInstallId,
               status: install.status,
               appVersion: install.appVersion,
-              lastSeenAt: install.lastSeenAt
+              lastSeenAt: install.lastSeenAt,
             }
           : null,
         deployment: deployment
@@ -174,11 +183,13 @@ export class TicketService {
               label: deployment.label,
               environment: deployment.environment,
               status: deployment.status,
-              domainValues: readDeploymentDomainValues(deployment.meta)
+              domainValues: readDeploymentDomainValues(deployment.meta),
             }
           : null,
-        assignee: assignee ? { id: assignee.id, email: assignee.email, displayName: assignee.displayName } : null,
-        messageCount: messageCountMap.get(ticket.id) ?? 0
+        assignee: assignee
+          ? { id: assignee.id, email: assignee.email, displayName: assignee.displayName }
+          : null,
+        messageCount: messageCountMap.get(ticket.id) ?? 0,
       };
     });
   }
@@ -186,14 +197,14 @@ export class TicketService {
   private async buildTicketDetail(ticket: TicketRecord, options?: { includeInternal?: boolean }) {
     const [hydratedTicket] = await this.hydrateTickets([ticket]);
     const messages = await this.repository.listMessagesByTicketId(ticket.id, {
-      includeInternal: options?.includeInternal
+      includeInternal: options?.includeInternal,
     });
     const authorIds = [
       ...new Set(
         messages
           .map((message) => message.authorUserId)
-          .filter((value): value is string => Boolean(value))
-      )
+          .filter((value): value is string => Boolean(value)),
+      ),
     ];
     const authors = await new AuthRepository(this.db).listUsersByIds(authorIds);
     const authorMap = new Map(authors.map((item) => [item.id, item]));
@@ -201,12 +212,14 @@ export class TicketService {
     return {
       ticket: hydratedTicket,
       messages: messages.map((message) => {
-        const author = message.authorUserId ? authorMap.get(message.authorUserId) ?? null : null;
+        const author = message.authorUserId ? (authorMap.get(message.authorUserId) ?? null) : null;
         return {
           ...message,
-          author: author ? { id: author.id, email: author.email, displayName: author.displayName } : null
+          author: author
+            ? { id: author.id, email: author.email, displayName: author.displayName }
+            : null,
         };
-      })
+      }),
     };
   }
 
@@ -225,8 +238,12 @@ export class TicketService {
     const [app, order, install, deployment] = await Promise.all([
       appCode ? new AppRepository(this.db).findAppByCode(appCode) : Promise.resolve(null),
       orderNo ? new BillingRepository(this.db).findOrderByOrderNo(orderNo) : Promise.resolve(null),
-      extensionInstallId ? new InstallRepository(this.db).findInstallByExtensionInstallId(extensionInstallId) : Promise.resolve(null),
-      deploymentId ? new DeploymentRepository(this.db).findDeploymentById(deploymentId) : Promise.resolve(null)
+      extensionInstallId
+        ? new InstallRepository(this.db).findInstallByExtensionInstallId(extensionInstallId)
+        : Promise.resolve(null),
+      deploymentId
+        ? new DeploymentRepository(this.db).findDeploymentById(deploymentId)
+        : Promise.resolve(null),
     ]);
 
     if (appCode && !app) {
@@ -263,10 +280,11 @@ export class TicketService {
     }
 
     return {
-      app: app ?? (inferredAppId ? await new AppRepository(this.db).findAppById(inferredAppId) : null),
+      app:
+        app ?? (inferredAppId ? await new AppRepository(this.db).findAppById(inferredAppId) : null),
       order,
       install,
-      deployment
+      deployment,
     };
   }
 
@@ -284,7 +302,7 @@ export class TicketService {
       items: await this.hydrateTickets(result.items),
       total: result.total,
       limit: query.limit,
-      offset: query.offset
+      offset: query.offset,
     };
   }
 
@@ -318,14 +336,14 @@ export class TicketService {
       status: 'waiting_staff',
       subject: normalizeString(input.subject),
       lastReplyAuthorType: 'user',
-      lastActivityAt: now
+      lastActivityAt: now,
     });
 
     await this.repository.addMessage({
       ticketId: ticket.id,
       authorUserId: input.userId,
       authorType: 'user',
-      body: normalizeString(input.body)
+      body: normalizeString(input.body),
     });
 
     await new EventService(this.db).capture({
@@ -339,18 +357,14 @@ export class TicketService {
         priority: ticket.priority,
         subject: ticket.subject,
         orderNo: context.order?.orderNo,
-        appCode: context.app?.code
-      }
+        appCode: context.app?.code,
+      },
     });
 
     return this.buildTicketDetail(ticket);
   }
 
-  async replyMyTicket(input: {
-    ticketNo: string;
-    userId: string;
-    body: string;
-  }) {
+  async replyMyTicket(input: { ticketNo: string; userId: string; body: string }) {
     const ticket = await this.ensureTicketOwner(input.ticketNo, input.userId);
 
     if (ticket.status === 'closed') {
@@ -363,7 +377,7 @@ export class TicketService {
       lastReplyAuthorType: 'user',
       lastActivityAt: now,
       resolvedAt: null,
-      updatedAt: now
+      updatedAt: now,
     });
 
     if (!updated) {
@@ -374,7 +388,7 @@ export class TicketService {
       ticketId: ticket.id,
       authorUserId: input.userId,
       authorType: 'user',
-      body: normalizeString(input.body)
+      body: normalizeString(input.body),
     });
 
     await new EventService(this.db).capture({
@@ -384,8 +398,8 @@ export class TicketService {
       eventName: 'ticket.user_replied',
       properties: {
         ticketNo: ticket.ticketNo,
-        subject: ticket.subject
-      }
+        subject: ticket.subject,
+      },
     });
 
     return this.buildTicketDetail(updated);
@@ -403,7 +417,7 @@ export class TicketService {
       status: 'closed',
       closedAt: now,
       lastActivityAt: now,
-      updatedAt: now
+      updatedAt: now,
     });
 
     if (!updated) {
@@ -413,7 +427,7 @@ export class TicketService {
     await this.repository.addMessage({
       ticketId: ticket.id,
       authorType: 'system',
-      body: '工单已由用户关闭。'
+      body: '工单已由用户关闭。',
     });
 
     await new EventService(this.db).capture({
@@ -422,8 +436,8 @@ export class TicketService {
       installId: ticket.installId ?? undefined,
       eventName: 'ticket.closed_by_user',
       properties: {
-        ticketNo: ticket.ticketNo
-      }
+        ticketNo: ticket.ticketNo,
+      },
     });
 
     return this.buildTicketDetail(updated);
@@ -442,7 +456,7 @@ export class TicketService {
       items: await this.hydrateTickets(result.items),
       total: result.total,
       limit: query.limit,
-      offset: query.offset
+      offset: query.offset,
     };
   }
 
@@ -470,7 +484,7 @@ export class TicketService {
           firstRespondedAt: ticket.firstRespondedAt ?? now,
           resolvedAt: null,
           closedAt: null,
-          updatedAt: now
+          updatedAt: now,
         });
 
     if (!updated) {
@@ -482,7 +496,7 @@ export class TicketService {
       authorUserId: input.actorUserId,
       authorType: 'admin',
       isInternal,
-      body: normalizeString(input.body)
+      body: normalizeString(input.body),
     });
 
     if (!isInternal) {
@@ -494,8 +508,8 @@ export class TicketService {
         properties: {
           ticketNo: ticket.ticketNo,
           subject: ticket.subject,
-          actorUserId: input.actorUserId
-        }
+          actorUserId: input.actorUserId,
+        },
       });
     }
 
@@ -512,15 +526,15 @@ export class TicketService {
 
     if (input.assignedAdminUserId) {
       const assignee = await new AuthRepository(this.db).findUserById(input.assignedAdminUserId);
-      if (!assignee || assignee.role !== 'admin') {
-        throw httpError(422, 'Assigned user must be an admin');
+      if (!assignee || !canAccessAdminConsole(normalizeRole(assignee.role))) {
+        throw httpError(422, 'Assigned user must be a backoffice user');
       }
       assigneeLabel = assignee.displayName || assignee.email;
     }
 
     const updated = await this.repository.updateTicket(ticket.id, {
       assignedAdminUserId: input.assignedAdminUserId,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     if (!updated) {
@@ -532,7 +546,7 @@ export class TicketService {
       authorUserId: input.actorUserId,
       authorType: 'system',
       isInternal: true,
-      body: input.assignedAdminUserId ? `工单已分配给 ${assigneeLabel}。` : '工单已取消分配。'
+      body: input.assignedAdminUserId ? `工单已分配给 ${assigneeLabel}。` : '工单已取消分配。',
     });
 
     return this.buildTicketDetail(updated, { includeInternal: true });
@@ -553,7 +567,7 @@ export class TicketService {
     const changes: Parameters<TicketRepository['updateTicket']>[1] = {
       status: input.status,
       lastActivityAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     if (input.status === 'waiting_staff' || input.status === 'waiting_user') {
@@ -580,14 +594,14 @@ export class TicketService {
       ticketId: ticket.id,
       authorUserId: input.actorUserId,
       authorType: 'system',
-      body: formatSystemStatusMessage(input.status)
+      body: formatSystemStatusMessage(input.status),
     });
 
     const eventNameByStatus: Partial<Record<SupportTicketStatus, string>> = {
       resolved: 'ticket.resolved',
       closed: 'ticket.closed',
       waiting_staff: 'ticket.reopened_by_admin',
-      waiting_user: 'ticket.reopened_by_admin'
+      waiting_user: 'ticket.reopened_by_admin',
     };
 
     const eventName = eventNameByStatus[input.status];
@@ -600,8 +614,8 @@ export class TicketService {
         properties: {
           ticketNo: ticket.ticketNo,
           status: input.status,
-          actorUserId: input.actorUserId
-        }
+          actorUserId: input.actorUserId,
+        },
       });
     }
 

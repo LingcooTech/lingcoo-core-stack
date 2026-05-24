@@ -26,11 +26,13 @@ import {
 } from '@/components/ui/select';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole, roleLabels, type AppRole } from '@/lib/rbac';
 import { formatTime } from '@/lib/utils';
 
 export function UsersPage() {
   const qc = useQueryClient();
   const { user: currentUser } = useAuth();
+  const currentRole = normalizeRole(currentUser?.role);
 
   const { search, filters, setSearch, setFilter, clearFilters } = useTableState({
     knownFilters: ['role', 'status'],
@@ -109,13 +111,17 @@ export function UsersPage() {
     setEditingUser(u);
     setEditForm({
       displayName: u.displayName ?? '',
-      role: u.role as 'user' | 'admin',
+      role: u.role as AppRole,
       status: u.status as 'active' | 'suspended',
     });
     setEditOpen(true);
   }
 
   const isSelf = (u: AdminUser) => currentUser?.id === u.id;
+  const canEditUsers = hasPermission(currentRole, 'users.edit');
+  const canManageRoles = hasPermission(currentRole, 'users.role_manage');
+  const canSuspendUsers = hasPermission(currentRole, 'users.suspend');
+  const canResetPasswords = hasPermission(currentRole, 'users.reset_password');
 
   const chips: FilterChipConfig[] = [
     {
@@ -125,6 +131,10 @@ export function UsersPage() {
       onChange: (next) => setFilter('role', next),
       options: [
         { value: 'admin', label: '管理员' },
+        { value: 'operator', label: '运营' },
+        { value: 'finance', label: '财务' },
+        { value: 'support', label: '客服' },
+        { value: 'editor', label: '内容编辑' },
         { value: 'user', label: '普通用户' },
       ],
     },
@@ -156,7 +166,12 @@ export function UsersPage() {
     {
       key: 'role',
       header: '角色',
-      cell: (row) => <StatusPill tone={row.role === 'admin' ? 'ok' : 'neutral'} label={row.role} />,
+      cell: (row) => (
+        <StatusPill
+          tone={row.role === 'admin' ? 'ok' : row.role === 'user' ? 'neutral' : 'info'}
+          label={roleLabels[(row.role as AppRole) ?? 'user'] ?? row.role}
+        />
+      ),
     },
     {
       key: 'status',
@@ -180,51 +195,61 @@ export function UsersPage() {
         </span>
       ),
     },
-    {
-      key: 'actions',
-      header: '操作',
-      className: 'w-[220px]',
-      cell: (row) => (
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs"
-            onClick={() => openEdit(row)}
-          >
-            编辑
-          </Button>
-          {row.status === 'active' ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-muted-foreground h-7 px-2 text-xs"
-              disabled={isSelf(row)}
-              onClick={() => setConfirmAction({ type: 'suspend', user: row })}
-            >
-              停用
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-muted-foreground h-7 px-2 text-xs"
-              onClick={() => setConfirmAction({ type: 'activate', user: row })}
-            >
-              激活
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-destructive hover:text-destructive h-7 px-2 text-xs"
-            onClick={() => setResetConfirm(row)}
-          >
-            重置密码
-          </Button>
-        </div>
-      ),
-    },
+    ...(canEditUsers || canSuspendUsers || canResetPasswords
+      ? [
+          {
+            key: 'actions',
+            header: '操作',
+            className: 'w-[220px]',
+            cell: (row: AdminUser) => (
+              <div className="flex items-center gap-1">
+                {canEditUsers ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => openEdit(row)}
+                  >
+                    编辑
+                  </Button>
+                ) : null}
+                {canSuspendUsers ? (
+                  row.status === 'active' ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground h-7 px-2 text-xs"
+                      disabled={isSelf(row)}
+                      onClick={() => setConfirmAction({ type: 'suspend', user: row })}
+                    >
+                      停用
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground h-7 px-2 text-xs"
+                      onClick={() => setConfirmAction({ type: 'activate', user: row })}
+                    >
+                      激活
+                    </Button>
+                  )
+                ) : null}
+                {canResetPasswords ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive h-7 px-2 text-xs"
+                    onClick={() => setResetConfirm(row)}
+                  >
+                    重置密码
+                  </Button>
+                ) : null}
+              </div>
+            ),
+          } satisfies Column<AdminUser>,
+        ]
+      : []),
   ];
 
   return (
@@ -270,21 +295,25 @@ export function UsersPage() {
               <Label>角色</Label>
               <Select
                 value={editForm.role ?? 'user'}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({ ...prev, role: v as 'user' | 'admin' }))
-                }
-                disabled={editingUser ? isSelf(editingUser) : false}
+                onValueChange={(v) => setEditForm((prev) => ({ ...prev, role: v as AppRole }))}
+                disabled={!canManageRoles || (editingUser ? isSelf(editingUser) : false)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">管理员</SelectItem>
+                  <SelectItem value="operator">运营</SelectItem>
+                  <SelectItem value="finance">财务</SelectItem>
+                  <SelectItem value="support">客服</SelectItem>
+                  <SelectItem value="editor">内容编辑</SelectItem>
                   <SelectItem value="user">普通用户</SelectItem>
                 </SelectContent>
               </Select>
-              {editingUser && isSelf(editingUser) && (
-                <p className="text-muted-foreground text-xs">不能修改自己的角色</p>
+              {editingUser && (isSelf(editingUser) || !canManageRoles) && (
+                <p className="text-muted-foreground text-xs">
+                  {isSelf(editingUser) ? '不能修改自己的角色' : '当前角色没有修改用户角色的权限'}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -294,7 +323,7 @@ export function UsersPage() {
                 onValueChange={(v) =>
                   setEditForm((prev) => ({ ...prev, status: v as 'active' | 'suspended' }))
                 }
-                disabled={editingUser ? isSelf(editingUser) : false}
+                disabled={!canSuspendUsers || (editingUser ? isSelf(editingUser) : false)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -304,8 +333,10 @@ export function UsersPage() {
                   <SelectItem value="suspended">已停用</SelectItem>
                 </SelectContent>
               </Select>
-              {editingUser && isSelf(editingUser) && (
-                <p className="text-muted-foreground text-xs">不能修改自己的状态</p>
+              {editingUser && (isSelf(editingUser) || !canSuspendUsers) && (
+                <p className="text-muted-foreground text-xs">
+                  {isSelf(editingUser) ? '不能修改自己的状态' : '当前角色没有修改用户状态的权限'}
+                </p>
               )}
             </div>
             <div className="flex justify-end gap-2 pt-2">

@@ -5,7 +5,14 @@ import { httpError } from '../../lib/errors';
 import { AuthRepository } from '../auth/repository';
 import { NotificationsRepository } from './repository';
 
-type NotificationCategory = 'account' | 'billing' | 'license' | 'deployment' | 'ticket' | 'system' | 'announcement';
+type NotificationCategory =
+  | 'account'
+  | 'billing'
+  | 'license'
+  | 'deployment'
+  | 'ticket'
+  | 'system'
+  | 'announcement';
 type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
 
 type EventProjectionInput = {
@@ -36,7 +43,9 @@ function normalizeString(value: unknown) {
 }
 
 function asRecord(value: unknown) {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function buildNotificationFromEvent(event: EventProjectionInput): NotificationDraft | null {
@@ -107,6 +116,21 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         level: 'success',
         title: '订单支付成功',
         body: `${orderNo} 已支付，相关权益已同步到你的账户。`,
+        ctaLabel: '查看订单',
+        ctaUrl: '/account?tab=orders',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'billing.order_refunded': {
+      const orderNo = normalizeString(properties.orderNo) || '订单';
+      return {
+        userId: event.userId,
+        category: 'billing',
+        level: 'warning',
+        title: '订单已退款',
+        body: `${orderNo} 已完成退款，关联权益会同步回收。`,
         ctaLabel: '查看订单',
         ctaUrl: '/account?tab=orders',
         sourceEventId: event.id,

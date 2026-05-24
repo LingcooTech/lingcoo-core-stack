@@ -5,9 +5,10 @@ import {
   emailVerificationCodes,
   passwordCredentials,
   passwordResetCodes,
-  users
+  users,
 } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
+import type { AppRole } from '../../lib/rbac';
 
 export class AuthRepository {
   constructor(private readonly db: DbExecutor) {}
@@ -48,25 +49,25 @@ export class AuthRepository {
       .orderBy(desc(users.createdAt));
   }
 
-  async createUser(input: { email: string; displayName?: string; role?: 'user' | 'admin' }) {
+  async createUser(input: { email: string; displayName?: string; role?: AppRole }) {
     const [user] = await this.db
       .insert(users)
       .values({
         email: input.email,
         displayName: input.displayName ?? null,
-        role: input.role ?? 'user'
+        role: input.role ?? 'user',
       })
       .returning();
 
     return user;
   }
 
-  async updateUserRole(userId: string, role: 'user' | 'admin') {
+  async updateUserRole(userId: string, role: AppRole) {
     const [user] = await this.db
       .update(users)
       .set({
         role,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(users.id, userId))
       .returning();
@@ -79,7 +80,7 @@ export class AuthRepository {
       .insert(passwordCredentials)
       .values({
         userId: input.userId,
-        passwordHash: input.passwordHash
+        passwordHash: input.passwordHash,
       })
       .returning();
 
@@ -97,10 +98,7 @@ export class AuthRepository {
   }
 
   async createAuthIdentity(input: { userId: string; provider: string; providerUserId: string }) {
-    const [identity] = await this.db
-      .insert(authIdentities)
-      .values(input)
-      .returning();
+    const [identity] = await this.db.insert(authIdentities).values(input).returning();
 
     return identity;
   }
@@ -108,9 +106,7 @@ export class AuthRepository {
   // ─── Email Verification ──────────────────────────────────────────────────
 
   async createVerificationCode(userId: string, code: string, expiresAt: Date) {
-    await this.db
-      .delete(emailVerificationCodes)
-      .where(eq(emailVerificationCodes.userId, userId));
+    await this.db.delete(emailVerificationCodes).where(eq(emailVerificationCodes.userId, userId));
 
     const [record] = await this.db
       .insert(emailVerificationCodes)
@@ -128,8 +124,8 @@ export class AuthRepository {
         and(
           eq(emailVerificationCodes.userId, userId),
           eq(emailVerificationCodes.code, code),
-          gt(emailVerificationCodes.expiresAt, new Date())
-        )
+          gt(emailVerificationCodes.expiresAt, new Date()),
+        ),
       )
       .limit(1);
 
@@ -148,17 +144,13 @@ export class AuthRepository {
   }
 
   async deleteVerificationCodes(userId: string) {
-    await this.db
-      .delete(emailVerificationCodes)
-      .where(eq(emailVerificationCodes.userId, userId));
+    await this.db.delete(emailVerificationCodes).where(eq(emailVerificationCodes.userId, userId));
   }
 
   // ─── Password Reset ────────────────────────────────────────────────────────
 
   async createPasswordResetCode(userId: string, code: string, expiresAt: Date) {
-    await this.db
-      .delete(passwordResetCodes)
-      .where(eq(passwordResetCodes.userId, userId));
+    await this.db.delete(passwordResetCodes).where(eq(passwordResetCodes.userId, userId));
 
     const [record] = await this.db
       .insert(passwordResetCodes)
@@ -176,8 +168,8 @@ export class AuthRepository {
         and(
           eq(passwordResetCodes.userId, userId),
           eq(passwordResetCodes.code, code),
-          gt(passwordResetCodes.expiresAt, new Date())
-        )
+          gt(passwordResetCodes.expiresAt, new Date()),
+        ),
       )
       .limit(1);
 
@@ -196,9 +188,7 @@ export class AuthRepository {
   }
 
   async deletePasswordResetCodes(userId: string) {
-    await this.db
-      .delete(passwordResetCodes)
-      .where(eq(passwordResetCodes.userId, userId));
+    await this.db.delete(passwordResetCodes).where(eq(passwordResetCodes.userId, userId));
   }
 
   async markEmailVerified(userId: string) {
@@ -208,7 +198,7 @@ export class AuthRepository {
       .set({
         emailVerified: true,
         emailVerifiedAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .where(eq(users.id, userId))
       .returning();
@@ -220,18 +210,14 @@ export class AuthRepository {
 
   async updateUser(
     userId: string,
-    input: { displayName?: string | null; role?: 'user' | 'admin'; status?: 'active' | 'suspended' }
+    input: { displayName?: string | null; role?: AppRole; status?: 'active' | 'suspended' },
   ) {
     const set: Record<string, unknown> = { updatedAt: new Date() };
     if (input.displayName !== undefined) set.displayName = input.displayName;
     if (input.role !== undefined) set.role = input.role;
     if (input.status !== undefined) set.status = input.status;
 
-    const [user] = await this.db
-      .update(users)
-      .set(set)
-      .where(eq(users.id, userId))
-      .returning();
+    const [user] = await this.db.update(users).set(set).where(eq(users.id, userId)).returning();
 
     return user ?? null;
   }
@@ -241,7 +227,7 @@ export class AuthRepository {
       .update(passwordCredentials)
       .set({
         passwordHash,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(passwordCredentials.userId, userId))
       .returning();
@@ -257,14 +243,14 @@ export class AuthRepository {
         userId,
         passwordHash,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: passwordCredentials.userId,
         set: {
           passwordHash,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       })
       .returning();
 
@@ -275,7 +261,7 @@ export class AuthRepository {
     limit: number;
     offset: number;
     search?: string;
-    role?: 'user' | 'admin';
+    role?: AppRole;
     status?: 'active' | 'suspended';
   }) {
     const conditions = [];
@@ -290,9 +276,7 @@ export class AuthRepository {
 
     if (query.search) {
       const pattern = `%${query.search}%`;
-      conditions.push(
-        or(ilike(users.email, pattern), ilike(users.displayName, pattern))!
-      );
+      conditions.push(or(ilike(users.email, pattern), ilike(users.displayName, pattern))!);
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -308,12 +292,12 @@ export class AuthRepository {
       this.db
         .select({ count: sql<number>`count(*)::int` })
         .from(users)
-        .where(where)
+        .where(where),
     ]);
 
     return {
       items,
-      total: countResult[0]?.count ?? 0
+      total: countResult[0]?.count ?? 0,
     };
   }
 }

@@ -1,21 +1,24 @@
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac, createSign, randomBytes } from 'node:crypto';
 
 import { httpError } from '../../../lib/errors';
-import { normalizeObject, resolveCallbackUrl } from './shared';
+import { normalizeObject, readSecretValue, resolveCallbackUrl } from './shared';
 import type {
   BillingProviderAdapter,
+  PaymentRefundResult,
   PaymentNotificationResult,
   PaymentQueryResult,
   PreparedPayment,
   ProviderContext,
   ProviderNotificationContext,
-  ProviderQueryContext
+  ProviderQueryContext,
 } from './types';
 
 type WechatXmlPayload = Record<string, string>;
 
 const WECHAT_NATIVE_API_PATH = '/pay/unifiedorder';
 const WECHAT_ORDER_QUERY_API_PATH = '/pay/orderquery';
+const WECHAT_ORDER_CLOSE_API_PATH = '/pay/closeorder';
+const WECHAT_REFUND_API_PATH = '/v3/refund/domestic/refunds';
 const WECHAT_NOTIFY_PATH = '/v1/billing/providers/wechat/notify';
 
 export class WechatPayProvider implements BillingProviderAdapter {
@@ -28,9 +31,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
     return Boolean(
       context.WECHAT_PAY_MCH_ID &&
-        context.WECHAT_PAY_APP_ID &&
-        context.WECHAT_PAY_APP_SECRET &&
-        (context.WECHAT_PAY_KEY || context.WECHAT_PAY_API_V3_KEY)
+      context.WECHAT_PAY_APP_ID &&
+      context.WECHAT_PAY_APP_SECRET &&
+      (context.WECHAT_PAY_KEY || context.WECHAT_PAY_API_V3_KEY),
     );
   }
 
@@ -49,7 +52,44 @@ export class WechatPayProvider implements BillingProviderAdapter {
   }
 
   private getNotifyUrl(context: ProviderContext['env']) {
-    return resolveCallbackUrl(context.WECHAT_PAY_NOTIFY_URL, context.PUBLIC_BASE_URL, WECHAT_NOTIFY_PATH);
+    return resolveCallbackUrl(
+      context.WECHAT_PAY_NOTIFY_URL,
+      context.PUBLIC_BASE_URL,
+      WECHAT_NOTIFY_PATH,
+    );
+  }
+
+  private getMerchantSerialNo(context: ProviderContext['env']) {
+    const serialNo = context.WECHAT_PAY_CERT_SERIAL_NO?.trim();
+    if (!serialNo) {
+      throw httpError(422, 'WECHAT_PAY_CERT_SERIAL_NO is not configured');
+    }
+    return serialNo;
+  }
+
+  private getMerchantPrivateKey(context: ProviderContext['env']) {
+    return readSecretValue({
+      inlineValue: context.WECHAT_PAY_PRIVATE_KEY,
+      filePath: context.WECHAT_PAY_PRIVATE_KEY_PATH,
+      label: 'WECHAT_PAY_PRIVATE_KEY',
+    });
+  }
+
+  private buildV3Authorization(input: {
+    env: ProviderContext['env'];
+    method: 'POST';
+    pathname: string;
+    body: string;
+  }) {
+    const nonce = randomBytes(16).toString('hex');
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const message = `${input.method}\n${input.pathname}\n${timestamp}\n${nonce}\n${input.body}\n`;
+    const signer = createSign('RSA-SHA256');
+    signer.update(message);
+    signer.end();
+    const signature = signer.sign(this.getMerchantPrivateKey(input.env), 'base64');
+
+    return `WECHATPAY2-SHA256-RSA2048 mchid="${input.env.WECHAT_PAY_MCH_ID!.trim()}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${this.getMerchantSerialNo(input.env)}"`;
   }
 
   private buildXml(values: Record<string, string | number>) {
@@ -93,7 +133,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
   private buildSignContent(values: Record<string, string | number>) {
     return Object.entries(values)
-      .filter(([key, value]) => key !== 'sign' && value !== undefined && value !== null && value !== '')
+      .filter(
+        ([key, value]) => key !== 'sign' && value !== undefined && value !== null && value !== '',
+      )
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, value]) => `${key}=${value}`)
       .join('&');
@@ -102,7 +144,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
   private createSignature(
     values: Record<string, string | number>,
     key: string,
-    signType: 'MD5' | 'HMAC-SHA256'
+    signType: 'MD5' | 'HMAC-SHA256',
   ) {
     const signContent = `${this.buildSignContent(values)}&key=${key}`;
 
@@ -211,24 +253,31 @@ export class WechatPayProvider implements BillingProviderAdapter {
       spbill_create_ip: this.resolveClientIp(context),
       notify_url: notifyUrl,
       trade_type: 'NATIVE',
-      product_id: context.order.orderNo
+      product_id: context.order.orderNo,
     };
 
-    requestPayload.sign = this.createSignature(requestPayload, this.getApiKey(context.env), 'HMAC-SHA256');
+    requestPayload.sign = this.createSignature(
+      requestPayload,
+      this.getApiKey(context.env),
+      'HMAC-SHA256',
+    );
 
     const response = await fetch(new URL(WECHAT_NATIVE_API_PATH, this.getApiBaseUrl(context.env)), {
       method: 'POST',
       headers: {
         Accept: 'application/xml, text/xml, */*',
-        'Content-Type': 'text/xml; charset=utf-8'
+        'Content-Type': 'text/xml; charset=utf-8',
       },
       body: this.buildXml(requestPayload),
-      signal: AbortSignal.timeout(10_000)
+      signal: AbortSignal.timeout(10_000),
     });
     const responseText = await response.text();
 
     if (!response.ok) {
-      throw httpError(502, `WeChat Pay create order failed: ${response.status} ${responseText || 'empty response'}`);
+      throw httpError(
+        502,
+        `WeChat Pay create order failed: ${response.status} ${responseText || 'empty response'}`,
+      );
     }
 
     const responsePayload = this.parseXml(responseText);
@@ -240,14 +289,14 @@ export class WechatPayProvider implements BillingProviderAdapter {
     if (responsePayload.return_code !== 'SUCCESS') {
       throw httpError(
         502,
-        `WeChat Pay create order failed: ${responsePayload.return_msg ?? 'unknown return error'}`
+        `WeChat Pay create order failed: ${responsePayload.return_msg ?? 'unknown return error'}`,
       );
     }
 
     if (responsePayload.result_code !== 'SUCCESS' || !responsePayload.code_url) {
       throw httpError(
         502,
-        `WeChat Pay create order failed: ${responsePayload.err_code_des ?? responsePayload.return_msg ?? 'empty response'}`
+        `WeChat Pay create order failed: ${responsePayload.err_code_des ?? responsePayload.return_msg ?? 'empty response'}`,
       );
     }
 
@@ -265,17 +314,22 @@ export class WechatPayProvider implements BillingProviderAdapter {
       payload: {
         codeUrl: responsePayload.code_url,
         qrCodeText: responsePayload.code_url,
-        prepayId: responsePayload.prepay_id ?? ''
-      }
+        prepayId: responsePayload.prepay_id ?? '',
+      },
     };
   }
 
-  async parseNotification(context: ProviderNotificationContext): Promise<PaymentNotificationResult> {
+  async parseNotification(
+    context: ProviderNotificationContext,
+  ): Promise<PaymentNotificationResult> {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'WeChat Pay is not configured');
     }
 
-    const rawBody = typeof context.rawBody === 'string' ? context.rawBody : context.rawBody?.toString('utf8') ?? '';
+    const rawBody =
+      typeof context.rawBody === 'string'
+        ? context.rawBody
+        : (context.rawBody?.toString('utf8') ?? '');
     if (!rawBody) {
       throw httpError(400, 'Missing WeChat Pay callback body');
     }
@@ -288,7 +342,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         provider: this.code,
         providerEventId: payload.out_trade_no || `wechat_${Date.now()}`,
         payload,
-        reason: `Unhandled WeChat return_code: ${payload.return_code ?? 'unknown'}`
+        reason: `Unhandled WeChat return_code: ${payload.return_code ?? 'unknown'}`,
       };
     }
 
@@ -308,7 +362,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         provider: this.code,
         providerEventId: payload.transaction_id || payload.out_trade_no || `wechat_${Date.now()}`,
         payload,
-        reason: `Unhandled WeChat result_code: ${payload.result_code ?? 'unknown'}`
+        reason: `Unhandled WeChat result_code: ${payload.result_code ?? 'unknown'}`,
       };
     }
 
@@ -330,7 +384,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
       amount,
       currency: payload.fee_type || 'CNY',
       paidAt: this.parsePaidAt(payload.time_end),
-      payload: normalizeObject(payload)
+      payload: normalizeObject(payload),
     };
   }
 
@@ -344,28 +398,38 @@ export class WechatPayProvider implements BillingProviderAdapter {
       mch_id: context.env.WECHAT_PAY_MCH_ID!.trim(),
       nonce_str: randomBytes(16).toString('hex'),
       sign_type: 'HMAC-SHA256',
-      out_trade_no: context.order.orderNo
+      out_trade_no: context.order.orderNo,
     };
 
     if (context.order.providerOrderId?.trim()) {
       requestPayload.transaction_id = context.order.providerOrderId.trim();
     }
 
-    requestPayload.sign = this.createSignature(requestPayload, this.getApiKey(context.env), 'HMAC-SHA256');
+    requestPayload.sign = this.createSignature(
+      requestPayload,
+      this.getApiKey(context.env),
+      'HMAC-SHA256',
+    );
 
-    const response = await fetch(new URL(WECHAT_ORDER_QUERY_API_PATH, this.getApiBaseUrl(context.env)), {
-      method: 'POST',
-      headers: {
-        Accept: 'application/xml, text/xml, */*',
-        'Content-Type': 'text/xml; charset=utf-8'
+    const response = await fetch(
+      new URL(WECHAT_ORDER_QUERY_API_PATH, this.getApiBaseUrl(context.env)),
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/xml, text/xml, */*',
+          'Content-Type': 'text/xml; charset=utf-8',
+        },
+        body: this.buildXml(requestPayload),
+        signal: AbortSignal.timeout(10_000),
       },
-      body: this.buildXml(requestPayload),
-      signal: AbortSignal.timeout(10_000)
-    });
+    );
     const responseText = await response.text();
 
     if (!response.ok) {
-      throw httpError(502, `WeChat Pay query order failed: ${response.status} ${responseText || 'empty response'}`);
+      throw httpError(
+        502,
+        `WeChat Pay query order failed: ${response.status} ${responseText || 'empty response'}`,
+      );
     }
 
     const payload = this.parseXml(responseText);
@@ -375,7 +439,10 @@ export class WechatPayProvider implements BillingProviderAdapter {
     }
 
     if (payload.return_code !== 'SUCCESS') {
-      throw httpError(502, `WeChat Pay query order failed: ${payload.return_msg ?? 'unknown return error'}`);
+      throw httpError(
+        502,
+        `WeChat Pay query order failed: ${payload.return_msg ?? 'unknown return error'}`,
+      );
     }
 
     if (payload.result_code !== 'SUCCESS') {
@@ -386,13 +453,13 @@ export class WechatPayProvider implements BillingProviderAdapter {
           provider: this.code,
           orderNo: context.order.orderNo,
           payload: normalizeObject(payload),
-          reason: payload.err_code_des ?? 'Order not found in WeChat Pay'
+          reason: payload.err_code_des ?? 'Order not found in WeChat Pay',
         };
       }
 
       throw httpError(
         502,
-        `WeChat Pay query order failed: ${payload.err_code_des ?? payload.return_msg ?? 'empty response'}`
+        `WeChat Pay query order failed: ${payload.err_code_des ?? payload.return_msg ?? 'empty response'}`,
       );
     }
 
@@ -417,7 +484,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         amount,
         currency: payload.fee_type || context.order.currency,
         paidAt: this.parsePaidAt(payload.time_end),
-        payload: normalizedPayload
+        payload: normalizedPayload,
       };
     }
 
@@ -428,7 +495,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         orderNo: payload.out_trade_no || context.order.orderNo,
         providerOrderId: payload.transaction_id ?? null,
         payload: normalizedPayload,
-        reason: payload.trade_state_desc ?? tradeState
+        reason: payload.trade_state_desc ?? tradeState,
       };
     }
 
@@ -438,7 +505,194 @@ export class WechatPayProvider implements BillingProviderAdapter {
       orderNo: payload.out_trade_no || context.order.orderNo,
       providerOrderId: payload.transaction_id ?? null,
       payload: normalizedPayload,
-      reason: payload.trade_state_desc ?? tradeState
+      reason: payload.trade_state_desc ?? tradeState,
+    };
+  }
+
+  async closePayment(context: ProviderQueryContext) {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'WeChat Pay is not configured');
+    }
+
+    const requestPayload: Record<string, string> = {
+      appid: context.env.WECHAT_PAY_APP_ID!.trim(),
+      mch_id: context.env.WECHAT_PAY_MCH_ID!.trim(),
+      nonce_str: randomBytes(16).toString('hex'),
+      sign_type: 'HMAC-SHA256',
+      out_trade_no: context.order.orderNo,
+    };
+    requestPayload.sign = this.createSignature(
+      requestPayload,
+      this.getApiKey(context.env),
+      'HMAC-SHA256',
+    );
+
+    const response = await fetch(
+      new URL(WECHAT_ORDER_CLOSE_API_PATH, this.getApiBaseUrl(context.env)),
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/xml, text/xml, */*',
+          'Content-Type': 'text/xml; charset=utf-8',
+        },
+        body: this.buildXml(requestPayload),
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      throw httpError(
+        502,
+        `WeChat Pay close order failed: ${response.status} ${responseText || 'empty response'}`,
+      );
+    }
+
+    const payload = this.parseXml(responseText);
+
+    if (payload.return_code === 'SUCCESS' && payload.sign) {
+      this.verifySignature(payload, this.getApiKey(context.env));
+    }
+
+    if (payload.return_code !== 'SUCCESS') {
+      throw httpError(
+        502,
+        `WeChat Pay close order failed: ${payload.return_msg ?? 'unknown return error'}`,
+      );
+    }
+
+    if (payload.result_code === 'SUCCESS') {
+      return {
+        kind: 'closed' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: context.order.providerOrderId ?? null,
+        payload: normalizeObject(payload),
+        reason: 'Order closed in WeChat Pay',
+      };
+    }
+
+    const errorCode = payload.err_code?.trim().toUpperCase();
+    if (errorCode === 'ORDERNOTEXIST') {
+      return {
+        kind: 'not_found' as const,
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: context.order.providerOrderId ?? null,
+        payload: normalizeObject(payload),
+        reason: payload.err_code_des ?? 'Order not found in WeChat Pay',
+      };
+    }
+
+    return {
+      kind: 'not_closable' as const,
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId: context.order.providerOrderId ?? null,
+      payload: normalizeObject(payload),
+      reason: payload.err_code_des ?? payload.return_msg ?? errorCode ?? 'Order is not closable',
+    };
+  }
+
+  async refundPayment(context: ProviderQueryContext): Promise<PaymentRefundResult> {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'WeChat Pay is not configured');
+    }
+
+    if (context.order.currency !== 'CNY') {
+      throw httpError(422, 'WeChat Pay only supports CNY refunds in this build');
+    }
+
+    const outRefundNo = `${context.order.orderNo}_refund`;
+    const requestBody = JSON.stringify({
+      out_trade_no: context.order.orderNo,
+      out_refund_no: outRefundNo,
+      reason: `Refund for ${context.order.orderNo}`,
+      notify_url: this.getNotifyUrl(context.env),
+      amount: {
+        refund: context.order.amount,
+        total: context.order.amount,
+        currency: context.order.currency,
+      },
+    });
+
+    const response = await fetch(new URL(WECHAT_REFUND_API_PATH, this.getApiBaseUrl(context.env)), {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: this.buildV3Authorization({
+          env: context.env,
+          method: 'POST',
+          pathname: WECHAT_REFUND_API_PATH,
+          body: requestBody,
+        }),
+      },
+      body: requestBody,
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const rawText = await response.text();
+    let payload: Record<string, unknown> = {};
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText) as Record<string, unknown>;
+      } catch {
+        payload = { raw: rawText };
+      }
+    }
+
+    if (response.status === 404) {
+      return {
+        kind: 'not_found',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: context.order.providerOrderId ?? null,
+        payload,
+        reason: String(payload.message ?? 'Order not found in WeChat Pay'),
+      };
+    }
+
+    if (!response.ok) {
+      throw httpError(
+        502,
+        `WeChat Pay refund failed: ${response.status} ${String(payload.message ?? (rawText || 'empty response'))}`,
+      );
+    }
+
+    const refundStatus =
+      typeof payload.status === 'string' ? payload.status.trim().toUpperCase() : '';
+    const refundId = typeof payload.refund_id === 'string' ? payload.refund_id : null;
+    const providerOrderId =
+      typeof payload.transaction_id === 'string'
+        ? payload.transaction_id
+        : (context.order.providerOrderId ?? null);
+
+    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING') {
+      return {
+        kind: 'refunded',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId,
+        refundId,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        refundedAt: new Date(),
+        payload,
+        reason:
+          refundStatus === 'SUCCESS'
+            ? 'Order refunded in WeChat Pay'
+            : 'Refund accepted by WeChat Pay and is processing',
+      };
+    }
+
+    return {
+      kind: 'not_refundable',
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId,
+      payload,
+      reason: String(payload.message ?? payload.status ?? 'Order is not refundable'),
     };
   }
 }

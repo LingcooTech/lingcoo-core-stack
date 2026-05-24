@@ -2,8 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Eye, RefreshCw } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
-import { getOrderDetail, listOrders, reconcileOrder } from '@/api/admin';
+import { cancelOrder, getOrderDetail, listOrders, reconcileOrder, refundOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +19,7 @@ import { JsonViewer } from '@/components/shared/JsonViewer';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { useTableState } from '@/hooks/useTableState';
+import { toastErr, toastOk, toastWarn } from '@/lib/toast';
 import { formatAmount, formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -78,15 +78,40 @@ export function OrdersPage() {
   const reconcileMutation = useMutation({
     mutationFn: reconcileOrder,
     onSuccess: (result, orderNo) => {
-      toast.success(
-        `订单已同步: ${orderNo} → ${result.reconciliation.status} (${result.reconciliation.reason})`,
+      toastOk(
+        `订单已同步: ${orderNo}`,
+        `${result.reconciliation.status} · ${result.reconciliation.reason}`,
       );
       void qc.invalidateQueries({ queryKey: ['orders'] });
       if (selectedOrderNo === orderNo) {
         void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
       }
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '同步失败'),
+    onError: (err) => toastErr(err, '同步失败'),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelOrder,
+    onSuccess: (result, orderNo) => {
+      toastWarn(`订单已关闭: ${orderNo}`, result.action.reason);
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      if (selectedOrderNo === orderNo) {
+        void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
+      }
+    },
+    onError: (err) => toastErr(err, '关闭订单失败'),
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: refundOrder,
+    onSuccess: (result, orderNo) => {
+      toastWarn(`订单已退款: ${orderNo}`, result.action.reason);
+      void qc.invalidateQueries({ queryKey: ['orders'] });
+      if (selectedOrderNo === orderNo) {
+        void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
+      }
+    },
+    onError: (err) => toastErr(err, '退款失败'),
   });
 
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -107,8 +132,8 @@ export function OrdersPage() {
     setBulkRunning(false);
     setSelectedRowIds(new Set());
     void qc.invalidateQueries({ queryKey: ['orders'] });
-    if (fail === 0) toast.success(`批量同步完成：${ok} 笔`);
-    else toast.warning(`批量同步：成功 ${ok}、失败 ${fail}`);
+    if (fail === 0) toastOk(`批量同步完成：${ok} 笔`);
+    else toastWarn(`批量同步：成功 ${ok}、失败 ${fail}`);
   };
 
   const orders = useMemo(() => ordersQuery.data?.items ?? [], [ordersQuery.data?.items]);
@@ -290,6 +315,32 @@ export function OrdersPage() {
                     className={`size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
                   />
                   {reconcileMutation.isPending ? '同步中' : '同步订单'}
+                </Button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    detail?.item.status !== 'pending' ||
+                    cancelMutation.isPending ||
+                    reconcileMutation.isPending
+                  }
+                  onClick={() => cancelMutation.mutate(selectedOrderNo)}
+                >
+                  {cancelMutation.isPending ? '关闭中' : '关闭订单'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    detail?.item.status !== 'paid' ||
+                    refundMutation.isPending ||
+                    reconcileMutation.isPending
+                  }
+                  onClick={() => refundMutation.mutate(selectedOrderNo)}
+                >
+                  {refundMutation.isPending ? '退款中' : '全额退款'}
                 </Button>
               </div>
             </SheetHeader>

@@ -27,6 +27,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 
 const wechatSchema = z.object({
   appId: z.string().optional(),
@@ -48,6 +50,8 @@ type AlipayValues = z.infer<typeof alipaySchema>;
 
 export function PaymentsPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canManagePayments = hasPermission(normalizeRole(user?.role), 'payments.manage');
   const [providerToClear, setProviderToClear] = useState<'wechat_pay' | 'alipay' | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['payment-settings'],
@@ -237,13 +241,16 @@ export function PaymentsPage() {
                       )}
                     />
                     <div className="flex gap-2">
-                      <Button type="submit" disabled={wechatMutation.isPending}>
+                      <Button
+                        type="submit"
+                        disabled={wechatMutation.isPending || !canManagePayments}
+                      >
                         {wechatMutation.isPending ? '保存中...' : '保存微信配置'}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={clearMutation.isPending}
+                        disabled={clearMutation.isPending || !canManagePayments}
                         onClick={() => setProviderToClear('wechat_pay')}
                       >
                         清空配置
@@ -349,13 +356,16 @@ export function PaymentsPage() {
                       )}
                     />
                     <div className="flex gap-2">
-                      <Button type="submit" disabled={alipayMutation.isPending}>
+                      <Button
+                        type="submit"
+                        disabled={alipayMutation.isPending || !canManagePayments}
+                      >
                         {alipayMutation.isPending ? '保存中...' : '保存支付宝配置'}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={clearMutation.isPending}
+                        disabled={clearMutation.isPending || !canManagePayments}
                         onClick={() => setProviderToClear('alipay')}
                       >
                         清空配置

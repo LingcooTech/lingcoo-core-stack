@@ -3,10 +3,12 @@ import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
+import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
 import type { DbClient } from '../../db/types';
 import { CheckoutRepository } from '../checkout/repository';
 import { AppService } from '../app/service';
 import { EventService } from '../event/service';
+import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
 import { getBillingProviderAdapter, listBillingProviders } from './providers';
 import type { PaymentNotificationResult } from './providers/types';
@@ -23,7 +25,7 @@ function normalizeMeta(value: unknown) {
 export class BillingService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   async listProviders() {
@@ -47,12 +49,16 @@ export class BillingService {
 
     const { app, plan, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
       planCode: input.planCode,
-      offerCode: input.offerCode
+      offerCode: input.offerCode,
     });
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
     if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
-      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(input.userId, app.id, plan.id);
+      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(
+        input.userId,
+        app.id,
+        plan.id,
+      );
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
@@ -76,8 +82,8 @@ export class BillingService {
         appCode: input.appCode,
         offerCode: offer.code,
         offerTitle: offer.title,
-        planCode: plan.code
-      }
+        planCode: plan.code,
+      },
     });
 
     await new EventService(this.db).capture({
@@ -90,8 +96,8 @@ export class BillingService {
         planCode: plan.code,
         provider: input.provider,
         amount: order.amount,
-        currency: order.currency
-      }
+        currency: order.currency,
+      },
     });
 
     const payment = await providerAdapter.preparePayment({
@@ -101,8 +107,8 @@ export class BillingService {
         orderNo: order.orderNo,
         subject: order.subject,
         amount: order.amount,
-        currency: order.currency
-      }
+        currency: order.currency,
+      },
     });
 
     return {
@@ -110,7 +116,7 @@ export class BillingService {
       plan,
       app,
       offer,
-      payment
+      payment,
     };
   }
 
@@ -126,7 +132,7 @@ export class BillingService {
       throw httpError(404, 'Order not found');
     }
 
-    if (order.userId !== input.userId && input.role !== 'admin') {
+    if (order.userId !== input.userId && !canAccessAdminConsole(normalizeRole(input.role))) {
       throw httpError(403, 'You can only sync your own orders');
     }
 
@@ -141,6 +147,162 @@ export class BillingService {
     }
 
     return this.syncOrderRecord(order);
+  }
+
+  async cancelOrderByOrderNo(orderNo: string) {
+    const repository = new BillingRepository(this.db);
+    const order = await repository.findOrderByOrderNo(orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    if (order.status !== 'pending') {
+      throw httpError(409, `Only pending orders can be cancelled (current: ${order.status})`);
+    }
+
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
+    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const closeResult = await providerAdapter.closePayment({
+      env: runtimeEnv,
+      order: {
+        orderNo: order.orderNo,
+        providerOrderId: order.providerOrderId,
+        amount: order.amount,
+        currency: order.currency,
+      },
+    });
+
+    if (closeResult.kind === 'not_found') {
+      throw httpError(404, closeResult.reason);
+    }
+
+    if (closeResult.kind === 'not_closable') {
+      throw httpError(409, closeResult.reason);
+    }
+
+    const updatedOrder = await this.db.transaction(async (tx) => {
+      const txDb = tx as DbClient;
+      const orderRepository = new BillingRepository(txDb);
+      const cancelledOrder = await orderRepository.markOrderCancelledIfPending({
+        orderId: order.id,
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          lastClose: {
+            provider: closeResult.provider,
+            providerOrderId: closeResult.providerOrderId ?? null,
+            reason: closeResult.reason,
+            payload: closeResult.payload,
+            cancelledAt: new Date().toISOString(),
+          },
+        },
+      });
+      await new CheckoutRepository(txDb).markSessionCancelledByOrderId(order.id);
+      await new CheckoutRepository(txDb).markPaymentAttemptsCancelledByOrderId(order.id);
+      await new EventService(txDb).capture({
+        userId: order.userId,
+        appId: order.appId,
+        eventName: 'billing.order_cancelled',
+        properties: {
+          orderNo: order.orderNo,
+          provider: order.provider,
+          reason: closeResult.reason,
+        },
+      });
+
+      return cancelledOrder;
+    });
+
+    return {
+      changed: Boolean(updatedOrder),
+      order: updatedOrder ?? order,
+      action: {
+        status: 'cancelled' as const,
+        reason: closeResult.reason,
+      },
+    };
+  }
+
+  async refundOrderByOrderNo(orderNo: string) {
+    const repository = new BillingRepository(this.db);
+    const order = await repository.findOrderByOrderNo(orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    if (order.status !== 'paid') {
+      throw httpError(409, `Only paid orders can be refunded (current: ${order.status})`);
+    }
+
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
+    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const refundResult = await providerAdapter.refundPayment({
+      env: runtimeEnv,
+      order: {
+        orderNo: order.orderNo,
+        providerOrderId: order.providerOrderId,
+        amount: order.amount,
+        currency: order.currency,
+      },
+    });
+
+    if (refundResult.kind === 'not_found') {
+      throw httpError(404, refundResult.reason);
+    }
+
+    if (refundResult.kind === 'not_refundable') {
+      throw httpError(409, refundResult.reason);
+    }
+
+    if (refundResult.kind !== 'refunded') {
+      throw httpError(500, 'Unexpected refund result');
+    }
+
+    const updatedOrder = await this.db.transaction(async (tx) => {
+      const txDb = tx as DbClient;
+      const orderRepository = new BillingRepository(txDb);
+      const refundedOrder = await orderRepository.markOrderRefundedIfPaid({
+        orderId: order.id,
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          lastRefund: {
+            provider: refundResult.provider,
+            providerOrderId: refundResult.providerOrderId ?? null,
+            refundId: refundResult.refundId ?? null,
+            reason: refundResult.reason,
+            payload: refundResult.payload,
+            refundedAt: refundResult.refundedAt.toISOString(),
+          },
+        },
+      });
+      await new LicenseRepository(txDb).cancelEntitlementsBySource('order', order.id);
+      await new EventService(txDb).capture({
+        userId: order.userId,
+        appId: order.appId,
+        eventName: 'billing.order_refunded',
+        properties: {
+          orderNo: order.orderNo,
+          provider: order.provider,
+          refundId: refundResult.refundId ?? null,
+          amount: refundResult.amount,
+          currency: refundResult.currency,
+          reason: refundResult.reason,
+        },
+      });
+
+      return refundedOrder;
+    });
+
+    return {
+      changed: Boolean(updatedOrder),
+      order: updatedOrder ?? order,
+      action: {
+        status: 'refunded' as const,
+        reason: refundResult.reason,
+        refundId: refundResult.refundId ?? null,
+      },
+    };
   }
 
   async mockPayOrder(input: { userId: string; orderNo: string }) {
@@ -162,7 +324,7 @@ export class BillingService {
     if (order.status === 'paid') {
       return {
         order,
-        entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId)
+        entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
       };
     }
 
@@ -173,30 +335,33 @@ export class BillingService {
         paidAt: new Date(),
         meta: {
           ...this.getOrderMeta(order.meta),
-          mockPaid: true
+          mockPaid: true,
         },
-        source: 'mock'
+        source: 'mock',
       });
     });
 
     return {
       order: result.order,
       entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
-      granted: result.granted
+      granted: result.granted,
     };
   }
 
-  async handlePaymentNotification(notification: Extract<PaymentNotificationResult, { kind: 'paid' }>) {
+  async handlePaymentNotification(
+    notification: Extract<PaymentNotificationResult, { kind: 'paid' }>,
+  ) {
     return this.db.transaction(async (tx) => {
       const repository = new BillingRepository(tx);
       const insertedEvent = await repository.createWebhookEventIfAbsent({
         provider: notification.provider,
         providerEventId: notification.providerEventId,
         type: 'payment_paid',
-        payload: notification.payload
+        payload: notification.payload,
       });
       const webhookEvent =
-        insertedEvent ?? (await repository.findWebhookEvent(notification.provider, notification.providerEventId));
+        insertedEvent ??
+        (await repository.findWebhookEvent(notification.provider, notification.providerEventId));
 
       if (!webhookEvent) {
         throw httpError(500, 'Failed to persist billing webhook event');
@@ -205,7 +370,7 @@ export class BillingService {
       if (webhookEvent.processedAt) {
         return {
           duplicate: true,
-          order: await repository.findOrderByOrderNo(notification.orderNo)
+          order: await repository.findOrderByOrderNo(notification.orderNo),
         };
       }
 
@@ -235,12 +400,12 @@ export class BillingService {
           lastPaymentNotification: {
             provider: notification.provider,
             providerEventId: notification.providerEventId,
-            receivedAt: new Date().toISOString()
+            receivedAt: new Date().toISOString(),
           },
-          lastPaidPayload: notification.payload
+          lastPaidPayload: notification.payload,
         },
         source: 'provider_notify',
-        providerEventId: notification.providerEventId
+        providerEventId: notification.providerEventId,
       });
 
       await repository.markWebhookProcessed(webhookEvent.id);
@@ -248,7 +413,7 @@ export class BillingService {
       return {
         duplicate: false,
         order: result.order,
-        granted: result.granted
+        granted: result.granted,
       };
     });
   }
@@ -271,8 +436,8 @@ export class BillingService {
           source: 'current_state' as const,
           providerOrderId: order.providerOrderId ?? null,
           paidAt: order.paidAt ?? null,
-          reason: 'Order already marked as paid'
-        }
+          reason: 'Order already marked as paid',
+        },
       };
     }
 
@@ -284,8 +449,8 @@ export class BillingService {
         orderNo: order.orderNo,
         providerOrderId: order.providerOrderId,
         amount: order.amount,
-        currency: order.currency
-      }
+        currency: order.currency,
+      },
     });
 
     if (query.kind === 'paid') {
@@ -294,8 +459,8 @@ export class BillingService {
         providerEventId: this.buildProviderQueryEventId({
           provider: query.provider,
           orderNo: query.orderNo,
-          providerOrderId: query.providerOrderId
-        })
+          providerOrderId: query.providerOrderId,
+        }),
       });
       const latestOrder = await new BillingRepository(this.db).findOrderByOrderNo(order.orderNo);
 
@@ -307,8 +472,10 @@ export class BillingService {
           source: 'provider_query' as const,
           providerOrderId: query.providerOrderId,
           paidAt: query.paidAt,
-          reason: result.duplicate ? 'Order was already reconciled earlier' : 'Provider query confirmed payment'
-        }
+          reason: result.duplicate
+            ? 'Order was already reconciled earlier'
+            : 'Provider query confirmed payment',
+        },
       };
     }
 
@@ -322,8 +489,8 @@ export class BillingService {
         source: 'provider_query' as const,
         providerOrderId: query.providerOrderId ?? null,
         paidAt: null,
-        reason: query.reason
-      }
+        reason: query.reason,
+      },
     };
   }
 
@@ -344,14 +511,14 @@ export class BillingService {
       meta?: Record<string, unknown>;
       source: 'mock' | 'provider_notify';
       providerEventId?: string;
-    }
+    },
   ) {
     const repository = new BillingRepository(tx);
     const updatedOrder = await repository.markOrderPaidIfUnpaid({
       orderId: input.order.id,
       providerOrderId: input.providerOrderId,
       paidAt: input.paidAt,
-      meta: input.meta
+      meta: input.meta,
     });
 
     if (!updatedOrder) {
@@ -362,7 +529,7 @@ export class BillingService {
 
       return {
         order: currentOrder,
-        granted: undefined
+        granted: undefined,
       };
     }
 
@@ -371,12 +538,18 @@ export class BillingService {
       planId: input.order.planId,
       sourceType: 'order',
       sourceId: input.order.id,
-      startsAt: updatedOrder.paidAt ?? new Date()
+      startsAt: updatedOrder.paidAt ?? new Date(),
     });
 
     const checkoutRepository = new CheckoutRepository(tx);
-    await checkoutRepository.markSessionPaidByOrderId(input.order.id, updatedOrder.paidAt ?? new Date());
-    await checkoutRepository.markPaymentAttemptsPaidByOrderId(input.order.id, input.providerOrderId);
+    await checkoutRepository.markSessionPaidByOrderId(
+      input.order.id,
+      updatedOrder.paidAt ?? new Date(),
+    );
+    await checkoutRepository.markPaymentAttemptsPaidByOrderId(
+      input.order.id,
+      input.providerOrderId,
+    );
 
     await new EventService(tx).capture({
       userId: input.order.userId,
@@ -386,13 +559,13 @@ export class BillingService {
         orderNo: input.order.orderNo,
         provider: input.order.provider,
         source: input.source,
-        providerEventId: input.providerEventId ?? null
-      }
+        providerEventId: input.providerEventId ?? null,
+      },
     });
 
     return {
       order: updatedOrder,
-      granted
+      granted,
     };
   }
 }

@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import { buildEmailRateLimitKey, buildUserRateLimitKey } from '../../lib/rate-limit';
+import type { AppRole } from '../../lib/rbac';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
@@ -8,24 +9,30 @@ import {
   registerSchema,
   resetPasswordSchema,
   updateCurrentUserSchema,
-  verifyEmailSchema
+  verifyEmailSchema,
 } from './schemas';
 import { AuthService } from './service';
 
 function toAuthResponse(
   app: FastifyInstance,
-  user: { id: string; email: string; displayName: string | null; role: 'user' | 'admin'; emailVerified: boolean }
+  user: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    role: AppRole;
+    emailVerified: boolean;
+  },
 ) {
   const token = app.jwt.sign(
     {
       sub: user.id,
       email: user.email,
       role: user.role,
-      emailVerified: user.emailVerified
+      emailVerified: user.emailVerified,
     },
     {
-      expiresIn: '7d'
-    }
+      expiresIn: '7d',
+    },
   );
 
   return {
@@ -35,8 +42,8 @@ function toAuthResponse(
       email: user.email,
       displayName: user.displayName,
       role: user.role,
-      emailVerified: user.emailVerified
-    }
+      emailVerified: user.emailVerified,
+    },
   };
 }
 
@@ -46,49 +53,57 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       items: [
         {
           code: 'password',
-          enabled: true
+          enabled: true,
         },
         {
           code: 'wechat-oauth',
-          enabled: false
-        }
-      ]
+          enabled: false,
+        },
+      ],
     };
   });
 
-  app.post('/v1/auth/register', {
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 8,
-        timeWindow: '1 minute',
-        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
-          buildEmailRateLimitKey(request, 'auth-register')
-      }
-    }
-  }, async (request, reply) => {
-    const payload = registerSchema.parse(request.body);
-    const user = await new AuthService(app.db, app.appEnv).register(payload);
+  app.post(
+    '/v1/auth/register',
+    {
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 8,
+          timeWindow: '1 minute',
+          keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+            buildEmailRateLimitKey(request, 'auth-register'),
+        },
+      },
+    },
+    async (request, reply) => {
+      const payload = registerSchema.parse(request.body);
+      const user = await new AuthService(app.db, app.appEnv).register(payload);
 
-    return reply.status(201).send(toAuthResponse(app, user));
-  });
+      return reply.status(201).send(toAuthResponse(app, user));
+    },
+  );
 
-  app.post('/v1/auth/login', {
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 12,
-        timeWindow: '1 minute',
-        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
-          buildEmailRateLimitKey(request, 'auth-login')
-      }
-    }
-  }, async (request) => {
-    const payload = loginSchema.parse(request.body);
-    const user = await new AuthService(app.db, app.appEnv).login(payload);
+  app.post(
+    '/v1/auth/login',
+    {
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 12,
+          timeWindow: '1 minute',
+          keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+            buildEmailRateLimitKey(request, 'auth-login'),
+        },
+      },
+    },
+    async (request) => {
+      const payload = loginSchema.parse(request.body);
+      const user = await new AuthService(app.db, app.appEnv).login(payload);
 
-    return toAuthResponse(app, user);
-  });
+      return toAuthResponse(app, user);
+    },
+  );
 
   app.get('/v1/me', { preHandler: app.authenticate }, async (request) => {
     const user = await new AuthService(app.db, app.appEnv).getUserById(request.user.sub);
@@ -100,14 +115,17 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
-        emailVerified: user.emailVerified
-      }
+        emailVerified: user.emailVerified,
+      },
     };
   });
 
   app.patch('/v1/me', { preHandler: app.authenticate }, async (request) => {
     const payload = updateCurrentUserSchema.parse(request.body);
-    const user = await new AuthService(app.db, app.appEnv).updateCurrentUser(request.user.sub, payload);
+    const user = await new AuthService(app.db, app.appEnv).updateCurrentUser(
+      request.user.sub,
+      payload,
+    );
 
     return {
       user: {
@@ -115,8 +133,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
-        emailVerified: user.emailVerified
-      }
+        emailVerified: user.emailVerified,
+      },
     };
   });
 
@@ -130,55 +148,67 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return new AuthService(app.db, app.appEnv).verifyEmail(request.user.sub, payload.code);
   });
 
-  app.post('/v1/auth/resend-verification', {
-    preHandler: app.authenticate,
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 3,
-        timeWindow: '5 minutes',
-        keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
-          buildUserRateLimitKey(request, 'auth-resend-verification')
+  app.post(
+    '/v1/auth/resend-verification',
+    {
+      preHandler: app.authenticate,
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 3,
+          timeWindow: '5 minutes',
+          keyGenerator: (request: Parameters<typeof buildUserRateLimitKey>[0]) =>
+            buildUserRateLimitKey(request, 'auth-resend-verification'),
+        },
+      },
+    },
+    async (request) => {
+      const service = new AuthService(app.db, app.appEnv);
+      const user = await service.getUserById(request.user.sub);
+
+      if (user.emailVerified) {
+        return { alreadyVerified: true };
       }
-    }
-  }, async (request) => {
-    const service = new AuthService(app.db, app.appEnv);
-    const user = await service.getUserById(request.user.sub);
 
-    if (user.emailVerified) {
-      return { alreadyVerified: true };
-    }
+      return service.sendVerificationCode(user.id, user.email);
+    },
+  );
 
-    return service.sendVerificationCode(user.id, user.email);
-  });
+  app.post(
+    '/v1/auth/forgot-password',
+    {
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 5,
+          timeWindow: '10 minutes',
+          keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+            buildEmailRateLimitKey(request, 'auth-forgot-password'),
+        },
+      },
+    },
+    async (request) => {
+      const payload = forgotPasswordSchema.parse(request.body);
+      return new AuthService(app.db, app.appEnv).requestPasswordReset(payload.email);
+    },
+  );
 
-  app.post('/v1/auth/forgot-password', {
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 5,
-        timeWindow: '10 minutes',
-        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
-          buildEmailRateLimitKey(request, 'auth-forgot-password')
-      }
-    }
-  }, async (request) => {
-    const payload = forgotPasswordSchema.parse(request.body);
-    return new AuthService(app.db, app.appEnv).requestPasswordReset(payload.email);
-  });
-
-  app.post('/v1/auth/reset-password', {
-    config: {
-      rateLimit: {
-        hook: 'preHandler',
-        max: 8,
-        timeWindow: '10 minutes',
-        keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
-          buildEmailRateLimitKey(request, 'auth-reset-password')
-      }
-    }
-  }, async (request) => {
-    const payload = resetPasswordSchema.parse(request.body);
-    return new AuthService(app.db, app.appEnv).resetPassword(payload);
-  });
+  app.post(
+    '/v1/auth/reset-password',
+    {
+      config: {
+        rateLimit: {
+          hook: 'preHandler',
+          max: 8,
+          timeWindow: '10 minutes',
+          keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+            buildEmailRateLimitKey(request, 'auth-reset-password'),
+        },
+      },
+    },
+    async (request) => {
+      const payload = resetPasswordSchema.parse(request.body);
+      return new AuthService(app.db, app.appEnv).resetPassword(payload);
+    },
+  );
 };

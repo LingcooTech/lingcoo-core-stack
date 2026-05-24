@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto';
 import type { DbClient } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
+import { JobRunService } from '../../lib/job-runs';
 import { Mailer } from '../../lib/mailer';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
@@ -23,7 +24,7 @@ type LoginInput = {
 export class AuthService {
   constructor(
     private readonly db: DbClient,
-    private readonly env?: AppEnv
+    private readonly env?: AppEnv,
   ) {}
 
   private generateVerificationCode(): string {
@@ -44,9 +45,9 @@ export class AuthService {
             secure: config.secure,
             user: config.user,
             password: config.password,
-            from: config.from
+            from: config.from,
           }
-        : null
+        : null,
     );
   }
 
@@ -68,12 +69,30 @@ export class AuthService {
 
     const mailer = await this.createMailer();
     if (mailer.isConfigured) {
-      await mailer.send({
-        to: email,
-        subject: 'Email Verification Code',
-        text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
-        html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
-      });
+      if (!this.env) {
+        await mailer.send({
+          to: email,
+          subject: 'Email Verification Code',
+          text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+          html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`,
+        });
+      } else {
+        await new JobRunService(this.db, this.env).enqueueMail(
+          {
+            to: email,
+            subject: 'Email Verification Code',
+            text: `Your verification code is: ${code}\n\nThis code expires in 10 minutes.`,
+            html: `<p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`,
+          },
+          {
+            scope: 'auth.verify_email',
+            reference: `${userId}:${code}`,
+            createdByUserId: userId,
+            relatedEntityType: 'user',
+            relatedEntityId: userId,
+          },
+        );
+      }
       return { sent: true };
     }
 
@@ -94,7 +113,7 @@ export class AuthService {
     await new EventService(this.db).capture({
       userId,
       eventName: 'auth.email_verified',
-      properties: {}
+      properties: {},
     });
 
     if (!user) {
@@ -122,8 +141,8 @@ export class AuthService {
       userId: promotedUser.id,
       eventName: 'auth.admin_bootstrapped',
       properties: {
-        source: 'bootstrap'
-      }
+        source: 'bootstrap',
+      },
     });
 
     return promotedUser;
@@ -142,18 +161,18 @@ export class AuthService {
       const createdUser = await repository.createUser({
         email: input.email,
         displayName: input.displayName,
-        role
+        role,
       });
 
       await repository.createPasswordCredential({
         userId: createdUser.id,
-        passwordHash: hashPassword(input.password)
+        passwordHash: hashPassword(input.password),
       });
 
       await repository.createAuthIdentity({
         userId: createdUser.id,
         provider: 'password',
-        providerUserId: input.email
+        providerUserId: input.email,
       });
 
       await new EventService(tx).capture({
@@ -161,8 +180,8 @@ export class AuthService {
         eventName: 'auth.registered',
         properties: {
           provider: 'password',
-          role
-        }
+          role,
+        },
       });
 
       return createdUser;
@@ -208,8 +227,8 @@ export class AuthService {
       userId: user.id,
       eventName: 'auth.logged_in',
       properties: {
-        provider: 'password'
-      }
+        provider: 'password',
+      },
     });
 
     user = (await this.ensureBootstrapAdmin(user.id)) ?? user;
@@ -242,17 +261,35 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await repository.createPasswordResetCode(user.id, code, expiresAt);
-    await mailer.send({
-      to: user.email,
-      subject: 'Password Reset Code',
-      text: `Your password reset code is: ${code}\n\nThis code expires in 10 minutes.`,
-      html: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`
-    });
+    if (!this.env) {
+      await mailer.send({
+        to: user.email,
+        subject: 'Password Reset Code',
+        text: `Your password reset code is: ${code}\n\nThis code expires in 10 minutes.`,
+        html: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`,
+      });
+    } else {
+      await new JobRunService(this.db, this.env).enqueueMail(
+        {
+          to: user.email,
+          subject: 'Password Reset Code',
+          text: `Your password reset code is: ${code}\n\nThis code expires in 10 minutes.`,
+          html: `<p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 10 minutes.</p>`,
+        },
+        {
+          scope: 'auth.password_reset',
+          reference: `${user.id}:${code}`,
+          createdByUserId: user.id,
+          relatedEntityType: 'user',
+          relatedEntityId: user.id,
+        },
+      );
+    }
 
     await new EventService(this.db).capture({
       userId: user.id,
       eventName: 'auth.password_reset_requested',
-      properties: {}
+      properties: {},
     });
 
     return { sent: true };
@@ -277,7 +314,7 @@ export class AuthService {
     await new EventService(this.db).capture({
       userId: user.id,
       eventName: 'auth.password_reset_completed',
-      properties: {}
+      properties: {},
     });
 
     return { reset: true };
@@ -292,7 +329,7 @@ export class AuthService {
     }
 
     const updatedUser = await repository.updateUser(userId, {
-      displayName: input.displayName
+      displayName: input.displayName,
     });
 
     if (!updatedUser) {
@@ -303,17 +340,14 @@ export class AuthService {
       userId,
       eventName: 'auth.profile_updated',
       properties: {
-        displayName: updatedUser.displayName
-      }
+        displayName: updatedUser.displayName,
+      },
     });
 
     return updatedUser;
   }
 
-  async changePassword(
-    userId: string,
-    input: { currentPassword: string; newPassword: string }
-  ) {
+  async changePassword(userId: string, input: { currentPassword: string; newPassword: string }) {
     const repository = new AuthRepository(this.db);
     const user = await repository.findUserById(userId);
 
@@ -332,7 +366,7 @@ export class AuthService {
     await new EventService(this.db).capture({
       userId,
       eventName: 'auth.password_changed',
-      properties: {}
+      properties: {},
     });
 
     return { changed: true };
