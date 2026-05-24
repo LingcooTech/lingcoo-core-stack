@@ -4,6 +4,7 @@ import path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
+import { AlertingSettingsService } from '../../lib/alerting-settings';
 import { AuditLogService } from '../../lib/audit-logs';
 import { ContentImportSettingsService } from '../../lib/content-import-settings';
 import { DeliverySettingsService } from '../../lib/delivery-settings';
@@ -24,6 +25,7 @@ import {
   adminListOrdersQuerySchema,
   adminListUsersQuerySchema,
   adminUpdateUserSchema,
+  alertingSettingsSchema,
   contentImportNotionTestSchema,
   contentImportSettingsSchema,
   contentImportWordPressTestSchema,
@@ -182,6 +184,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/system-settings/smtp', { preHandler: requireSettingsManage }, async () => {
     return new SmtpSettingsService(app.db, app.appEnv).getOverview();
+  });
+
+  app.get('/v1/admin/system-settings/alerting', { preHandler: requireSettingsManage }, async () => {
+    return new AlertingSettingsService(app.db, app.appEnv).getOverview();
   });
 
   app.get('/v1/admin/system-settings/qiniu', { preHandler: requireSettingsManage }, async () => {
@@ -514,6 +520,46 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
         summary: 'Cleared SMTP settings',
       });
       return { ok: true };
+    },
+  );
+
+  app.put(
+    '/v1/admin/system-settings/alerting',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      const payload = alertingSettingsSchema.parse(request.body);
+      const result = await new AlertingSettingsService(app.db, app.appEnv).upsertSettings(
+        payload,
+        request.user.sub,
+      );
+      await recordAudit(request, {
+        action: 'admin.alerting_settings.updated',
+        resourceType: 'system_setting',
+        resourceId: 'alerting',
+        summary: 'Updated alerting settings',
+        meta: {
+          enabled: result.values.enabled,
+          emailEnabled: result.values.email.enabled,
+          webhookEnabled: result.values.webhook.enabled,
+          minimumLevel: result.values.minimumLevel,
+        },
+      });
+      return result;
+    },
+  );
+
+  app.delete(
+    '/v1/admin/system-settings/alerting',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      await new AlertingSettingsService(app.db, app.appEnv).clearSettings();
+      await recordAudit(request, {
+        action: 'admin.alerting_settings.cleared',
+        resourceType: 'system_setting',
+        resourceId: 'alerting',
+        summary: 'Cleared alerting settings',
+      });
+      return { cleared: true };
     },
   );
 

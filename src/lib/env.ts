@@ -41,6 +41,19 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(10 * 60 * 1000),
+  ALERT_DISPATCH_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 1000),
+  ALERTING_ENABLED: booleanishEnv,
+  ALERT_EMAIL_ENABLED: booleanishEnv,
+  ALERT_EMAIL_RECIPIENTS: z.string().optional(),
+  ALERT_WEBHOOK_ENABLED: booleanishEnv,
+  ALERT_WEBHOOK_URL: z.url().optional(),
+  ALERT_WEBHOOK_SECRET: z.string().optional(),
+  ALERT_MIN_LEVEL: z.enum(['info', 'warning', 'error']).optional(),
+  ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().optional(),
   PUBLIC_BASE_URL: z.url().default('http://localhost:8080'),
   CORS_ORIGIN: z.string().default('http://localhost:8080'),
   CADDY_SITE_ADDRESS: z.string().default(':80'),

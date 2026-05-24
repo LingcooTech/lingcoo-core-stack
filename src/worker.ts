@@ -8,6 +8,7 @@ import * as schema from './db/schema';
 import { AuditLogService } from './lib/audit-logs';
 import { loadEnv } from './lib/env';
 import { JobRunService } from './lib/job-runs';
+import { AlertDeliveryService } from './modules/admin/alert-delivery';
 
 let stopRequested = false;
 
@@ -28,6 +29,8 @@ async function main() {
   const db = drizzle(pool, { schema });
   const jobs = new JobRunService(db, env);
   const audits = new AuditLogService(db);
+  const alertDelivery = new AlertDeliveryService(db, env);
+  let nextAlertDispatchAt = 0;
 
   try {
     await pool.query('select 1');
@@ -36,6 +39,38 @@ async function main() {
 
     while (!stopRequested) {
       await jobs.recoverStaleRunningJobs(env.WORKER_STALE_JOB_TIMEOUT_MS, workerId);
+      if (Date.now() >= nextAlertDispatchAt) {
+        nextAlertDispatchAt = Date.now() + env.ALERT_DISPATCH_INTERVAL_MS;
+        try {
+          const result = await alertDelivery.dispatchActiveAlerts({ traceId: workerId });
+          if (result.dispatched > 0) {
+            await audits.record({
+              actorType: 'job',
+              actorLabel: workerId,
+              action: 'observability.alerts.dispatched',
+              resourceType: 'observability_alert',
+              resourceId: 'active',
+              outcome: 'succeeded',
+              summary: `Dispatched ${result.dispatched} alert deliveries`,
+              meta: result,
+            });
+          }
+        } catch (error) {
+          await audits.record({
+            actorType: 'job',
+            actorLabel: workerId,
+            action: 'observability.alerts.dispatched',
+            resourceType: 'observability_alert',
+            resourceId: 'active',
+            outcome: 'failed',
+            summary: 'Alert dispatch failed',
+            meta: {
+              error: error instanceof Error ? error.message : 'Unknown alert dispatch error',
+            },
+          });
+          console.error('[worker] alert dispatch failed', error);
+        }
+      }
       const job = await jobs.claimNext(workerId);
 
       if (!job) {

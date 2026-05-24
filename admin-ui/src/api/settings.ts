@@ -3,6 +3,7 @@ import type {
   AiChatCompletionResult,
   AiProviderListResponse,
   AiProviderModelsResponse,
+  AlertingSettingsOverview,
   ContentImportNotionTestResult,
   ContentImportSettingsOverview,
   ContentImportWordPressTestResult,
@@ -31,6 +32,21 @@ export interface SmtpTestEmailInput extends SmtpSettingsInput {
   to: string;
   subject: string;
   text: string;
+}
+
+export interface AlertingSettingsInput {
+  enabled?: boolean;
+  minimumLevel?: 'info' | 'warning' | 'error';
+  cooldownMinutes?: number;
+  email?: {
+    enabled?: boolean;
+    recipients?: string[];
+  };
+  webhook?: {
+    enabled?: boolean;
+    url?: string;
+    secret?: string;
+  };
 }
 
 export interface QiniuSettingsInput {
@@ -119,6 +135,23 @@ export async function sendSmtpTestEmail(payload: SmtpTestEmailInput): Promise<Sm
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function getAlertingSettings(): Promise<AlertingSettingsOverview> {
+  return apiClient<AlertingSettingsOverview>('/v1/admin/system-settings/alerting');
+}
+
+export async function upsertAlertingSettings(
+  payload: AlertingSettingsInput,
+): Promise<AlertingSettingsOverview> {
+  return apiClient<AlertingSettingsOverview>('/v1/admin/system-settings/alerting', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function clearAlertingSettings(): Promise<void> {
+  await apiClient('/v1/admin/system-settings/alerting', { method: 'DELETE' });
 }
 
 export async function getQiniuSettings(): Promise<QiniuSettingsOverview> {

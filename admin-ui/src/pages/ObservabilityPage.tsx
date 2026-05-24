@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BellRing, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getObservabilitySummary,
@@ -10,6 +10,12 @@ import {
   listJobRuns,
   retryJobRun,
 } from '@/api/admin';
+import {
+  clearAlertingSettings,
+  getAlertingSettings,
+  type AlertingSettingsInput,
+  upsertAlertingSettings,
+} from '@/api/settings';
 import type {
   AuditLog,
   BillingWebhookEvent,
@@ -25,8 +31,20 @@ import { PaginationBar } from '@/components/shared/PaginationBar';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableState } from '@/hooks/useTableState';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { toastErr, toastOk } from '@/lib/toast';
 import { formatTime } from '@/lib/utils';
 
@@ -49,11 +67,28 @@ function alertTone(level: ObservabilityAlert['level']) {
   return 'info';
 }
 
+function sourceLabel(source: 'database' | 'env' | 'none') {
+  if (source === 'database') return '后台';
+  if (source === 'env') return '环境变量';
+  return '无';
+}
+
 export function ObservabilityPage() {
   const [activeTab, setActiveTab] = useState<'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits'>(
     'alerts',
   );
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canManageSettings = hasPermission(normalizeRole(user?.role), 'settings.manage');
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const [alertMinimumLevel, setAlertMinimumLevel] =
+    useState<AlertingSettingsInput['minimumLevel']>('warning');
+  const [alertCooldownMinutes, setAlertCooldownMinutes] = useState('60');
+  const [alertEmailEnabled, setAlertEmailEnabled] = useState(false);
+  const [alertRecipients, setAlertRecipients] = useState('');
+  const [alertWebhookEnabled, setAlertWebhookEnabled] = useState(false);
+  const [alertWebhookUrl, setAlertWebhookUrl] = useState('');
+  const [alertWebhookSecret, setAlertWebhookSecret] = useState('');
 
   const eventsTable = useTableState({ defaultPageSize: PAGE_SIZE, prefix: 'events' });
   const webhooksTable = useTableState({ defaultPageSize: PAGE_SIZE, prefix: 'webhooks' });
@@ -102,6 +137,11 @@ export function ObservabilityPage() {
     queryFn: getObservabilitySummary,
     refetchInterval: 30_000,
   });
+  const alertingSettingsQuery = useQuery({
+    queryKey: ['system-settings', 'alerting'],
+    queryFn: getAlertingSettings,
+    enabled: canManageSettings,
+  });
   const eventsQuery = useQuery({
     queryKey: ['events', eventQuery],
     queryFn: () => listEvents(eventQuery),
@@ -129,6 +169,24 @@ export function ObservabilityPage() {
     onError: (error) => toastErr(error, '任务重试失败'),
   });
 
+  const saveAlertingMutation = useMutation({
+    mutationFn: (payload: AlertingSettingsInput) => upsertAlertingSettings(payload),
+    onSuccess: (result) => {
+      toastOk('告警外发设置已保存');
+      qc.setQueryData(['system-settings', 'alerting'], result);
+    },
+    onError: (error) => toastErr(error, '告警外发设置保存失败'),
+  });
+
+  const clearAlertingMutation = useMutation({
+    mutationFn: clearAlertingSettings,
+    onSuccess: async () => {
+      toastOk('告警外发设置已清除');
+      await qc.invalidateQueries({ queryKey: ['system-settings', 'alerting'] });
+    },
+    onError: (error) => toastErr(error, '告警外发设置清除失败'),
+  });
+
   const summary = summaryQuery.data;
   const events = eventsQuery.data?.items ?? [];
   const webhooks = webhooksQuery.data?.items ?? [];
@@ -138,6 +196,44 @@ export function ObservabilityPage() {
   const totalWebhooks = webhooksQuery.data?.total ?? 0;
   const totalJobs = jobsQuery.data?.total ?? 0;
   const totalAudits = auditsQuery.data?.total ?? 0;
+
+  useEffect(() => {
+    const settings = alertingSettingsQuery.data;
+    if (!settings) {
+      return;
+    }
+
+    setAlertEnabled(settings.values.enabled);
+    setAlertMinimumLevel(settings.values.minimumLevel);
+    setAlertCooldownMinutes(String(settings.values.cooldownMinutes));
+    setAlertEmailEnabled(settings.values.email.enabled);
+    setAlertRecipients(settings.values.email.recipients.join('\n'));
+    setAlertWebhookEnabled(settings.values.webhook.enabled);
+    setAlertWebhookUrl(settings.values.webhook.url);
+    setAlertWebhookSecret('');
+  }, [alertingSettingsQuery.data]);
+
+  const saveAlertingSettings = () => {
+    const recipients = alertRecipients
+      .split(/[,\n;]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    saveAlertingMutation.mutate({
+      enabled: alertEnabled,
+      minimumLevel: alertMinimumLevel,
+      cooldownMinutes: Number.parseInt(alertCooldownMinutes, 10) || 60,
+      email: {
+        enabled: alertEmailEnabled,
+        recipients,
+      },
+      webhook: {
+        enabled: alertWebhookEnabled,
+        url: alertWebhookUrl.trim() || undefined,
+        secret: alertWebhookSecret.trim() || undefined,
+      },
+    });
+  };
 
   const eventColumns: Column<HydratedEvent>[] = [
     {
@@ -467,6 +563,133 @@ export function ObservabilityPage() {
           </TabsList>
 
           <TabsContent value="alerts">
+            {canManageSettings ? (
+              <div className="border-border bg-card mb-4 rounded-lg border p-4">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-foreground text-sm font-semibold">告警外发</h3>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Worker 会按冷却窗口将活跃告警投递到邮件或 webhook。
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusPill
+                      tone={alertingSettingsQuery.data?.configured ? 'ok' : 'neutral'}
+                      label={alertingSettingsQuery.data?.configured ? '已配置' : '未配置'}
+                    />
+                    <StatusPill
+                      tone="info"
+                      label={`来源: ${sourceLabel(alertingSettingsQuery.data?.source ?? 'none')}`}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <Checkbox
+                        checked={alertEnabled}
+                        onCheckedChange={(checked) => setAlertEnabled(checked === true)}
+                      />
+                      启用告警外发
+                    </label>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>最低级别</Label>
+                        <Select
+                          value={alertMinimumLevel}
+                          onValueChange={(value) =>
+                            setAlertMinimumLevel(value as AlertingSettingsInput['minimumLevel'])
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="info">info</SelectItem>
+                            <SelectItem value="warning">warning</SelectItem>
+                            <SelectItem value="error">error</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>冷却分钟</Label>
+                        <Input
+                          type="number"
+                          min={5}
+                          max={1440}
+                          value={alertCooldownMinutes}
+                          onChange={(event) => setAlertCooldownMinutes(event.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <Checkbox
+                          checked={alertEmailEnabled}
+                          onCheckedChange={(checked) => setAlertEmailEnabled(checked === true)}
+                        />
+                        邮件投递
+                      </label>
+                      <Input
+                        value={alertRecipients}
+                        onChange={(event) => setAlertRecipients(event.target.value)}
+                        placeholder="ops@example.com, finance@example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <Checkbox
+                        checked={alertWebhookEnabled}
+                        onCheckedChange={(checked) => setAlertWebhookEnabled(checked === true)}
+                      />
+                      Webhook 投递
+                    </label>
+                    <div className="space-y-2">
+                      <Label>Webhook URL</Label>
+                      <Input
+                        value={alertWebhookUrl}
+                        onChange={(event) => setAlertWebhookUrl(event.target.value)}
+                        placeholder="https://example.com/alerts"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>签名密钥</Label>
+                      <Input
+                        type="password"
+                        value={alertWebhookSecret}
+                        onChange={(event) => setAlertWebhookSecret(event.target.value)}
+                        placeholder={
+                          alertingSettingsQuery.data?.secrets.webhookSecret.configured
+                            ? '已配置，留空则保留'
+                            : '可选'
+                        }
+                      />
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={clearAlertingMutation.isPending}
+                        onClick={() => clearAlertingMutation.mutate()}
+                      >
+                        清除设置
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={saveAlertingMutation.isPending}
+                        onClick={saveAlertingSettings}
+                      >
+                        保存外发设置
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="border-border bg-card overflow-hidden rounded-lg border">
               {summaryQuery.isLoading ? (
                 <div className="space-y-3 p-4">

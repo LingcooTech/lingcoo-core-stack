@@ -1,20 +1,27 @@
+import { createHmac } from 'node:crypto';
+
 import { and, asc, desc, eq, ilike, lte, or, sql } from 'drizzle-orm';
 
 import { jobRuns, users } from '../db/schema';
 import type { DbClient } from '../db/types';
+import { AlertingSettingsService } from './alerting-settings';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
 import { Mailer } from './mailer';
 import { SmtpSettingsService } from './smtp-settings';
 
 export type JobRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
-export type JobRunKind = 'email.deliver';
+export type JobRunKind = 'email.deliver' | 'alert.webhook.deliver';
 
 export interface MailDeliveryJobPayload {
   to: string;
   subject: string;
   text: string;
   html?: string;
+}
+
+export interface AlertWebhookDeliveryJobPayload {
+  body: Record<string, unknown>;
 }
 
 export interface EnqueueJobInput {
@@ -168,6 +175,27 @@ export class JobRunService {
       relatedEntityType: options.relatedEntityType,
       relatedEntityId: options.relatedEntityId,
       traceId: options.traceId,
+    });
+  }
+
+  async enqueueAlertWebhook(
+    payload: AlertWebhookDeliveryJobPayload,
+    options: {
+      dedupeKey: string;
+      traceId?: string;
+      meta?: Record<string, unknown>;
+    },
+  ) {
+    return this.enqueue({
+      kind: 'alert.webhook.deliver',
+      payload: {
+        body: payload.body,
+      },
+      dedupeKey: options.dedupeKey,
+      relatedEntityType: 'observability_alert',
+      relatedEntityId: 'active',
+      traceId: options.traceId,
+      meta: options.meta,
     });
   }
 
@@ -381,6 +409,48 @@ export class JobRunService {
           ok: true,
           channel: 'smtp',
           to: normalizeString(payload.to).toLowerCase(),
+        };
+      }
+      case 'alert.webhook.deliver': {
+        if (!this.env) {
+          throw httpError(503, 'Alerting settings are not available');
+        }
+        const settings = await new AlertingSettingsService(this.db, this.env).getRuntimeSettings();
+        if (!settings || !settings.enabled || !settings.webhook.enabled || !settings.webhook.url) {
+          throw httpError(503, 'Alert webhook is not configured');
+        }
+        const webhookUrl = settings.webhook.url;
+
+        const raw = normalizeObject(job.payload);
+        const body = normalizeObject(raw.body);
+        const bodyText = JSON.stringify(body);
+        const headers: Record<string, string> = {
+          'content-type': 'application/json',
+          'user-agent': 'fd-core-stack-alert-worker',
+        };
+        if (settings.webhook.secret) {
+          headers['x-fd-alert-signature'] = createHmac('sha256', settings.webhook.secret)
+            .update(bodyText)
+            .digest('hex');
+        }
+
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers,
+          body: bodyText,
+        });
+
+        if (!response.ok) {
+          throw httpError(
+            502,
+            `Alert webhook failed with ${response.status} ${response.statusText}`,
+          );
+        }
+
+        return {
+          ok: true,
+          channel: 'webhook',
+          status: response.status,
         };
       }
       default:

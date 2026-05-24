@@ -185,6 +185,27 @@ export interface SmtpTestEmailResult {
   subject: string;
 }
 
+export interface AlertingSettingsOverview {
+  configured: boolean;
+  source: 'database' | 'env' | 'none';
+  values: {
+    enabled: boolean;
+    minimumLevel: 'info' | 'warning' | 'error';
+    cooldownMinutes: number;
+    email: {
+      enabled: boolean;
+      recipients: string[];
+    };
+    webhook: {
+      enabled: boolean;
+      url: string;
+    };
+  };
+  secrets: {
+    webhookSecret: PaymentProviderSecretStatus;
+  };
+}
+
 export interface QiniuSettingsOverview {
   configured: boolean;
   source: 'database' | 'env' | 'none';

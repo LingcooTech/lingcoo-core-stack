@@ -77,6 +77,30 @@ export const smtpTestEmailSchema = smtpSettingsSchema.extend({
   text: z.string().trim().min(1).max(10_000),
 });
 
+export const alertingSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  minimumLevel: z.enum(['info', 'warning', 'error']).optional(),
+  cooldownMinutes: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(24 * 60)
+    .optional(),
+  email: z
+    .object({
+      enabled: z.boolean().optional(),
+      recipients: z.array(z.string().trim().email()).max(20).optional(),
+    })
+    .optional(),
+  webhook: z
+    .object({
+      enabled: z.boolean().optional(),
+      url: optionalUrlString,
+      secret: optionalTrimmedString(255),
+    })
+    .optional(),
+});
+
 export const qiniuSettingsSchema = z.object({
   accessKey: optionalTrimmedString(255),
   secretKey: optionalTrimmedString(255),
