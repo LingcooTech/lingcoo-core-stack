@@ -5,13 +5,18 @@ import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
 import type { DbClient } from '../../db/types';
+import { JobRunService } from '../../lib/job-runs';
 import { CheckoutRepository } from '../checkout/repository';
 import { AppService } from '../app/service';
 import { EventService } from '../event/service';
 import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
 import { getBillingProviderAdapter, listBillingProviders } from './providers';
-import type { PaymentNotificationResult } from './providers/types';
+import type {
+  PaymentNotificationResult,
+  PaymentRefundQueryResult,
+  PaymentRefundResult,
+} from './providers/types';
 import { BillingRepository } from './repository';
 
 type BillingOrder = NonNullable<Awaited<ReturnType<BillingRepository['findOrderByOrderNo']>>>;
@@ -20,6 +25,10 @@ function normalizeMeta(value: unknown) {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? { ...(value as Record<string, unknown>) }
     : {};
+}
+
+function normalizeString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 export class BillingService {
@@ -231,6 +240,10 @@ export class BillingService {
       throw httpError(404, 'Order not found');
     }
 
+    if (order.status === 'refunding') {
+      return this.reconcileRefundRecord(order);
+    }
+
     if (order.status !== 'paid') {
       throw httpError(409, `Only paid orders can be refunded (current: ${order.status})`);
     }
@@ -255,6 +268,86 @@ export class BillingService {
       throw httpError(409, refundResult.reason);
     }
 
+    if (refundResult.kind !== 'refunded' && refundResult.kind !== 'processing') {
+      throw httpError(500, 'Unexpected refund result');
+    }
+
+    return this.applyRefundResult(order, refundResult);
+  }
+
+  async reconcileRefundByOrderNo(orderNo: string, options: { forJob?: boolean } = {}) {
+    const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
+
+    if (!order) {
+      throw httpError(404, 'Order not found');
+    }
+
+    if (order.status === 'refunded') {
+      return {
+        changed: false,
+        order,
+        action: {
+          status: 'refunded' as const,
+          reason: 'Order already marked as refunded',
+          refundId: this.getRefundMeta(order.meta).refundId ?? null,
+        },
+      };
+    }
+
+    if (order.status !== 'refunding') {
+      throw httpError(409, `Only refunding orders can be reconciled (current: ${order.status})`);
+    }
+
+    const result = await this.reconcileRefundRecord(order);
+    if (options.forJob && result.action.status === 'refunding') {
+      throw httpError(409, result.action.reason);
+    }
+    return result;
+  }
+
+  private async applyRefundResult(order: BillingOrder, refundResult: PaymentRefundResult) {
+    if (refundResult.kind === 'processing') {
+      const updatedOrder = await this.db.transaction(async (tx) => {
+        const txDb = tx as DbClient;
+        const orderRepository = new BillingRepository(txDb);
+        const refundingOrder = await orderRepository.markOrderRefundingIfPaid({
+          orderId: order.id,
+          meta: {
+            ...this.getOrderMeta(order.meta),
+            lastRefund: this.buildRefundMeta(refundResult, 'processing'),
+          },
+        });
+        await new EventService(txDb).capture({
+          userId: order.userId,
+          appId: order.appId,
+          eventName: 'billing.order_refund_processing',
+          properties: {
+            orderNo: order.orderNo,
+            provider: order.provider,
+            refundId: refundResult.refundId ?? null,
+            refundRequestNo: refundResult.refundRequestNo ?? null,
+            amount: refundResult.amount,
+            currency: refundResult.currency,
+            reason: refundResult.reason,
+          },
+        });
+
+        return refundingOrder;
+      });
+
+      await this.enqueueRefundReconciliation(order.orderNo, refundResult.refundId ?? null);
+
+      return {
+        changed: Boolean(updatedOrder),
+        order: updatedOrder ?? order,
+        action: {
+          status: 'refunding' as const,
+          reason: refundResult.reason,
+          refundId: refundResult.refundId ?? null,
+        },
+      };
+    }
+
     if (refundResult.kind !== 'refunded') {
       throw httpError(500, 'Unexpected refund result');
     }
@@ -262,18 +355,11 @@ export class BillingService {
     const updatedOrder = await this.db.transaction(async (tx) => {
       const txDb = tx as DbClient;
       const orderRepository = new BillingRepository(txDb);
-      const refundedOrder = await orderRepository.markOrderRefundedIfPaid({
+      const refundedOrder = await orderRepository.markOrderRefundedIfRefundingOrPaid({
         orderId: order.id,
         meta: {
           ...this.getOrderMeta(order.meta),
-          lastRefund: {
-            provider: refundResult.provider,
-            providerOrderId: refundResult.providerOrderId ?? null,
-            refundId: refundResult.refundId ?? null,
-            reason: refundResult.reason,
-            payload: refundResult.payload,
-            refundedAt: refundResult.refundedAt.toISOString(),
-          },
+          lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
         },
       });
       await new LicenseRepository(txDb).cancelEntitlementsBySource('order', order.id);
@@ -303,6 +389,156 @@ export class BillingService {
         refundId: refundResult.refundId ?? null,
       },
     };
+  }
+
+  private async reconcileRefundRecord(order: BillingOrder) {
+    const refundMeta = this.getRefundMeta(order.meta);
+    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
+    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const refundQuery = await providerAdapter.queryRefundPayment({
+      env: runtimeEnv,
+      order: {
+        orderNo: order.orderNo,
+        providerOrderId: order.providerOrderId,
+        amount: order.amount,
+        currency: order.currency,
+      },
+      refund: {
+        refundId: refundMeta.refundId,
+        refundRequestNo: refundMeta.refundRequestNo,
+      },
+    });
+
+    if (refundQuery.kind === 'refunded') {
+      return this.applyRefundQueryResult(order, refundQuery);
+    }
+
+    if (refundQuery.kind === 'processing') {
+      const latestOrder = await new BillingRepository(this.db).markOrderRefundingIfPaid({
+        orderId: order.id,
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          lastRefund: this.buildRefundMeta(refundQuery, 'processing'),
+        },
+      });
+      return {
+        changed: false,
+        order: latestOrder ?? order,
+        action: {
+          status: 'refunding' as const,
+          reason: refundQuery.reason,
+          refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
+        },
+        reconciliation: {
+          status: 'refunding' as const,
+          source: 'provider_query' as const,
+          providerOrderId: refundQuery.providerOrderId ?? order.providerOrderId ?? null,
+          paidAt: order.paidAt ?? null,
+          reason: refundQuery.reason,
+        },
+      };
+    }
+
+    const updatedOrder = await new BillingRepository(this.db).markOrderPaidIfRefunding({
+      orderId: order.id,
+      meta: {
+        ...this.getOrderMeta(order.meta),
+        lastRefund: this.buildRefundMeta(refundQuery, 'failed'),
+      },
+    });
+
+    await new EventService(this.db).capture({
+      userId: order.userId,
+      appId: order.appId,
+      eventName: 'billing.order_refund_failed',
+      properties: {
+        orderNo: order.orderNo,
+        provider: order.provider,
+        refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
+        refundRequestNo: refundQuery.refundRequestNo ?? refundMeta.refundRequestNo ?? null,
+        reason: refundQuery.reason,
+      },
+    });
+
+    return {
+      changed: Boolean(updatedOrder),
+      order: updatedOrder ?? order,
+      action: {
+        status: 'paid' as const,
+        reason: refundQuery.reason,
+        refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
+      },
+      reconciliation: {
+        status: 'paid' as const,
+        source: 'provider_query' as const,
+        providerOrderId: refundQuery.providerOrderId ?? order.providerOrderId ?? null,
+        paidAt: order.paidAt ?? null,
+        reason: refundQuery.reason,
+      },
+    };
+  }
+
+  private async applyRefundQueryResult(
+    order: BillingOrder,
+    refundResult: Extract<PaymentRefundQueryResult, { kind: 'refunded' }>,
+  ) {
+    const updatedOrder = await this.db.transaction(async (tx) => {
+      const txDb = tx as DbClient;
+      const orderRepository = new BillingRepository(txDb);
+      const refundedOrder = await orderRepository.markOrderRefundedIfRefundingOrPaid({
+        orderId: order.id,
+        meta: {
+          ...this.getOrderMeta(order.meta),
+          lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
+        },
+      });
+      await new LicenseRepository(txDb).cancelEntitlementsBySource('order', order.id);
+      await new EventService(txDb).capture({
+        userId: order.userId,
+        appId: order.appId,
+        eventName: 'billing.order_refunded',
+        properties: {
+          orderNo: order.orderNo,
+          provider: order.provider,
+          refundId: refundResult.refundId ?? null,
+          amount: refundResult.amount,
+          currency: refundResult.currency,
+          reason: refundResult.reason,
+        },
+      });
+
+      return refundedOrder;
+    });
+
+    return {
+      changed: Boolean(updatedOrder),
+      order: updatedOrder ?? order,
+      action: {
+        status: 'refunded' as const,
+        reason: refundResult.reason,
+        refundId: refundResult.refundId ?? null,
+      },
+      reconciliation: {
+        status: 'refunded' as const,
+        source: 'provider_query' as const,
+        providerOrderId: refundResult.providerOrderId ?? order.providerOrderId ?? null,
+        paidAt: order.paidAt ?? null,
+        reason: refundResult.reason,
+      },
+    };
+  }
+
+  private async enqueueRefundReconciliation(orderNo: string, refundId?: string | null) {
+    await new JobRunService(this.db, this.env).enqueue({
+      kind: 'billing.refund.reconcile',
+      payload: {
+        orderNo,
+      },
+      maxAttempts: 20,
+      dedupeKey: ['billing', 'refund', 'reconcile', orderNo, refundId ?? 'default'].join(':'),
+      relatedEntityType: 'order',
+      relatedEntityId: orderNo,
+    });
   }
 
   async mockPayOrder(input: { userId: string; orderNo: string }) {
@@ -427,6 +663,10 @@ export class BillingService {
   }
 
   private async syncOrderRecord(order: BillingOrder) {
+    if (order.status === 'refunding') {
+      return this.reconcileRefundRecord(order);
+    }
+
     if (order.status === 'paid') {
       return {
         changed: false,
@@ -500,6 +740,32 @@ export class BillingService {
     }
 
     return {};
+  }
+
+  private getRefundMeta(value: unknown) {
+    const meta = this.getOrderMeta(value);
+    const raw = this.getOrderMeta(meta.lastRefund);
+    return {
+      refundId: normalizeString(raw.refundId) || null,
+      refundRequestNo: normalizeString(raw.refundRequestNo) || null,
+    };
+  }
+
+  private buildRefundMeta(
+    result: PaymentRefundResult | PaymentRefundQueryResult,
+    status: 'processing' | 'refunded' | 'failed',
+  ) {
+    return {
+      provider: result.provider,
+      providerOrderId: result.providerOrderId ?? null,
+      refundId: result.refundId ?? null,
+      refundRequestNo: result.refundRequestNo ?? null,
+      status,
+      reason: result.reason,
+      payload: result.payload,
+      updatedAt: new Date().toISOString(),
+      ...(result.kind === 'refunded' ? { refundedAt: result.refundedAt.toISOString() } : {}),
+    };
   }
 
   private async completeOrderPayment(

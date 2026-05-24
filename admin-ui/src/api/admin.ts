@@ -36,7 +36,7 @@ export interface AdminListParams {
 }
 
 export interface AdminOrderListParams extends AdminListParams {
-  status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
   provider?: 'wechat_pay' | 'alipay';
 }
 

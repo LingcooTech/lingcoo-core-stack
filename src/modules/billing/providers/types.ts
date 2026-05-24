@@ -43,6 +43,13 @@ export type ProviderQueryContext = {
   };
 };
 
+export type ProviderRefundQueryContext = ProviderQueryContext & {
+  refund: {
+    refundId?: string | null;
+    refundRequestNo?: string | null;
+  };
+};
+
 export type PaymentNotificationResult =
   | {
       kind: 'paid';
@@ -108,9 +115,22 @@ export type PaymentRefundResult =
       orderNo: string;
       providerOrderId?: string | null;
       refundId?: string | null;
+      refundRequestNo?: string | null;
       amount: number;
       currency: string;
       refundedAt: Date;
+      payload: Record<string, unknown>;
+      reason: string;
+    }
+  | {
+      kind: 'processing';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      refundId?: string | null;
+      refundRequestNo?: string | null;
+      amount: number;
+      currency: string;
       payload: Record<string, unknown>;
       reason: string;
     }
@@ -119,6 +139,32 @@ export type PaymentRefundResult =
       provider: BillingProviderCode;
       orderNo: string;
       providerOrderId?: string | null;
+      refundId?: string | null;
+      refundRequestNo?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    };
+
+export type PaymentRefundQueryResult =
+  | Extract<PaymentRefundResult, { kind: 'refunded' }>
+  | Extract<PaymentRefundResult, { kind: 'processing' }>
+  | {
+      kind: 'not_found';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      refundId?: string | null;
+      refundRequestNo?: string | null;
+      payload: Record<string, unknown>;
+      reason: string;
+    }
+  | {
+      kind: 'failed';
+      provider: BillingProviderCode;
+      orderNo: string;
+      providerOrderId?: string | null;
+      refundId?: string | null;
+      refundRequestNo?: string | null;
       payload: Record<string, unknown>;
       reason: string;
     };
@@ -131,4 +177,5 @@ export interface BillingProviderAdapter {
   queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult>;
   closePayment(context: ProviderQueryContext): Promise<PaymentCloseResult>;
   refundPayment(context: ProviderQueryContext): Promise<PaymentRefundResult>;
+  queryRefundPayment(context: ProviderRefundQueryContext): Promise<PaymentRefundQueryResult>;
 }

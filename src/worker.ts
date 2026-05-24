@@ -9,11 +9,24 @@ import { AuditLogService } from './lib/audit-logs';
 import { loadEnv } from './lib/env';
 import { JobRunService } from './lib/job-runs';
 import { AlertDeliveryService } from './modules/admin/alert-delivery';
+import { BillingService } from './modules/billing/service';
 
 let stopRequested = false;
 
 async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getPayloadObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function getPayloadString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 async function main() {
@@ -79,7 +92,13 @@ async function main() {
       }
 
       try {
-        const result = await jobs.process(job);
+        const result =
+          job.kind === 'billing.refund.reconcile'
+            ? await new BillingService(db, env).reconcileRefundByOrderNo(
+                getPayloadString(getPayloadObject(job.payload).orderNo),
+                { forJob: true },
+              )
+            : await jobs.process(job);
         await jobs.markSucceeded(job.id, result);
         await audits.record({
           actorType: 'job',

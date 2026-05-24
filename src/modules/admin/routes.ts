@@ -303,10 +303,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       const params = adminOrderParamsSchema.parse(request.params);
       const result = await new AdminService(app.db, app.appEnv).refundOrder(params.orderNo);
       await recordAudit(request, {
-        action: 'admin.order.refunded',
+        action:
+          result.action.status === 'refunding'
+            ? 'admin.order.refund_requested'
+            : 'admin.order.refunded',
         resourceType: 'order',
         resourceId: params.orderNo,
-        summary: `Refunded order ${params.orderNo}`,
+        summary:
+          result.action.status === 'refunding'
+            ? `Requested refund for order ${params.orderNo}`
+            : `Refunded order ${params.orderNo}`,
         meta: {
           status: result.action.status,
           reason: result.action.reason,

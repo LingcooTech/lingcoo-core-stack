@@ -29,6 +29,7 @@ const STATUS_OPTIONS = [
   { value: 'paid', label: '已支付' },
   { value: 'failed', label: '失败' },
   { value: 'cancelled', label: '已取消' },
+  { value: 'refunding', label: '退款中' },
   { value: 'refunded', label: '已退款' },
 ] as const;
 
@@ -105,7 +106,8 @@ export function OrdersPage() {
   const refundMutation = useMutation({
     mutationFn: refundOrder,
     onSuccess: (result, orderNo) => {
-      toastWarn(`订单已退款: ${orderNo}`, result.action.reason);
+      const title = result.action.status === 'refunding' ? '退款已受理' : '订单已退款';
+      toastWarn(`${title}: ${orderNo}`, result.action.reason);
       void qc.invalidateQueries({ queryKey: ['orders'] });
       if (selectedOrderNo === orderNo) {
         void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
@@ -334,13 +336,17 @@ export function OrdersPage() {
                   size="sm"
                   variant="outline"
                   disabled={
-                    detail?.item.status !== 'paid' ||
+                    !['paid', 'refunding'].includes(detail?.item.status ?? '') ||
                     refundMutation.isPending ||
                     reconcileMutation.isPending
                   }
                   onClick={() => refundMutation.mutate(selectedOrderNo)}
                 >
-                  {refundMutation.isPending ? '退款中' : '全额退款'}
+                  {refundMutation.isPending
+                    ? '退款中'
+                    : detail?.item.status === 'refunding'
+                      ? '回查退款'
+                      : '全额退款'}
                 </Button>
               </div>
             </SheetHeader>

@@ -42,6 +42,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'paid',
   'failed',
   'cancelled',
+  'refunding',
   'refunded',
 ]);
 export const checkoutSessionStatusEnum = pgEnum('checkout_session_status', [

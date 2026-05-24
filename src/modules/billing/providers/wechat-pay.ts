@@ -5,11 +5,13 @@ import { normalizeObject, readSecretValue, resolveCallbackUrl } from './shared';
 import type {
   BillingProviderAdapter,
   PaymentRefundResult,
+  PaymentRefundQueryResult,
   PaymentNotificationResult,
   PaymentQueryResult,
   PreparedPayment,
   ProviderContext,
   ProviderNotificationContext,
+  ProviderRefundQueryContext,
   ProviderQueryContext,
 } from './types';
 
@@ -19,6 +21,7 @@ const WECHAT_NATIVE_API_PATH = '/pay/unifiedorder';
 const WECHAT_ORDER_QUERY_API_PATH = '/pay/orderquery';
 const WECHAT_ORDER_CLOSE_API_PATH = '/pay/closeorder';
 const WECHAT_REFUND_API_PATH = '/v3/refund/domestic/refunds';
+const WECHAT_REFUND_QUERY_API_PATH = '/v3/refund/domestic/refunds';
 const WECHAT_NOTIFY_PATH = '/v1/billing/providers/wechat/notify';
 
 export class WechatPayProvider implements BillingProviderAdapter {
@@ -77,7 +80,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
   private buildV3Authorization(input: {
     env: ProviderContext['env'];
-    method: 'POST';
+    method: 'GET' | 'POST';
     pathname: string;
     body: string;
   }) {
@@ -668,21 +671,34 @@ export class WechatPayProvider implements BillingProviderAdapter {
         ? payload.transaction_id
         : (context.order.providerOrderId ?? null);
 
-    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING') {
+    if (refundStatus === 'SUCCESS') {
       return {
         kind: 'refunded',
         provider: this.code,
         orderNo: context.order.orderNo,
         providerOrderId,
         refundId,
+        refundRequestNo: outRefundNo,
         amount: context.order.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
         payload,
-        reason:
-          refundStatus === 'SUCCESS'
-            ? 'Order refunded in WeChat Pay'
-            : 'Refund accepted by WeChat Pay and is processing',
+        reason: 'Order refunded in WeChat Pay',
+      };
+    }
+
+    if (refundStatus === 'PROCESSING') {
+      return {
+        kind: 'processing',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId,
+        refundId,
+        refundRequestNo: outRefundNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        payload,
+        reason: 'Refund accepted by WeChat Pay and is processing',
       };
     }
 
@@ -691,8 +707,114 @@ export class WechatPayProvider implements BillingProviderAdapter {
       provider: this.code,
       orderNo: context.order.orderNo,
       providerOrderId,
+      refundId,
+      refundRequestNo: outRefundNo,
       payload,
       reason: String(payload.message ?? payload.status ?? 'Order is not refundable'),
+    };
+  }
+
+  async queryRefundPayment(context: ProviderRefundQueryContext): Promise<PaymentRefundQueryResult> {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'WeChat Pay is not configured');
+    }
+
+    const outRefundNo = context.refund.refundRequestNo?.trim() || `${context.order.orderNo}_refund`;
+    const pathname = `${WECHAT_REFUND_QUERY_API_PATH}/${encodeURIComponent(outRefundNo)}`;
+    const response = await fetch(new URL(pathname, this.getApiBaseUrl(context.env)), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: this.buildV3Authorization({
+          env: context.env,
+          method: 'GET',
+          pathname,
+          body: '',
+        }),
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    const rawText = await response.text();
+    let payload: Record<string, unknown> = {};
+    if (rawText) {
+      try {
+        payload = JSON.parse(rawText) as Record<string, unknown>;
+      } catch {
+        payload = { raw: rawText };
+      }
+    }
+
+    const refundId =
+      typeof payload.refund_id === 'string' ? payload.refund_id : (context.refund.refundId ?? null);
+    const providerOrderId =
+      typeof payload.transaction_id === 'string'
+        ? payload.transaction_id
+        : (context.order.providerOrderId ?? null);
+
+    if (response.status === 404) {
+      return {
+        kind: 'not_found',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId,
+        refundId,
+        refundRequestNo: outRefundNo,
+        payload,
+        reason: String(payload.message ?? 'Refund not found in WeChat Pay'),
+      };
+    }
+
+    if (!response.ok) {
+      throw httpError(
+        502,
+        `WeChat Pay refund query failed: ${response.status} ${String(payload.message ?? (rawText || 'empty response'))}`,
+      );
+    }
+
+    const refundStatus =
+      typeof payload.status === 'string' ? payload.status.trim().toUpperCase() : '';
+
+    if (refundStatus === 'SUCCESS') {
+      return {
+        kind: 'refunded',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId,
+        refundId,
+        refundRequestNo: outRefundNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        refundedAt: new Date(),
+        payload,
+        reason: 'WeChat Pay confirmed refund success',
+      };
+    }
+
+    if (refundStatus === 'PROCESSING') {
+      return {
+        kind: 'processing',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId,
+        refundId,
+        refundRequestNo: outRefundNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        payload,
+        reason: 'WeChat Pay refund is still processing',
+      };
+    }
+
+    return {
+      kind: 'failed',
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId,
+      refundId,
+      refundRequestNo: outRefundNo,
+      payload,
+      reason: String(payload.message ?? payload.status ?? 'WeChat Pay refund failed'),
     };
   }
 }

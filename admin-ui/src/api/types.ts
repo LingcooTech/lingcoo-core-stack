@@ -692,7 +692,7 @@ export interface OrderAdminActionResult {
   changed: boolean;
   order: Order;
   action: {
-    status: 'cancelled' | 'refunded';
+    status: 'cancelled' | 'paid' | 'refunding' | 'refunded';
     reason: string;
     refundId?: string | null;
   };

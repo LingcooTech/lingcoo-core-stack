@@ -85,7 +85,7 @@ export class AdminService {
     limit: number;
     offset: number;
     search?: string;
-    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
     provider?: 'wechat_pay' | 'alipay';
   }) {
     const result = await new BillingRepository(this.db).listOrders(query);

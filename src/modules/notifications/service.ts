@@ -138,6 +138,36 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         dedupeKey: `event:${event.id}`,
       };
     }
+    case 'billing.order_refund_processing': {
+      const orderNo = normalizeString(properties.orderNo) || '订单';
+      return {
+        userId: event.userId,
+        category: 'billing',
+        level: 'info',
+        title: '退款处理中',
+        body: `${orderNo} 的退款请求已受理，系统会继续回查最终结果。`,
+        ctaLabel: '查看订单',
+        ctaUrl: '/account?tab=orders',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
+    case 'billing.order_refund_failed': {
+      const orderNo = normalizeString(properties.orderNo) || '订单';
+      return {
+        userId: event.userId,
+        category: 'billing',
+        level: 'error',
+        title: '退款未完成',
+        body: `${orderNo} 的退款回查未成功，请联系支持处理。`,
+        ctaLabel: '查看订单',
+        ctaUrl: '/account?tab=orders',
+        sourceEventId: event.id,
+        sourceEventName: event.eventName,
+        dedupeKey: `event:${event.id}`,
+      };
+    }
     case 'license.entitlements_granted': {
       const sourceType = normalizeString(properties.sourceType);
       if (sourceType === 'order') {

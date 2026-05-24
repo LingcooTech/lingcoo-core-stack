@@ -13,9 +13,11 @@ import type {
   BillingProviderAdapter,
   PaymentNotificationResult,
   PaymentQueryResult,
+  PaymentRefundQueryResult,
   PreparedPayment,
   ProviderContext,
   ProviderNotificationContext,
+  ProviderRefundQueryContext,
   ProviderQueryContext,
 } from './types';
 
@@ -432,6 +434,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         orderNo: context.order.orderNo,
         providerOrderId: tradeNo,
         refundId: outRequestNo,
+        refundRequestNo: outRequestNo,
         amount: context.order.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
@@ -446,6 +449,8 @@ export class AlipayProvider implements BillingProviderAdapter {
         provider: this.code,
         orderNo: context.order.orderNo,
         providerOrderId: tradeNo,
+        refundId: outRequestNo,
+        refundRequestNo: outRequestNo,
         payload,
         reason: subMsg || 'Order not found in Alipay',
       };
@@ -456,8 +461,80 @@ export class AlipayProvider implements BillingProviderAdapter {
       provider: this.code,
       orderNo: context.order.orderNo,
       providerOrderId: tradeNo,
+      refundId: outRequestNo,
+      refundRequestNo: outRequestNo,
       payload,
       reason: subMsg || msg || 'Order is not refundable',
+    };
+  }
+
+  async queryRefundPayment(context: ProviderRefundQueryContext): Promise<PaymentRefundQueryResult> {
+    if (!this.isConfigured(context.env)) {
+      throw httpError(422, 'Alipay is not configured');
+    }
+
+    const outRequestNo =
+      context.refund.refundRequestNo?.trim() || `${context.order.orderNo}_refund`;
+    const result = await this.getSdk(context.env).exec('alipay.trade.fastpay.refund.query', {
+      bizContent: {
+        outTradeNo: context.order.orderNo,
+        tradeNo: context.order.providerOrderId?.trim() || undefined,
+        outRequestNo,
+      },
+    });
+    const payload = result as Record<string, unknown>;
+    const tradeNo =
+      typeof result.tradeNo === 'string'
+        ? result.tradeNo
+        : typeof result.trade_no === 'string'
+          ? result.trade_no
+          : (context.order.providerOrderId ?? null);
+    const subMsg =
+      typeof result.subMsg === 'string'
+        ? result.subMsg
+        : typeof result.sub_msg === 'string'
+          ? result.sub_msg
+          : '';
+    const msg = typeof result.msg === 'string' ? result.msg : '';
+
+    if (result.code === '10000') {
+      return {
+        kind: 'refunded',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: tradeNo,
+        refundId: outRequestNo,
+        refundRequestNo: outRequestNo,
+        amount: context.order.amount,
+        currency: context.order.currency,
+        refundedAt: new Date(),
+        payload,
+        reason: 'Alipay confirmed refund success',
+      };
+    }
+
+    if (result.code === '40004') {
+      return {
+        kind: 'not_found',
+        provider: this.code,
+        orderNo: context.order.orderNo,
+        providerOrderId: tradeNo,
+        refundId: outRequestNo,
+        refundRequestNo: outRequestNo,
+        payload,
+        reason: subMsg || 'Refund not found in Alipay',
+      };
+    }
+
+    return {
+      kind: 'failed',
+      provider: this.code,
+      orderNo: context.order.orderNo,
+      providerOrderId: tradeNo,
+      refundId: outRequestNo,
+      refundRequestNo: outRequestNo,
+      payload,
+      reason: subMsg || msg || 'Alipay refund query failed',
     };
   }
 }

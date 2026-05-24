@@ -35,7 +35,7 @@ export class CheckoutService {
 
   private resolveEffectiveStatus(
     session: SessionRecord,
-    orderStatus: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded',
+    orderStatus: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded',
   ) {
     if (orderStatus === 'paid' || session.status === 'paid') {
       return 'paid' as const;
@@ -102,7 +102,7 @@ export class CheckoutService {
 
   private shouldAutoReconcileStatus(detail: {
     session: SessionRecord;
-    order: { status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded' };
+    order: { status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded' };
   }) {
     if (detail.order.status === 'paid' || detail.session.status !== 'pending') {
       return false;
@@ -129,7 +129,7 @@ export class CheckoutService {
     session: SessionRecord;
     order: {
       orderNo: string;
-      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
       paidAt?: Date | null;
     };
   }) {
@@ -174,7 +174,7 @@ export class CheckoutService {
       orderNo: string;
       amount: number;
       currency: string;
-      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+      status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
     };
   }) {
     return {

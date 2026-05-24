@@ -54,7 +54,7 @@ export class BillingRepository {
     limit: number;
     offset: number;
     search?: string;
-    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+    status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
     provider?: 'wechat_pay' | 'alipay';
   }) {
     const conditions = [];
@@ -208,7 +208,52 @@ export class BillingRepository {
         updatedAt: new Date(),
         meta: input.meta ?? {},
       })
+      .where(and(eq(orders.id, input.orderId), inArray(orders.status, ['paid', 'refunding'])))
+      .returning();
+
+    return order ?? null;
+  }
+
+  async markOrderRefundingIfPaid(input: { orderId: string; meta?: Record<string, unknown> }) {
+    const [order] = await this.db
+      .update(orders)
+      .set({
+        status: 'refunding',
+        updatedAt: new Date(),
+        meta: input.meta ?? {},
+      })
       .where(and(eq(orders.id, input.orderId), eq(orders.status, 'paid')))
+      .returning();
+
+    return order ?? null;
+  }
+
+  async markOrderRefundedIfRefundingOrPaid(input: {
+    orderId: string;
+    meta?: Record<string, unknown>;
+  }) {
+    const [order] = await this.db
+      .update(orders)
+      .set({
+        status: 'refunded',
+        updatedAt: new Date(),
+        meta: input.meta ?? {},
+      })
+      .where(and(eq(orders.id, input.orderId), inArray(orders.status, ['paid', 'refunding'])))
+      .returning();
+
+    return order ?? null;
+  }
+
+  async markOrderPaidIfRefunding(input: { orderId: string; meta?: Record<string, unknown> }) {
+    const [order] = await this.db
+      .update(orders)
+      .set({
+        status: 'paid',
+        updatedAt: new Date(),
+        meta: input.meta ?? {},
+      })
+      .where(and(eq(orders.id, input.orderId), eq(orders.status, 'refunding')))
       .returning();
 
     return order ?? null;

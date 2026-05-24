@@ -224,7 +224,7 @@ export const adminListQuerySchema = z.object({
 });
 
 export const adminListOrdersQuerySchema = adminListQuerySchema.extend({
-  status: z.enum(['pending', 'paid', 'failed', 'cancelled', 'refunded']).optional(),
+  status: z.enum(['pending', 'paid', 'failed', 'cancelled', 'refunding', 'refunded']).optional(),
   provider: z.enum(['wechat_pay', 'alipay']).optional(),
 });
 

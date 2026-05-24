@@ -162,6 +162,13 @@
       "when": 1779638400000,
       "tag": "0022_user_role_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779724800000,
+      "tag": "0023_order_refunding_status",
+      "breakpoints": true
     }
   ]
 }

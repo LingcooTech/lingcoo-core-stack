@@ -11,7 +11,7 @@ import { Mailer } from './mailer';
 import { SmtpSettingsService } from './smtp-settings';
 
 export type JobRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
-export type JobRunKind = 'email.deliver' | 'alert.webhook.deliver';
+export type JobRunKind = 'email.deliver' | 'alert.webhook.deliver' | 'billing.refund.reconcile';
 
 export interface MailDeliveryJobPayload {
   to: string;
