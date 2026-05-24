@@ -1,5 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
+import { and, count, eq, isNull, gte, lte, sql, type SQL } from 'drizzle-orm';
+
+import { billingWebhookEvents, events, jobRuns, orders, supportTickets } from '../../db/schema';
 import type { DbClient } from '../../db/types';
 import { AuditLogService } from '../../lib/audit-logs';
 import type { AppEnv } from '../../lib/env';
@@ -289,6 +292,152 @@ export class AdminService {
       limit: query.limit,
       offset: query.offset,
     };
+  }
+
+  async getObservabilitySummary() {
+    const now = Date.now();
+    const staleJobBefore = new Date(now - this.env.WORKER_STALE_JOB_TIMEOUT_MS);
+    const staleWebhookBefore = new Date(now - 10 * 60_000);
+    const staleOrderBefore = new Date(now - 30 * 60_000);
+    const staleTicketBefore = new Date(now - 12 * 60 * 60_000);
+    const recentEventsAfter = new Date(now - 24 * 60 * 60_000);
+
+    const [
+      deadJobs,
+      failedJobs,
+      runningJobs,
+      staleRunningJobs,
+      pendingJobs,
+      stalePendingOrders,
+      pendingOrders,
+      unprocessedWebhooks,
+      staleWebhooks,
+      waitingStaffTickets,
+      staleWaitingStaffTickets,
+      events24h,
+    ] = await Promise.all([
+      this.countRows(jobRuns, eq(jobRuns.status, 'dead')),
+      this.countRows(jobRuns, eq(jobRuns.status, 'failed')),
+      this.countRows(jobRuns, eq(jobRuns.status, 'running')),
+      this.countRows(
+        jobRuns,
+        and(eq(jobRuns.status, 'running'), lte(jobRuns.lockedAt, staleJobBefore)),
+      ),
+      this.countRows(jobRuns, eq(jobRuns.status, 'pending')),
+      this.countRows(
+        orders,
+        and(eq(orders.status, 'pending'), lte(orders.createdAt, staleOrderBefore)),
+      ),
+      this.countRows(orders, eq(orders.status, 'pending')),
+      this.countRows(billingWebhookEvents, isNull(billingWebhookEvents.processedAt)),
+      this.countRows(
+        billingWebhookEvents,
+        and(
+          isNull(billingWebhookEvents.processedAt),
+          lte(billingWebhookEvents.createdAt, staleWebhookBefore),
+        ),
+      ),
+      this.countRows(supportTickets, eq(supportTickets.status, 'waiting_staff')),
+      this.countRows(
+        supportTickets,
+        and(
+          eq(supportTickets.status, 'waiting_staff'),
+          lte(supportTickets.lastActivityAt, staleTicketBefore),
+        ),
+      ),
+      this.countRows(events, gte(events.eventTime, recentEventsAfter)),
+    ]);
+
+    const alerts = [
+      deadJobs > 0
+        ? {
+            id: 'dead-jobs',
+            level: 'error' as const,
+            title: '存在死信任务',
+            description: `${deadJobs} 条任务已耗尽重试次数，需要人工处理或重试。`,
+            count: deadJobs,
+            href: '/admin/observability',
+          }
+        : null,
+      staleRunningJobs > 0
+        ? {
+            id: 'stale-running-jobs',
+            level: 'error' as const,
+            title: '存在卡住的运行中任务',
+            description: `${staleRunningJobs} 条任务长时间处于 running 状态，可能存在 worker 异常。`,
+            count: staleRunningJobs,
+            href: '/admin/observability',
+          }
+        : null,
+      staleWebhooks > 0
+        ? {
+            id: 'stale-webhooks',
+            level: 'warning' as const,
+            title: '支付回调堆积',
+            description: `${staleWebhooks} 条支付回调超过 10 分钟仍未处理。`,
+            count: staleWebhooks,
+            href: '/admin/observability',
+          }
+        : null,
+      stalePendingOrders > 0
+        ? {
+            id: 'stale-pending-orders',
+            level: 'warning' as const,
+            title: '存在长时间待支付订单',
+            description: `${stalePendingOrders} 笔订单超过 30 分钟仍为 pending，建议排查并补单。`,
+            count: stalePendingOrders,
+            href: '/admin/orders',
+          }
+        : null,
+      staleWaitingStaffTickets > 0
+        ? {
+            id: 'stale-waiting-staff-tickets',
+            level: 'warning' as const,
+            title: '工单待处理超时',
+            description: `${staleWaitingStaffTickets} 张工单超过 12 小时未获客服处理。`,
+            count: staleWaitingStaffTickets,
+            href: '/admin/tickets',
+          }
+        : null,
+      failedJobs > 0
+        ? {
+            id: 'failed-jobs',
+            level: 'info' as const,
+            title: '存在待重试失败任务',
+            description: `${failedJobs} 条任务失败后仍可重试。`,
+            count: failedJobs,
+            href: '/admin/observability',
+          }
+        : null,
+    ].filter(Boolean);
+
+    return {
+      metrics: {
+        deadJobs,
+        failedJobs,
+        runningJobs,
+        pendingJobs,
+        pendingOrders,
+        stalePendingOrders,
+        unprocessedWebhooks,
+        waitingStaffTickets,
+        events24h,
+      },
+      alerts,
+    };
+  }
+
+  private async countRows(
+    table:
+      | typeof jobRuns
+      | typeof orders
+      | typeof billingWebhookEvents
+      | typeof supportTickets
+      | typeof events,
+    where: SQL<unknown> | undefined,
+  ) {
+    const [result] = await this.db.select({ count: count() }).from(table).where(where);
+    return Number(result?.count ?? 0);
   }
 
   async listJobRuns(query: { limit: number; offset: number; search?: string }) {

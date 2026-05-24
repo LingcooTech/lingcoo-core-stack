@@ -1056,6 +1056,30 @@ export interface AuditLog {
 
 export interface AuditLogsResponse extends PaginatedResponse<AuditLog> {}
 
+export interface ObservabilityAlert {
+  id: string;
+  level: 'info' | 'warning' | 'error';
+  title: string;
+  description: string;
+  count: number;
+  href: string;
+}
+
+export interface ObservabilitySummary {
+  metrics: {
+    deadJobs: number;
+    failedJobs: number;
+    runningJobs: number;
+    pendingJobs: number;
+    pendingOrders: number;
+    stalePendingOrders: number;
+    unprocessedWebhooks: number;
+    waitingStaffTickets: number;
+    events24h: number;
+  };
+  alerts: ObservabilityAlert[];
+}
+
 // ─── Plans (for license grants) ───────────────────────────────────────────────
 
 export interface Plan {

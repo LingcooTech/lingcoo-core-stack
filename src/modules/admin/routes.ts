@@ -387,6 +387,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
+  app.get('/v1/admin/observability/summary', { preHandler: requireObservabilityView }, async () => {
+    return new AdminService(app.db, app.appEnv).getObservabilitySummary();
+  });
+
   app.get('/v1/admin/jobs', { preHandler: requireObservabilityView }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
     return new AdminService(app.db, app.appEnv).listJobRuns(query);

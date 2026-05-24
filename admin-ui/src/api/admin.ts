@@ -5,6 +5,7 @@ import type {
   AdminDocSpaceDetail,
   AdminDocSpaceListResponse,
   OrderAdminActionResult,
+  ObservabilitySummary,
   AdminResetPasswordResult,
   AdminUpdateUserInput,
   AdminUserDetail,
@@ -400,6 +401,10 @@ export async function retryJobRun(jobId: string): Promise<JobRun> {
 export async function listAuditLogs(params: AdminListParams = {}): Promise<AuditLogsResponse> {
   const qs = buildQueryString(params);
   return apiClient<AuditLogsResponse>(`/v1/admin/audit-logs${qs ? `?${qs}` : ''}`);
+}
+
+export async function getObservabilitySummary(): Promise<ObservabilitySummary> {
+  return apiClient<ObservabilitySummary>('/v1/admin/observability/summary');
 }
 
 export async function listAdminNotifications(

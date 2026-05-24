@@ -1,13 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, BellRing, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
+  getObservabilitySummary,
   listAuditLogs,
   listBillingWebhooks,
   listEvents,
   listJobRuns,
   retryJobRun,
 } from '@/api/admin';
-import type { AuditLog, BillingWebhookEvent, HydratedEvent, JobRun } from '@/api/types';
+import type {
+  AuditLog,
+  BillingWebhookEvent,
+  HydratedEvent,
+  JobRun,
+  ObservabilityAlert,
+} from '@/api/types';
+import { EmptyState } from '@/components/portal/EmptyState';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar } from '@/components/shared/FilterChipBar';
 import { JsonViewer } from '@/components/shared/JsonViewer';
@@ -33,8 +43,16 @@ function auditOutcomeTone(outcome: AuditLog['outcome']) {
   return outcome === 'succeeded' ? 'ok' : 'danger';
 }
 
+function alertTone(level: ObservabilityAlert['level']) {
+  if (level === 'error') return 'danger';
+  if (level === 'warning') return 'warn';
+  return 'info';
+}
+
 export function ObservabilityPage() {
-  const [activeTab, setActiveTab] = useState<'events' | 'webhooks' | 'jobs' | 'audits'>('events');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits'>(
+    'alerts',
+  );
   const qc = useQueryClient();
 
   const eventsTable = useTableState({ defaultPageSize: PAGE_SIZE, prefix: 'events' });
@@ -79,6 +97,11 @@ export function ObservabilityPage() {
     [deferredAuditSearch, auditsTable.page],
   );
 
+  const summaryQuery = useQuery({
+    queryKey: ['observability-summary'],
+    queryFn: getObservabilitySummary,
+    refetchInterval: 30_000,
+  });
   const eventsQuery = useQuery({
     queryKey: ['events', eventQuery],
     queryFn: () => listEvents(eventQuery),
@@ -101,10 +124,12 @@ export function ObservabilityPage() {
     onSuccess: () => {
       toastOk('任务已重新入队');
       void qc.invalidateQueries({ queryKey: ['job-runs'] });
+      void qc.invalidateQueries({ queryKey: ['observability-summary'] });
     },
     onError: (error) => toastErr(error, '任务重试失败'),
   });
 
+  const summary = summaryQuery.data;
   const events = eventsQuery.data?.items ?? [];
   const webhooks = webhooksQuery.data?.items ?? [];
   const jobs = jobsQuery.data?.items ?? [];
@@ -365,22 +390,108 @@ export function ObservabilityPage() {
     },
   ];
 
+  const alertColumns: Column<ObservabilityAlert>[] = [
+    {
+      key: 'title',
+      header: '告警',
+      cell: (row) => (
+        <div>
+          <div className="flex items-center gap-2">
+            <StatusPill tone={alertTone(row.level)} label={row.level} />
+            <p className="text-sm font-semibold">{row.title}</p>
+          </div>
+          <p className="text-muted-foreground mt-1 text-[12px] leading-6">{row.description}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'count',
+      header: '数量',
+      cell: (row) => <span className="font-mono text-sm font-semibold">{row.count}</span>,
+    },
+    {
+      key: 'link',
+      header: '跳转',
+      className: 'w-[120px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={row.href}>查看</Link>
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div>
       <SectionHeader sectionKey="observability" />
-      <div className="p-6">
+      <div className="space-y-5 p-6">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            title="死信任务"
+            value={summary?.metrics.deadJobs ?? 0}
+            note="已耗尽重试次数"
+            tone={(summary?.metrics.deadJobs ?? 0) > 0 ? 'danger' : 'ok'}
+          />
+          <MetricCard
+            title="待处理回调"
+            value={summary?.metrics.unprocessedWebhooks ?? 0}
+            note="支付回调未处理"
+            tone={(summary?.metrics.unprocessedWebhooks ?? 0) > 0 ? 'warn' : 'ok'}
+          />
+          <MetricCard
+            title="待支付订单"
+            value={summary?.metrics.pendingOrders ?? 0}
+            note={`超时 ${summary?.metrics.stalePendingOrders ?? 0}`}
+            tone={(summary?.metrics.stalePendingOrders ?? 0) > 0 ? 'warn' : 'neutral'}
+          />
+          <MetricCard
+            title="24h 事件"
+            value={summary?.metrics.events24h ?? 0}
+            note={`客服待处理 ${summary?.metrics.waitingStaffTickets ?? 0}`}
+            tone="info"
+          />
+        </div>
+
         <Tabs
           value={activeTab}
           onValueChange={(value) =>
-            setActiveTab(value as 'events' | 'webhooks' | 'jobs' | 'audits')
+            setActiveTab(value as 'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits')
           }
         >
           <TabsList className="mb-4">
+            <TabsTrigger value="alerts">告警 ({summary?.alerts.length ?? 0})</TabsTrigger>
             <TabsTrigger value="events">事件流 ({totalEvents})</TabsTrigger>
             <TabsTrigger value="webhooks">支付回调 ({totalWebhooks})</TabsTrigger>
             <TabsTrigger value="jobs">任务队列 ({totalJobs})</TabsTrigger>
             <TabsTrigger value="audits">审计日志 ({totalAudits})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="alerts">
+            <div className="border-border bg-card overflow-hidden rounded-lg border">
+              {summaryQuery.isLoading ? (
+                <div className="space-y-3 p-4">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="bg-muted h-12 animate-pulse rounded-md" />
+                  ))}
+                </div>
+              ) : summary && summary.alerts.length > 0 ? (
+                <DataTable
+                  columns={alertColumns}
+                  data={summary.alerts}
+                  isLoading={false}
+                  emptyMessage="暂无告警"
+                  getRowId={(row) => row.id}
+                />
+              ) : (
+                <EmptyState
+                  icon={CheckCircle2}
+                  title="当前没有活跃告警"
+                  description="订单、回调、任务和工单都处于正常范围内。"
+                  className="py-14"
+                />
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="events">
             <div className="mb-4">
@@ -498,6 +609,42 @@ export function ObservabilityPage() {
             </div>
           </TabsContent>
         </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  title,
+  value,
+  note,
+  tone,
+}: {
+  title: string;
+  value: number;
+  note: string;
+  tone: 'ok' | 'warn' | 'danger' | 'neutral' | 'info';
+}) {
+  const Icon = tone === 'danger' ? ShieldAlert : tone === 'warn' ? AlertTriangle : BellRing;
+  return (
+    <div className="border-border bg-card rounded-lg border px-4 py-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+            {title}
+          </p>
+          <p className="text-foreground mt-2 font-mono text-2xl font-semibold">{value}</p>
+          <p className="text-muted-foreground mt-2 text-xs">{note}</p>
+        </div>
+        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
+          <Icon className="text-muted-foreground h-5 w-5" />
+        </div>
+      </div>
+      <div className="mt-3">
+        <StatusPill
+          tone={tone}
+          label={tone === 'danger' ? '需处理' : tone === 'warn' ? '关注' : '正常'}
+        />
       </div>
     </div>
   );
