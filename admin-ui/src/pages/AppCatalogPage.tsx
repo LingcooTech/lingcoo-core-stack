@@ -369,7 +369,7 @@ export function AppCatalogPage() {
                   <p className="text-foreground mt-2 text-xs font-medium">当前账户已拥有有效授权</p>
                 ) : hasHistoricalEntitlement ? (
                   <p className="text-muted-foreground mt-2 text-xs font-medium">
-                    当前账户曾拥有授权，但已失效或被撤销
+                    当前暂无有效授权，可重新购买或联系支持恢复使用
                   </p>
                 ) : null}
                 {appDetail.trialDays > 0 && offers.length === 0 ? (

@@ -26,7 +26,7 @@ import { DeploymentWizard, type DeployableAppOption } from '@/components/portal/
 import { EmptyState } from '@/components/portal/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAppDeliveryMode, getDeliveryManifest } from '@/lib/app-delivery';
 
 type DeploymentIssueDetails = {
@@ -397,127 +397,151 @@ export function DeploymentsPage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { label: '可部署应用', value: String(deployableApps.length) },
-              { label: '激活部署', value: String(activeDeployments.length) },
-              { label: '已签发令牌', value: String(tokenReadyDeployments.length) },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
-              >
-                <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-                <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {deployments.length > 0 ? (
-            <section className="space-y-5">
-              <h2 className="text-foreground text-2xl font-semibold tracking-tight">部署记录</h2>
-              <div className="grid gap-4">
-                {deployments.map((deployment) => (
-                  <DeploymentRecordCard
-                    key={deployment.id}
-                    deployment={deployment}
-                    issuedToken={issuedToken}
-                    issuing={
-                      issueTokenMutation.isPending &&
-                      issueTokenMutation.variables?.deploymentId === deployment.id
-                    }
-                    applyingRuntimeUpdate={
-                      requestRuntimeUpdateMutation.isPending &&
-                      requestRuntimeUpdateMutation.variables === deployment.id
-                    }
-                    applyingWordpressUpdate={
-                      requestWordpressUpdateMutation.isPending &&
-                      requestWordpressUpdateMutation.variables === deployment.id
-                    }
-                    ignoringRuntimeUpdate={
-                      ignoreRuntimeUpdateMutation.isPending &&
-                      ignoreRuntimeUpdateMutation.variables === deployment.id
-                    }
-                    ignoringWordpressUpdate={
-                      ignoreWordpressUpdateMutation.isPending &&
-                      ignoreWordpressUpdateMutation.variables === deployment.id
-                    }
-                    deactivating={
-                      deactivateDeploymentMutation.isPending &&
-                      deactivateDeploymentMutation.variables?.deploymentId === deployment.id
-                    }
-                    onIssueToken={(deploymentId) =>
-                      issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })
-                    }
-                    onEdit={(target) => setEditingDeployment(target)}
-                    onApplyRuntimeUpdate={(target) => {
-                      requestRuntimeUpdateMutation.mutate(target.id);
-                    }}
-                    onApplyWordpressUpdate={(target) => {
-                      requestWordpressUpdateMutation.mutate(target.id);
-                    }}
-                    onIgnoreRuntimeUpdate={(target) => {
-                      ignoreRuntimeUpdateMutation.mutate(target.id);
-                    }}
-                    onIgnoreWordpressUpdate={(target) => {
-                      ignoreWordpressUpdateMutation.mutate(target.id);
-                    }}
-                    onDeactivate={(target) => {
-                      if (
-                        !window.confirm(
-                          `停用 ${target.label} 后，将释放可用部署名额，并使当前安装令牌失效。确认继续吗？`,
-                        )
-                      ) {
-                        return;
-                      }
-                      deactivateDeploymentMutation.mutate({ deploymentId: target.id });
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          {deployableApps.length > 0 ? (
-            <section className="space-y-5">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-foreground text-2xl font-semibold tracking-tight">开始部署</h2>
-                {!initialDeployApp ? (
-                  <p className="text-muted-foreground text-sm">
-                    未预选应用时，可在向导第一步选择应用。
-                  </p>
+          <Card className="border-border bg-card rounded-xl shadow-sm">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <CardTitle className="text-xl tracking-tight">部署概览</CardTitle>
+                  <CardDescription>
+                    先确认可部署授权和已有实例，再为新客户站点创建部署记录。
+                  </CardDescription>
+                </div>
+                {initialDeployApp ? (
+                  <Badge variant="secondary" className="w-fit">
+                    预选应用：{initialDeployApp.appName}
+                  </Badge>
                 ) : null}
               </div>
-              <DeploymentWizard
-                options={deployableApps}
-                initialAppCode={initialDeployAppCode}
-                onCreateDeployment={handleWizardCreate}
-                onIssueToken={handleWizardIssueToken}
-                creating={createDeploymentMutation.isPending}
-                issuing={issueTokenMutation.isPending}
-              />
-            </section>
-          ) : (
-            <Card className="rounded-xl border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10">
-              <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800 dark:text-amber-300">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  当前没有可用于新建部署
-                  的授权。已有部署记录仍保留在上方；需要新增客户站点时，请购买新的授权实例。
-                </span>
-              </CardContent>
-            </Card>
-          )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: '可新建部署', value: String(deployableApps.length) },
+                  { label: '运行中部署', value: String(activeDeployments.length) },
+                  { label: '已签发令牌', value: String(tokenReadyDeployments.length) },
+                ].map((item) => (
+                  <div key={item.label} className="bg-muted/60 rounded-lg border px-4 py-3">
+                    <p className="text-muted-foreground text-xs font-medium">{item.label}</p>
+                    <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          {deployments.length === 0 ? (
-            <EmptyState
-              icon={Rocket}
-              title="还没有部署记录"
-              description="创建部署记录后即可签发安装令牌并完成一键部署。"
-            />
-          ) : null}
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]">
+            <section className="space-y-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-foreground text-2xl font-semibold tracking-tight">
+                    部署记录
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    管理现有客户站点、安装令牌、域名绑定和版本更新。
+                  </p>
+                </div>
+              </div>
+              {deployments.length > 0 ? (
+                <div className="grid gap-4">
+                  {deployments.map((deployment) => (
+                    <DeploymentRecordCard
+                      key={deployment.id}
+                      deployment={deployment}
+                      issuedToken={issuedToken}
+                      issuing={
+                        issueTokenMutation.isPending &&
+                        issueTokenMutation.variables?.deploymentId === deployment.id
+                      }
+                      applyingRuntimeUpdate={
+                        requestRuntimeUpdateMutation.isPending &&
+                        requestRuntimeUpdateMutation.variables === deployment.id
+                      }
+                      applyingWordpressUpdate={
+                        requestWordpressUpdateMutation.isPending &&
+                        requestWordpressUpdateMutation.variables === deployment.id
+                      }
+                      ignoringRuntimeUpdate={
+                        ignoreRuntimeUpdateMutation.isPending &&
+                        ignoreRuntimeUpdateMutation.variables === deployment.id
+                      }
+                      ignoringWordpressUpdate={
+                        ignoreWordpressUpdateMutation.isPending &&
+                        ignoreWordpressUpdateMutation.variables === deployment.id
+                      }
+                      deactivating={
+                        deactivateDeploymentMutation.isPending &&
+                        deactivateDeploymentMutation.variables?.deploymentId === deployment.id
+                      }
+                      onIssueToken={(deploymentId) =>
+                        issueTokenMutation.mutate({ deploymentId, expiresInHours: 2 })
+                      }
+                      onEdit={(target) => setEditingDeployment(target)}
+                      onApplyRuntimeUpdate={(target) => {
+                        requestRuntimeUpdateMutation.mutate(target.id);
+                      }}
+                      onApplyWordpressUpdate={(target) => {
+                        requestWordpressUpdateMutation.mutate(target.id);
+                      }}
+                      onIgnoreRuntimeUpdate={(target) => {
+                        ignoreRuntimeUpdateMutation.mutate(target.id);
+                      }}
+                      onIgnoreWordpressUpdate={(target) => {
+                        ignoreWordpressUpdateMutation.mutate(target.id);
+                      }}
+                      onDeactivate={(target) => {
+                        if (
+                          !window.confirm(
+                            `停用 ${target.label} 后，将释放可用部署名额，并使当前安装令牌失效。确认继续吗？`,
+                          )
+                        ) {
+                          return;
+                        }
+                        deactivateDeploymentMutation.mutate({ deploymentId: target.id });
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Rocket}
+                  title="还没有部署记录"
+                  description="创建部署记录后即可签发安装令牌并完成一键部署。"
+                />
+              )}
+            </section>
+
+            <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+              <div>
+                <h2 className="text-foreground text-2xl font-semibold tracking-tight">开始部署</h2>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {initialDeployApp
+                    ? `正在为 ${initialDeployApp.appName} 创建新实例。`
+                    : '未预选应用时，可在向导第一步选择应用。'}
+                </p>
+              </div>
+              {deployableApps.length > 0 ? (
+                <DeploymentWizard
+                  options={deployableApps}
+                  initialAppCode={initialDeployAppCode}
+                  onCreateDeployment={handleWizardCreate}
+                  onIssueToken={handleWizardIssueToken}
+                  creating={createDeploymentMutation.isPending}
+                  issuing={issueTokenMutation.isPending}
+                />
+              ) : (
+                <Card className="rounded-xl border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10">
+                  <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      当前没有可用于新建部署的授权。已有部署记录仍保留在左侧；需要新增客户站点时，请购买新的授权实例。
+                    </span>
+                  </CardContent>
+                </Card>
+              )}
+            </aside>
+          </div>
         </>
       )}
 

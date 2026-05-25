@@ -92,8 +92,13 @@ export function MyAccessPage() {
         />
       ) : (
         <section className="space-y-5">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">已购产品</h2>
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="space-y-1">
+            <h2 className="text-foreground text-2xl font-semibold tracking-tight">已购产品</h2>
+            <p className="text-muted-foreground text-sm">
+              优先展示当前可用入口；授权历史和订单来源作为次级信息保留在卡片内。
+            </p>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-2">
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
               const relatedApps = appsByProduct.get(entry.appCode) ?? [];
