@@ -1,15 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight } from 'lucide-react';
 import { useDeferredValue, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { listInstalls } from '@/api/admin';
 import type { HydratedInstall } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar } from '@/components/shared/FilterChipBar';
 import { PaginationBar } from '@/components/shared/PaginationBar';
+import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
+import { Button } from '@/components/ui/button';
 import { useTableState } from '@/hooks/useTableState';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
+
+function adminSearchHref(path: string, search: string) {
+  return `${path}?search=${encodeURIComponent(search)}`;
+}
+
+function observabilityHref(search: string) {
+  return `/admin/observability?tab=events&events.search=${encodeURIComponent(search)}`;
+}
+
+function userDetailHref(userId: string) {
+  return `/admin/users?userId=${encodeURIComponent(userId)}`;
+}
 
 export function InstallsPage() {
   const { page, search, setPage, setSearch } = useTableState({ defaultPageSize: PAGE_SIZE });
@@ -86,36 +102,66 @@ export function InstallsPage() {
         </div>
       ),
     },
+    {
+      key: 'actions',
+      header: '关联处理',
+      className: 'min-w-[220px]',
+      cell: (row) => (
+        <div className="flex flex-wrap gap-1.5">
+          {row.user ? <ActionLink to={userDetailHref(row.user.id)} label="用户 360" /> : null}
+          <ActionLink to={observabilityHref(row.extensionInstallId)} label="事件" />
+          <ActionLink to={adminSearchHref('/admin/tickets', row.extensionInstallId)} label="工单" />
+          <ActionLink
+            to={adminSearchHref('/admin/licenses', row.user?.email ?? row.extensionInstallId)}
+            label="授权"
+          />
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="space-y-4 p-6">
-      <FilterChipBar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="搜索安装 ID、用户、应用..."
-      />
-
-      <div className="border-border bg-card overflow-hidden rounded-lg border">
-        <DataTable
-          columns={installColumns}
-          data={installs}
-          isLoading={installsQuery.isLoading}
-          emptyMessage="暂无安装记录"
-          getRowId={(row) => row.id}
+    <div>
+      <SectionHeader sectionKey="installs" />
+      <div className="space-y-4 p-6">
+        <FilterChipBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="搜索安装 ID、用户、应用..."
         />
-      </div>
 
-      <div className="mt-4">
-        <PaginationBar
-          total={totalInstalls}
-          page={page}
-          pageSize={PAGE_SIZE}
-          isLoading={installsQuery.isLoading}
-          itemLabel="条安装记录"
-          onPageChange={setPage}
-        />
+        <div className="border-border bg-card overflow-hidden rounded-lg border">
+          <DataTable
+            columns={installColumns}
+            data={installs}
+            isLoading={installsQuery.isLoading}
+            emptyMessage="暂无安装记录"
+            getRowId={(row) => row.id}
+          />
+        </div>
+
+        <div className="mt-4">
+          <PaginationBar
+            total={totalInstalls}
+            page={page}
+            pageSize={PAGE_SIZE}
+            isLoading={installsQuery.isLoading}
+            itemLabel="条安装记录"
+            onPageChange={setPage}
+          />
+        </div>
       </div>
     </div>
+  );
+}
+
+function ActionLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+      <Link to={to}>
+        {label}
+        <ArrowUpRight className="h-3 w-3" />
+      </Link>
+    </Button>
   );
 }
