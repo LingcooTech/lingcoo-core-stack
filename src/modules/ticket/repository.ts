@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 
 import {
   apps,
@@ -7,7 +7,7 @@ import {
   supportTicketMessages,
   supportTickets,
   users,
-  installs
+  installs,
 } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
@@ -25,7 +25,15 @@ export class TicketRepository {
     orderId?: string | null;
     installId?: string | null;
     deploymentId?: string | null;
-    category: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+    category:
+      | 'account'
+      | 'billing'
+      | 'access'
+      | 'install'
+      | 'deployment'
+      | 'bug'
+      | 'feature'
+      | 'other';
     priority: SupportTicketPriority;
     status: SupportTicketStatus;
     subject: string;
@@ -59,7 +67,7 @@ export class TicketRepository {
         closedAt: input.closedAt ?? null,
         meta: input.meta ?? {},
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .returning();
 
@@ -83,7 +91,15 @@ export class TicketRepository {
       orderId: string | null;
       installId: string | null;
       deploymentId: string | null;
-      category: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+      category:
+        | 'account'
+        | 'billing'
+        | 'access'
+        | 'install'
+        | 'deployment'
+        | 'bug'
+        | 'feature'
+        | 'other';
       priority: SupportTicketPriority;
       status: SupportTicketStatus;
       subject: string;
@@ -95,10 +111,10 @@ export class TicketRepository {
       closedAt: Date | null;
       meta: Record<string, unknown>;
       updatedAt: Date;
-    }>
+    }>,
   ) {
     const changes: Record<string, unknown> = {
-      updatedAt: input.updatedAt ?? new Date()
+      updatedAt: input.updatedAt ?? new Date(),
     };
 
     if (typeof input.appId !== 'undefined') changes.appId = input.appId;
@@ -109,10 +125,13 @@ export class TicketRepository {
     if (typeof input.priority !== 'undefined') changes.priority = input.priority;
     if (typeof input.status !== 'undefined') changes.status = input.status;
     if (typeof input.subject !== 'undefined') changes.subject = input.subject;
-    if (typeof input.assignedAdminUserId !== 'undefined') changes.assignedAdminUserId = input.assignedAdminUserId;
-    if (typeof input.lastReplyAuthorType !== 'undefined') changes.lastReplyAuthorType = input.lastReplyAuthorType;
+    if (typeof input.assignedAdminUserId !== 'undefined')
+      changes.assignedAdminUserId = input.assignedAdminUserId;
+    if (typeof input.lastReplyAuthorType !== 'undefined')
+      changes.lastReplyAuthorType = input.lastReplyAuthorType;
     if (typeof input.lastActivityAt !== 'undefined') changes.lastActivityAt = input.lastActivityAt;
-    if (typeof input.firstRespondedAt !== 'undefined') changes.firstRespondedAt = input.firstRespondedAt;
+    if (typeof input.firstRespondedAt !== 'undefined')
+      changes.firstRespondedAt = input.firstRespondedAt;
     if (typeof input.resolvedAt !== 'undefined') changes.resolvedAt = input.resolvedAt;
     if (typeof input.closedAt !== 'undefined') changes.closedAt = input.closedAt;
     if (typeof input.meta !== 'undefined') changes.meta = input.meta;
@@ -143,7 +162,7 @@ export class TicketRepository {
         isInternal: input.isInternal ?? false,
         body: input.body,
         meta: input.meta ?? {},
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .returning();
 
@@ -172,7 +191,7 @@ export class TicketRepository {
     return this.db
       .select({
         ticketId: supportTicketMessages.ticketId,
-        count: sql<number>`count(*)::int`
+        count: sql<number>`count(*)::int`,
       })
       .from(supportTicketMessages)
       .where(inArray(supportTicketMessages.ticketId, ticketIds))
@@ -185,7 +204,15 @@ export class TicketRepository {
     offset: number;
     search?: string;
     status?: SupportTicketStatus;
-    category?: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+    category?:
+      | 'account'
+      | 'billing'
+      | 'access'
+      | 'install'
+      | 'deployment'
+      | 'bug'
+      | 'feature'
+      | 'other';
     priority?: SupportTicketPriority;
   }) {
     const conditions: SQL[] = [eq(supportTickets.userId, query.userId)];
@@ -212,8 +239,8 @@ export class TicketRepository {
           ilike(apps.name, pattern),
           ilike(orders.orderNo, pattern),
           ilike(installs.extensionInstallId, pattern),
-          ilike(deployments.label, pattern)
-        )!
+          ilike(deployments.label, pattern),
+        )!,
       );
     }
 
@@ -238,13 +265,22 @@ export class TicketRepository {
         .leftJoin(orders, eq(supportTickets.orderId, orders.id))
         .leftJoin(installs, eq(supportTickets.installId, installs.id))
         .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where)
+        .where(where),
     ]);
 
     return {
       items: rows.map((row) => row.item),
-      total: countResult[0]?.count ?? 0
+      total: countResult[0]?.count ?? 0,
     };
+  }
+
+  async listRecentTicketsByUserId(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.createdAt))
+      .limit(limit);
   }
 
   async listAdminTickets(query: {
@@ -252,7 +288,15 @@ export class TicketRepository {
     offset: number;
     search?: string;
     status?: SupportTicketStatus;
-    category?: 'account' | 'billing' | 'access' | 'install' | 'deployment' | 'bug' | 'feature' | 'other';
+    category?:
+      | 'account'
+      | 'billing'
+      | 'access'
+      | 'install'
+      | 'deployment'
+      | 'bug'
+      | 'feature'
+      | 'other';
     priority?: SupportTicketPriority;
   }) {
     const conditions: SQL[] = [];
@@ -281,8 +325,8 @@ export class TicketRepository {
           ilike(apps.name, pattern),
           ilike(orders.orderNo, pattern),
           ilike(installs.extensionInstallId, pattern),
-          ilike(deployments.label, pattern)
-        )!
+          ilike(deployments.label, pattern),
+        )!,
       );
     }
 
@@ -309,12 +353,12 @@ export class TicketRepository {
         .leftJoin(orders, eq(supportTickets.orderId, orders.id))
         .leftJoin(installs, eq(supportTickets.installId, installs.id))
         .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where)
+        .where(where),
     ]);
 
     return {
       items: rows.map((row) => row.item),
-      total: countResult[0]?.count ?? 0
+      total: countResult[0]?.count ?? 0,
     };
   }
 }

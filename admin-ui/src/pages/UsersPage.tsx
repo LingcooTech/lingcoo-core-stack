@@ -20,6 +20,7 @@ import type {
   HydratedEntitlement,
   HydratedInstall,
   HydratedOrder,
+  HydratedSupportTicket,
 } from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
@@ -60,6 +61,34 @@ function adminSearchHref(path: string, search: string) {
 
 function observabilityHref(tab: 'events' | 'audits', search: string) {
   return `/admin/observability?tab=${tab}&${tab}.search=${encodeURIComponent(search)}`;
+}
+
+function ticketStatusLabel(status: HydratedSupportTicket['status']) {
+  switch (status) {
+    case 'waiting_staff':
+      return '待处理';
+    case 'waiting_user':
+      return '待回复';
+    case 'resolved':
+      return '已解决';
+    case 'closed':
+    default:
+      return '已关闭';
+  }
+}
+
+function ticketStatusTone(status: HydratedSupportTicket['status']) {
+  switch (status) {
+    case 'waiting_staff':
+      return 'warn' as const;
+    case 'waiting_user':
+      return 'info' as const;
+    case 'resolved':
+      return 'ok' as const;
+    case 'closed':
+    default:
+      return 'neutral' as const;
+  }
 }
 
 export function UsersPage() {
@@ -767,6 +796,66 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
   ];
 
+  const ticketColumns: Column<HydratedSupportTicket>[] = [
+    {
+      key: 'ticketNo',
+      header: '工单号',
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="text-foreground truncate font-mono text-[12px] font-semibold">
+            {row.ticketNo}
+          </p>
+          <p className="text-muted-foreground truncate text-[10px]">{row.subject}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: '状态',
+      cell: (row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusPill tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
+          <StatusPill tone="neutral" label={row.category} />
+        </div>
+      ),
+    },
+    {
+      key: 'context',
+      header: '关联',
+      cell: (row) => (
+        <div className="text-muted-foreground space-y-0.5 text-[10px]">
+          <p>{row.app?.name ?? row.app?.code ?? '未关联应用'}</p>
+          {row.order ? <p className="font-mono">order: {row.order.orderNo}</p> : null}
+          {row.install ? (
+            <p className="font-mono">install: {row.install.extensionInstallId}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'lastActivityAt',
+      header: '最近活动',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.lastActivityAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '处置',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={adminSearchHref('/admin/tickets', row.ticketNo)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5 text-sm">
       <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
@@ -797,10 +886,11 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <InfoBlock label="注册时间" value={formatTime(detail.createdAt)} />
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <MetricCard label="最近订单" value={activity.summary.recentOrders} />
         <MetricCard label="活跃授权" value={activity.summary.activeEntitlements} />
         <MetricCard label="安装实例" value={activity.summary.installs} />
+        <MetricCard label="工单" value={activity.summary.tickets} />
         <MetricCard label="审计日志" value={activity.summary.auditLogs} />
         <MetricCard label="产品事件" value={activity.summary.events} />
       </section>
@@ -818,6 +908,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
           <ActionLink to={adminSearchHref('/admin/orders', detail.email)} label="订单管理" />
           <ActionLink to={adminSearchHref('/admin/licenses', detail.email)} label="授权明细" />
           <ActionLink to={grantHref} label="发放授权" />
+          <ActionLink to={adminSearchHref('/admin/tickets', detail.email)} label="工单管理" />
           <ActionLink to={adminSearchHref('/admin/installs', detail.email)} label="安装实例" />
           <ActionLink to={observabilityHref('events', detail.email)} label="事件流" />
           <ActionLink to={observabilityHref('audits', detail.id)} label="审计日志" />
@@ -848,6 +939,15 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
           data={activity.installs}
           getRowKey={(row) => row.id}
           emptyMessage="暂无安装实例"
+        />
+      </DetailSection>
+
+      <DetailSection title={`最近工单 (${activity.tickets.length})`}>
+        <DataTable
+          columns={ticketColumns}
+          data={activity.tickets}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无工单"
         />
       </DetailSection>
 

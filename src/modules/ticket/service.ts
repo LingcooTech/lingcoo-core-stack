@@ -22,7 +22,6 @@ type SupportTicketCategory =
   | 'bug'
   | 'feature'
   | 'other';
-type SupportTicketMessageAuthorType = 'user' | 'admin' | 'system';
 
 type TicketRecord = NonNullable<Awaited<ReturnType<TicketRepository['findTicketByTicketNo']>>>;
 
@@ -458,6 +457,11 @@ export class TicketService {
       limit: query.limit,
       offset: query.offset,
     };
+  }
+
+  async listRecentTicketsByUserId(userId: string, limit = 10) {
+    const tickets = await this.repository.listRecentTicketsByUserId(userId, limit);
+    return this.hydrateTickets(tickets);
   }
 
   async getAdminTicket(ticketNo: string) {

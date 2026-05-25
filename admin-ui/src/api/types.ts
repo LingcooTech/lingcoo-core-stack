@@ -844,12 +844,14 @@ export interface AdminUserActivity {
     installs: number;
     auditLogs: number;
     events: number;
+    tickets: number;
   };
   orders: HydratedOrder[];
   entitlements: HydratedEntitlement[];
   installs: HydratedInstall[];
   auditLogs: AuditLog[];
   events: Event[];
+  tickets: HydratedSupportTicket[];
 }
 
 export interface AdminUserDetail extends AdminUser {

@@ -20,6 +20,7 @@ import { EventRepository } from '../event/repository';
 import { InstallRepository } from '../install/repository';
 import { LicenseRepository } from '../license/repository';
 import { LicenseService } from '../license/service';
+import { TicketService } from '../ticket/service';
 
 export class AdminService {
   constructor(
@@ -667,12 +668,13 @@ export class AdminService {
       throw httpError(404, 'User not found');
     }
 
-    const [orders, entitlements, installs, auditLogs, recentEvents] = await Promise.all([
+    const [orders, entitlements, installs, auditLogs, recentEvents, tickets] = await Promise.all([
       new BillingRepository(this.db).listRecentOrdersByUserId(userId, 10),
       new LicenseRepository(this.db).listRecentEntitlementsByUserId(userId, 10),
       new InstallRepository(this.db).listRecentInstallsByUserId(userId, 10),
       new AuditLogService(this.db).listRecentForUser(userId, 10),
       new EventRepository(this.db).listRecentEventsByUserId(userId, 10),
+      new TicketService(this.db).listRecentTicketsByUserId(userId, 10),
     ]);
     const [hydratedOrders, hydratedEntitlements, hydratedInstalls] = await Promise.all([
       this.hydrateOrderRows(orders),
@@ -698,12 +700,14 @@ export class AdminService {
           installs: hydratedInstalls.length,
           auditLogs: auditLogs.length,
           events: recentEvents.length,
+          tickets: tickets.length,
         },
         orders: hydratedOrders,
         entitlements: hydratedEntitlements,
         installs: hydratedInstalls,
         auditLogs,
         events: recentEvents,
+        tickets,
       },
     };
   }
