@@ -101,16 +101,21 @@ export function MyAccessPage() {
           <div className="grid gap-5 xl:grid-cols-2">
             {summary.map((entry) => {
               const relatedItems = items.filter((item) => item.app?.code === entry.appCode);
+              const activeRelatedItems = relatedItems.filter((item) => item.status === 'active');
               const relatedApps = appsByProduct.get(entry.appCode) ?? [];
               const app = appByCode.get(entry.appCode) ?? null;
               const featureNames = entry.featureCodes.map(
                 (code) => featureNameMap.get(code) ?? code,
               );
               const isDeployable = Boolean(app && getAppDeliveryMode(app) === 'one_click');
-              const deploymentHref = isDeployable
-                ? `/deploy?app=${encodeURIComponent(entry.appCode)}`
-                : undefined;
-              const accessLinks = app && !isDeployable ? getAccessLinks(app.links) : [];
+              const deploymentHref =
+                activeRelatedItems.length > 0 && isDeployable
+                  ? `/deploy?app=${encodeURIComponent(entry.appCode)}`
+                  : undefined;
+              const accessLinks =
+                activeRelatedItems.length > 0 && app && !isDeployable
+                  ? getAccessLinks(app.links)
+                  : [];
 
               return (
                 <EntitlementProductCard
@@ -121,6 +126,8 @@ export function MyAccessPage() {
                   items={relatedItems}
                   deploymentHref={deploymentHref}
                   accessLinks={accessLinks}
+                  appHref={`/apps/${entry.appCode}`}
+                  accessState={activeRelatedItems.length > 0 ? 'active' : 'inactive'}
                 />
               );
             })}
