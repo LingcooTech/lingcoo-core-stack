@@ -41,6 +41,14 @@ const PROVIDER_OPTIONS = [
 type OrderStatus = (typeof STATUS_OPTIONS)[number]['value'];
 type OrderProvider = (typeof PROVIDER_OPTIONS)[number]['value'];
 
+function adminSearchHref(path: string, search: string) {
+  return `${path}?search=${encodeURIComponent(search)}`;
+}
+
+function userDetailHref(userId: string) {
+  return `/admin/users?userId=${encodeURIComponent(userId)}`;
+}
+
 export function OrdersPage() {
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
     defaultPageSize: PAGE_SIZE,
@@ -393,6 +401,24 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
       </section>
 
+      <section className="border-border bg-card rounded-xl border p-4">
+        <div className="mb-3">
+          <h3 className="text-foreground text-sm font-semibold">关联处理</h3>
+          <p className="text-muted-foreground mt-1 text-xs">
+            从当前订单继续定位用户、授权与工单上下文，避免在异常处理时重复检索。
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ActionLink to={userDetailHref(item.userId)} label="用户 360" />
+          <ActionLink to={adminSearchHref('/admin/tickets', item.orderNo)} label="关联工单" />
+          <ActionLink to={adminSearchHref('/admin/licenses', item.orderNo)} label="关联授权" />
+          <ActionLink
+            to={adminSearchHref('/admin/orders', item.user?.email ?? item.userId)}
+            label="用户订单"
+          />
+        </div>
+      </section>
+
       {item.checkoutSession && (
         <DetailSection title="Checkout Session">
           <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
@@ -473,6 +499,17 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         </DetailSection>
       )}
     </div>
+  );
+}
+
+function ActionLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Button size="sm" variant="outline" asChild className="h-8 text-xs">
+      <Link to={to}>
+        {label}
+        <ArrowUpRight className="h-3 w-3" />
+      </Link>
+    </Button>
   );
 }
 
