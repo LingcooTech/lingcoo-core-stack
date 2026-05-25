@@ -32,7 +32,7 @@ export function DocsShell() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fbfcfe_0%,#f4f7fb_100%)] dark:bg-[linear-gradient(180deg,hsl(222.2_84%_4.9%)_0%,hsl(217.2_32.6%_10%)_100%)]">
       <header className="bg-card/92 border-border/80 sticky top-0 z-30 border-b backdrop-blur-xl">
-        <Container className="py-2">
+        <Container size="full" className="max-w-[1520px] py-2 xl:px-8">
           <div className="flex min-h-[52px] items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <Link to="/docs" className="flex min-w-0 items-center gap-3">

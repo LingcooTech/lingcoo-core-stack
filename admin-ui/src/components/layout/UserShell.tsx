@@ -259,7 +259,7 @@ export function UserShell() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="border-border bg-card/80 text-muted-foreground hover:border-border hover:bg-card hover:text-foreground relative hidden h-9 w-9 rounded-full border shadow-sm transition lg:inline-flex"
+                  className="text-muted-foreground hover:bg-card hover:text-foreground relative hidden h-9 w-9 rounded-full transition lg:inline-flex"
                   onClick={() => navigate('/account?tab=notifications')}
                   aria-label="打开消息通知"
                 >
@@ -276,7 +276,7 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="focus-visible:ring-primary border-border bg-muted/90 hover:border-border hover:bg-card inline-flex items-center gap-2 rounded-full border py-1 pl-1.5 pr-2 shadow-sm transition hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                      className="focus-visible:ring-primary hover:bg-card hidden items-center gap-2 rounded-full py-1 pl-1.5 pr-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:inline-flex"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-7 w-7">
@@ -285,7 +285,7 @@ export function UserShell() {
                       <span className="text-foreground hidden max-w-[96px] truncate text-[13px] font-medium sm:block">
                         {accountName}
                       </span>
-                      <span className="bg-card text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full shadow-sm">
+                      <span className="text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full">
                         <ChevronDown className="h-3.5 w-3.5" />
                       </span>
                     </button>

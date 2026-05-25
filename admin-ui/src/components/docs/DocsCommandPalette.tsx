@@ -107,7 +107,7 @@ export function DocsSearchTrigger({ onOpen }: SearchTriggerProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex h-9 items-center gap-2 rounded-full border px-3 text-[13px] transition-colors"
+      className="border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex h-9 w-[360px] items-center justify-between gap-2 rounded-full border px-3 text-[13px] transition-colors xl:w-[460px]"
       aria-label="搜索文档"
     >
       <span>搜索文档…</span>
