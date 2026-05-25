@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   activateUser,
@@ -95,6 +95,7 @@ export function UsersPage() {
   const qc = useQueryClient();
   const { user: currentUser } = useAuth();
   const currentRole = normalizeRole(currentUser?.role);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { search, filters, setSearch, setFilter, clearFilters } = useTableState({
     knownFilters: ['role', 'status'],
@@ -105,7 +106,9 @@ export function UsersPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState<AdminUpdateUserInput>({});
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(() =>
+    searchParams.get('userId'),
+  );
 
   const [confirmAction, setConfirmAction] = useState<{
     type: 'suspend' | 'activate';
@@ -133,6 +136,11 @@ export function UsersPage() {
     queryFn: () => getUser(selectedUserId!),
     enabled: Boolean(selectedUserId),
   });
+
+  useEffect(() => {
+    const nextUserId = searchParams.get('userId');
+    setSelectedUserId((current) => (current === nextUserId ? current : nextUserId));
+  }, [searchParams]);
 
   const updateMutation = useMutation({
     mutationFn: () => updateUser(editingUser!.id, editForm),
@@ -188,6 +196,30 @@ export function UsersPage() {
       status: u.status as 'active' | 'suspended',
     });
     setEditOpen(true);
+  }
+
+  function openUserDetail(userId: string) {
+    setSelectedUserId(userId);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('userId', userId);
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
+  function closeUserDetail() {
+    setSelectedUserId(null);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('userId');
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   const isSelf = (u: AdminUser) => currentUser?.id === u.id;
@@ -280,7 +312,7 @@ export function UsersPage() {
             className="h-7 px-2 text-xs"
             onClick={(event) => {
               event.stopPropagation();
-              setSelectedUserId(row.id);
+              openUserDetail(row.id);
             }}
           >
             查看
@@ -363,7 +395,7 @@ export function UsersPage() {
             isLoading={isLoading}
             emptyMessage="暂无用户"
             getRowKey={(row) => row.id}
-            onRowClick={(row) => setSelectedUserId(row.id)}
+            onRowClick={(row) => openUserDetail(row.id)}
           />
         </div>
       </div>
@@ -372,7 +404,7 @@ export function UsersPage() {
         <Sheet
           open
           onOpenChange={(open) => {
-            if (!open) setSelectedUserId(null);
+            if (!open) closeUserDetail();
           }}
         >
           <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-4xl">

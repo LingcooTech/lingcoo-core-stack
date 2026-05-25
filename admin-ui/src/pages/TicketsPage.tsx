@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -132,6 +133,10 @@ function messageAuthorLabel(message: SupportTicketMessage) {
   return message.author?.displayName?.trim() || message.author?.email || '用户';
 }
 
+function userDetailHref(userId: string) {
+  return `/admin/users?userId=${encodeURIComponent(userId)}`;
+}
+
 function MetaField({
   label,
   value,
@@ -233,6 +238,12 @@ function TicketDetailPanel({
               label={ticketPriorityLabel(ticket.priority)}
             />
             <StatusPill tone="neutral" label={ticketCategoryLabel(ticket.category)} />
+            <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+              <Link to={userDetailHref(ticket.userId)}>
+                用户 360
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </Button>
           </div>
         </div>
 
