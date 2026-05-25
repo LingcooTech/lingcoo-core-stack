@@ -29,8 +29,8 @@ export class EventRepository {
           installId: item.installId ?? null,
           eventName: item.eventName,
           eventTime: item.eventTime ?? new Date(),
-          properties: item.properties ?? {}
-        }))
+          properties: item.properties ?? {},
+        })),
       )
       .returning();
   }
@@ -39,11 +39,7 @@ export class EventRepository {
     return this.db.select().from(events).orderBy(desc(events.eventTime)).limit(limit);
   }
 
-  async listEvents(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listEvents(query: { limit: number; offset: number; search?: string }) {
     const conditions = [];
 
     if (query.search) {
@@ -58,8 +54,8 @@ export class EventRepository {
           ilike(users.displayName, pattern),
           ilike(installs.extensionInstallId, pattern),
           ilike(apps.code, pattern),
-          ilike(apps.name, pattern)
-        )!
+          ilike(apps.name, pattern),
+        )!,
       );
     }
 
@@ -82,7 +78,7 @@ export class EventRepository {
         .leftJoin(users, eq(events.userId, users.id))
         .leftJoin(installs, eq(events.installId, installs.id))
         .leftJoin(apps, sql`coalesce(${events.appId}, ${installs.appId}) = ${apps.id}`)
-        .where(where)
+        .where(where),
     ]);
 
     return {
@@ -96,6 +92,15 @@ export class EventRepository {
       .select()
       .from(events)
       .where(sql`${events.properties} ->> 'orderNo' = ${orderNo}`)
+      .orderBy(desc(events.eventTime))
+      .limit(limit);
+  }
+
+  async listRecentEventsByUserId(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(events)
+      .where(eq(events.userId, userId))
       .orderBy(desc(events.eventTime))
       .limit(limit);
   }

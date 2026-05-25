@@ -40,7 +40,11 @@ export class LicenseRepository {
   }
 
   async findEntitlementById(entitlementId: string) {
-    const [entitlement] = await this.db.select().from(entitlements).where(eq(entitlements.id, entitlementId)).limit(1);
+    const [entitlement] = await this.db
+      .select()
+      .from(entitlements)
+      .where(eq(entitlements.id, entitlementId))
+      .limit(1);
     return entitlement ?? null;
   }
 
@@ -110,7 +114,7 @@ export class LicenseRepository {
         interval: input.interval,
         meta: input.meta ?? {},
         status: input.status,
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .onConflictDoUpdate({
         target: plans.code,
@@ -123,8 +127,8 @@ export class LicenseRepository {
           currency: input.currency,
           interval: input.interval,
           meta: input.meta ?? {},
-          status: input.status
-        }
+          status: input.status,
+        },
       })
       .returning();
 
@@ -146,7 +150,7 @@ export class LicenseRepository {
         name: input.name,
         kind: input.kind,
         status: input.status,
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .onConflictDoUpdate({
         target: features.code,
@@ -154,8 +158,8 @@ export class LicenseRepository {
           appId: input.appId,
           name: input.name,
           kind: input.kind,
-          status: input.status
-        }
+          status: input.status,
+        },
       })
       .returning();
 
@@ -165,7 +169,7 @@ export class LicenseRepository {
   async replacePlanFeatureMappings(
     planId: string,
     featureIds: string[],
-    featureValue: Record<string, unknown> = { enabled: true }
+    featureValue: Record<string, unknown> = { enabled: true },
   ) {
     await this.db.delete(planFeatures).where(eq(planFeatures.planId, planId));
 
@@ -179,8 +183,8 @@ export class LicenseRepository {
         featureIds.map((featureId) => ({
           planId,
           featureId,
-          value: featureValue
-        }))
+          value: featureValue,
+        })),
       )
       .returning();
   }
@@ -192,7 +196,7 @@ export class LicenseRepository {
       .where(
         retainedCodes.length > 0
           ? and(eq(plans.appId, appId), notInArray(plans.code, retainedCodes))
-          : eq(plans.appId, appId)
+          : eq(plans.appId, appId),
       )
       .returning();
   }
@@ -212,7 +216,7 @@ export class LicenseRepository {
       .where(
         retainedCodes.length > 0
           ? and(eq(features.appId, appId), notInArray(features.code, retainedCodes))
-          : eq(features.appId, appId)
+          : eq(features.appId, appId),
       )
       .returning();
   }
@@ -227,14 +231,14 @@ export class LicenseRepository {
       priceAmount: number;
       currency: string;
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    }
+    },
   ) {
     const [plan] = await this.db
       .update(plans)
       .set({
         priceAmount: input.priceAmount,
         currency: input.currency,
-        status: input.status
+        status: input.status,
       })
       .where(eq(plans.id, planId))
       .returning();
@@ -242,7 +246,10 @@ export class LicenseRepository {
     return plan ?? null;
   }
 
-  async deleteEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
+  async deleteEntitlementsBySource(
+    sourceType: 'order' | 'subscription' | 'grant' | 'trial',
+    sourceId: string,
+  ) {
     await this.db
       .delete(entitlements)
       .where(and(eq(entitlements.sourceType, sourceType), eq(entitlements.sourceId, sourceId)));
@@ -259,10 +266,7 @@ export class LicenseRepository {
     expiresAt?: Date | null;
     meta?: Record<string, unknown>;
   }) {
-    const [entitlement] = await this.db
-      .insert(entitlements)
-      .values(input)
-      .returning();
+    const [entitlement] = await this.db.insert(entitlements).values(input).returning();
 
     return entitlement;
   }
@@ -275,8 +279,8 @@ export class LicenseRepository {
         and(
           eq(entitlements.userId, userId),
           eq(entitlements.status, 'active'),
-          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
-        )
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now)),
+        ),
       )
       .orderBy(desc(entitlements.createdAt));
   }
@@ -289,6 +293,15 @@ export class LicenseRepository {
       .orderBy(desc(entitlements.createdAt));
   }
 
+  async listRecentEntitlementsByUserId(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(entitlements)
+      .where(eq(entitlements.userId, userId))
+      .orderBy(desc(entitlements.createdAt))
+      .limit(limit);
+  }
+
   async listEffectiveEntitlementsByUserIdAndAppId(userId: string, appId: string, now = new Date()) {
     return this.db
       .select()
@@ -298,8 +311,8 @@ export class LicenseRepository {
           eq(entitlements.userId, userId),
           eq(entitlements.appId, appId),
           eq(entitlements.status, 'active'),
-          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
-        )
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now)),
+        ),
       )
       .orderBy(desc(entitlements.createdAt));
   }
@@ -308,7 +321,7 @@ export class LicenseRepository {
     userId: string,
     appId: string,
     planId: string,
-    now = new Date()
+    now = new Date(),
   ) {
     return this.db
       .select()
@@ -319,8 +332,8 @@ export class LicenseRepository {
           eq(entitlements.appId, appId),
           eq(entitlements.planId, planId),
           eq(entitlements.status, 'active'),
-          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now))
-        )
+          or(isNull(entitlements.expiresAt), gte(entitlements.expiresAt, now)),
+        ),
       )
       .orderBy(desc(entitlements.createdAt));
   }
@@ -329,11 +342,7 @@ export class LicenseRepository {
     return this.db.select().from(entitlements).orderBy(desc(entitlements.createdAt)).limit(limit);
   }
 
-  async listEntitlements(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listEntitlements(query: { limit: number; offset: number; search?: string }) {
     const conditions = [];
 
     if (query.search) {
@@ -350,14 +359,17 @@ export class LicenseRepository {
           ilike(apps.name, pattern),
           ilike(plans.code, pattern),
           ilike(plans.name, pattern),
-          ilike(orders.orderNo, pattern)
-        )!
+          ilike(orders.orderNo, pattern),
+        )!,
       );
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const orderJoin = and(eq(entitlements.sourceType, 'order'), eq(entitlements.sourceId, orders.id));
+    const orderJoin = and(
+      eq(entitlements.sourceType, 'order'),
+      eq(entitlements.sourceId, orders.id),
+    );
 
     const [rows, countResult] = await Promise.all([
       this.db
@@ -378,7 +390,7 @@ export class LicenseRepository {
         .leftJoin(apps, eq(entitlements.appId, apps.id))
         .leftJoin(plans, eq(entitlements.planId, plans.id))
         .leftJoin(orders, orderJoin)
-        .where(where)
+        .where(where),
     ]);
 
     return {
@@ -387,7 +399,10 @@ export class LicenseRepository {
     };
   }
 
-  async listEntitlementsBySource(sourceType: 'order' | 'subscription' | 'grant' | 'trial', sourceId: string) {
+  async listEntitlementsBySource(
+    sourceType: 'order' | 'subscription' | 'grant' | 'trial',
+    sourceId: string,
+  ) {
     return this.db
       .select()
       .from(entitlements)
@@ -400,7 +415,7 @@ export class LicenseRepository {
       .update(entitlements)
       .set({
         status: 'cancelled',
-        expiresAt: effectiveAt
+        expiresAt: effectiveAt,
       })
       .where(and(eq(entitlements.id, entitlementId), ne(entitlements.status, 'cancelled')))
       .returning();
@@ -421,20 +436,20 @@ export class LicenseRepository {
   async cancelEntitlementsBySource(
     sourceType: 'order' | 'subscription' | 'grant' | 'trial',
     sourceId: string,
-    effectiveAt = new Date()
+    effectiveAt = new Date(),
   ) {
     return this.db
       .update(entitlements)
       .set({
         status: 'cancelled',
-        expiresAt: effectiveAt
+        expiresAt: effectiveAt,
       })
       .where(
         and(
           eq(entitlements.sourceType, sourceType),
           eq(entitlements.sourceId, sourceId),
-          ne(entitlements.status, 'cancelled')
-        )
+          ne(entitlements.status, 'cancelled'),
+        ),
       )
       .returning();
   }

@@ -122,10 +122,6 @@ export interface AdminUser {
   updatedAt: string;
 }
 
-export interface AdminUserDetail extends AdminUser {
-  emailVerifiedAt: string | null;
-}
-
 export interface AdminUsersResponse {
   items: AdminUser[];
   total: number;
@@ -839,6 +835,26 @@ export interface EntitlementsResponse extends PaginatedResponse<HydratedEntitlem
     appCode: string;
     featureCodes: string[];
   }>;
+}
+
+export interface AdminUserActivity {
+  summary: {
+    recentOrders: number;
+    activeEntitlements: number;
+    installs: number;
+    auditLogs: number;
+    events: number;
+  };
+  orders: HydratedOrder[];
+  entitlements: HydratedEntitlement[];
+  installs: HydratedInstall[];
+  auditLogs: AuditLog[];
+  events: Event[];
+}
+
+export interface AdminUserDetail extends AdminUser {
+  emailVerifiedAt: string | null;
+  activity: AdminUserActivity;
 }
 
 export interface NotificationItem {

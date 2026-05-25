@@ -1,12 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { listUsers, updateUser, suspendUser, activateUser, resetUserPassword } from '@/api/admin';
-import type { AdminUser, AdminUpdateUserInput } from '@/api/types';
+import {
+  activateUser,
+  getUser,
+  listUsers,
+  resetUserPassword,
+  suspendUser,
+  updateUser,
+} from '@/api/admin';
+import type {
+  AdminUser,
+  AdminUserDetail,
+  AdminUpdateUserInput,
+  AuditLog,
+  Event as AdminEvent,
+  HydratedEntitlement,
+  HydratedInstall,
+  HydratedOrder,
+} from '@/api/types';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { SectionHeader } from '@/components/shared/SectionHeader';
-import { StatusPill } from '@/components/shared/StatusPill';
+import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,10 +40,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole, roleLabels, type AppRole } from '@/lib/rbac';
-import { formatTime } from '@/lib/utils';
+import { formatAmount, formatTime } from '@/lib/utils';
 
 export function UsersPage() {
   const qc = useQueryClient();
@@ -43,6 +66,7 @@ export function UsersPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState<AdminUpdateUserInput>({});
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [confirmAction, setConfirmAction] = useState<{
     type: 'suspend' | 'activate';
@@ -65,6 +89,11 @@ export function UsersPage() {
       }),
   });
   const users = data?.items ?? [];
+  const userDetailQuery = useQuery({
+    queryKey: ['admin-user-detail', selectedUserId],
+    queryFn: () => getUser(selectedUserId!),
+    enabled: Boolean(selectedUserId),
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => updateUser(editingUser!.id, editForm),
@@ -73,6 +102,9 @@ export function UsersPage() {
       setEditOpen(false);
       setEditingUser(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
+      if (editingUser?.id) {
+        void qc.invalidateQueries({ queryKey: ['admin-user-detail', editingUser.id] });
+      }
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '更新失败'),
   });
@@ -83,6 +115,7 @@ export function UsersPage() {
       toast.success('用户已停用');
       setConfirmAction(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
+      void qc.invalidateQueries({ queryKey: ['admin-user-detail'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '停用失败'),
   });
@@ -93,6 +126,7 @@ export function UsersPage() {
       toast.success('用户已激活');
       setConfirmAction(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
+      void qc.invalidateQueries({ queryKey: ['admin-user-detail'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '激活失败'),
   });
@@ -195,61 +229,80 @@ export function UsersPage() {
         </span>
       ),
     },
-    ...(canEditUsers || canSuspendUsers || canResetPasswords
-      ? [
-          {
-            key: 'actions',
-            header: '操作',
-            className: 'w-[220px]',
-            cell: (row: AdminUser) => (
-              <div className="flex items-center gap-1">
-                {canEditUsers ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => openEdit(row)}
-                  >
-                    编辑
-                  </Button>
-                ) : null}
-                {canSuspendUsers ? (
-                  row.status === 'active' ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-muted-foreground h-7 px-2 text-xs"
-                      disabled={isSelf(row)}
-                      onClick={() => setConfirmAction({ type: 'suspend', user: row })}
-                    >
-                      停用
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-muted-foreground h-7 px-2 text-xs"
-                      onClick={() => setConfirmAction({ type: 'activate', user: row })}
-                    >
-                      激活
-                    </Button>
-                  )
-                ) : null}
-                {canResetPasswords ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive h-7 px-2 text-xs"
-                    onClick={() => setResetConfirm(row)}
-                  >
-                    重置密码
-                  </Button>
-                ) : null}
-              </div>
-            ),
-          } satisfies Column<AdminUser>,
-        ]
-      : []),
+    {
+      key: 'actions',
+      header: '操作',
+      className: 'w-[260px]',
+      cell: (row) => (
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedUserId(row.id);
+            }}
+          >
+            查看
+          </Button>
+          {canEditUsers ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+              onClick={(event) => {
+                event.stopPropagation();
+                openEdit(row);
+              }}
+            >
+              编辑
+            </Button>
+          ) : null}
+          {canSuspendUsers ? (
+            row.status === 'active' ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground h-7 px-2 text-xs"
+                disabled={isSelf(row)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setConfirmAction({ type: 'suspend', user: row });
+                }}
+              >
+                停用
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground h-7 px-2 text-xs"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setConfirmAction({ type: 'activate', user: row });
+                }}
+              >
+                激活
+              </Button>
+            )
+          ) : null}
+          {canResetPasswords ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive h-7 px-2 text-xs"
+              onClick={(event) => {
+                event.stopPropagation();
+                setResetConfirm(row);
+              }}
+            >
+              重置密码
+            </Button>
+          ) : null}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -271,9 +324,41 @@ export function UsersPage() {
             isLoading={isLoading}
             emptyMessage="暂无用户"
             getRowKey={(row) => row.id}
+            onRowClick={(row) => setSelectedUserId(row.id)}
           />
         </div>
       </div>
+
+      {selectedUserId ? (
+        <Sheet
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedUserId(null);
+          }}
+        >
+          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-4xl">
+            <SheetHeader className="border-border border-b px-6 py-4">
+              <SheetDescription className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                用户详情
+              </SheetDescription>
+              <SheetTitle className="text-foreground truncate text-base font-semibold">
+                {userDetailQuery.data?.email ?? selectedUserId}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="px-6 py-5">
+              {userDetailQuery.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className="bg-muted h-9 animate-pulse rounded-md" />
+                  ))}
+                </div>
+              ) : userDetailQuery.data ? (
+                <UserDetailPanel detail={userDetailQuery.data} />
+              ) : null}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -433,6 +518,304 @@ export function UsersPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
+  const { activity } = detail;
+
+  const orderColumns: Column<HydratedOrder>[] = [
+    {
+      key: 'orderNo',
+      header: '订单号',
+      cell: (row) => <span className="font-mono text-[11px]">{row.orderNo}</span>,
+    },
+    {
+      key: 'product',
+      header: '产品',
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-[12px] font-medium">
+            {row.app?.name ?? row.appId}
+          </p>
+          <p className="text-muted-foreground truncate text-[10px]">
+            {row.plan?.name ?? row.planId}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: '状态',
+      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+    },
+    {
+      key: 'amount',
+      header: '金额',
+      cell: (row) => (
+        <span className="text-[11px] font-medium tabular-nums">
+          {formatAmount(row.amount, row.currency)}
+        </span>
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: '创建时间',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.createdAt)}
+        </span>
+      ),
+    },
+  ];
+
+  const entitlementColumns: Column<HydratedEntitlement>[] = [
+    {
+      key: 'app',
+      header: '应用',
+      cell: (row) => row.app?.name ?? row.appId,
+    },
+    {
+      key: 'plan',
+      header: '套餐',
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-[12px] font-medium">
+            {row.plan?.name ?? row.planId}
+          </p>
+          <p className="text-muted-foreground truncate font-mono text-[10px]">
+            {row.plan?.code ?? row.sourceType}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: '状态',
+      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+    },
+    {
+      key: 'expiresAt',
+      header: '到期时间',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.expiresAt)}
+        </span>
+      ),
+    },
+  ];
+
+  const installColumns: Column<HydratedInstall>[] = [
+    {
+      key: 'install',
+      header: '安装实例',
+      cell: (row) => <span className="font-mono text-[11px]">{row.extensionInstallId}</span>,
+    },
+    {
+      key: 'app',
+      header: '应用',
+      cell: (row) => row.app?.name ?? '—',
+    },
+    {
+      key: 'status',
+      header: '状态',
+      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+    },
+    {
+      key: 'lastSeenAt',
+      header: '最后活跃',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.lastSeenAt)}
+        </span>
+      ),
+    },
+  ];
+
+  const eventColumns: Column<AdminEvent>[] = [
+    {
+      key: 'eventName',
+      header: '事件',
+      cell: (row) => <span className="font-mono text-[11px]">{row.eventName}</span>,
+    },
+    {
+      key: 'appId',
+      header: '应用',
+      cell: (row) => <span className="font-mono text-[11px]">{row.appId ?? '—'}</span>,
+    },
+    {
+      key: 'installId',
+      header: '安装',
+      cell: (row) => <span className="font-mono text-[11px]">{row.installId ?? '—'}</span>,
+    },
+    {
+      key: 'eventTime',
+      header: '发生时间',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.eventTime)}
+        </span>
+      ),
+    },
+  ];
+
+  const auditColumns: Column<AuditLog>[] = [
+    {
+      key: 'action',
+      header: '动作',
+      cell: (row) => <span className="font-mono text-[11px]">{row.action}</span>,
+    },
+    {
+      key: 'resource',
+      header: '资源',
+      cell: (row) => (
+        <span className="font-mono text-[11px]">
+          {row.resourceType}/{row.resourceId ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'outcome',
+      header: '结果',
+      cell: (row) => <StatusPill tone={statusToTone(row.outcome)} label={row.outcome} />,
+    },
+    {
+      key: 'createdAt',
+      header: '时间',
+      cell: (row) => (
+        <span className="text-muted-foreground text-[11px] tabular-nums">
+          {formatTime(row.createdAt)}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-5 text-sm">
+      <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
+        <InfoBlock label="邮箱" value={detail.email} />
+        <InfoBlock label="显示名称" value={detail.displayName ?? '—'} />
+        <InfoBlock
+          label="角色"
+          render={
+            <StatusPill
+              tone={detail.role === 'admin' ? 'ok' : detail.role === 'user' ? 'neutral' : 'info'}
+              label={roleLabels[(detail.role as AppRole) ?? 'user'] ?? detail.role}
+            />
+          }
+        />
+        <InfoBlock
+          label="账户状态"
+          render={<StatusPill tone={statusToTone(detail.status)} label={detail.status} />}
+        />
+        <InfoBlock
+          label="邮箱验证"
+          render={
+            <StatusPill
+              tone={detail.emailVerified ? 'ok' : 'warn'}
+              label={detail.emailVerified ? '已验证' : '未验证'}
+            />
+          }
+        />
+        <InfoBlock label="注册时间" value={formatTime(detail.createdAt)} />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard label="最近订单" value={activity.summary.recentOrders} />
+        <MetricCard label="活跃授权" value={activity.summary.activeEntitlements} />
+        <MetricCard label="安装实例" value={activity.summary.installs} />
+        <MetricCard label="审计日志" value={activity.summary.auditLogs} />
+        <MetricCard label="产品事件" value={activity.summary.events} />
+      </section>
+
+      <DetailSection title={`最近订单 (${activity.orders.length})`}>
+        <DataTable
+          columns={orderColumns}
+          data={activity.orders}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无订单"
+        />
+      </DetailSection>
+
+      <DetailSection title={`最近授权 (${activity.entitlements.length})`}>
+        <DataTable
+          columns={entitlementColumns}
+          data={activity.entitlements}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无授权"
+        />
+      </DetailSection>
+
+      <DetailSection title={`安装实例 (${activity.installs.length})`}>
+        <DataTable
+          columns={installColumns}
+          data={activity.installs}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无安装实例"
+        />
+      </DetailSection>
+
+      <DetailSection title={`最近事件 (${activity.events.length})`}>
+        <DataTable
+          columns={eventColumns}
+          data={activity.events}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无事件"
+        />
+      </DetailSection>
+
+      <DetailSection title={`审计日志 (${activity.auditLogs.length})`}>
+        <DataTable
+          columns={auditColumns}
+          data={activity.auditLogs}
+          getRowKey={(row) => row.id}
+          emptyMessage="暂无审计日志"
+        />
+      </DetailSection>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border-border bg-card rounded-xl border p-3">
+      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+        {label}
+      </p>
+      <p className="text-foreground mt-1 text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section>
+      <h3 className="text-muted-foreground mb-2 text-[11px] font-semibold uppercase tracking-wider">
+        {title}
+      </h3>
+      <div className="border-border bg-card overflow-hidden rounded-lg border">{children}</div>
+    </section>
+  );
+}
+
+function InfoBlock({
+  label,
+  value,
+  render,
+}: {
+  label: string;
+  value?: string;
+  render?: ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+        {label}
+      </p>
+      <div className="mt-1">
+        {render ?? <p className="text-foreground truncate text-xs font-medium">{value}</p>}
+      </div>
     </div>
   );
 }

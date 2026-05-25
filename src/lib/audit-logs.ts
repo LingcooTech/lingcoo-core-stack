@@ -92,4 +92,18 @@ export class AuditLogService {
       total: countResult[0]?.count ?? 0,
     };
   }
+
+  async listRecentForUser(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(auditLogs)
+      .where(
+        or(
+          eq(auditLogs.actorUserId, userId),
+          and(eq(auditLogs.resourceType, 'user'), eq(auditLogs.resourceId, userId)),
+        ),
+      )
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+  }
 }

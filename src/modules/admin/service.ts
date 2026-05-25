@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
-import { and, count, eq, isNull, gte, lte, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, isNull, gte, lte, type SQL } from 'drizzle-orm';
 
 import { billingWebhookEvents, events, jobRuns, orders, supportTickets } from '../../db/schema';
 import type { DbClient } from '../../db/types';
@@ -77,6 +77,83 @@ export class AdminService {
               updatedAt: session.updatedAt,
             }
           : null,
+      };
+    });
+  }
+
+  private async hydrateEntitlementRows(
+    entitlements: Awaited<ReturnType<LicenseRepository['listRecentEntitlementsByUserId']>>,
+  ) {
+    const userIds = [...new Set(entitlements.map((item) => item.userId))];
+    const appIds = [...new Set(entitlements.map((item) => item.appId))];
+    const planIds = [...new Set(entitlements.map((item) => item.planId))];
+    const orderIds = [
+      ...new Set(
+        entitlements
+          .filter((item) => item.sourceType === 'order' && item.sourceId)
+          .map((item) => item.sourceId as string),
+      ),
+    ];
+
+    const [users, apps, plans, orders] = await Promise.all([
+      new AuthRepository(this.db).listUsersByIds(userIds),
+      new AppRepository(this.db).listAppsByIds(appIds),
+      new LicenseRepository(this.db).listPlansByIds(planIds),
+      new BillingRepository(this.db).listOrdersByIds(orderIds),
+    ]);
+
+    const userMap = new Map(users.map((item) => [item.id, item]));
+    const appMap = new Map(apps.map((item) => [item.id, item]));
+    const planMap = new Map(plans.map((item) => [item.id, item]));
+    const orderMap = new Map(orders.map((item) => [item.id, item]));
+
+    return entitlements.map((entitlement) => {
+      const user = userMap.get(entitlement.userId) ?? null;
+      const app = appMap.get(entitlement.appId) ?? null;
+      const plan = planMap.get(entitlement.planId) ?? null;
+      const sourceOrder =
+        entitlement.sourceType === 'order' && entitlement.sourceId
+          ? (orderMap.get(entitlement.sourceId) ?? null)
+          : null;
+      return {
+        ...entitlement,
+        user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+        app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
+        plan: plan
+          ? { id: plan.id, code: plan.code, name: plan.name, interval: plan.interval }
+          : null,
+        sourceOrder: sourceOrder
+          ? { id: sourceOrder.id, orderNo: sourceOrder.orderNo, status: sourceOrder.status }
+          : null,
+      };
+    });
+  }
+
+  private async hydrateInstallRows(
+    installs: Awaited<ReturnType<InstallRepository['listRecentInstallsByUserId']>>,
+  ) {
+    const userIds = [
+      ...new Set(
+        installs.map((item) => item.userId).filter((item): item is string => Boolean(item)),
+      ),
+    ];
+    const appIds = [...new Set(installs.map((item) => item.appId))];
+
+    const [users, apps] = await Promise.all([
+      new AuthRepository(this.db).listUsersByIds(userIds),
+      new AppRepository(this.db).listAppsByIds(appIds),
+    ]);
+
+    const userMap = new Map(users.map((item) => [item.id, item]));
+    const appMap = new Map(apps.map((item) => [item.id, item]));
+
+    return installs.map((install) => {
+      const user = install.userId ? (userMap.get(install.userId) ?? null) : null;
+      const app = appMap.get(install.appId) ?? null;
+      return {
+        ...install,
+        user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+        app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
       };
     });
   }
@@ -589,6 +666,20 @@ export class AdminService {
     if (!user) {
       throw httpError(404, 'User not found');
     }
+
+    const [orders, entitlements, installs, auditLogs, recentEvents] = await Promise.all([
+      new BillingRepository(this.db).listRecentOrdersByUserId(userId, 10),
+      new LicenseRepository(this.db).listRecentEntitlementsByUserId(userId, 10),
+      new InstallRepository(this.db).listRecentInstallsByUserId(userId, 10),
+      new AuditLogService(this.db).listRecentForUser(userId, 10),
+      new EventRepository(this.db).listRecentEventsByUserId(userId, 10),
+    ]);
+    const [hydratedOrders, hydratedEntitlements, hydratedInstalls] = await Promise.all([
+      this.hydrateOrderRows(orders),
+      this.hydrateEntitlementRows(entitlements),
+      this.hydrateInstallRows(installs),
+    ]);
+
     return {
       id: user.id,
       email: user.email,
@@ -599,6 +690,21 @@ export class AdminService {
       emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      activity: {
+        summary: {
+          recentOrders: hydratedOrders.length,
+          activeEntitlements: hydratedEntitlements.filter((item) => item.status === 'active')
+            .length,
+          installs: hydratedInstalls.length,
+          auditLogs: auditLogs.length,
+          events: recentEvents.length,
+        },
+        orders: hydratedOrders,
+        entitlements: hydratedEntitlements,
+        installs: hydratedInstalls,
+        auditLogs,
+        events: recentEvents,
+      },
     };
   }
 

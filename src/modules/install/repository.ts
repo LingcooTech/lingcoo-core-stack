@@ -42,7 +42,7 @@ export class InstallRepository {
         status: 'active',
         lastSeenAt: now,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .returning();
 
@@ -53,11 +53,16 @@ export class InstallRepository {
     return this.db.select().from(installs).orderBy(desc(installs.createdAt)).limit(limit);
   }
 
-  async listInstalls(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listRecentInstallsByUserId(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(installs)
+      .where(eq(installs.userId, userId))
+      .orderBy(desc(installs.updatedAt))
+      .limit(limit);
+  }
+
+  async listInstalls(query: { limit: number; offset: number; search?: string }) {
     const conditions = [];
 
     if (query.search) {
@@ -71,8 +76,8 @@ export class InstallRepository {
           ilike(users.email, pattern),
           ilike(users.displayName, pattern),
           ilike(apps.code, pattern),
-          ilike(apps.name, pattern)
-        )!
+          ilike(apps.name, pattern),
+        )!,
       );
     }
 
@@ -93,7 +98,7 @@ export class InstallRepository {
         .from(installs)
         .leftJoin(users, eq(installs.userId, users.id))
         .leftJoin(apps, eq(installs.appId, apps.id))
-        .where(where)
+        .where(where),
     ]);
 
     return {
@@ -120,7 +125,7 @@ export class InstallRepository {
       appVersion?: string | null;
       lastSeenAt?: Date | null;
       status?: 'active' | 'inactive' | 'cancelled' | 'expired';
-    }
+    },
   ) {
     const [install] = await this.db
       .update(installs)
@@ -132,7 +137,7 @@ export class InstallRepository {
         appVersion: input.appVersion,
         lastSeenAt: input.lastSeenAt,
         status: input.status,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(installs.id, installId))
       .returning();

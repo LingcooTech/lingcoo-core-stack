@@ -46,6 +46,15 @@ export class BillingRepository {
       .orderBy(desc(orders.createdAt));
   }
 
+  async listRecentOrdersByUserId(userId: string, limit = 10) {
+    return this.db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+  }
+
   async listRecentOrders(limit = 50) {
     return this.db.select().from(orders).orderBy(desc(orders.createdAt)).limit(limit);
   }
