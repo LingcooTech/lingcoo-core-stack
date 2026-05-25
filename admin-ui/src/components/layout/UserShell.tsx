@@ -293,13 +293,13 @@ export function UserShell() {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={10}
-                    className="border-border bg-card w-[320px] rounded-xl border p-0 shadow-lg"
+                    className="border-border bg-card w-[280px] rounded-xl border p-0 shadow-lg"
                   >
                     <DropdownMenuLabel className="px-0 py-0">
-                      <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-5 py-5">
+                      <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -310,24 +310,24 @@ export function UserShell() {
                           <Settings className="h-4 w-4" />
                         </button>
                         <div className="flex flex-col items-center text-center">
-                          <Avatar className="h-20 w-20 shadow-sm ring-4 ring-white/80">
-                            <AvatarFallback className="text-lg">
+                          <Avatar className="h-14 w-14 shadow-sm ring-[3px] ring-white/80">
+                            <AvatarFallback className="text-base">
                               {getInitials(accountName)}
                             </AvatarFallback>
                           </Avatar>
-                          <p className="text-foreground mt-3 text-xl font-semibold tracking-tight">
+                          <p className="text-foreground mt-2 text-lg font-semibold tracking-tight">
                             {accountName}
                           </p>
                           {accountEmail ? (
-                            <p className="text-muted-foreground mt-1 text-sm">{accountEmail}</p>
+                            <p className="text-muted-foreground mt-0.5 text-xs">{accountEmail}</p>
                           ) : null}
                         </div>
                       </div>
                     </DropdownMenuLabel>
-                    <div className="px-3 py-3">
-                      <div className="space-y-1">
+                    <div className="px-2 py-2">
+                      <div className="space-y-0.5">
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/account?tab=notifications');
@@ -337,7 +337,7 @@ export function UserShell() {
                           消息通知
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/account?tab=profile');
@@ -347,7 +347,7 @@ export function UserShell() {
                           个人资料
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/account?tab=orders');
@@ -357,7 +357,7 @@ export function UserShell() {
                           我的订单
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/account?tab=apps');
@@ -367,7 +367,7 @@ export function UserShell() {
                           我的应用
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/tickets');
@@ -378,11 +378,11 @@ export function UserShell() {
                         </DropdownMenuItem>
                       </div>
 
-                      <DropdownMenuSeparator className="my-3" />
+                      <DropdownMenuSeparator className="my-2" />
 
                       {isAdmin ? (
                         <DropdownMenuItem
-                          className="rounded-xl px-3 py-3 text-[15px]"
+                          className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
                             navigate('/admin');
@@ -393,10 +393,10 @@ export function UserShell() {
                         </DropdownMenuItem>
                       ) : null}
 
-                      <DropdownMenuSeparator className="my-3" />
+                      <DropdownMenuSeparator className="my-2" />
 
                       <DropdownMenuItem
-                        className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-xl px-3 py-3 text-[15px]"
+                        className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg px-3 py-2.5 text-[14px]"
                         onSelect={(event) => {
                           event.preventDefault();
                           logout();
@@ -505,27 +505,27 @@ export function UserShell() {
                       账户
                     </p>
                     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-                      <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
+                      <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-3 py-3">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
+                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border transition-colors"
                           onClick={() => navigate('/account?tab=profile')}
                           aria-label="打开账户设置"
                         >
                           <Settings className="h-4 w-4" />
                         </button>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-14 w-14 shadow-sm ring-4 ring-white/80">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-11 w-11 shadow-sm ring-[3px] ring-white/80">
                             <AvatarFallback className="text-sm">
                               {getInitials(accountName)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="text-foreground truncate text-base font-semibold tracking-tight">
+                            <p className="text-foreground truncate text-sm font-semibold tracking-tight">
                               {accountName}
                             </p>
                             {accountEmail ? (
-                              <p className="text-muted-foreground mt-1 truncate text-sm">
+                              <p className="text-muted-foreground mt-0.5 truncate text-xs">
                                 {accountEmail}
                               </p>
                             ) : null}
@@ -533,10 +533,10 @@ export function UserShell() {
                         </div>
                       </div>
 
-                      <div className="space-y-1 px-3 py-3">
+                      <div className="space-y-0.5 px-2 py-2">
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/account?tab=notifications')}
                         >
                           <Bell className="text-muted-foreground h-4 w-4" />
@@ -549,7 +549,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/account?tab=profile')}
                         >
                           <UserCircle2 className="text-muted-foreground h-4 w-4" />
@@ -557,7 +557,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/account?tab=orders')}
                         >
                           <ShoppingBag className="text-muted-foreground h-4 w-4" />
@@ -565,7 +565,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/account?tab=apps')}
                         >
                           <Package2 className="text-muted-foreground h-4 w-4" />
@@ -573,7 +573,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/tickets')}
                         >
                           <CircleHelp className="text-muted-foreground h-4 w-4" />
@@ -581,7 +581,7 @@ export function UserShell() {
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                           onClick={() => navigate('/account?tab=profile')}
                         >
                           <Settings className="text-muted-foreground h-4 w-4" />
@@ -590,7 +590,7 @@ export function UserShell() {
                         {isAdmin ? (
                           <button
                             type="button"
-                            className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition"
+                            className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
                             onClick={() => navigate('/admin')}
                           >
                             <LayoutDashboard className="text-muted-foreground h-4 w-4" />
@@ -600,7 +600,7 @@ export function UserShell() {
                         <div className="border-border mx-1 border-t" />
                         <button
                           type="button"
-                          className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[15px] font-medium transition-colors"
+                          className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition-colors"
                           onClick={logout}
                         >
                           <LogOut className="h-4 w-4" />
