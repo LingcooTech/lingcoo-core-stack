@@ -15,7 +15,6 @@ import { CodeBlock } from '@/components/shared/CodeBlock';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { extractToc, headingId } from '@/lib/markdown';
-import { cn } from '@/lib/utils';
 
 function resolveEditUrl(space: { meta?: Record<string, unknown> }, pagePath: string) {
   const editBase = space.meta?.editBaseUrl;
@@ -138,21 +137,7 @@ export function DocsSpacePage() {
           ) : null}
         </header>
 
-        <section
-          className={cn(
-            'prose prose-slate dark:prose-invert prose-lg max-w-none',
-            'prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight',
-            'prose-h2:mt-12 prose-h2:mb-4 prose-h2:text-[24px]',
-            'prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-[20px]',
-            'prose-p:leading-[1.85] prose-p:text-[16px]',
-            'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
-            'prose-blockquote:border-l-primary prose-blockquote:bg-muted/40 prose-blockquote:not-italic prose-blockquote:px-5 prose-blockquote:py-3 prose-blockquote:rounded-r-lg',
-            'prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.92em]',
-            'prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0',
-            'prose-img:rounded-xl prose-img:shadow-sm prose-img:my-8',
-            'prose-li:my-1.5 prose-li:leading-relaxed',
-          )}
-        >
+        <section className="content-body max-w-none">
           <ReactMarkdown
             rehypePlugins={[rehypeRaw]}
             remarkPlugins={[remarkGfm]}

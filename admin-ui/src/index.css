@@ -267,6 +267,187 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────
+ * Published content typography
+ * 公开站点长正文：应用介绍、内容中心文章、文档正文共用同一套阅读排版。
+ * 目标是中文/中英混排下保持稳定行宽、行高、段落节奏和层级。
+ * ────────────────────────────────────────────────────────────────── */
+@layer components {
+  .content-body {
+    color: hsl(var(--foreground));
+    font-size: 16px;
+    line-height: 1.78;
+    letter-spacing: 0.005em;
+    overflow-wrap: break-word;
+  }
+
+  .content-body-sm {
+    font-size: 14px;
+    line-height: 1.72;
+  }
+
+  .content-body-readable {
+    max-width: 760px;
+  }
+
+  .content-body :where(h1, h2, h3, h4, h5, h6) {
+    color: hsl(var(--foreground));
+    scroll-margin-top: 6rem;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.26;
+  }
+
+  .content-body :where(h1) {
+    margin: 0 0 1.1rem;
+    font-size: 2rem;
+  }
+
+  .content-body :where(h2) {
+    margin: 3rem 0 1rem;
+    padding-top: 0.2rem;
+    font-size: 1.625rem;
+  }
+
+  .content-body :where(h3) {
+    margin: 2.15rem 0 0.75rem;
+    font-size: 1.25rem;
+  }
+
+  .content-body :where(h4) {
+    margin: 1.7rem 0 0.65rem;
+    font-size: 1.0625rem;
+  }
+
+  .content-body :where(p) {
+    margin: 0 0 1.05rem;
+    color: hsl(var(--foreground) / 0.86);
+  }
+
+  .content-body :where(strong) {
+    color: hsl(var(--foreground));
+    font-weight: 650;
+  }
+
+  .content-body :where(a) {
+    color: hsl(var(--primary));
+    font-weight: 500;
+    text-decoration: none;
+    text-underline-offset: 0.18em;
+  }
+
+  .content-body :where(a:hover) {
+    text-decoration: underline;
+  }
+
+  .content-body :where(ul, ol) {
+    margin: 1rem 0 1.2rem;
+    padding-left: 1.35rem;
+    color: hsl(var(--foreground) / 0.86);
+  }
+
+  .content-body :where(ul) {
+    list-style: disc;
+  }
+
+  .content-body :where(ol) {
+    list-style: decimal;
+  }
+
+  .content-body :where(li) {
+    margin: 0.35rem 0;
+    padding-left: 0.15rem;
+  }
+
+  .content-body :where(li > p) {
+    margin: 0.25rem 0;
+  }
+
+  .content-body :where(blockquote) {
+    margin: 1.6rem 0;
+    border-left: 3px solid hsl(var(--primary));
+    border-radius: 0 0.75rem 0.75rem 0;
+    background: hsl(var(--muted) / 0.52);
+    padding: 0.9rem 1.1rem;
+    color: hsl(var(--foreground) / 0.82);
+    font-style: normal;
+  }
+
+  .content-body :where(blockquote p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .content-body :where(code):not(pre code) {
+    border-radius: 0.35rem;
+    background: hsl(var(--muted));
+    padding: 0.12rem 0.38rem;
+    color: hsl(var(--foreground));
+    font-size: 0.9em;
+    font-weight: 500;
+  }
+
+  .content-body :where(pre) {
+    margin: 1.35rem 0;
+  }
+
+  .content-body :where(img) {
+    margin: 1.75rem auto;
+    border-radius: 0.9rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .content-body :where(hr) {
+    margin: 2.25rem 0;
+    border: 0;
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  .content-body :where(table) {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    font-size: 0.94em;
+  }
+
+  .content-body :where(th, td) {
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .content-body :where(th) {
+    background: hsl(var(--muted) / 0.72);
+    color: hsl(var(--foreground));
+    font-weight: 650;
+  }
+
+  .content-body :where(tr:last-child td) {
+    border-bottom: 0;
+  }
+
+  .content-body > :where(:first-child) {
+    margin-top: 0;
+  }
+
+  .content-body > :where(:last-child) {
+    margin-bottom: 0;
+  }
+
+  .dark .content-body :where(p),
+  .dark .content-body :where(ul, ol) {
+    color: hsl(var(--foreground) / 0.82);
+  }
+
+  .dark .content-body :where(blockquote) {
+    background: hsl(var(--muted) / 0.42);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
  * 自定义动画（手写 @keyframes，原样保留）
  * 注意：这里的 .animate-fadeIn 与 @theme 中 --animate-fade-in 共存，
  * 现有代码全部用 className="animate-fadeIn"（驼峰），保留兼容。

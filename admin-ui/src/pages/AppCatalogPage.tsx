@@ -514,7 +514,7 @@ export function AppCatalogPage() {
             <div className="pt-5">
               {activeTab === 'intro' ? (
                 hasContent ? (
-                  <div className="prose prose-slate dark:prose-invert prose-headings:font-semibold prose-a:text-primary prose-p:leading-relaxed prose-p:text-[15px] max-w-none">
+                  <div className="content-body max-w-none">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                       {app.content}
                     </ReactMarkdown>
@@ -795,7 +795,7 @@ export function AppCatalogPage() {
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     技术说明
                   </h3>
-                  <div className="prose prose-sm dark:prose-invert text-muted-foreground mt-3 max-w-none">
+                  <div className="content-body content-body-sm mt-3 max-w-none">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                       {technicalNotes}
                     </ReactMarkdown>
@@ -839,7 +839,7 @@ export function AppCatalogPage() {
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     使用说明
                   </h3>
-                  <div className="prose prose-sm dark:prose-invert text-muted-foreground mt-3 max-w-none">
+                  <div className="content-body content-body-sm mt-3 max-w-none">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                       {usageInstructions}
                     </ReactMarkdown>
@@ -852,7 +852,7 @@ export function AppCatalogPage() {
                   <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
                     注意事项
                   </h3>
-                  <div className="prose prose-sm dark:prose-invert text-muted-foreground mt-3 max-w-none">
+                  <div className="content-body content-body-sm mt-3 max-w-none">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]}>
                       {notes}
                     </ReactMarkdown>
