@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowUpRight } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   activateUser,
@@ -51,6 +53,14 @@ import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole, roleLabels, type AppRole } from '@/lib/rbac';
 import { formatAmount, formatTime } from '@/lib/utils';
+
+function adminSearchHref(path: string, search: string) {
+  return `${path}?search=${encodeURIComponent(search)}`;
+}
+
+function observabilityHref(tab: 'events' | 'audits', search: string) {
+  return `/admin/observability?tab=${tab}&${tab}.search=${encodeURIComponent(search)}`;
+}
 
 export function UsersPage() {
   const qc = useQueryClient();
@@ -524,6 +534,7 @@ export function UsersPage() {
 
 function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
   const { activity } = detail;
+  const grantHref = `/admin/licenses?grantUserEmail=${encodeURIComponent(detail.email)}`;
 
   const orderColumns: Column<HydratedOrder>[] = [
     {
@@ -568,6 +579,19 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '跳转',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={adminSearchHref('/admin/orders', row.orderNo)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
+      ),
+    },
   ];
 
   const entitlementColumns: Column<HydratedEntitlement>[] = [
@@ -604,6 +628,19 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '处置',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={adminSearchHref('/admin/licenses', row.id)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
+      ),
+    },
   ];
 
   const installColumns: Column<HydratedInstall>[] = [
@@ -631,6 +668,19 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '跳转',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={adminSearchHref('/admin/installs', row.extensionInstallId)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
+      ),
+    },
   ];
 
   const eventColumns: Column<AdminEvent>[] = [
@@ -656,6 +706,19 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <span className="text-muted-foreground text-[11px] tabular-nums">
           {formatTime(row.eventTime)}
         </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '跳转',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={observabilityHref('events', row.eventName)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
       ),
     },
   ];
@@ -687,6 +750,19 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <span className="text-muted-foreground text-[11px] tabular-nums">
           {formatTime(row.createdAt)}
         </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '跳转',
+      className: 'w-[76px]',
+      cell: (row) => (
+        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
+          <Link to={observabilityHref('audits', row.action)}>
+            查看
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </Button>
       ),
     },
   ];
@@ -727,6 +803,25 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <MetricCard label="安装实例" value={activity.summary.installs} />
         <MetricCard label="审计日志" value={activity.summary.auditLogs} />
         <MetricCard label="产品事件" value={activity.summary.events} />
+      </section>
+
+      <section className="border-border bg-card rounded-xl border p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-foreground text-sm font-semibold">运营入口</h3>
+            <p className="text-muted-foreground mt-1 text-xs">
+              按当前用户过滤关联模块，进入后可继续执行订单同步、退款、授权撤销或排障。
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ActionLink to={adminSearchHref('/admin/orders', detail.email)} label="订单管理" />
+          <ActionLink to={adminSearchHref('/admin/licenses', detail.email)} label="授权明细" />
+          <ActionLink to={grantHref} label="发放授权" />
+          <ActionLink to={adminSearchHref('/admin/installs', detail.email)} label="安装实例" />
+          <ActionLink to={observabilityHref('events', detail.email)} label="事件流" />
+          <ActionLink to={observabilityHref('audits', detail.id)} label="审计日志" />
+        </div>
       </section>
 
       <DetailSection title={`最近订单 (${activity.orders.length})`}>
@@ -774,6 +869,17 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         />
       </DetailSection>
     </div>
+  );
+}
+
+function ActionLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Button size="sm" variant="outline" asChild className="h-8 text-xs">
+      <Link to={to}>
+        {label}
+        <ArrowUpRight className="h-3 w-3" />
+      </Link>
+    </Button>
   );
 }
 

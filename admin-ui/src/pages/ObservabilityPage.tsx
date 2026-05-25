@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BellRing, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   getObservabilitySummary,
   listAuditLogs,
@@ -49,6 +49,14 @@ import { toastErr, toastOk } from '@/lib/toast';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
+type ObservabilityTab = 'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits';
+
+function parseObservabilityTab(value: string | null): ObservabilityTab {
+  if (value === 'events' || value === 'webhooks' || value === 'jobs' || value === 'audits') {
+    return value;
+  }
+  return 'alerts';
+}
 
 function jobStatusTone(status: JobRun['status']) {
   if (status === 'succeeded') return 'ok';
@@ -74,8 +82,9 @@ function sourceLabel(source: 'database' | 'env' | 'none') {
 }
 
 export function ObservabilityPage() {
-  const [activeTab, setActiveTab] = useState<'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits'>(
-    'alerts',
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<ObservabilityTab>(() =>
+    parseObservabilityTab(searchParams.get('tab')),
   );
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -98,6 +107,25 @@ export function ObservabilityPage() {
   const deferredWebhookSearch = useDeferredValue(webhooksTable.search);
   const deferredJobSearch = useDeferredValue(jobsTable.search);
   const deferredAuditSearch = useDeferredValue(auditsTable.search);
+
+  useEffect(() => {
+    const nextTab = parseObservabilityTab(searchParams.get('tab'));
+    setActiveTab((current) => (current === nextTab ? current : nextTab));
+  }, [searchParams]);
+
+  function handleTabChange(value: string) {
+    const nextTab = parseObservabilityTab(value);
+    setActiveTab(nextTab);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextTab === 'alerts') next.delete('tab');
+        else next.set('tab', nextTab);
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const eventQuery = useMemo(
     () => ({
@@ -548,12 +576,7 @@ export function ObservabilityPage() {
           />
         </div>
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as 'alerts' | 'events' | 'webhooks' | 'jobs' | 'audits')
-          }
-        >
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="alerts">告警 ({summary?.alerts.length ?? 0})</TabsTrigger>
             <TabsTrigger value="events">事件流 ({totalEvents})</TabsTrigger>

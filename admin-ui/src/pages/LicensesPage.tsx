@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -56,6 +57,7 @@ function formatPlanInterval(interval: string | null | undefined) {
 
 export function LicensesPage() {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [entitlementToRevoke, setEntitlementToRevoke] = useState<HydratedEntitlement | null>(null);
   const { page, search, setPage, setSearch } = useTableState({ defaultPageSize: PAGE_SIZE });
   const deferredSearchQuery = useDeferredValue(search);
@@ -111,6 +113,14 @@ export function LicensesPage() {
     resolver: zodResolver(grantSchema),
     defaultValues: { userEmail: '', planCode: '', reason: '' },
   });
+  const grantUserEmail = searchParams.get('grantUserEmail');
+
+  useEffect(() => {
+    if (!grantUserEmail) return;
+    if (grantForm.getValues('userEmail') === grantUserEmail) return;
+    grantForm.setValue('userEmail', grantUserEmail, { shouldDirty: true, shouldValidate: true });
+  }, [grantForm, grantUserEmail]);
+
   const selectedPlanCode = grantForm.watch('planCode');
   const selectedPlan = useMemo(
     () => (plansData?.items ?? []).find((plan) => plan.code === selectedPlanCode) ?? null,
