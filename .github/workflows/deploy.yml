@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
-      acr_image: ${{ steps.vars.outputs.acr_image }}
 
     steps:
       - name: Checkout
@@ -100,12 +99,14 @@ jobs:
 
       - name: Mirror ACR image to GHCR
         run: |
+          : "${ACR_IMAGE:?ACR_IMAGE is required}"
+          : "${IMAGE_TAG:?IMAGE_TAG is required}"
           docker buildx imagetools create \
             --tag "${GHCR_IMAGE}:latest" \
             --tag "${GHCR_IMAGE}:${IMAGE_TAG}" \
             "${ACR_IMAGE}:${IMAGE_TAG}"
         env:
-          ACR_IMAGE: ${{ needs.build-and-push-acr.outputs.acr_image }}
+          ACR_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ needs.build-and-push-acr.outputs.image_tag }}
 
   deploy:

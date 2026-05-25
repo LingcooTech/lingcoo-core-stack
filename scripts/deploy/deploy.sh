@@ -14,6 +14,13 @@ DEPLOY_HEALTHCHECK_URL="${DEPLOY_HEALTHCHECK_URL:-http://127.0.0.1/ready}"
 FD_CORE_RUNTIME_IMAGE="${FD_CORE_IMAGE_NAME}:${IMAGE_TAG}"
 APP_VERSION="${IMAGE_TAG}"
 
+cleanup_docker_space() {
+  # Keep volumes intact; only remove stopped containers, unused images and builder cache.
+  docker container prune -f >/dev/null 2>&1 || true
+  docker image prune -af >/dev/null 2>&1 || true
+  docker builder prune -af >/dev/null 2>&1 || true
+}
+
 cd "${DEPLOY_PATH}"
 
 git fetch --prune origin
@@ -27,14 +34,18 @@ export FD_CORE_RUNTIME_IMAGE
 export APP_VERSION
 
 docker compose -f "${DEPLOY_COMPOSE_FILE}" config >/dev/null
-docker compose -f "${DEPLOY_COMPOSE_FILE}" pull api worker
+cleanup_docker_space
+if ! docker compose -f "${DEPLOY_COMPOSE_FILE}" pull api worker; then
+  cleanup_docker_space
+  docker compose -f "${DEPLOY_COMPOSE_FILE}" pull api worker
+fi
 docker compose -f "${DEPLOY_COMPOSE_FILE}" up -d postgres redis
 docker compose -f "${DEPLOY_COMPOSE_FILE}" run --rm --no-deps \
   -e HOME=/tmp \
   -e npm_config_cache=/tmp/.npm \
   api npm run db:migrate
 docker compose -f "${DEPLOY_COMPOSE_FILE}" up -d --remove-orphans api worker caddy
-docker image prune -f >/dev/null 2>&1 || true
+cleanup_docker_space
 
 attempt=1
 max_attempts=30
