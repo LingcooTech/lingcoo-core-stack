@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { OrderCard } from '@/components/portal/OrderCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { canSyncOrderStatus } from '@/lib/portal-labels';
 import { formatAmount } from '@/lib/utils';
 
 export function MyOrdersPage() {
@@ -27,7 +28,7 @@ export function MyOrdersPage() {
 
   const orders = ordersQuery.data?.items ?? [];
   const paidOrders = orders.filter((order) => order.status === 'paid');
-  const pendingOrders = orders.filter((order) => order.status !== 'paid');
+  const processingOrders = orders.filter((order) => canSyncOrderStatus(order.status));
   const paidTotal = paidOrders.reduce((sum, order) => sum + order.amount, 0);
 
   return (
@@ -40,7 +41,7 @@ export function MyOrdersPage() {
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
-          { label: '待同步', value: String(pendingOrders.length) },
+          { label: '处理中', value: String(processingOrders.length) },
         ].map((item) => (
           <div key={item.label} className="border-border bg-card rounded-xl border p-4 shadow-sm">
             <p className="text-muted-foreground text-sm font-medium">{item.label}</p>

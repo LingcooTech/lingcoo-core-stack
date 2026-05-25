@@ -2,6 +2,12 @@ import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types'
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  deploymentEnvironmentLabel,
+  deploymentStatusLabel,
+  deploymentTokenStatusLabel,
+  entitlementStatusLabel,
+} from '@/lib/portal-labels';
 import { cn, formatTime } from '@/lib/utils';
 
 function summarizeImageRef(value: string | null) {
@@ -156,15 +162,15 @@ export function DeploymentRecordCard({
           <div>
             <CardTitle className="text-lg tracking-tight">{deployment.label}</CardTitle>
             <CardDescription>
-              {deployment.app?.name ?? deployment.app?.code ?? 'Unknown App'}
+              {deployment.app?.name ?? deployment.app?.code ?? '未知应用'}
             </CardDescription>
           </div>
           <Badge variant={deployment.status === 'active' ? 'default' : 'secondary'}>
-            {deployment.status}
+            {deploymentStatusLabel(deployment.status)}
           </Badge>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{deployment.environment}</Badge>
+          <Badge variant="secondary">{deploymentEnvironmentLabel(deployment.environment)}</Badge>
           {deployment.serverHost ? (
             <Badge variant="secondary">{deployment.serverHost}</Badge>
           ) : null}
@@ -242,7 +248,7 @@ export function DeploymentRecordCard({
               onClick={() => onDeactivate(deployment)}
               disabled={deactivating}
             >
-              {deactivating ? '停用中...' : '停用 Deployment'}
+              {deactivating ? '停用中...' : '停用部署'}
             </Button>
           ) : null}
         </div>
@@ -252,7 +258,7 @@ export function DeploymentRecordCard({
             label="部署授权"
             value={
               deployment.entitlement?.plan
-                ? `${deployment.entitlement.plan.name} · ${deployment.entitlement.status}`
+                ? `${deployment.entitlement.plan.name} · ${entitlementStatusLabel(deployment.entitlement.status)}`
                 : '未绑定授权'
             }
           />
@@ -292,7 +298,7 @@ export function DeploymentRecordCard({
             mono
           />
           <InfoLine
-            label="当前 WS 镜像"
+            label="当前 WebSocket 镜像"
             value={summarizeImageRef(deployment.currentRuntimeImages.websocketImage)}
             mono
           />
@@ -321,11 +327,11 @@ export function DeploymentRecordCard({
         <div className="border-border bg-muted/85 rounded-lg border p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-foreground text-sm font-semibold tracking-tight">Deploy Token</p>
+              <p className="text-foreground text-sm font-semibold tracking-tight">安装令牌</p>
               <p className="text-muted-foreground mt-1 text-xs">
                 {deployment.latestToken
-                  ? `最近一次 token 尾号 ${deployment.latestToken.tokenHint}，状态 ${deployment.latestToken.status}`
-                  : '还没有签发 deploy token'}
+                  ? `最近一次令牌尾号 ${deployment.latestToken.tokenHint}，状态 ${deploymentTokenStatusLabel(deployment.latestToken.status)}`
+                  : '还没有签发安装令牌'}
               </p>
             </div>
             <Button
@@ -334,13 +340,12 @@ export function DeploymentRecordCard({
               onClick={() => onIssueToken(deployment.id)}
               disabled={issuing || deployment.status !== 'active'}
             >
-              {issuing ? '签发中...' : '签发新 Token'}
+              {issuing ? '签发中...' : '签发安装令牌'}
             </Button>
           </div>
           {deployment.status !== 'active' ? (
             <p className="mt-3 text-xs text-amber-700">
-              当前 deployment 已停用。需要重新使用时，请编辑后新建
-              deployment，或保留此记录仅作历史参考。
+              当前部署已停用。需要继续使用时，请新建部署，或保留此记录作为历史参考。
             </p>
           ) : null}
           {deployment.pendingAction ? (
@@ -370,35 +375,31 @@ export function DeploymentRecordCard({
 
           {issuedToken?.deploymentId === deployment.id ? (
             <div className="mt-4 space-y-3">
-              <InfoLine label="本次 Token 尾号" value={issuedToken.tokenHint} mono />
+              <InfoLine label="本次令牌尾号" value={issuedToken.tokenHint} mono />
               <InfoLine label="过期时间" value={formatTime(issuedToken.expiresAt)} />
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                  Remote Install
+                <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                  远程安装命令
                 </p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.remoteInstallCommand ?? '当前未生成远程安装命令'}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                  Exchange URL
-                </p>
+                <p className="text-muted-foreground text-xs font-bold tracking-wide">兑换地址</p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.exchangeUrl}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                  One-time Token
-                </p>
+                <p className="text-muted-foreground text-xs font-bold tracking-wide">一次性令牌</p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.token}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                  Exchange Curl
+                <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                  调试命令（cURL）
                 </p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.exchangeCurl}
@@ -415,9 +416,7 @@ export function DeploymentRecordCard({
 function InfoLine({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="border-border bg-card rounded-md border px-3 py-2">
-      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-        {label}
-      </p>
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">{label}</p>
       <p className={`text-foreground mt-1 text-sm ${mono ? 'font-mono' : 'font-medium'}`}>
         {value}
       </p>

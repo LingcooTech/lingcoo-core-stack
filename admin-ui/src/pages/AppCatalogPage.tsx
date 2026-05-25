@@ -288,7 +288,7 @@ export function AppCatalogPage() {
           />
         ) : null}
 
-        <div className="relative grid gap-6 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr),300px] xl:items-start">
+        <div className="relative grid gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr),300px] lg:items-start">
           <div className="space-y-5">
             <div className="grid gap-4 md:grid-cols-[112px,minmax(0,1fr)]">
               <div className="flex justify-center md:justify-start">
@@ -355,7 +355,7 @@ export function AppCatalogPage() {
             </div>
           </div>
 
-          <aside className="w-full xl:justify-self-end">
+          <aside className="w-full lg:justify-self-end">
             <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
               <div className="text-center">
                 <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">

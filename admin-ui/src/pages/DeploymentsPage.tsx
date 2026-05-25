@@ -238,8 +238,8 @@ export function DeploymentsPage() {
         setEditingDeployment(target);
         toast.error(
           missingLabels.length > 0
-            ? `当前 deployment 缺少必填配置：${missingLabels.join('、')}。请先补充后再签发 token。`
-            : '当前 deployment 缺少新的必填配置，请先补充后再签发 token。',
+            ? `当前部署缺少必填配置：${missingLabels.join('、')}。请先补充后再签发安装令牌。`
+            : '当前部署缺少新的必填配置，请先补充后再签发安装令牌。',
         );
         return;
       }
@@ -252,12 +252,12 @@ export function DeploymentsPage() {
     mutationFn: deactivateDeployment,
     onSuccess: (result) => {
       cacheDeployment(result);
-      toast.success('Deployment 已停用');
+      toast.success('部署已停用');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
       setIssuedToken(null);
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '停用 deployment 失败');
+      toast.error(err instanceof Error ? err.message : '停用部署失败');
     },
   });
 
@@ -401,7 +401,7 @@ export function DeploymentsPage() {
             {[
               { label: '可部署应用', value: String(deployableApps.length) },
               { label: '激活部署', value: String(activeDeployments.length) },
-              { label: '已签发 Token', value: String(tokenReadyDeployments.length) },
+              { label: '已签发令牌', value: String(tokenReadyDeployments.length) },
             ].map((item) => (
               <div
                 key={item.label}
@@ -467,7 +467,7 @@ export function DeploymentsPage() {
                     onDeactivate={(target) => {
                       if (
                         !window.confirm(
-                          `停用 ${target.label} 后，将释放 active deployment 名额，并使当前 token 失效。确认继续吗？`,
+                          `停用 ${target.label} 后，将释放可用部署名额，并使当前安装令牌失效。确认继续吗？`,
                         )
                       ) {
                         return;
@@ -504,7 +504,7 @@ export function DeploymentsPage() {
               <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-amber-800 dark:text-amber-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
-                  当前没有可用于新建 deployment
+                  当前没有可用于新建部署
                   的授权。已有部署记录仍保留在上方；需要新增客户站点时，请购买新的授权实例。
                 </span>
               </CardContent>

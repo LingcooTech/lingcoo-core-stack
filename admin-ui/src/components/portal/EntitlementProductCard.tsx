@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAccessLinkLabel } from '@/lib/app-catalog-ui';
+import { entitlementSourceLabel, entitlementStatusLabel } from '@/lib/portal-labels';
 import { formatTime } from '@/lib/utils';
 
 function formatFeatureName(name: string): string {
@@ -37,6 +38,9 @@ export function EntitlementProductCard({
 }) {
   const visibleAccessLinks = (accessLinks ?? []).filter((link) => link.url.trim());
   const stateLabel = accessState === 'active' ? '有效授权' : '授权已失效';
+  const activeItems = items.filter((item) => item.status === 'active');
+  const latestActive = activeItems[0] ?? null;
+  const validityLabel = latestActive?.expiresAt ? formatTime(latestActive.expiresAt) : '永不过期';
 
   return (
     <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm">
@@ -63,23 +67,21 @@ export function EntitlementProductCard({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="border-border bg-muted/80 rounded-lg border p-4">
-            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-              应用数量
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
+              当前状态
             </p>
-            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
-              {relatedApps.length || 1}
-            </p>
-          </div>
-          <div className="border-border bg-muted/80 rounded-lg border p-4">
-            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-              能力项
-            </p>
-            <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
-              {featureNames.length}
+            <p className="text-foreground mt-2 text-base font-semibold tracking-tight">
+              {stateLabel}
             </p>
           </div>
           <div className="border-border bg-muted/80 rounded-lg border p-4">
-            <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">有效期</p>
+            <p className="text-foreground mt-2 text-base font-semibold tracking-tight">
+              {latestActive ? validityLabel : '暂无有效授权'}
+            </p>
+          </div>
+          <div className="border-border bg-muted/80 rounded-lg border p-4">
+            <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
               授权记录
             </p>
             <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
@@ -88,18 +90,23 @@ export function EntitlementProductCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {featureNames.map((featureName) => (
-            <Badge
-              key={featureName}
-              variant="secondary"
-              className="inline-flex items-center gap-1.5"
-            >
-              <KeyRound className="text-muted-foreground h-3 w-3" />
-              {formatFeatureName(featureName)}
-            </Badge>
-          ))}
-        </div>
+        {featureNames.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-xs font-medium">已开通能力</p>
+            <div className="flex flex-wrap gap-2">
+              {featureNames.map((featureName) => (
+                <Badge
+                  key={featureName}
+                  variant="secondary"
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <KeyRound className="text-muted-foreground h-3 w-3" />
+                  {formatFeatureName(featureName)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="text-muted-foreground space-y-2 text-sm">
           {items.map((item) => (
@@ -109,16 +116,20 @@ export function EntitlementProductCard({
                   {item.plan?.name ?? item.plan?.code ?? '未命名能力'}
                 </span>
                 <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
-                  {item.status}
+                  {entitlementStatusLabel(item.status)}
                 </Badge>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <p className="text-xs">
+                  来源：{entitlementSourceLabel(item.sourceType, item.sourceOrder?.orderNo)}
+                </p>
                 <p className="text-xs">
                   生效时间：{item.startsAt ? formatTime(item.startsAt) : '立即生效'}
                 </p>
                 <p className="text-xs">
                   到期时间：{item.expiresAt ? formatTime(item.expiresAt) : '永不过期'}
                 </p>
+                <p className="text-xs">创建时间：{formatTime(item.createdAt)}</p>
               </div>
             </div>
           ))}
