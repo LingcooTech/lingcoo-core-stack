@@ -13,12 +13,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { BulkActionBar, BulkActionButton } from '@/components/shared/BulkActionBar';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { DataTable, type Column } from '@/components/shared/DataTable';
 import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
 import { JsonViewer } from '@/components/shared/JsonViewer';
 import { PaginationBar } from '@/components/shared/PaginationBar';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { useTableState } from '@/hooks/useTableState';
+import {
+  checkoutActionTypeLabel,
+  checkoutSessionStatusLabel,
+  entitlementStatusLabel,
+  orderStatusLabel,
+  paymentProviderLabel,
+} from '@/lib/portal-labels';
 import { toastErr, toastOk, toastWarn } from '@/lib/toast';
 import { formatAmount, formatTime } from '@/lib/utils';
 
@@ -40,6 +48,7 @@ const PROVIDER_OPTIONS = [
 
 type OrderStatus = (typeof STATUS_OPTIONS)[number]['value'];
 type OrderProvider = (typeof PROVIDER_OPTIONS)[number]['value'];
+type PendingOrderAction = { type: 'cancel' | 'refund'; orderNo: string; amountLabel?: string };
 
 function adminSearchHref(path: string, search: string) {
   return `${path}?search=${encodeURIComponent(search)}`;
@@ -61,6 +70,7 @@ export function OrdersPage() {
 
   const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const [pendingAction, setPendingAction] = useState<PendingOrderAction | null>(null);
 
   const qc = useQueryClient();
   // 后端 status/provider 当前为单值；多选时取首项，UI 仍允许多选以便未来扩展
@@ -87,10 +97,7 @@ export function OrdersPage() {
   const reconcileMutation = useMutation({
     mutationFn: reconcileOrder,
     onSuccess: (result, orderNo) => {
-      toastOk(
-        `订单已同步: ${orderNo}`,
-        `${result.reconciliation.status} · ${result.reconciliation.reason}`,
-      );
+      toastOk(`订单已同步: ${orderNo}`, result.reconciliation.reason);
       void qc.invalidateQueries({ queryKey: ['orders'] });
       if (selectedOrderNo === orderNo) {
         void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
@@ -103,6 +110,7 @@ export function OrdersPage() {
     mutationFn: cancelOrder,
     onSuccess: (result, orderNo) => {
       toastWarn(`订单已关闭: ${orderNo}`, result.action.reason);
+      setPendingAction(null);
       void qc.invalidateQueries({ queryKey: ['orders'] });
       if (selectedOrderNo === orderNo) {
         void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
@@ -116,6 +124,7 @@ export function OrdersPage() {
     onSuccess: (result, orderNo) => {
       const title = result.action.status === 'refunding' ? '退款已受理' : '订单已退款';
       toastWarn(`${title}: ${orderNo}`, result.action.reason);
+      setPendingAction(null);
       void qc.invalidateQueries({ queryKey: ['orders'] });
       if (selectedOrderNo === orderNo) {
         void qc.invalidateQueries({ queryKey: ['order-detail', orderNo] });
@@ -190,10 +199,10 @@ export function OrdersPage() {
       header: '状态',
       cell: (row) => (
         <div className="inline-flex items-center gap-1.5">
-          <StatusPill tone={statusToTone(row.status)} label={row.status} />
+          <StatusPill tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
           {row.provider ? (
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wide">
-              {row.provider}
+            <span className="text-muted-foreground text-[10px]">
+              {paymentProviderLabel(row.provider)}
             </span>
           ) : null}
         </div>
@@ -336,7 +345,7 @@ export function OrdersPage() {
                     cancelMutation.isPending ||
                     reconcileMutation.isPending
                   }
-                  onClick={() => cancelMutation.mutate(selectedOrderNo)}
+                  onClick={() => setPendingAction({ type: 'cancel', orderNo: selectedOrderNo })}
                 >
                   {cancelMutation.isPending ? '关闭中' : '关闭订单'}
                 </Button>
@@ -348,7 +357,15 @@ export function OrdersPage() {
                     refundMutation.isPending ||
                     reconcileMutation.isPending
                   }
-                  onClick={() => refundMutation.mutate(selectedOrderNo)}
+                  onClick={() =>
+                    setPendingAction({
+                      type: 'refund',
+                      orderNo: selectedOrderNo,
+                      amountLabel: detail
+                        ? formatAmount(detail.item.amount, detail.item.currency)
+                        : undefined,
+                    })
+                  }
                 >
                   {refundMutation.isPending
                     ? '退款中'
@@ -373,6 +390,31 @@ export function OrdersPage() {
           </SheetContent>
         </Sheet>
       )}
+
+      <ConfirmActionDialog
+        open={!!pendingAction}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null);
+        }}
+        title={pendingAction?.type === 'refund' ? '确认发起退款？' : '确认关闭订单？'}
+        description={
+          pendingAction?.type === 'refund'
+            ? `将对订单 ${pendingAction.orderNo} 发起全额退款${pendingAction.amountLabel ? `（${pendingAction.amountLabel}）` : ''}。退款可能影响对应授权状态，请确认已完成必要核对。`
+            : pendingAction
+              ? `将关闭订单 ${pendingAction.orderNo}。关闭后用户需要重新发起购买才能继续支付。`
+              : undefined
+        }
+        confirmText={pendingAction?.type === 'refund' ? '确认退款' : '确认关闭'}
+        isConfirming={cancelMutation.isPending || refundMutation.isPending}
+        onConfirm={() => {
+          if (!pendingAction) return;
+          if (pendingAction.type === 'refund') {
+            refundMutation.mutate(pendingAction.orderNo);
+            return;
+          }
+          cancelMutation.mutate(pendingAction.orderNo);
+        }}
+      />
     </div>
   );
 }
@@ -385,9 +427,11 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
         <InfoBlock
           label="状态"
-          render={<StatusPill tone={statusToTone(item.status)} label={item.status} />}
+          render={
+            <StatusPill tone={statusToTone(item.status)} label={orderStatusLabel(item.status)} />
+          }
         />
-        <InfoBlock label="渠道" value={item.provider ?? '—'} />
+        <InfoBlock label="渠道" value={paymentProviderLabel(item.provider)} />
         <InfoBlock
           label="金额"
           value={formatAmount(item.amount, item.currency)}
@@ -420,12 +464,18 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       </section>
 
       {item.checkoutSession && (
-        <DetailSection title="Checkout Session">
+        <DetailSection title="支付会话">
           <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
             <InfoBlock label="Code" value={item.checkoutSession.sessionCode} mono />
-            <InfoBlock label="状态" value={item.checkoutSession.status} />
-            <InfoBlock label="渠道" value={item.checkoutSession.provider ?? '—'} />
-            <InfoBlock label="动作" value={item.checkoutSession.actionType ?? '—'} />
+            <InfoBlock
+              label="状态"
+              value={checkoutSessionStatusLabel(item.checkoutSession.status)}
+            />
+            <InfoBlock label="渠道" value={paymentProviderLabel(item.checkoutSession.provider)} />
+            <InfoBlock
+              label="动作"
+              value={checkoutActionTypeLabel(item.checkoutSession.actionType)}
+            />
           </div>
           <div className="mt-3">
             <JsonViewer data={item.checkoutSession.actionPayload} label="actionPayload" />
@@ -440,7 +490,10 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
               <div key={attempt.id} className="border-border rounded-md border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[12px] font-semibold">{attempt.attemptNo}</span>
-                  <StatusPill tone={statusToTone(attempt.status)} label={attempt.status} />
+                  <StatusPill
+                    tone={statusToTone(attempt.status)}
+                    label={checkoutSessionStatusLabel(attempt.status)}
+                  />
                   <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
                     {formatTime(attempt.createdAt)}
                   </span>
@@ -471,7 +524,10 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
                 title="在授权管理中查看"
               >
                 <span className="text-foreground font-mono">{e.plan?.code ?? e.id}</span>
-                <StatusPill tone={statusToTone(e.status)} label={e.status} />
+                <StatusPill
+                  tone={statusToTone(e.status)}
+                  label={entitlementStatusLabel(e.status)}
+                />
                 <ArrowUpRight className="text-muted-foreground/60 h-3 w-3" />
               </Link>
             ))}

@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAppDeliveryMode } from '@/lib/app-delivery';
 import { getAccessLinks } from '@/lib/app-catalog-ui';
+import { canSyncOrderStatus } from '@/lib/portal-labels';
 import { normalizeRole, roleLabels } from '@/lib/rbac';
 import { cn, formatAmount, formatTime, getInitials } from '@/lib/utils';
 
@@ -365,7 +366,7 @@ function AccountOrdersTab() {
 
   const orders = ordersQuery.data?.items ?? [];
   const paidOrders = orders.filter((order) => order.status === 'paid');
-  const pendingOrders = orders.filter((order) => order.status !== 'paid');
+  const processingOrders = orders.filter((order) => canSyncOrderStatus(order.status));
 
   return (
     <div className="space-y-6">
@@ -373,7 +374,7 @@ function AccountOrdersTab() {
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
-          { label: '待同步', value: String(pendingOrders.length) },
+          { label: '处理中', value: String(processingOrders.length) },
         ].map((item) => (
           <div key={item.label} className="px-5 py-4">
             <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">

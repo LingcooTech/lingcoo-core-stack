@@ -4,7 +4,7 @@ export function renderCheckoutPage(sessionCode: string) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FD Core Checkout</title>
+    <title>FD Core Stack 结算</title>
     <style>
       :root {
         --bg: #f3efe6;
@@ -235,7 +235,7 @@ export function renderCheckoutPage(sessionCode: string) {
     <div class="shell">
       <section class="hero">
         <div class="panel hero-main">
-          <span class="eyebrow">Hosted Checkout</span>
+          <span class="eyebrow">安全结算</span>
           <h1 id="title">载入支付会话中</h1>
           <p id="subtitle" class="muted">正在从中台读取当前结算状态。</p>
         </div>
@@ -243,7 +243,7 @@ export function renderCheckoutPage(sessionCode: string) {
           <h2>状态</h2>
           <div id="status-badge" class="status pending">载入中</div>
           <div class="facts">
-            <div class="fact"><label>Session</label><strong id="session-code">-</strong></div>
+            <div class="fact"><label>会话</label><strong id="session-code">-</strong></div>
             <div class="fact"><label>订单号</label><strong id="order-no">-</strong></div>
             <div class="fact"><label>金额</label><strong id="amount">-</strong></div>
           </div>
@@ -302,9 +302,27 @@ export function renderCheckoutPage(sessionCode: string) {
         return date.toLocaleString('zh-CN', { hour12: false });
       }
 
+      function statusLabel(status) {
+        if (status === 'pending') return '待支付';
+        if (status === 'paid') return '已支付';
+        if (status === 'failed') return '支付失败';
+        if (status === 'cancelled') return '已取消';
+        if (status === 'expired') return '已过期';
+        return status || '未知状态';
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
       function setStatus(status) {
         const badge = byId('status-badge');
-        badge.textContent = status;
+        badge.textContent = statusLabel(status);
         badge.className = 'status ' + status;
       }
 
@@ -356,7 +374,7 @@ export function renderCheckoutPage(sessionCode: string) {
             '<div style="text-align:center;">' +
             '<img alt="支付二维码" src="' + data.paymentAction.qrCodeDataUrl + '" />' +
             '<p class="muted" style="margin-top:16px;">请使用支付宝或微信扫码完成支付。</p>' +
-            '<pre>' + data.paymentAction.qrCodeText + '</pre>' +
+            '<pre>' + escapeHtml(data.paymentAction.qrCodeText) + '</pre>' +
             '</div>';
           return;
         }
@@ -375,11 +393,6 @@ export function renderCheckoutPage(sessionCode: string) {
           window.open(data.paymentAction.url, '_blank', 'noopener,noreferrer');
           state.hasOpenedRedirect = true;
         });
-
-        if (!state.hasOpenedRedirect) {
-          window.open(data.paymentAction.url, '_blank', 'noopener,noreferrer');
-          state.hasOpenedRedirect = true;
-        }
       }
 
       async function fetchJson(path, init) {
@@ -455,7 +468,7 @@ export function renderCheckoutPage(sessionCode: string) {
           await refreshStatus();
         } catch (error) {
           byId('title').textContent = '结算页加载失败';
-          byId('subtitle').textContent = error instanceof Error ? error.message : 'Unknown error';
+          byId('subtitle').textContent = error instanceof Error ? error.message : '未知错误';
           setStatus('failed');
           byId('payment-content').innerHTML = '<p class="muted">无法读取当前结算会话，请返回应用重新发起。</p>';
           return;

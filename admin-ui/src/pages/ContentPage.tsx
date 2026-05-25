@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useTableState } from '@/hooks/useTableState';
+import { recordStatusLabel } from '@/lib/portal-labels';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -159,7 +160,9 @@ export function ContentPage() {
     {
       key: 'status',
       header: '状态',
-      cell: (row) => <StatusPill tone={getStatusTone(row.status)} label={row.status} />,
+      cell: (row) => (
+        <StatusPill tone={getStatusTone(row.status)} label={recordStatusLabel(row.status)} />
+      ),
     },
     {
       key: 'publishedAt',

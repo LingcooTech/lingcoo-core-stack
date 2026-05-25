@@ -11,6 +11,7 @@ import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { useTableState } from '@/hooks/useTableState';
+import { recordStatusLabel } from '@/lib/portal-labels';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -87,7 +88,7 @@ export function InstallsPage() {
       header: '状态',
       cell: (row) => (
         <div className="flex flex-col gap-1">
-          <StatusPill tone={statusToTone(row.status)} label={row.status} />
+          <StatusPill tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
           <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
         </div>
       ),

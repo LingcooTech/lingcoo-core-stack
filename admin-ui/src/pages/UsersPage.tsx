@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/sheet';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
+import { entitlementStatusLabel, orderStatusLabel, recordStatusLabel } from '@/lib/portal-labels';
 import { hasPermission, normalizeRole, roleLabels, type AppRole } from '@/lib/rbac';
 import { formatAmount, formatTime } from '@/lib/utils';
 
@@ -283,7 +284,10 @@ export function UsersPage() {
       header: '账户 / 邮箱',
       cell: (row) => (
         <div className="inline-flex items-center gap-1.5">
-          <StatusPill tone={row.status === 'active' ? 'ok' : 'warn'} label={row.status} />
+          <StatusPill
+            tone={row.status === 'active' ? 'ok' : 'warn'}
+            label={recordStatusLabel(row.status)}
+          />
           <StatusPill
             tone={row.emailVerified ? 'ok' : 'warn'}
             label={row.emailVerified ? '已验证' : '未验证'}
@@ -620,7 +624,9 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'status',
       header: '状态',
-      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+      cell: (row) => (
+        <StatusPill tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
+      ),
     },
     {
       key: 'amount',
@@ -678,7 +684,9 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'status',
       header: '状态',
-      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+      cell: (row) => (
+        <StatusPill tone={statusToTone(row.status)} label={entitlementStatusLabel(row.status)} />
+      ),
     },
     {
       key: 'expiresAt',
@@ -718,7 +726,9 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'status',
       header: '状态',
-      cell: (row) => <StatusPill tone={statusToTone(row.status)} label={row.status} />,
+      cell: (row) => (
+        <StatusPill tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
+      ),
     },
     {
       key: 'lastSeenAt',
@@ -904,7 +914,12 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         />
         <InfoBlock
           label="账户状态"
-          render={<StatusPill tone={statusToTone(detail.status)} label={detail.status} />}
+          render={
+            <StatusPill
+              tone={statusToTone(detail.status)}
+              label={recordStatusLabel(detail.status)}
+            />
+          }
         />
         <InfoBlock
           label="邮箱验证"

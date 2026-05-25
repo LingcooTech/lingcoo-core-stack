@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useTableState } from '@/hooks/useTableState';
+import { notificationLevelLabel, notificationStatusLabel } from '@/lib/portal-labels';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -163,7 +164,7 @@ export function NotificationsPage() {
       cell: (row) => (
         <div className="space-y-1.5">
           <StatusPill tone={categoryTone(row.category)} label={categoryLabel(row.category)} />
-          <StatusPill tone={levelTone(row.level)} label={row.level} />
+          <StatusPill tone={levelTone(row.level)} label={notificationLevelLabel(row.level)} />
         </div>
       ),
     },
@@ -172,8 +173,8 @@ export function NotificationsPage() {
       header: '状态',
       cell: (row) => (
         <div className="space-y-1">
-          <StatusPill tone={statusTone(row.status)} label={row.status} />
-          <p className="text-muted-foreground text-[11px]">{row.sourceEventName ?? 'manual'}</p>
+          <StatusPill tone={statusTone(row.status)} label={notificationStatusLabel(row.status)} />
+          <p className="text-muted-foreground text-[11px]">{row.sourceEventName ?? '手动发布'}</p>
         </div>
       ),
     },
@@ -265,7 +266,7 @@ export function NotificationsPage() {
                       <SelectItem value="info">信息</SelectItem>
                       <SelectItem value="success">成功</SelectItem>
                       <SelectItem value="warning">提醒</SelectItem>
-                      <SelectItem value="error">警告</SelectItem>
+                      <SelectItem value="error">错误</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

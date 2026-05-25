@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { useTableState } from '@/hooks/useTableState';
+import { entitlementSourceLabel, entitlementStatusLabel } from '@/lib/portal-labels';
 import { formatAmount, formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -182,8 +183,10 @@ export function LicensesPage() {
       header: '状态',
       cell: (row) => (
         <div className="flex flex-col gap-1">
-          <StatusPill tone={statusToTone(row.status)} label={row.status} />
-          <span className="text-muted-foreground text-[10px]">{row.sourceType}</span>
+          <StatusPill tone={statusToTone(row.status)} label={entitlementStatusLabel(row.status)} />
+          <span className="text-muted-foreground text-[10px]">
+            {entitlementSourceLabel(row.sourceType)}
+          </span>
         </div>
       ),
     },
@@ -199,7 +202,9 @@ export function LicensesPage() {
               {row.sourceId ?? '—'}
             </p>
           )}
-          <p className="text-muted-foreground text-[10px]">{row.sourceType}</p>
+          <p className="text-muted-foreground text-[10px]">
+            {entitlementSourceLabel(row.sourceType)}
+          </p>
         </div>
       ),
     },

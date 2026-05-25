@@ -45,6 +45,7 @@ interface DataTableProps<T> {
   enableRowSelection?: boolean;
   selectedRowIds?: ReadonlySet<string>;
   onSelectionChange?: (selected: Set<string>) => void;
+  minTableWidth?: string;
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -73,6 +74,7 @@ export function DataTable<T extends RowData>({
   enableRowSelection,
   selectedRowIds,
   onSelectionChange,
+  minTableWidth = '720px',
 }: DataTableProps<T>) {
   const tableColumns = useMemo<ColumnDef<T>[]>(
     () =>
@@ -123,7 +125,7 @@ export function DataTable<T extends RowData>({
   const totalCols = columns.length + (enableRowSelection ? 1 : 0);
 
   return (
-    <Table>
+    <Table style={{ minWidth: minTableWidth }}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           {enableRowSelection && (

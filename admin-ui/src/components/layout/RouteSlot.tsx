@@ -9,11 +9,11 @@ function RouteLoading() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-xl space-y-4">
-        <div className="h-7 w-1/3 animate-pulse rounded-md bg-slate-200/70" />
-        <div className="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/70" />
+        <div className="bg-muted h-7 w-1/3 animate-pulse rounded-md" />
+        <div className="bg-muted h-4 w-2/3 animate-pulse rounded-md" />
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-200/60" />
+            <div key={i} className="bg-muted h-20 animate-pulse rounded-xl" />
           ))}
         </div>
       </div>
@@ -24,12 +24,12 @@ function RouteLoading() {
 function RouteErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+      <div className="border-destructive/25 bg-card w-full max-w-md rounded-xl border p-6 text-center shadow-sm">
+        <div className="bg-destructive/10 text-destructive mx-auto flex h-12 w-12 items-center justify-center rounded-full">
           <AlertTriangle className="h-6 w-6" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-red-900">页面加载失败</h2>
-        <p className="mt-2 break-all text-sm text-red-700">
+        <h2 className="text-foreground mt-4 text-lg font-semibold">页面加载失败</h2>
+        <p className="text-muted-foreground mt-2 break-all text-sm">
           {error instanceof Error ? error.message : '未知错误，请稍后重试或返回首页。'}
         </p>
         <div className="mt-5 flex justify-center gap-2">

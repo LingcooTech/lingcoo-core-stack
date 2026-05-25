@@ -475,7 +475,7 @@ export function DeploymentWizard({
                     {selectedApp.entitlements.map((entitlement) => (
                       <SelectItem key={entitlement.id} value={entitlement.id}>
                         {entitlement.planName} · 已用 {entitlement.activeDeploymentCount}/
-                        {entitlement.maxActiveDeployments} 个 active deployment
+                        {entitlement.maxActiveDeployments} 个部署名额
                         {entitlement.boundDomain ? ` · 已绑定 ${entitlement.boundDomain}` : ''}
                       </SelectItem>
                     ))}
@@ -679,7 +679,7 @@ export function DeploymentWizard({
                         </SelectContent>
                       </Select>
                       <p className="text-muted-foreground text-xs">
-                        `manual` 只记录新镜像可用状态，不自动切换；`auto` 会在收到新镜像时直接应用。
+                        手动更新只记录新镜像可用状态，不自动切换；自动更新会在收到新镜像时直接应用。
                       </p>
                     </div>
                   </div>
@@ -808,8 +808,8 @@ export function DeploymentWizard({
             {tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                    Remote Install Command
+                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                    远程安装命令
                   </p>
                   <div className="relative">
                     <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 pr-10 text-xs text-slate-100">
@@ -833,15 +833,15 @@ export function DeploymentWizard({
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="border-border bg-card rounded-md border px-3 py-2">
-                    <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
-                      Token 尾号
+                    <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
+                      令牌尾号
                     </p>
                     <p className="text-foreground mt-1 font-mono text-sm">
                       {tokenResult.tokenHint}
                     </p>
                   </div>
                   <div className="border-border bg-card rounded-md border px-3 py-2">
-                    <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+                    <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
                       过期时间
                     </p>
                     <p className="text-foreground mt-1 text-sm font-medium">
@@ -851,17 +851,15 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                    Exchange URL
-                  </p>
+                  <p className="text-muted-foreground text-xs font-bold tracking-wide">兑换地址</p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.exchangeUrl}
                   </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                    One-time Token
+                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                    一次性令牌
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.token}
@@ -869,8 +867,8 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                    Exchange Curl
+                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                    调试命令（cURL）
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.exchangeCurl}

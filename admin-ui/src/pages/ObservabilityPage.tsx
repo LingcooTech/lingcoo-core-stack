@@ -44,6 +44,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
+import { operationStatusLabel, paymentProviderLabel } from '@/lib/portal-labels';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { toastErr, toastOk } from '@/lib/toast';
 import { formatTime } from '@/lib/utils';
@@ -326,9 +327,9 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">
-            {row.provider} / {row.type}
+            {paymentProviderLabel(row.provider)} / {row.type}
           </p>
-          <StatusPill tone="neutral" label={row.provider} className="mt-1" />
+          <StatusPill tone="neutral" label={paymentProviderLabel(row.provider)} className="mt-1" />
         </div>
       ),
     },
@@ -337,7 +338,7 @@ export function ObservabilityPage() {
       header: '状态',
       cell: (row) => (
         <div className="flex flex-col gap-1">
-          <StatusPill tone={statusToTone(row.status)} label={row.status} />
+          <StatusPill tone={statusToTone(row.status)} label={operationStatusLabel(row.status)} />
           <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
         </div>
       ),
@@ -376,7 +377,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.kind}</p>
-          <p className="text-muted-foreground text-[10px]">queue: {row.queue}</p>
+          <p className="text-muted-foreground text-[10px]">队列：{row.queue}</p>
           {row.relatedEntityType && row.relatedEntityId ? (
             <p className="text-muted-foreground text-[10px]">
               {row.relatedEntityType}: {row.relatedEntityId}
@@ -390,9 +391,9 @@ export function ObservabilityPage() {
       header: '状态',
       cell: (row) => (
         <div className="space-y-1">
-          <StatusPill tone={jobStatusTone(row.status)} label={row.status} />
+          <StatusPill tone={jobStatusTone(row.status)} label={operationStatusLabel(row.status)} />
           <p className="text-muted-foreground text-[10px]">
-            attempts {row.attempts} / {row.maxAttempts}
+            尝试 {row.attempts} / {row.maxAttempts}
           </p>
         </div>
       ),
@@ -402,15 +403,15 @@ export function ObservabilityPage() {
       header: '时间',
       cell: (row) => (
         <div className="space-y-0.5 text-[10px]">
-          <p>created: {formatTime(row.createdAt)}</p>
+          <p>创建：{formatTime(row.createdAt)}</p>
           <p className="text-muted-foreground">
-            next:{' '}
+            下次执行：{' '}
             {row.status === 'pending' || row.status === 'failed'
               ? formatTime(row.availableAt)
               : '—'}
           </p>
           <p className="text-muted-foreground">
-            done: {row.finishedAt ? formatTime(row.finishedAt) : '—'}
+            完成：{row.finishedAt ? formatTime(row.finishedAt) : '—'}
           </p>
         </div>
       ),
@@ -420,8 +421,8 @@ export function ObservabilityPage() {
       header: '来源',
       cell: (row) => (
         <div className="space-y-0.5 text-[10px]">
-          <p className="font-mono">{row.createdByUserId ?? 'system'}</p>
-          <p className="text-muted-foreground">worker: {row.lockedBy ?? '—'}</p>
+          <p className="font-mono">{row.createdByUserId ?? '系统'}</p>
+          <p className="text-muted-foreground">Worker：{row.lockedBy ?? '—'}</p>
         </div>
       ),
     },
