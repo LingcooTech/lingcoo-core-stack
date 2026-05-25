@@ -296,7 +296,7 @@ export function UserShell() {
                     className="border-border bg-card w-[280px] rounded-xl border p-0 shadow-lg"
                   >
                     <DropdownMenuLabel className="px-0 py-0">
-                      <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4">
+                      <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4 dark:from-slate-800 dark:to-slate-900/80">
                         <button
                           type="button"
                           className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
@@ -310,7 +310,7 @@ export function UserShell() {
                           <Settings className="h-4 w-4" />
                         </button>
                         <div className="flex flex-col items-center text-center">
-                          <Avatar className="h-14 w-14 shadow-sm ring-[3px] ring-white/80">
+                          <Avatar className="h-14 w-14 shadow-sm ring-[3px] ring-white/80 dark:ring-slate-700">
                             <AvatarFallback className="text-base">
                               {getInitials(accountName)}
                             </AvatarFallback>
@@ -505,7 +505,7 @@ export function UserShell() {
                       账户
                     </p>
                     <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-                      <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-3 py-3">
+                      <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-3 py-3 dark:from-slate-800 dark:to-slate-900/80">
                         <button
                           type="button"
                           className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border transition-colors"
@@ -515,7 +515,7 @@ export function UserShell() {
                           <Settings className="h-4 w-4" />
                         </button>
                         <div className="flex items-center gap-2.5">
-                          <Avatar className="h-11 w-11 shadow-sm ring-[3px] ring-white/80">
+                          <Avatar className="h-11 w-11 shadow-sm ring-[3px] ring-white/80 dark:ring-slate-700">
                             <AvatarFallback className="text-sm">
                               {getInitials(accountName)}
                             </AvatarFallback>

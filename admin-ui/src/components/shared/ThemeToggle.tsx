@@ -32,7 +32,10 @@ export function ThemeToggle({ variant = 'ghost', className }: ThemeToggleProps) 
           type="button"
           variant={variant}
           size="icon"
-          className={cn('h-9 w-9 rounded-full', className)}
+          className={cn(
+            'h-9 w-9 rounded-full focus-visible:ring-0 focus-visible:ring-offset-0',
+            className,
+          )}
           aria-label="切换主题"
         >
           <Sun className="size-4 dark:hidden" />
