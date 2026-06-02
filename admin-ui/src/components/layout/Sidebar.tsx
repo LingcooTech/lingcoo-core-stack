@@ -124,7 +124,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                 className={cn(
                   'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
                   collapsed
-                    ? 'absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
+                    ? 'bg-muted/35 absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
                     : 'ml-auto h-7 w-7 shrink-0',
                 )}
                 onClick={onToggle}
@@ -133,7 +133,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                 <PanelLeft className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={8}>
+            <TooltipContent side="right" sideOffset={8}>
               {collapsed ? '打开边栏' : '收起边栏'}
             </TooltipContent>
           </Tooltip>
@@ -141,9 +141,9 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
       </div>
 
       {/* Nav */}
-      <ScrollArea className="flex-1 px-2">
+      <ScrollArea className={cn('flex-1 px-2', collapsed && 'pt-2')}>
         {visibleNavigationGroups.map((group) => (
-          <div key={group.label} className="mb-3">
+          <div key={group.label} className={cn(collapsed ? 'mb-2 space-y-2' : 'mb-3')}>
             {!collapsed && (
               <p className="text-muted-foreground/60 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
                 {group.label}
@@ -158,10 +158,10 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   key={key}
                   to={meta.href}
                   className={cn(
-                    'relative mb-0.5 flex items-center rounded-md no-underline transition-colors',
+                    'relative flex items-center rounded-md no-underline transition-colors',
                     collapsed
-                      ? 'h-10 justify-center px-1'
-                      : 'h-9 gap-2.5 px-2.5 text-[13px] font-medium',
+                      ? 'mb-0 h-10 justify-center px-1'
+                      : 'mb-0.5 h-9 gap-2.5 px-2.5 text-[13px] font-medium',
                     isActive
                       ? 'bg-card text-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-card/60 hover:text-foreground',
