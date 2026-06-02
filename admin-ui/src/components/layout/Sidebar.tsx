@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   CircleHelp,
   LayoutDashboard,
   LogOut,
   Package2,
+  PanelLeft,
   Settings,
   ShoppingBag,
   UserCircle2,
@@ -85,7 +84,14 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
           collapsed ? 'space-y-0' : 'flex items-center gap-2.5',
         )}
       >
-        <div className={cn('flex items-center gap-2.5', collapsed ? 'justify-center' : 'min-w-0')}>
+        <Link
+          to="/"
+          className={cn(
+            'flex items-center gap-2.5 no-underline',
+            collapsed ? 'justify-center' : 'min-w-0 flex-1',
+          )}
+          aria-label="返回控制台"
+        >
           <div className="shrink-0">
             {siteSettings?.logoUrl ? (
               <img
@@ -107,27 +113,30 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
               <p className="text-muted-foreground/80 mt-0.5 text-[10px]">Admin Console</p>
             </div>
           )}
-        </div>
+        </Link>
         {showCollapseToggle ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
-              collapsed
-                ? 'border-border bg-card absolute inset-x-3 top-4 z-10 h-8 w-auto border opacity-0 shadow-sm transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
-                : 'ml-auto h-7 w-7 shrink-0',
-            )}
-            onClick={onToggle}
-            aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-          >
-            {collapsed ? (
-              <ChevronsRight className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronsLeft className="h-3.5 w-3.5" />
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
+                  collapsed
+                    ? 'absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 transition-opacity duration-150 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
+                    : 'ml-auto h-7 w-7 shrink-0',
+                )}
+                onClick={onToggle}
+                aria-label={collapsed ? '打开边栏' : '收起边栏'}
+              >
+                <PanelLeft className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={8}>
+              {collapsed ? '打开边栏' : '收起边栏'}
+            </TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
 
