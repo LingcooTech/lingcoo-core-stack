@@ -124,7 +124,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                 className={cn(
                   'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
                   collapsed
-                    ? 'bg-muted/35 absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 group-focus-within/brand:opacity-100 group-hover/brand:opacity-100'
+                    ? 'bg-background absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 shadow-sm group-hover/brand:opacity-100'
                     : 'ml-auto h-7 w-7 shrink-0',
                 )}
                 onClick={onToggle}

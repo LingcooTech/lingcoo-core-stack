@@ -57,11 +57,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="text-muted-foreground border-border bg-muted/50 hover:bg-muted hover:text-foreground inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-[12px] transition-colors"
+            className="text-muted-foreground border-border bg-muted/50 hover:bg-muted hover:text-foreground inline-flex h-8 w-10 items-center gap-2 rounded-md border px-2.5 text-[12px] transition-colors md:w-56 lg:w-64"
             title="搜索 / 跳转 (⌘K)"
           >
             <Search className="h-3.5 w-3.5" />
-            <span className="text-muted-foreground/80 hidden md:inline">搜索...</span>
+            <span className="text-muted-foreground/80 hidden flex-1 text-left md:inline">
+              搜索...
+            </span>
             <kbd className="border-border bg-card text-muted-foreground/80 ml-1 hidden h-4 items-center rounded border px-1 font-mono text-[10px] md:inline-flex">
               ⌘K
             </kbd>
