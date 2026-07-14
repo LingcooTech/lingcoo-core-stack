@@ -28,11 +28,11 @@ function getActionLabel(
 ) {
   switch (kind) {
     case 'apply_runtime_images':
-      return '应用前端更新';
+      return '应用运行镜像更新';
     case 'apply_wordpress_assets':
       return '应用 WP 资产更新';
     case 'ignore_runtime_images':
-      return '忽略前端更新';
+      return '忽略运行镜像更新';
     case 'ignore_wordpress_assets':
       return '忽略 WP 资产更新';
     default:
@@ -41,6 +41,16 @@ function getActionLabel(
 }
 
 function getRuntimeDiffRows(deployment: DeploymentSummary) {
+  if (deployment.runtimeAssets.length > 0) {
+    return deployment.runtimeAssets
+      .filter((asset) => asset.available && asset.current !== asset.available)
+      .map((asset) => ({
+        label: asset.label,
+        current: summarizeImageRef(asset.current),
+        next: summarizeImageRef(asset.available),
+      }));
+  }
+
   const rows = [];
 
   if (
@@ -134,6 +144,7 @@ export function DeploymentRecordCard({
   onIgnoreWordpressUpdate: (deployment: DeploymentSummary) => void;
 }) {
   const hasAvailableRuntimeUpdate =
+    deployment.runtimeAssets.some((asset) => Boolean(asset.available)) ||
     Boolean(deployment.availableRuntimeImages.frontendImage) ||
     Boolean(deployment.availableRuntimeImages.websocketImage);
   const hasAvailableWordpressUpdate = Object.values(
@@ -204,7 +215,7 @@ export function DeploymentRecordCard({
               onClick={() => onApplyRuntimeUpdate(deployment)}
               disabled={applyingRuntimeUpdate || Boolean(deployment.pendingAction)}
             >
-              {applyingRuntimeUpdate ? '提交中...' : '应用前端更新'}
+              {applyingRuntimeUpdate ? '提交中...' : '应用运行镜像更新'}
             </Button>
           ) : null}
           {hasAvailableRuntimeUpdate ? (
@@ -215,7 +226,7 @@ export function DeploymentRecordCard({
               onClick={() => onIgnoreRuntimeUpdate(deployment)}
               disabled={ignoringRuntimeUpdate || Boolean(deployment.pendingAction)}
             >
-              {ignoringRuntimeUpdate ? '提交中...' : '忽略前端更新'}
+              {ignoringRuntimeUpdate ? '提交中...' : '忽略运行镜像更新'}
             </Button>
           ) : null}
           {hasAvailableWordpressUpdate ? (
@@ -292,25 +303,42 @@ export function DeploymentRecordCard({
             label="镜像更新策略"
             value={deployment.updatePolicy === 'auto' ? '自动应用新镜像' : '仅记录可用镜像'}
           />
-          <InfoLine
-            label="当前前端镜像"
-            value={summarizeImageRef(deployment.currentRuntimeImages.frontendImage)}
-            mono
-          />
-          <InfoLine
-            label="当前 WebSocket 镜像"
-            value={summarizeImageRef(deployment.currentRuntimeImages.websocketImage)}
-            mono
-          />
+          {deployment.runtimeAssets.length > 0 ? (
+            deployment.runtimeAssets.map((asset) => (
+              <InfoLine
+                key={asset.key}
+                label={`当前${asset.label}`}
+                value={summarizeImageRef(asset.current)}
+                mono
+              />
+            ))
+          ) : (
+            <>
+              <InfoLine
+                label="当前前端镜像"
+                value={summarizeImageRef(deployment.currentRuntimeImages.frontendImage)}
+                mono
+              />
+              <InfoLine
+                label="当前 WebSocket 镜像"
+                value={summarizeImageRef(deployment.currentRuntimeImages.websocketImage)}
+                mono
+              />
+            </>
+          )}
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
 
         {runtimeDiffRows.length > 0 ? (
           <DiffSection
-            title="前端更新差异"
+            title="运行镜像更新差异"
             rows={runtimeDiffRows}
-            offeredAt={deployment.availableRuntimeImages.offeredAt}
+            offeredAt={
+              deployment.runtimeAssets.length > 0
+                ? deployment.runtimeAssetsOfferedAt
+                : deployment.availableRuntimeImages.offeredAt
+            }
           />
         ) : null}
 

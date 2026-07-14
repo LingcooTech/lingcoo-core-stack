@@ -7,17 +7,17 @@ import {
   normalizeDeliveryManifest,
   type DeliveryManifest,
   type DeliveryManifestDomainSourceField,
-  type DeliveryManifestField
+  type DeliveryManifestField,
 } from '../../lib/delivery-manifest';
 import {
   DeliverySettingsService,
   type DeliverySettingSecrets,
-  type DeliverySettingValues
+  type DeliverySettingValues,
 } from '../../lib/delivery-settings';
 import {
   getDomainBindingValue,
   normalizeDeploymentPolicy,
-  type DeploymentPolicy
+  type DeploymentPolicy,
 } from '../../lib/deployment-policy';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
@@ -37,10 +37,13 @@ const DEFAULT_INSTALLER = {
   repoBranch: 'main',
   remoteInstallScriptUrl:
     'https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh',
-  installPath: '/opt/fd-headless-wp-system'
+  installPath: '/opt/fd-headless-wp-system',
 };
 
-const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<string, { envKey: string; kind: 'string' | 'boolean' }> = {
+const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<
+  string,
+  { envKey: string; kind: 'string' | 'boolean' }
+> = {
   frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
   websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
   letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
@@ -60,7 +63,7 @@ const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<string, { envKey: string; kind: 'str
   fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
   wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
   wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
+  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' },
 };
 
 const WORDPRESS_ASSET_RELEASE_KEYS = [
@@ -76,7 +79,7 @@ const WORDPRESS_ASSET_RELEASE_KEYS = [
   'FD_WEBSOCKET_PUSH_RELEASE_TAG',
   'WPGRAPHQL_RELEASE_TAG',
   'WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'WPGRAPHQL_TAX_QUERY_REF'
+  'WPGRAPHQL_TAX_QUERY_REF',
 ] as const;
 
 const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
@@ -92,12 +95,18 @@ const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
   'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG',
   'AVAILABLE_WPGRAPHQL_RELEASE_TAG',
   'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF'
+  'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF',
 ] as const;
 
 type DeploymentStatusReportPayload = {
   deploymentId: string;
   token: string;
+  runtimeAssets?: {
+    current?: Record<string, string | null>;
+    available?: Record<string, string | null>;
+    offeredAt?: string | null;
+    appliedAt?: string | null;
+  };
   runtimeImages?: {
     currentFrontendImage?: string | null;
     currentWebsocketImage?: string | null;
@@ -232,7 +241,9 @@ function normalizeHostname(value: unknown) {
   return normalized;
 }
 
-function isDeploymentDomainBindingSource(value: string): value is DeliveryManifestDomainSourceField {
+function isDeploymentDomainBindingSource(
+  value: string,
+): value is DeliveryManifestDomainSourceField {
   return value.length > 0 && value !== 'none';
 }
 
@@ -262,17 +273,14 @@ function pickStringRecord(values: Record<string, unknown>, keys: readonly string
 export class DeploymentService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
     return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
   }
 
-  private async resolveDeployableApp(input: {
-    userId: string;
-    appCode: string;
-  }) {
+  private async resolveDeployableApp(input: { userId: string; appCode: string }) {
     const app = await new AppService(this.db).getPublicApp(input.appCode);
 
     if (this.readDeliveryMode(app) !== 'one_click') {
@@ -281,7 +289,7 @@ export class DeploymentService {
 
     const entitlementView = await new AppService(this.db).listUserEntitlementsForApp(
       input.appCode,
-      input.userId
+      input.userId,
     );
 
     if (entitlementView.summary.length === 0) {
@@ -290,15 +298,15 @@ export class DeploymentService {
 
     return {
       app,
-      entitlementSummary: entitlementView.summary
+      entitlementSummary: entitlementView.summary,
     };
   }
 
-  private isEffectiveEntitlement(entitlement: {
-    status: string;
-    expiresAt: Date | null;
-  }) {
-    return entitlement.status === 'active' && (!entitlement.expiresAt || entitlement.expiresAt.getTime() >= Date.now());
+  private isEffectiveEntitlement(entitlement: { status: string; expiresAt: Date | null }) {
+    return (
+      entitlement.status === 'active' &&
+      (!entitlement.expiresAt || entitlement.expiresAt.getTime() >= Date.now())
+    );
   }
 
   private async resolveDeploymentEntitlement(input: {
@@ -325,18 +333,33 @@ export class DeploymentService {
   }
 
   private async loadDeploymentEntitlement(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
   ) {
     if (!deployment?.entitlementId) {
-      throw httpError(409, 'Deployment is not bound to an entitlement. Create a new deployment with an active entitlement.');
+      throw httpError(
+        409,
+        'Deployment is not bound to an entitlement. Create a new deployment with an active entitlement.',
+      );
     }
 
-    const entitlement = await new LicenseRepository(this.db).findEntitlementById(deployment.entitlementId);
-    if (!entitlement || entitlement.userId !== deployment.userId || entitlement.appId !== deployment.appId) {
-      throw httpError(409, 'Deployment entitlement is missing or no longer matches this deployment.');
+    const entitlement = await new LicenseRepository(this.db).findEntitlementById(
+      deployment.entitlementId,
+    );
+    if (
+      !entitlement ||
+      entitlement.userId !== deployment.userId ||
+      entitlement.appId !== deployment.appId
+    ) {
+      throw httpError(
+        409,
+        'Deployment entitlement is missing or no longer matches this deployment.',
+      );
     }
     if (!this.isEffectiveEntitlement(entitlement)) {
-      throw httpError(403, 'Deployment entitlement is not active. Restore access before continuing.');
+      throw httpError(
+        403,
+        'Deployment entitlement is not active. Restore access before continuing.',
+      );
     }
     const plan = await new LicenseRepository(this.db).getPlanById(entitlement.planId);
     if (!plan) {
@@ -347,18 +370,20 @@ export class DeploymentService {
   }
 
   private async hydrateDeployments(
-    rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>
+    rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>,
   ) {
     const appIds = [...new Set(rows.map((item) => item.appId))];
     const userIds = [...new Set(rows.map((item) => item.userId))];
     const entitlementIds = [
-      ...new Set(rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)))
+      ...new Set(
+        rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)),
+      ),
     ];
     const [apps, users, tokens, entitlements] = await Promise.all([
       new AppRepository(this.db).listAppsByIds(appIds),
       new AuthRepository(this.db).listUsersByIds(userIds),
       new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
-      new LicenseRepository(this.db).listEntitlementsByIds(entitlementIds)
+      new LicenseRepository(this.db).listEntitlementsByIds(entitlementIds),
     ]);
 
     const appMap = new Map(apps.map((item) => [item.id, item]));
@@ -374,146 +399,180 @@ export class DeploymentService {
       }
     }
 
-    return Promise.all(rows.map(async (row) => {
-      const app = appMap.get(row.appId) ?? null;
-      const user = userMap.get(row.userId) ?? null;
-      const token = latestTokenMap.get(row.id) ?? null;
-      const entitlement = row.entitlementId ? entitlementMap.get(row.entitlementId) ?? null : null;
-      const plan = entitlement ? planMap.get(entitlement.planId) ?? null : null;
-      const manifest = app ? this.readManifest(app as DeploymentAppRecord) : null;
-      const deliveryValues = this.readDeploymentInputValues(row);
-      const domainValues = this.filterDomainValuesForManifest(manifest, this.readDeploymentDomainValues(row));
-      const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
-      const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
-      const meta = this.normalizeMeta(row.meta);
-      const runtimeUpdateMeta = this.normalizeMeta(meta.runtimeUpdate);
-      const wordpressAssetsMeta = this.normalizeMeta(meta.wordpressAssetsUpdate);
-      const policy = entitlement ? this.readEntitlementDeploymentPolicy(entitlement) : null;
-      const binding = this.readEntitlementBinding(entitlement);
-      const activeBindingSource = policy?.domainBindingMode === 'lock_on_first_success'
-        ? policy.domainBindingSource
-        : 'none';
-      const currentBoundValue =
-        activeBindingSource === 'none'
-          ? null
-          : getDomainBindingValue(this.getSourceFieldValue(row, activeBindingSource), policy?.domainBindingScope ?? 'registrable_domain') || null;
-      const isDomainLocked =
-        activeBindingSource !== 'none' &&
-        Boolean(binding.boundDomain) &&
-        currentBoundValue === binding.boundDomain;
-      const envDefaults = this.buildDeploymentDisplayEnvDefaults({
-        app: app ? (app as DeploymentAppRecord) : null,
-        deploymentValues: deliveryValues
-      });
-      const reportedCurrentRuntimeImages = {
-        frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
-        websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null
-      };
-      const currentRuntimeImages = {
-        frontendImage:
-          reportedCurrentRuntimeImages.frontendImage || normalizeString(envDefaults.FRONTEND_IMAGE) || null,
-        websocketImage:
-          reportedCurrentRuntimeImages.websocketImage || normalizeString(envDefaults.WEBSOCKET_IMAGE) || null
-      };
-      const availableRuntimeImages = {
-        frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
-        websocketImage: normalizeString(runtimeUpdateMeta.availableWebsocketImage) || null,
-        offeredAt: normalizeString(runtimeUpdateMeta.offeredAt) || null,
-        appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null
-      };
-      const currentWordpressAssetReleases = Object.fromEntries(
-        WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
+    return Promise.all(
+      rows.map(async (row) => {
+        const app = appMap.get(row.appId) ?? null;
+        const user = userMap.get(row.userId) ?? null;
+        const token = latestTokenMap.get(row.id) ?? null;
+        const entitlement = row.entitlementId
+          ? (entitlementMap.get(row.entitlementId) ?? null)
+          : null;
+        const plan = entitlement ? (planMap.get(entitlement.planId) ?? null) : null;
+        const manifest = app ? this.readManifest(app as DeploymentAppRecord) : null;
+        const deliveryValues = this.readDeploymentInputValues(row);
+        const domainValues = this.filterDomainValuesForManifest(
+          manifest,
+          this.readDeploymentDomainValues(row),
+        );
+        const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
+        const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
+        const meta = this.normalizeMeta(row.meta);
+        const runtimeUpdateMeta = this.normalizeMeta(meta.runtimeUpdate);
+        const runtimeAssetsMeta = this.normalizeMeta(meta.runtimeAssetsUpdate);
+        const wordpressAssetsMeta = this.normalizeMeta(meta.wordpressAssetsUpdate);
+        const policy = entitlement ? this.readEntitlementDeploymentPolicy(entitlement) : null;
+        const binding = this.readEntitlementBinding(entitlement);
+        const activeBindingSource =
+          policy?.domainBindingMode === 'lock_on_first_success'
+            ? policy.domainBindingSource
+            : 'none';
+        const currentBoundValue =
+          activeBindingSource === 'none'
+            ? null
+            : getDomainBindingValue(
+                this.getSourceFieldValue(row, activeBindingSource),
+                policy?.domainBindingScope ?? 'registrable_domain',
+              ) || null;
+        const isDomainLocked =
+          activeBindingSource !== 'none' &&
+          Boolean(binding.boundDomain) &&
+          currentBoundValue === binding.boundDomain;
+        const envDefaults = this.buildDeploymentDisplayEnvDefaults({
+          app: app ? (app as DeploymentAppRecord) : null,
+          deploymentValues: deliveryValues,
+        });
+        const reportedCurrentRuntimeImages = {
+          frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
+          websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null,
+        };
+        const currentRuntimeImages = {
+          frontendImage:
+            reportedCurrentRuntimeImages.frontendImage ||
+            normalizeString(envDefaults.FRONTEND_IMAGE) ||
+            null,
+          websocketImage:
+            reportedCurrentRuntimeImages.websocketImage ||
+            normalizeString(envDefaults.WEBSOCKET_IMAGE) ||
+            null,
+        };
+        const availableRuntimeImages = {
+          frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
+          websocketImage: normalizeString(runtimeUpdateMeta.availableWebsocketImage) || null,
+          offeredAt: normalizeString(runtimeUpdateMeta.offeredAt) || null,
+          appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null,
+        };
+        const reportedCurrentRuntimeAssets = this.normalizeMeta(runtimeAssetsMeta.current);
+        const reportedAvailableRuntimeAssets = this.normalizeMeta(runtimeAssetsMeta.available);
+        const runtimeAssetLabels = new Map(
+          (manifest?.assets ?? [])
+            .filter((asset) => asset.type === 'docker_image')
+            .map((asset) => [asset.key, asset.label]),
+        );
+        const runtimeAssetKeys = [
+          ...new Set([
+            ...Object.keys(reportedCurrentRuntimeAssets),
+            ...Object.keys(reportedAvailableRuntimeAssets),
+          ]),
+        ];
+        const runtimeAssets = runtimeAssetKeys.map((key) => ({
           key,
-          normalizeString(this.normalizeMeta(wordpressAssetsMeta.current)[key]) ||
-            normalizeString(envDefaults[key]) ||
-            null
-        ])
-      ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
-      const availableWordpressAssetReleases = Object.fromEntries(
-        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
-          key,
-          normalizeString(this.normalizeMeta(wordpressAssetsMeta.available)[key]) ||
-            normalizeString(wordpressAssetsMeta[key]) ||
-            null
-        ])
-      ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
-      const pendingAction = this.normalizeMeta(meta.pendingAction);
-      const lastAction = this.normalizeMeta(meta.lastAction);
+          label: runtimeAssetLabels.get(key) ?? key,
+          current: normalizeString(reportedCurrentRuntimeAssets[key]) || null,
+          available: normalizeString(reportedAvailableRuntimeAssets[key]) || null,
+        }));
+        const currentWordpressAssetReleases = Object.fromEntries(
+          WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
+            key,
+            normalizeString(this.normalizeMeta(wordpressAssetsMeta.current)[key]) ||
+              normalizeString(envDefaults[key]) ||
+              null,
+          ]),
+        ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
+        const availableWordpressAssetReleases = Object.fromEntries(
+          AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
+            key,
+            normalizeString(this.normalizeMeta(wordpressAssetsMeta.available)[key]) ||
+              normalizeString(wordpressAssetsMeta[key]) ||
+              null,
+          ]),
+        ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
+        const pendingAction = this.normalizeMeta(meta.pendingAction);
+        const lastAction = this.normalizeMeta(meta.lastAction);
 
-      return {
-        ...row,
-        deliveryValues,
-        domainValues,
-        configuredSecretKeys,
-        updatePolicy,
-        currentRuntimeImages,
-        availableRuntimeImages,
-        currentWordpressAssetReleases,
-        availableWordpressAssetReleases,
-        pendingAction:
-          normalizeString(pendingAction.id).length > 0
+        return {
+          ...row,
+          deliveryValues,
+          domainValues,
+          configuredSecretKeys,
+          updatePolicy,
+          currentRuntimeImages,
+          availableRuntimeImages,
+          runtimeAssets,
+          runtimeAssetsOfferedAt: normalizeString(runtimeAssetsMeta.offeredAt) || null,
+          runtimeAssetsAppliedAt: normalizeString(runtimeAssetsMeta.appliedAt) || null,
+          currentWordpressAssetReleases,
+          availableWordpressAssetReleases,
+          pendingAction:
+            normalizeString(pendingAction.id).length > 0
+              ? {
+                  id: normalizeString(pendingAction.id),
+                  kind: normalizeString(pendingAction.kind) as DeploymentActionKind,
+                  requestedAt: normalizeString(pendingAction.requestedAt) || null,
+                }
+              : null,
+          lastAction:
+            normalizeString(lastAction.id).length > 0
+              ? {
+                  id: normalizeString(lastAction.id),
+                  kind: normalizeString(lastAction.kind) as DeploymentActionKind,
+                  status: normalizeString(lastAction.status) || 'completed',
+                  message: normalizeString(lastAction.message) || null,
+                  finishedAt: normalizeString(lastAction.finishedAt) || null,
+                }
+              : null,
+          domainBinding: {
+            sourceField: activeBindingSource,
+            sourceLabel:
+              activeBindingSource === 'none'
+                ? null
+                : (manifest?.domainSlots.find((slot) => slot.sourceField === activeBindingSource)
+                    ?.label ?? activeBindingSource),
+            isLocked: isDomainLocked,
+            boundDomain: binding.boundDomain,
+            boundAt: binding.boundAt,
+            scope: binding.scope ?? policy?.domainBindingScope ?? 'registrable_domain',
+          },
+          entitlement: entitlement
             ? {
-                id: normalizeString(pendingAction.id),
-                kind: normalizeString(pendingAction.kind) as DeploymentActionKind,
-                requestedAt: normalizeString(pendingAction.requestedAt) || null
+                id: entitlement.id,
+                status: entitlement.status,
+                startsAt: entitlement.startsAt,
+                expiresAt: entitlement.expiresAt,
+                plan: plan
+                  ? {
+                      id: plan.id,
+                      code: plan.code,
+                      name: plan.name,
+                      interval: plan.interval,
+                    }
+                  : null,
               }
             : null,
-        lastAction:
-          normalizeString(lastAction.id).length > 0
+          user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
+          app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
+          latestToken: token
             ? {
-                id: normalizeString(lastAction.id),
-                kind: normalizeString(lastAction.kind) as DeploymentActionKind,
-                status: normalizeString(lastAction.status) || 'completed',
-                message: normalizeString(lastAction.message) || null,
-                finishedAt: normalizeString(lastAction.finishedAt) || null
+                id: token.id,
+                tokenHint: token.tokenHint,
+                status: token.status,
+                expiresAt: token.expiresAt,
+                usedAt: token.usedAt,
+                createdAt: token.createdAt,
               }
             : null,
-        domainBinding: {
-          sourceField: activeBindingSource,
-          sourceLabel:
-            activeBindingSource === 'none'
-              ? null
-              : manifest?.domainSlots.find((slot) => slot.sourceField === activeBindingSource)?.label ??
-                activeBindingSource,
-          isLocked: isDomainLocked,
-          boundDomain: binding.boundDomain,
-          boundAt: binding.boundAt,
-          scope: binding.scope ?? policy?.domainBindingScope ?? 'registrable_domain'
-        },
-        entitlement: entitlement
-          ? {
-              id: entitlement.id,
-              status: entitlement.status,
-              startsAt: entitlement.startsAt,
-              expiresAt: entitlement.expiresAt,
-              plan: plan
-                ? {
-                    id: plan.id,
-                    code: plan.code,
-                    name: plan.name,
-                    interval: plan.interval
-                  }
-                : null
-            }
-          : null,
-        user: user
-          ? { id: user.id, email: user.email, displayName: user.displayName }
-          : null,
-        app: app
-          ? { id: app.id, code: app.code, name: app.name, type: app.type }
-          : null,
-        latestToken: token
-          ? {
-              id: token.id,
-              tokenHint: token.tokenHint,
-              status: token.status,
-              expiresAt: token.expiresAt,
-              usedAt: token.usedAt,
-              createdAt: token.createdAt
-            }
-          : null
-      };
-    }));
+        };
+      }),
+    );
   }
 
   private createPlainToken() {
@@ -531,7 +590,7 @@ export class DeploymentService {
   }
 
   private async ensureDeploymentStatusReportAuth(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
@@ -541,7 +600,7 @@ export class DeploymentService {
       try {
         const decrypted = decryptJson<{ token?: string }>(
           runtimeStatusReport.token,
-          this.getEncryptionSecret()
+          this.getEncryptionSecret(),
         );
         token = normalizeString(decrypted.token);
       } catch {
@@ -552,7 +611,7 @@ export class DeploymentService {
     if (token.length > 0) {
       return {
         deployment,
-        token
+        token,
       };
     }
 
@@ -560,16 +619,16 @@ export class DeploymentService {
     meta.runtimeStatusReport = {
       tokenHint: token.slice(-8),
       token: encryptJson({ token }, this.getEncryptionSecret()),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     const updated = await new DeploymentRepository(this.db).updateDeployment(deployment.id, {
-      meta
+      meta,
     });
 
     return {
       deployment: updated ?? deployment,
-      token
+      token,
     };
   }
 
@@ -614,8 +673,8 @@ export class DeploymentService {
       values,
       installer: {
         repoUrl: normalizeString(raw.repoUrl) || undefined,
-        repoBranch: normalizeString(raw.repoBranch) || undefined
-      }
+        repoBranch: normalizeString(raw.repoBranch) || undefined,
+      },
     };
   }
 
@@ -625,37 +684,43 @@ export class DeploymentService {
   }) {
     const values: DeliverySettingValues = {
       ...(input.app ? this.readLegacyDeploymentDefaults(input.app).values : {}),
-      ...input.deploymentValues
+      ...input.deploymentValues,
     };
 
     return Object.fromEntries(
       Object.entries(values)
-        .map(([key, value]) => [key, typeof value === 'boolean' ? String(value) : normalizeString(value)])
-        .filter(([, value]) => value.length > 0)
+        .map(([key, value]) => [
+          key,
+          typeof value === 'boolean' ? String(value) : normalizeString(value),
+        ])
+        .filter(([, value]) => value.length > 0),
     );
   }
 
-  private readEntitlementDeploymentPolicy(entitlement: { meta?: unknown } | null | undefined): DeploymentPolicy {
+  private readEntitlementDeploymentPolicy(
+    entitlement: { meta?: unknown } | null | undefined,
+  ): DeploymentPolicy {
     const meta = this.normalizeMeta(entitlement?.meta);
     return normalizeDeploymentPolicy(meta.deploymentPolicy);
   }
 
-  private readEntitlementBinding(entitlement: { meta?: unknown } | null | undefined): DeploymentBindingState {
+  private readEntitlementBinding(
+    entitlement: { meta?: unknown } | null | undefined,
+  ): DeploymentBindingState {
     const meta = this.normalizeMeta(entitlement?.meta);
     const binding = this.normalizeMeta(meta.domainBinding);
     const rawSourceField = normalizeString(binding.sourceField);
-    const sourceField = isDeploymentDomainBindingSource(rawSourceField)
-      ? rawSourceField
-      : 'none';
+    const sourceField = isDeploymentDomainBindingSource(rawSourceField) ? rawSourceField : 'none';
     const boundDomain = normalizeHostname(binding.boundValue) || null;
     const boundAt = normalizeString(binding.boundAt) || null;
-    const scope = normalizeString(binding.scope) === 'exact_host' ? 'exact_host' : 'registrable_domain';
+    const scope =
+      normalizeString(binding.scope) === 'exact_host' ? 'exact_host' : 'registrable_domain';
 
     return {
       sourceField,
       scope,
       boundDomain,
-      boundAt
+      boundAt,
     };
   }
 
@@ -675,7 +740,7 @@ export class DeploymentService {
       sourceField: input.policy.domainBindingSource,
       scope: input.policy.domainBindingScope,
       boundValue: input.boundValue,
-      boundAt: new Date().toISOString()
+      boundAt: new Date().toISOString(),
     };
     const updated = await repository.updateEntitlementMeta(input.entitlementId, meta);
     if (!updated) {
@@ -685,21 +750,23 @@ export class DeploymentService {
   }
 
   private readDeploymentRuntimeUpdatePolicy(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
   ): DeploymentRuntimeUpdatePolicy {
     const meta = this.normalizeMeta(deployment?.meta);
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
     return normalizeDeploymentRuntimeUpdatePolicy(runtimeUpdate.policy);
   }
 
-  private readDeploymentInputValues(deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>) {
+  private readDeploymentInputValues(
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+  ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const inputs = this.normalizeMeta(meta.deliveryInputs);
     return normalizeValueRecord(inputs.values);
   }
 
   private readDeploymentInputSecrets(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const inputs = this.normalizeMeta(meta.deliveryInputs);
@@ -709,14 +776,16 @@ export class DeploymentService {
     }
 
     try {
-      return normalizeSecretRecord(decryptJson<unknown>(secretEnvelope, this.getEncryptionSecret()));
+      return normalizeSecretRecord(
+        decryptJson<unknown>(secretEnvelope, this.getEncryptionSecret()),
+      );
     } catch {
       return {};
     }
   }
 
   private readDeploymentDomainValues(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>
+    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const domains = this.normalizeMeta(meta.deliveryDomains);
@@ -725,7 +794,7 @@ export class DeploymentService {
 
   private filterDomainValuesForManifest(
     manifest: DeliveryManifest | null,
-    domainValues: Record<string, string>
+    domainValues: Record<string, string>,
   ) {
     if (!manifest) {
       return {};
@@ -733,7 +802,7 @@ export class DeploymentService {
 
     const allowedSourceFields = new Set(manifest.domainSlots.map((slot) => slot.sourceField));
     return Object.fromEntries(
-      Object.entries(domainValues).filter(([key]) => allowedSourceFields.has(key))
+      Object.entries(domainValues).filter(([key]) => allowedSourceFields.has(key)),
     );
   }
 
@@ -760,7 +829,7 @@ export class DeploymentService {
         kind: 'domain_slot',
         key: slot.key,
         label: slot.label,
-        sourceField: slot.sourceField
+        sourceField: slot.sourceField,
       });
     }
 
@@ -769,14 +838,16 @@ export class DeploymentService {
       input.policy.domainBindingSource !== 'none'
     ) {
       const sourceField = input.policy.domainBindingSource;
-      const alreadyTracked = issues.some((issue) => issue.kind === 'domain_slot' && issue.sourceField === sourceField);
+      const alreadyTracked = issues.some(
+        (issue) => issue.kind === 'domain_slot' && issue.sourceField === sourceField,
+      );
       if (!alreadyTracked && !input.domainValues[sourceField]) {
         const slot = input.manifest.domainSlots.find((item) => item.sourceField === sourceField);
         issues.push({
           kind: 'domain_slot',
           key: slot?.key ?? sourceField,
           label: slot?.label ?? getDomainBindingSourceLabel(sourceField),
-          sourceField
+          sourceField,
         });
       }
     }
@@ -792,19 +863,22 @@ export class DeploymentService {
             kind: 'user_input',
             key: field.key,
             label: field.label,
-            fieldType: 'secret'
+            fieldType: 'secret',
           });
         }
         continue;
       }
 
       if (field.type === 'boolean') {
-        if (typeof input.values[field.key] === 'undefined' && typeof field.defaultValue !== 'boolean') {
+        if (
+          typeof input.values[field.key] === 'undefined' &&
+          typeof field.defaultValue !== 'boolean'
+        ) {
           issues.push({
             kind: 'user_input',
             key: field.key,
             label: field.label,
-            fieldType: 'boolean'
+            fieldType: 'boolean',
           });
         }
         continue;
@@ -816,7 +890,7 @@ export class DeploymentService {
           kind: 'user_input',
           key: field.key,
           label: field.label,
-          fieldType: 'text'
+          fieldType: 'text',
         });
       }
     }
@@ -832,8 +906,8 @@ export class DeploymentService {
         code: 'deployment_domain_locked',
         boundSourceField: binding.sourceField,
         boundDomain: binding.boundDomain,
-        boundAt: binding.boundAt
-      }
+        boundAt: binding.boundAt,
+      },
     );
   }
 
@@ -844,7 +918,9 @@ export class DeploymentService {
     requestedDomainValues?: Record<string, string>;
   }) {
     const boundSourceField =
-      input.policy.domainBindingMode === 'lock_on_first_success' ? input.policy.domainBindingSource : 'none';
+      input.policy.domainBindingMode === 'lock_on_first_success'
+        ? input.policy.domainBindingSource
+        : 'none';
 
     if (boundSourceField === 'none' || !input.binding.boundDomain) {
       return;
@@ -853,8 +929,14 @@ export class DeploymentService {
     const requestedBySource: Record<string, string | undefined> = input.requestedDomainValues ?? {};
     const nextBoundValue =
       typeof requestedBySource[boundSourceField] === 'string'
-        ? getDomainBindingValue(requestedBySource[boundSourceField] ?? '', input.policy.domainBindingScope)
-        : getDomainBindingValue(this.getSourceFieldValue(input.deployment, boundSourceField), input.policy.domainBindingScope);
+        ? getDomainBindingValue(
+            requestedBySource[boundSourceField] ?? '',
+            input.policy.domainBindingScope,
+          )
+        : getDomainBindingValue(
+            this.getSourceFieldValue(input.deployment, boundSourceField),
+            input.policy.domainBindingScope,
+          );
 
     if (nextBoundValue === input.binding.boundDomain) {
       return;
@@ -875,13 +957,16 @@ export class DeploymentService {
     const currentBoundValue =
       activeBindingSource === 'none'
         ? null
-        : getDomainBindingValue(this.getSourceFieldValue(input.deployment, activeBindingSource), policy.domainBindingScope);
+        : getDomainBindingValue(
+            this.getSourceFieldValue(input.deployment, activeBindingSource),
+            policy.domainBindingScope,
+          );
     const issues = this.collectDeploymentConfigIssues({
       manifest: this.readManifest(input.app),
       values: this.readDeploymentInputValues(input.deployment),
       secrets: this.readDeploymentInputSecrets(input.deployment),
       domainValues: this.readDeploymentDomainValues(input.deployment),
-      policy
+      policy,
     });
 
     if (issues.length > 0) {
@@ -895,20 +980,24 @@ export class DeploymentService {
             .map((issue) => ({
               key: issue.key,
               label: issue.label,
-              sourceField: issue.sourceField
+              sourceField: issue.sourceField,
             })),
           missingFields: issues
             .filter((issue) => issue.kind === 'user_input')
             .map((issue) => ({
               key: issue.key,
               label: issue.label,
-              fieldType: issue.fieldType
-            }))
-        }
+              fieldType: issue.fieldType,
+            })),
+        },
       );
     }
 
-    if (binding.boundDomain && activeBindingSource !== 'none' && currentBoundValue !== binding.boundDomain) {
+    if (
+      binding.boundDomain &&
+      activeBindingSource !== 'none' &&
+      currentBoundValue !== binding.boundDomain
+    ) {
       throw this.createDomainBindingLockedError(binding);
     }
   }
@@ -928,13 +1017,15 @@ export class DeploymentService {
 
     const currentDomain = getDomainBindingValue(
       this.getSourceFieldValue(input.deployment, sourceField),
-      input.policy.domainBindingScope
+      input.policy.domainBindingScope,
     );
     if (!currentDomain) {
       throw httpError(409, `${getDomainBindingSourceLabel(sourceField)}不能为空，部署无法继续。`);
     }
 
-    const entitlement = await new LicenseRepository(this.db).findEntitlementById(input.entitlementId);
+    const entitlement = await new LicenseRepository(this.db).findEntitlementById(
+      input.entitlementId,
+    );
     const binding = this.readEntitlementBinding(entitlement);
     if (binding.boundDomain && binding.boundDomain !== currentDomain) {
       throw this.createDomainBindingLockedError(binding);
@@ -947,7 +1038,7 @@ export class DeploymentService {
     await this.updateEntitlementBinding({
       entitlementId: input.entitlementId,
       policy: input.policy,
-      boundValue: currentDomain
+      boundValue: currentDomain,
     });
 
     return input.deployment;
@@ -963,7 +1054,7 @@ export class DeploymentService {
   }) {
     const commandParts = [
       `FD_STACK_DEPLOY_TOKEN='${input.token}'`,
-      `FD_STACK_EXCHANGE_URL='${input.exchangeUrl}'`
+      `FD_STACK_EXCHANGE_URL='${input.exchangeUrl}'`,
     ];
 
     if (input.installPath) {
@@ -979,7 +1070,7 @@ export class DeploymentService {
     }
 
     commandParts.push(
-      `bash <(curl -fsSL '${input.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl}')`
+      `bash <(curl -fsSL '${input.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl}')`,
     );
 
     return commandParts.join(' ');
@@ -987,7 +1078,7 @@ export class DeploymentService {
 
   private getSourceFieldValue(
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
-    sourceField: DeliveryManifestDomainSourceField
+    sourceField: DeliveryManifestDomainSourceField,
   ) {
     const domainValues = this.readDeploymentDomainValues(deployment);
     if (domainValues[sourceField]) {
@@ -1014,7 +1105,7 @@ export class DeploymentService {
 
     const candidate =
       input.field.scope === 'user_input'
-        ? input.deploymentValues[input.field.key] ?? input.appValues[input.field.key]
+        ? (input.deploymentValues[input.field.key] ?? input.appValues[input.field.key])
         : input.appValues[input.field.key];
 
     if (typeof candidate === 'boolean') {
@@ -1107,23 +1198,30 @@ export class DeploymentService {
       (input.deployment?.entitlementId
         ? await new LicenseRepository(this.db).findEntitlementById(input.deployment.entitlementId)
         : null);
-    if (!entitlement || entitlement.userId !== input.deployment?.userId || entitlement.appId !== input.deployment?.appId) {
-      throw httpError(409, 'Deployment entitlement is missing or no longer matches this deployment.');
+    if (
+      !entitlement ||
+      entitlement.userId !== input.deployment?.userId ||
+      entitlement.appId !== input.deployment?.appId
+    ) {
+      throw httpError(
+        409,
+        'Deployment entitlement is missing or no longer matches this deployment.',
+      );
     }
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(input.deployment);
     const deliverySettings = await new DeliverySettingsService(this.db, this.env).getStoredSettings(
-      input.app.code
+      input.app.code,
     );
     const deploymentValues = this.readDeploymentInputValues(input.deployment);
     const deploymentSecrets = this.readDeploymentInputSecrets(input.deployment);
 
     const appValues: DeliverySettingValues = {
       ...appDefaults.values,
-      ...(deliverySettings?.values ?? {})
+      ...(deliverySettings?.values ?? {}),
     };
     const appSecrets: DeliverySettingSecrets = {
-      ...(deliverySettings?.secrets ?? {})
+      ...(deliverySettings?.secrets ?? {}),
     };
     const installer = {
       repoUrl:
@@ -1141,7 +1239,7 @@ export class DeploymentService {
       installPath:
         input.deployment?.installPath ||
         manifest?.installer.installPath ||
-        DEFAULT_INSTALLER.installPath
+        DEFAULT_INSTALLER.installPath,
     };
 
     const envDefaults: Record<string, string> = {};
@@ -1160,7 +1258,7 @@ export class DeploymentService {
           appValues,
           deploymentValues,
           appSecrets,
-          deploymentSecrets
+          deploymentSecrets,
         });
 
         if (typeof resolved === 'boolean') {
@@ -1178,9 +1276,12 @@ export class DeploymentService {
     } else {
       const fallbackEntries = Object.entries({
         ...Object.fromEntries(
-          Object.entries(appValues).map(([key, value]) => [key, typeof value === 'boolean' ? String(value) : value])
+          Object.entries(appValues).map(([key, value]) => [
+            key,
+            typeof value === 'boolean' ? String(value) : value,
+          ]),
         ),
-        ...appSecrets
+        ...appSecrets,
       }).filter(([, value]) => typeof value === 'string' && value.length > 0);
 
       for (const [key, value] of fallbackEntries) {
@@ -1202,27 +1303,32 @@ export class DeploymentService {
 
     if (activeBindingSource !== 'none') {
       // Runtime host checks must use the exact deployed host, not the license binding scope.
-      const boundHost = normalizeHostname(this.getSourceFieldValue(input.deployment, activeBindingSource));
+      const boundHost = normalizeHostname(
+        this.getSourceFieldValue(input.deployment, activeBindingSource),
+      );
 
       if (boundHost.length > 0) {
         envDefaults.FD_BOUND_HOST = boundHost;
       }
     }
 
-    const exchangeUrl = new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString();
+    const exchangeUrl = new URL(
+      '/v1/deployments/bootstrap/exchange',
+      this.env.PUBLIC_BASE_URL,
+    ).toString();
     envDefaults.FD_STACK_DEPLOYMENT_ID = input.deployment.id;
     envDefaults.FD_STACK_STATUS_REPORT_URL = new URL(
       '/v1/deployments/status/report',
-      this.env.PUBLIC_BASE_URL
+      this.env.PUBLIC_BASE_URL,
     ).toString();
     envDefaults.FD_STACK_STATUS_REPORT_TOKEN = statusReportAuth.token;
     envDefaults.FD_STACK_ACTION_PULL_URL = new URL(
       '/v1/deployments/actions/pull',
-      this.env.PUBLIC_BASE_URL
+      this.env.PUBLIC_BASE_URL,
     ).toString();
     envDefaults.FD_STACK_ACTION_COMPLETE_URL = new URL(
       '/v1/deployments/actions/complete',
-      this.env.PUBLIC_BASE_URL
+      this.env.PUBLIC_BASE_URL,
     ).toString();
 
     return {
@@ -1230,7 +1336,7 @@ export class DeploymentService {
       exchangeUrl,
       repository: {
         url: installer.repoUrl,
-        branch: installer.repoBranch
+        branch: installer.repoBranch,
       },
       assets: manifest?.assets ?? [],
       envDefaults,
@@ -1241,13 +1347,13 @@ export class DeploymentService {
             installPath: installer.installPath,
             repoUrl: installer.repoUrl,
             repoBranch: installer.repoBranch,
-            remoteInstallScriptUrl: installer.remoteInstallScriptUrl
+            remoteInstallScriptUrl: installer.remoteInstallScriptUrl,
           })
         : null,
       notes: [
         'Installer bootstrap now follows the synced deliveryManifest and any saved app-level preset overrides.',
-        'User-input deployment values override app defaults for the current deployment.'
-      ]
+        'User-input deployment values override app defaults for the current deployment.',
+      ],
     };
   }
 
@@ -1258,7 +1364,7 @@ export class DeploymentService {
   async listUserDeployments(userId: string) {
     const rows = await new DeploymentRepository(this.db).listDeploymentsByUserId(userId);
     return {
-      items: await this.hydrateDeployments(rows)
+      items: await this.hydrateDeployments(rows),
     };
   }
 
@@ -1277,22 +1383,24 @@ export class DeploymentService {
   }) {
     const selection = await this.resolveDeployableApp({
       userId: input.userId,
-      appCode: input.appCode
+      appCode: input.appCode,
     });
     const { entitlement, plan } = await this.resolveDeploymentEntitlement({
       userId: input.userId,
       appId: selection.app.id,
-      entitlementId: input.entitlementId
+      entitlementId: input.entitlementId,
     });
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
-    const activeCount = await new DeploymentRepository(this.db).countActiveDeploymentsByEntitlementId({
-      entitlementId: entitlement.id
+    const activeCount = await new DeploymentRepository(
+      this.db,
+    ).countActiveDeploymentsByEntitlementId({
+      entitlementId: entitlement.id,
     });
 
     if (activeCount >= policy.maxActiveDeployments) {
       throw httpError(
         409,
-        `Active deployment limit reached for this entitlement (${policy.maxActiveDeployments}). Deactivate an existing deployment or buy another entitlement before creating a new one.`
+        `Active deployment limit reached for this entitlement (${policy.maxActiveDeployments}). Deactivate an existing deployment or buy another entitlement before creating a new one.`,
       );
     }
 
@@ -1305,7 +1413,7 @@ export class DeploymentService {
       manifest,
       values: deploymentValues,
       secrets: deploymentSecrets,
-      domainValues: deploymentDomainValues
+      domainValues: deploymentDomainValues,
     });
 
     const creationIssues = this.collectDeploymentConfigIssues({
@@ -1313,7 +1421,7 @@ export class DeploymentService {
       values: deploymentValues,
       secrets: deploymentSecrets,
       domainValues: deploymentDomainValues,
-      policy
+      policy,
     });
 
     if (creationIssues.length > 0) {
@@ -1325,11 +1433,11 @@ export class DeploymentService {
       appCode: selection.app.code,
       planCode: plan.code,
       runtimeUpdate: {
-        policy: normalizeDeploymentRuntimeUpdatePolicy(input.updatePolicy)
+        policy: normalizeDeploymentRuntimeUpdatePolicy(input.updatePolicy),
       },
       deliveryDomains: {
-        values: deploymentDomainValues
-      }
+        values: deploymentDomainValues,
+      },
     };
 
     if (Object.keys(deploymentValues).length > 0 || Object.keys(deploymentSecrets).length > 0) {
@@ -1338,7 +1446,7 @@ export class DeploymentService {
         secrets:
           Object.keys(deploymentSecrets).length > 0
             ? encryptJson(deploymentSecrets, this.getEncryptionSecret())
-            : undefined
+            : undefined,
       };
     }
 
@@ -1349,8 +1457,9 @@ export class DeploymentService {
       label: input.label,
       environment: input.environment,
       serverHost: input.serverHost ?? null,
-      installPath: input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath,
-      meta: deploymentMeta
+      installPath:
+        input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath,
+      meta: deploymentMeta,
     });
 
     await new EventService(this.db).capture({
@@ -1360,8 +1469,8 @@ export class DeploymentService {
       properties: {
         deploymentId: deployment.id,
         appCode: selection.app.code,
-        environment: deployment.environment
-      }
+        environment: deployment.environment,
+      },
     });
 
     const [hydrated] = await this.hydrateDeployments([deployment]);
@@ -1400,44 +1509,44 @@ export class DeploymentService {
     const currentSecrets = this.readDeploymentInputSecrets(deployment);
     const nextValues = {
       ...currentValues,
-      ...normalizeValueRecord(input.values)
+      ...normalizeValueRecord(input.values),
     };
     const nextSecrets = {
       ...currentSecrets,
-      ...normalizeSecretRecord(input.secrets)
+      ...normalizeSecretRecord(input.secrets),
     };
     const currentDomainValues = this.filterDomainValuesForManifest(
       manifest,
-      this.readDeploymentDomainValues(deployment)
+      this.readDeploymentDomainValues(deployment),
     );
     const requestedDomainValues = normalizeDomainValueRecord(input.domainValues);
     const nextDomainValues = {
       ...currentDomainValues,
-      ...requestedDomainValues
+      ...requestedDomainValues,
     };
 
     this.validateDeploymentInputs({
       manifest,
       values: nextValues,
       secrets: nextSecrets,
-      domainValues: nextDomainValues
+      domainValues: nextDomainValues,
     });
 
     this.assertDomainBindingEditable({
       deployment,
       policy,
       binding,
-      requestedDomainValues
+      requestedDomainValues,
     });
 
     const nextMeta = this.normalizeMeta(deployment.meta);
     const nextRuntimeUpdate = this.normalizeMeta(nextMeta.runtimeUpdate);
     nextRuntimeUpdate.policy = normalizeDeploymentRuntimeUpdatePolicy(
-      typeof input.updatePolicy === 'string' ? input.updatePolicy : nextRuntimeUpdate.policy
+      typeof input.updatePolicy === 'string' ? input.updatePolicy : nextRuntimeUpdate.policy,
     );
     nextMeta.runtimeUpdate = nextRuntimeUpdate;
     nextMeta.deliveryDomains = {
-      values: nextDomainValues
+      values: nextDomainValues,
     };
 
     if (Object.keys(nextValues).length > 0 || Object.keys(nextSecrets).length > 0) {
@@ -1446,7 +1555,7 @@ export class DeploymentService {
         secrets:
           Object.keys(nextSecrets).length > 0
             ? encryptJson(nextSecrets, this.getEncryptionSecret())
-            : undefined
+            : undefined,
       };
     } else {
       delete nextMeta.deliveryInputs;
@@ -1455,9 +1564,12 @@ export class DeploymentService {
     const updated = await repository.updateDeployment(deployment.id, {
       label: input.label?.trim() || deployment.label,
       environment: input.environment?.trim() || deployment.environment,
-      serverHost: typeof input.serverHost === 'string' ? input.serverHost.trim() || null : deployment.serverHost,
+      serverHost:
+        typeof input.serverHost === 'string'
+          ? input.serverHost.trim() || null
+          : deployment.serverHost,
       installPath: input.installPath?.trim() || deployment.installPath,
-      meta: nextMeta
+      meta: nextMeta,
     });
 
     if (!updated) {
@@ -1469,8 +1581,8 @@ export class DeploymentService {
       appId: deployment.appId,
       eventName: 'deployment.updated',
       properties: {
-        deploymentId: deployment.id
-      }
+        deploymentId: deployment.id,
+      },
     });
 
     const [hydrated] = await this.hydrateDeployments([updated]);
@@ -1489,15 +1601,18 @@ export class DeploymentService {
     }
 
     if (deployment.status !== 'active') {
-      throw httpError(409, 'Deployment is inactive. Reactivate or create a new deployment before issuing a token.');
+      throw httpError(
+        409,
+        'Deployment is inactive. Reactivate or create a new deployment before issuing a token.',
+      );
     }
 
     const app = await new AppService(this.db).getPublicApp(
-      (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? ''
+      (await new AppRepository(this.db).findAppById(deployment.appId))?.code ?? '',
     );
     await this.ensureDeploymentReadyForTokenIssue({
       app,
-      deployment
+      deployment,
     });
 
     await repository.expireActiveTokensByDeploymentId(deployment.id);
@@ -1511,12 +1626,15 @@ export class DeploymentService {
       tokenHint: plainToken.slice(-8),
       expiresAt,
       meta: {
-        exchangeUrl: new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString()
-      }
+        exchangeUrl: new URL(
+          '/v1/deployments/bootstrap/exchange',
+          this.env.PUBLIC_BASE_URL,
+        ).toString(),
+      },
     });
 
     await repository.updateDeployment(deployment.id, {
-      lastTokenIssuedAt: new Date()
+      lastTokenIssuedAt: new Date(),
     });
 
     await new EventService(this.db).capture({
@@ -1526,14 +1644,14 @@ export class DeploymentService {
       properties: {
         deploymentId: deployment.id,
         tokenId: token.id,
-        expiresAt: expiresAt.toISOString()
-      }
+        expiresAt: expiresAt.toISOString(),
+      },
     });
 
     const bootstrap = await this.buildBootstrapPayload({
       app,
       deployment,
-      token: plainToken
+      token: plainToken,
     });
 
     return {
@@ -1544,7 +1662,7 @@ export class DeploymentService {
       exchangeUrl: bootstrap.exchangeUrl,
       exchangeCurl: this.buildExchangeCurl(plainToken),
       remoteInstallCommand: bootstrap.remoteInstallCommand,
-      expiresAt
+      expiresAt,
     };
   }
 
@@ -1569,16 +1687,16 @@ export class DeploymentService {
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     await this.ensureDeploymentReadyForTokenIssue({
       app,
-      deployment
+      deployment,
     });
     await repository.markTokenUsed(matched.id);
     const boundDeployment = await this.bindDeploymentDomainOnExchange({
       deployment,
       entitlementId: entitlement.id,
-      policy
+      policy,
     });
     const updatedDeployment = await repository.updateDeployment(boundDeployment.id, {
-      lastDeployedAt: new Date()
+      lastDeployedAt: new Date(),
     });
     const targetDeployment = updatedDeployment ?? boundDeployment;
 
@@ -1588,8 +1706,8 @@ export class DeploymentService {
       eventName: 'deployment.token_exchanged',
       properties: {
         deploymentId: deployment.id,
-        tokenId: matched.id
-      }
+        tokenId: matched.id,
+      },
     });
 
     return {
@@ -1597,8 +1715,8 @@ export class DeploymentService {
       bootstrap: await this.buildBootstrapPayload({
         app,
         deployment: targetDeployment,
-        token
-      })
+        token,
+      }),
     };
   }
 
@@ -1618,7 +1736,7 @@ export class DeploymentService {
       try {
         const decrypted = decryptJson<{ token?: string }>(
           runtimeStatusReport.token,
-          this.getEncryptionSecret()
+          this.getEncryptionSecret(),
         );
         expectedToken = normalizeString(decrypted.token);
       } catch {
@@ -1631,9 +1749,29 @@ export class DeploymentService {
     }
 
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    const runtimeAssetsUpdate = this.normalizeMeta(meta.runtimeAssetsUpdate);
+    const previousRuntimeAssetsAvailable = this.normalizeMeta(runtimeAssetsUpdate.available);
     const hadAvailableRuntimeUpdate =
       normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
+      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
+      Object.values(previousRuntimeAssetsAvailable).some(
+        (value) => normalizeString(value).length > 0,
+      );
+    if (input.runtimeAssets) {
+      if (typeof input.runtimeAssets.current !== 'undefined') {
+        runtimeAssetsUpdate.current = input.runtimeAssets.current ?? {};
+      }
+      if (typeof input.runtimeAssets.available !== 'undefined') {
+        runtimeAssetsUpdate.available = input.runtimeAssets.available ?? {};
+      }
+      if (typeof input.runtimeAssets.offeredAt !== 'undefined') {
+        runtimeAssetsUpdate.offeredAt = input.runtimeAssets.offeredAt ?? '';
+      }
+      if (typeof input.runtimeAssets.appliedAt !== 'undefined') {
+        runtimeAssetsUpdate.appliedAt = input.runtimeAssets.appliedAt ?? '';
+      }
+    }
+    meta.runtimeAssetsUpdate = runtimeAssetsUpdate;
     if (input.runtimeImages) {
       if (typeof input.runtimeImages.currentFrontendImage !== 'undefined') {
         runtimeUpdate.currentFrontendImage = input.runtimeImages.currentFrontendImage ?? '';
@@ -1657,14 +1795,19 @@ export class DeploymentService {
     meta.runtimeUpdate = runtimeUpdate;
     const hasAvailableRuntimeUpdate =
       normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
+      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
+      Object.values(this.normalizeMeta(runtimeAssetsUpdate.available)).some(
+        (value) => normalizeString(value).length > 0,
+      );
 
     const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
     const previousWordpressAvailable = this.normalizeMeta(wordpressAssetsUpdate.available);
     const hadAvailableWordpressUpdate =
-      Object.values(previousWordpressAvailable).some((value) => normalizeString(value).length > 0) ||
+      Object.values(previousWordpressAvailable).some(
+        (value) => normalizeString(value).length > 0,
+      ) ||
       AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
       );
     if (input.wordpressAssets) {
       if (typeof input.wordpressAssets.current !== 'undefined') {
@@ -1685,16 +1828,16 @@ export class DeploymentService {
     const hasAvailableWordpressUpdate =
       Object.values(currentWordpressAvailable).some((value) => normalizeString(value).length > 0) ||
       AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
       );
 
     meta.runtimeStatusReport = {
       ...runtimeStatusReport,
-      lastReportedAt: new Date().toISOString()
+      lastReportedAt: new Date().toISOString(),
     };
 
     const updated = await repository.updateDeployment(deployment.id, {
-      meta
+      meta,
     });
 
     if (!updated) {
@@ -1706,8 +1849,8 @@ export class DeploymentService {
       appId: deployment.appId,
       eventName: 'deployment.status_reported',
       properties: {
-        deploymentId: deployment.id
-      }
+        deploymentId: deployment.id,
+      },
     });
 
     if (!hadAvailableRuntimeUpdate && hasAvailableRuntimeUpdate) {
@@ -1716,8 +1859,8 @@ export class DeploymentService {
         appId: deployment.appId,
         eventName: 'deployment.runtime_update_available',
         properties: {
-          deploymentId: deployment.id
-        }
+          deploymentId: deployment.id,
+        },
       });
     }
 
@@ -1727,8 +1870,8 @@ export class DeploymentService {
         appId: deployment.appId,
         eventName: 'deployment.wordpress_update_available',
         properties: {
-          deploymentId: deployment.id
-        }
+          deploymentId: deployment.id,
+        },
       });
     }
 
@@ -1749,12 +1892,16 @@ export class DeploymentService {
 
     const meta = this.normalizeMeta(deployment.meta);
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
+    const runtimeAssetsUpdate = this.normalizeMeta(meta.runtimeAssetsUpdate);
     const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
 
     if (input.kind === 'apply_runtime_images' || input.kind === 'ignore_runtime_images') {
       const hasAvailableRuntimeImage =
         normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-        normalizeString(runtimeUpdate.availableWebsocketImage).length > 0;
+        normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
+        Object.values(this.normalizeMeta(runtimeAssetsUpdate.available)).some(
+          (value) => normalizeString(value).length > 0,
+        );
       if (!hasAvailableRuntimeImage) {
         throw httpError(409, 'No available runtime image update to process');
       }
@@ -1763,10 +1910,10 @@ export class DeploymentService {
     if (input.kind === 'apply_wordpress_assets' || input.kind === 'ignore_wordpress_assets') {
       const hasAvailableWordpressAssets =
         Object.values(this.normalizeMeta(wordpressAssetsUpdate.available)).some(
-          (value) => normalizeString(value).length > 0
+          (value) => normalizeString(value).length > 0,
         ) ||
         AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-          (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0
+          (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
         );
       if (!hasAvailableWordpressAssets) {
         throw httpError(409, 'No available WordPress asset update to process');
@@ -1777,7 +1924,7 @@ export class DeploymentService {
       id: `fdda_${randomBytes(12).toString('base64url')}`,
       kind: input.kind,
       requestedAt: new Date().toISOString(),
-      requestedByUserId: input.userId
+      requestedByUserId: input.userId,
     };
 
     const updated = await repository.updateDeployment(deployment.id, { meta });
@@ -1791,8 +1938,8 @@ export class DeploymentService {
       eventName: 'deployment.action_requested',
       properties: {
         deploymentId: deployment.id,
-        kind: input.kind
-      }
+        kind: input.kind,
+      },
     });
 
     return { ok: true };
@@ -1814,7 +1961,7 @@ export class DeploymentService {
       try {
         const decrypted = decryptJson<{ token?: string }>(
           runtimeStatusReport.token,
-          this.getEncryptionSecret()
+          this.getEncryptionSecret(),
         );
         expectedToken = normalizeString(decrypted.token);
       } catch {
@@ -1835,8 +1982,8 @@ export class DeploymentService {
       action: {
         id: normalizeString(pendingAction.id),
         kind: normalizeString(pendingAction.kind),
-        requestedAt: normalizeString(pendingAction.requestedAt) || null
-      }
+        requestedAt: normalizeString(pendingAction.requestedAt) || null,
+      },
     };
   }
 
@@ -1862,7 +2009,7 @@ export class DeploymentService {
       try {
         const decrypted = decryptJson<{ token?: string }>(
           runtimeStatusReport.token,
-          this.getEncryptionSecret()
+          this.getEncryptionSecret(),
         );
         expectedToken = normalizeString(decrypted.token);
       } catch {
@@ -1884,7 +2031,7 @@ export class DeploymentService {
       kind: normalizeString(pendingAction.kind),
       status: input.status,
       message: normalizeString(input.message),
-      finishedAt: new Date().toISOString()
+      finishedAt: new Date().toISOString(),
     };
     delete meta.pendingAction;
 
@@ -1896,21 +2043,19 @@ export class DeploymentService {
     await new EventService(this.db).capture({
       userId: deployment.userId,
       appId: deployment.appId,
-      eventName: input.status === 'completed' ? 'deployment.action_completed' : 'deployment.action_failed',
+      eventName:
+        input.status === 'completed' ? 'deployment.action_completed' : 'deployment.action_failed',
       properties: {
         deploymentId: deployment.id,
         kind: normalizeString(pendingAction.kind),
-        message: normalizeString(input.message)
-      }
+        message: normalizeString(input.message),
+      },
     });
 
     return { ok: true };
   }
 
-  async deactivateDeployment(input: {
-    deploymentId: string;
-    userId: string;
-  }) {
+  async deactivateDeployment(input: { deploymentId: string; userId: string }) {
     const repository = new DeploymentRepository(this.db);
     const deployment = await repository.findDeploymentById(input.deploymentId);
     if (!deployment || deployment.userId !== input.userId) {
@@ -1922,7 +2067,7 @@ export class DeploymentService {
     const updated =
       deployment.status === 'active'
         ? await repository.updateDeployment(deployment.id, {
-            status: 'inactive'
+            status: 'inactive',
           })
         : deployment;
 
@@ -1935,8 +2080,8 @@ export class DeploymentService {
       appId: deployment.appId,
       eventName: 'deployment.deactivated',
       properties: {
-        deploymentId: deployment.id
-      }
+        deploymentId: deployment.id,
+      },
     });
 
     const [hydrated] = await this.hydrateDeployments([updated]);

@@ -1164,6 +1164,14 @@ export interface DeploymentSummary {
     offeredAt: string | null;
     appliedAt: string | null;
   };
+  runtimeAssets: Array<{
+    key: string;
+    label: string;
+    current: string | null;
+    available: string | null;
+  }>;
+  runtimeAssetsOfferedAt: string | null;
+  runtimeAssetsAppliedAt: string | null;
   currentWordpressAssetReleases: Record<string, string | null>;
   availableWordpressAssetReleases: Record<string, string | null>;
   pendingAction: {

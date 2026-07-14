@@ -280,11 +280,11 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
       const kind = normalizeString(properties.kind);
       const title =
         kind === 'apply_runtime_images'
-          ? '前端更新已排队'
+          ? '运行镜像更新已排队'
           : kind === 'apply_wordpress_assets'
             ? 'WP 资产更新已排队'
             : kind === 'ignore_runtime_images'
-              ? '前端更新忽略已排队'
+              ? '运行镜像更新忽略已排队'
               : 'WP 资产忽略已排队';
       return {
         userId: event.userId,
@@ -303,11 +303,11 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
       const kind = normalizeString(properties.kind);
       const title =
         kind === 'apply_runtime_images'
-          ? '前端更新已完成'
+          ? '运行镜像更新已完成'
           : kind === 'apply_wordpress_assets'
             ? 'WP 资产更新已完成'
             : kind === 'ignore_runtime_images'
-              ? '前端更新已忽略'
+              ? '运行镜像更新已忽略'
               : 'WP 资产更新已忽略';
       return {
         userId: event.userId,
@@ -326,11 +326,11 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
       const kind = normalizeString(properties.kind);
       const title =
         kind === 'apply_runtime_images'
-          ? '前端更新失败'
+          ? '运行镜像更新失败'
           : kind === 'apply_wordpress_assets'
             ? 'WP 资产更新失败'
             : kind === 'ignore_runtime_images'
-              ? '前端更新忽略失败'
+              ? '运行镜像更新忽略失败'
               : 'WP 资产更新忽略失败';
       const message = normalizeString(properties.message);
       return {
