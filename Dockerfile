@@ -18,6 +18,7 @@ FROM deps AS build
 COPY tsconfig.json ./
 COPY drizzle.config.ts ./
 COPY scripts ./scripts
+COPY app-products ./app-products
 COPY src ./src
 COPY drizzle ./drizzle
 
@@ -47,6 +48,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/tsconfig.json ./
 COPY --from=build /app/drizzle.config.ts ./
 COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/app-products ./app-products
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/admin-ui/dist ./admin-ui/dist
