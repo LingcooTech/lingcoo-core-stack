@@ -22,7 +22,8 @@
     "db:migrate": "node scripts/run-migrations.mjs",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "seed:mvp": "node scripts/run-seed-mvp.cjs"
+    "seed:mvp": "node scripts/run-seed-mvp.cjs",
+    "app:import": "node scripts/run-import-app-product.cjs"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

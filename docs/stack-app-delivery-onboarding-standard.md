@@ -575,6 +575,35 @@ await deliverySettings.upsertSettings(
 
 不要把 secret 写进 `apps.meta`。
 
+### 7.6 版本化商品配置
+
+每个可上架应用必须在 Stack 仓库中提交一份版本化商品配置：
+
+```text
+app-products/<app-code>/product.json
+```
+
+这份配置是应用上架的可重复导入源，必须包含：
+
+- `app`: 商品基础信息、前台展示内容、分类、状态和 `meta.deliveryMode`。
+- `features`: 该商品授权包含的功能。
+- `plans`: 套餐、价格、计费周期和 deployment policy。
+- `offers`: 前台购买 offer。
+- `delivery.manifestSource`: 公开 delivery 仓和 manifest 路径。
+- `delivery.manifest`: 当前审核通过的 manifest 快照。
+- `delivery.settings.values`: 可公开 preset，例如 runtime image、ACR 用户名、更新策略。
+- `delivery.settings.secretsFromEnv`: secret key 到环境变量名的映射。
+
+secret 值不得进入 JSON。导入时通过环境变量注入：
+
+```bash
+FD_APP_IMPORT_ACTOR_USER_ID=<admin-user-id> \
+FD_EDU_ACR_PASSWORD=<readonly-acr-password> \
+npm run app:import -- app-products/fd_edu_system/product.json --require-secrets
+```
+
+如果生产库里已有 secret，可以不传对应环境变量，导入脚本会保留已有 encrypted secret 并输出 missing secret env 提示。全新环境首次导入时必须使用 `--require-secrets`，避免商品显示已上架但镜像凭据未配置。
+
 ## 8. 上架流程
 
 ### 8.1 准备源码仓
@@ -612,16 +641,13 @@ await deliverySettings.upsertSettings(
 
 步骤：
 
-1. 创建/更新 App。
-2. 创建/更新 features。
-3. 创建/更新 plan。
-4. 创建/更新 offer。
-5. 写入 `meta.deliveryMode`。
-6. 写入或同步 `meta.deliveryManifest`。
-7. 配置 delivery preset。
-8. 配置 preset secret。
-9. 校验 public catalog。
-10. 校验 delivery settings overview。
+1. 编写 `app-products/<app-code>/product.json`。
+2. 确认 JSON 内不包含 secret 值。
+3. 在目标 Stack 环境设置必要 secret 环境变量。
+4. 执行 `npm run app:import -- app-products/<app-code>/product.json`。
+5. 校验 public catalog。
+6. 校验 delivery settings overview。
+7. 校验后台 App 编辑页可继续维护该商品。
 
 ### 8.5 E2E 验收
 

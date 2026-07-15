@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "code": "fd_edu_system",
+    "name": "FD Edu System",
+    "tagline": "培训机构运营、招生、排课、家长中心与支付的一键交付系统",
+    "description": "FD Edu System 面向教育培训机构，提供课程展示、线索管理、学员档案、班级排课、课消、订单支付和家长中心。Stack 交付只部署私有镜像，不向客户交付源码。",
+    "content": "## 产品概述\n\nFD Edu System 是 FutureDecade 的教育培训机构运营系统，覆盖从公开课程展示、报名线索、试听转化到正式学员运营、合同订单、课时消耗和家长中心的核心流程。\n\n## 交付方式\n\n- 客户购买后获得一键部署权益\n\n- 目标服务器只拉取 FD 发布到 ACR 的运行镜像\n\n- 安装脚本创建数据库、运行迁移、初始化机构和管理员账号\n\n- 部署域名首次成功后锁定到该权益\n\n## 小程序说明\n\n本商品只包含 Web 管理后台、公开站和 API 服务。微信小程序作为独立交付项，不随本 Web 商品自动部署。",
+    "category": "教育系统",
+    "sortOrder": 30,
+    "type": "web_app",
+    "status": "active",
+    "screenshots": [],
+    "highlights": [
+      {
+        "icon": "rocket",
+        "title": "一键部署",
+        "description": "通过 Stack deploy token 在目标服务器完成镜像登录、数据库初始化、域名绑定和服务启动。"
+      },
+      {
+        "icon": "graduation-cap",
+        "title": "教培业务闭环",
+        "description": "覆盖课程、校区、教师、学员、班级、课表、课消、作业和家长中心。"
+      },
+      {
+        "icon": "credit-card",
+        "title": "交易与收款",
+        "description": "支持公开课程下单、订单状态、线下收款记录及后续支付渠道配置。"
+      },
+      {
+        "icon": "shield",
+        "title": "镜像交付",
+        "description": "客户服务器只拉取私有 ACR 镜像；ACR 只读凭据由 Stack 后台加密保存，不展示给客户。"
+      }
+    ],
+    "faq": [
+      {
+        "question": "购买后会拿到源代码吗？",
+        "answer": "不会。该商品按镜像交付，客户只获得一键部署权益和运行环境，不获得 FD Edu System 源码。"
+      },
+      {
+        "question": "是否包含微信小程序？",
+        "answer": "不包含。小程序建议作为单独商品或增购服务，避免 Web 系统和小程序审核/发布流程互相绑定。"
+      },
+      {
+        "question": "首次部署会创建管理员吗？",
+        "answer": "会。Stack 购买部署流程会要求填写机构信息和初始管理员账号，安装脚本只在首次初始化时使用这些信息。"
+      }
+    ],
+    "links": [
+      {
+        "label": "Delivery Repository",
+        "url": "https://github.com/FutureDecade/fd-edu-system-delivery",
+        "type": "website"
+      },
+      {
+        "label": "Stack Product Setup",
+        "url": "https://github.com/FutureDecade/fd-edu-system-delivery/blob/main/docs/fd-stack-product-setup.md",
+        "type": "docs"
+      }
+    ],
+    "meta": {
+      "deliveryMode": "one_click",
+      "productDeliveryMode": "one_click_deploy"
+    }
+  },
+  "features": [
+    {
+      "code": "fd_edu_system_web_deploy",
+      "name": "FD Edu System Web Deploy",
+      "kind": "boolean",
+      "status": "active"
+    }
+  ],
+  "plans": [
+    {
+      "code": "fd_edu_system_web_license",
+      "name": "FD Edu System Web 一键部署测试许可",
+      "billingProvider": "self_hosted",
+      "priceAmount": 1,
+      "currency": "CNY",
+      "interval": "one_time",
+      "status": "active",
+      "featureCodes": ["fd_edu_system_web_deploy"],
+      "meta": {
+        "usage": "test_purchase_and_deploy",
+        "deliveryMode": "one_click",
+        "deploymentPolicy": {
+          "maxActiveDeployments": 1,
+          "allowMultiplePurchases": false,
+          "domainBindingMode": "lock_on_first_success",
+          "domainBindingSource": "primaryDomain",
+          "domainBindingScope": "exact_host"
+        }
+      }
+    }
+  ],
+  "offers": [
+    {
+      "code": "fd_edu_system_web_license",
+      "planCode": "fd_edu_system_web_license",
+      "title": "FD Edu System Web 一键部署测试 0.01 元",
+      "description": "用于验证终端用户购买、授权发放与 deploy token 一键部署流程。",
+      "badge": "测试",
+      "priceAmount": 1,
+      "currency": "CNY",
+      "isDefault": true,
+      "sortOrder": 0,
+      "status": "active"
+    }
+  ],
+  "delivery": {
+    "manifestSource": {
+      "repoUrl": "https://github.com/FutureDecade/fd-edu-system-delivery.git",
+      "repoBranch": "main",
+      "manifestPath": "fd-delivery.manifest.json",
+      "manifestUrl": "https://raw.githubusercontent.com/FutureDecade/fd-edu-system-delivery/main/fd-delivery.manifest.json"
+    },
+    "manifest": {
+      "version": "1",
+      "installer": {
+        "repoUrl": "https://github.com/FutureDecade/fd-edu-system-delivery.git",
+        "repoBranch": "main",
+        "remoteInstallScriptUrl": "https://raw.githubusercontent.com/FutureDecade/fd-edu-system-delivery/main/scripts/remote-install.sh",
+        "installPath": "/opt/fd-edu-system"
+      },
+      "groups": [
+        { "key": "images", "label": "镜像与仓库" },
+        { "key": "institution", "label": "机构信息" },
+        { "key": "administrator", "label": "初始管理员" },
+        { "key": "credentials", "label": "交付凭据" },
+        { "key": "runtime", "label": "运行策略" }
+      ],
+      "domainSlots": [
+        {
+          "key": "edu",
+          "label": "教育系统域名",
+          "envKey": "EDU_DOMAIN",
+          "sourceField": "primaryDomain",
+          "required": true,
+          "placeholder": "edu.example.com",
+          "description": "管理后台、公开站和 API 共用此 HTTPS 域名。"
+        }
+      ],
+      "envFields": [
+        {
+          "key": "FD_EDU_RUNTIME_IMAGE",
+          "label": "FD Edu Runtime Image",
+          "type": "text",
+          "scope": "preset",
+          "required": true,
+          "editable": true,
+          "advanced": true,
+          "group": "images"
+        },
+        {
+          "key": "ACR_USERNAME",
+          "label": "ACR 用户名",
+          "type": "text",
+          "scope": "preset",
+          "required": true,
+          "editable": true,
+          "advanced": true,
+          "group": "credentials"
+        },
+        {
+          "key": "INITIAL_ORGANIZATION_NAME",
+          "label": "机构名称",
+          "type": "text",
+          "scope": "user_input",
+          "required": true,
+          "editable": true,
+          "advanced": false,
+          "group": "institution",
+          "placeholder": "未来教育中心"
+        },
+        {
+          "key": "INITIAL_ORGANIZATION_BRAND_NAME",
+          "label": "品牌名称",
+          "type": "text",
+          "scope": "user_input",
+          "required": false,
+          "editable": true,
+          "advanced": false,
+          "group": "institution",
+          "description": "留空时使用机构名称。"
+        },
+        {
+          "key": "INITIAL_ORGANIZATION_PHONE",
+          "label": "机构联系电话",
+          "type": "text",
+          "scope": "user_input",
+          "required": false,
+          "editable": true,
+          "advanced": false,
+          "group": "institution"
+        },
+        {
+          "key": "INITIAL_ORGANIZATION_ADDRESS",
+          "label": "机构地址",
+          "type": "text",
+          "scope": "user_input",
+          "required": false,
+          "editable": true,
+          "advanced": false,
+          "group": "institution"
+        },
+        {
+          "key": "INITIAL_ADMIN_EMAIL",
+          "label": "管理员邮箱",
+          "type": "email",
+          "scope": "user_input",
+          "required": true,
+          "editable": true,
+          "advanced": false,
+          "group": "administrator"
+        },
+        {
+          "key": "INITIAL_ADMIN_DISPLAY_NAME",
+          "label": "管理员姓名",
+          "type": "text",
+          "scope": "user_input",
+          "required": true,
+          "editable": true,
+          "advanced": false,
+          "defaultValue": "系统管理员",
+          "group": "administrator"
+        },
+        {
+          "key": "FD_RUNTIME_IMAGE_UPDATE_POLICY",
+          "label": "镜像更新策略",
+          "type": "text",
+          "scope": "preset",
+          "required": true,
+          "editable": true,
+          "advanced": true,
+          "defaultValue": "manual",
+          "group": "runtime"
+        }
+      ],
+      "assets": [
+        {
+          "key": "fd-edu-runtime-image",
+          "label": "FD Edu 运行镜像",
+          "type": "docker_image",
+          "required": true,
+          "visibility": "private",
+          "imageEnv": "FD_EDU_RUNTIME_IMAGE",
+          "authSecret": "ACR_PASSWORD",
+          "group": "images",
+          "description": "由 FD-edu-system 现有 CI 发布到阿里云 ACR。"
+        }
+      ],
+      "secretFields": [
+        {
+          "key": "INITIAL_ADMIN_PASSWORD",
+          "label": "初始管理员密码",
+          "description": "至少 12 位；首次登录后必须修改。该值仅用于首次初始化，不写入部署 .env。",
+          "type": "secret",
+          "scope": "user_input",
+          "required": true,
+          "editable": true,
+          "advanced": false,
+          "group": "administrator"
+        },
+        {
+          "key": "ACR_PASSWORD",
+          "label": "ACR 密码",
+          "description": "由 FD Stack 管理员配置，只用于目标服务器拉取私有镜像。",
+          "type": "secret",
+          "scope": "preset",
+          "required": true,
+          "editable": true,
+          "advanced": true,
+          "group": "credentials"
+        }
+      ],
+      "notes": [
+        "This repository contains deployment configuration only; the application is delivered as a private image.",
+        "ACR credentials and the initial administrator password are not persisted in the deployment env file."
+      ]
+    },
+    "settings": {
+      "values": {
+        "FD_EDU_RUNTIME_IMAGE": "crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com/futuredecade/fd-edu-system:7b47b445ab88a402045041d0ec15f85632c4c644",
+        "ACR_USERNAME": "aliyun3857382555",
+        "FD_RUNTIME_IMAGE_UPDATE_POLICY": "manual"
+      },
+      "secretsFromEnv": {
+        "ACR_PASSWORD": "FD_EDU_ACR_PASSWORD"
+      },
+      "installer": {
+        "repoUrl": "https://github.com/FutureDecade/fd-edu-system-delivery.git",
+        "repoBranch": "main"
+      }
+    }
+  }
+}

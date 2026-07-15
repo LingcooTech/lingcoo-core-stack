@@ -193,6 +193,22 @@ Plan 的部署策略：
 - 用户部署时不会看到 `ACR_PASSWORD`。
 - `INITIAL_ADMIN_PASSWORD` 是用户部署时填写的 secret，不属于后台 preset。
 
+当前 EDU 商品配置已经版本化到 Stack 仓库：
+
+```text
+app-products/fd_edu_system/product.json
+```
+
+可通过导入脚本重复写入目标 Stack 数据库：
+
+```bash
+FD_APP_IMPORT_ACTOR_USER_ID=<admin-user-id> \
+FD_EDU_ACR_PASSWORD=<readonly-acr-password> \
+npm run app:import -- app-products/fd_edu_system/product.json --require-secrets
+```
+
+该 JSON 不保存 ACR 密码，只保存 `ACR_PASSWORD -> FD_EDU_ACR_PASSWORD` 的环境变量映射。若生产库已有 encrypted secret，导入时也可以不提供该环境变量，脚本会保留现有 secret。
+
 Catalog 校验结果：
 
 ```json
