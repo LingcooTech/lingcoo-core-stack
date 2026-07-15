@@ -66,8 +66,32 @@
   },
   "features": [
     {
-      "code": "fd_edu_system_web_deploy",
-      "name": "FD Edu System Web Deploy",
+      "code": "one_click_deploy",
+      "name": "一键部署",
+      "kind": "boolean",
+      "status": "active"
+    },
+    {
+      "code": "edu_admin",
+      "name": "教育管理后台",
+      "kind": "boolean",
+      "status": "active"
+    },
+    {
+      "code": "public_course_site",
+      "name": "公开课程站点",
+      "kind": "boolean",
+      "status": "active"
+    },
+    {
+      "code": "student_operations",
+      "name": "学员与班课运营",
+      "kind": "boolean",
+      "status": "active"
+    },
+    {
+      "code": "orders_and_payments",
+      "name": "订单与收款",
       "kind": "boolean",
       "status": "active"
     }
@@ -81,7 +105,13 @@
       "currency": "CNY",
       "interval": "one_time",
       "status": "active",
-      "featureCodes": ["fd_edu_system_web_deploy"],
+      "featureCodes": [
+        "one_click_deploy",
+        "edu_admin",
+        "public_course_site",
+        "student_operations",
+        "orders_and_payments"
+      ],
       "meta": {
         "usage": "test_purchase_and_deploy",
         "deliveryMode": "one_click",
