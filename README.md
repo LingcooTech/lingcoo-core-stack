@@ -1,4 +1,4 @@
-# fd-core-stack
+# lingcoo-core-stack
 
 单机可部署的核心中台骨架，面向：
 

@@ -1,5 +1,5 @@
 {
-  "name": "fd-core-stack",
+  "name": "lingcoo-core-stack",
   "version": "0.1.0",
   "private": true,
   "description": "Self-hosted core platform for auth, billing, license, event and API services.",
