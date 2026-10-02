@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type AlertLevel = 'info' | 'warning' | 'error';
 export type AlertingSettingsSource = 'database' | 'env' | 'none';
@@ -131,7 +131,7 @@ export class AlertingSettingsService {
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private async findSettingRow() {

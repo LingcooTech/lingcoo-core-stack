@@ -4,7 +4,7 @@ import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type ContentImportSettingsSource = 'database' | 'none';
 
@@ -85,7 +85,7 @@ export class ContentImportSettingsService {
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private async findSettingRow() {
@@ -98,7 +98,9 @@ export class ContentImportSettingsService {
     return row ?? null;
   }
 
-  private decodeSetting<T>(row: NonNullable<Awaited<ReturnType<ContentImportSettingsService['findSettingRow']>>>) {
+  private decodeSetting<T>(
+    row: NonNullable<Awaited<ReturnType<ContentImportSettingsService['findSettingRow']>>>,
+  ) {
     if (row.isEncrypted) {
       return decryptJson<T>(row.value, this.getEncryptionSecret());
     }
@@ -122,7 +124,12 @@ export class ContentImportSettingsService {
       },
     } satisfies ContentImportSettings;
 
-    if (!normalized.wordpress.siteUrl && !normalized.wordpress.username && !normalized.wordpress.appPassword && !normalized.notion.apiToken) {
+    if (
+      !normalized.wordpress.siteUrl &&
+      !normalized.wordpress.username &&
+      !normalized.wordpress.appPassword &&
+      !normalized.notion.apiToken
+    ) {
       return null;
     }
 
@@ -156,7 +163,8 @@ export class ContentImportSettingsService {
       wordpress: {
         siteUrl: normalizeUrl(input.wordpress?.siteUrl) || existing?.wordpress.siteUrl || '',
         username: normalizeString(input.wordpress?.username) || existing?.wordpress.username || '',
-        appPassword: normalizeString(input.wordpress?.appPassword) || existing?.wordpress.appPassword || '',
+        appPassword:
+          normalizeString(input.wordpress?.appPassword) || existing?.wordpress.appPassword || '',
       },
       notion: {
         apiToken: normalizeString(input.notion?.apiToken) || existing?.notion.apiToken || '',
@@ -169,9 +177,7 @@ export class ContentImportSettingsService {
 
     return {
       configured: Boolean(
-        settings?.wordpress.siteUrl ||
-          settings?.wordpress.appPassword ||
-          settings?.notion.apiToken,
+        settings?.wordpress.siteUrl || settings?.wordpress.appPassword || settings?.notion.apiToken,
       ),
       source: settings ? 'database' : 'none',
       values: {
@@ -249,11 +255,13 @@ export class ContentImportSettingsService {
     return `Basic ${Buffer.from(`${safeUsername}:${safePassword}`).toString('base64')}`;
   }
 
-  async testWordPressConnection(input: {
-    siteUrl?: string;
-    username?: string;
-    appPassword?: string;
-  } = {}) {
+  async testWordPressConnection(
+    input: {
+      siteUrl?: string;
+      username?: string;
+      appPassword?: string;
+    } = {},
+  ) {
     const settings = await this.resolveDraftSettings({ wordpress: input });
 
     if (!settings.wordpress.siteUrl) {
@@ -281,7 +289,7 @@ export class ContentImportSettingsService {
       ok: true,
       provider: 'wordpress' as const,
       siteUrl: settings.wordpress.siteUrl,
-      mode: auth ? 'authenticated' as const : 'public' as const,
+      mode: auth ? ('authenticated' as const) : ('public' as const),
       account: userName || null,
     };
   }

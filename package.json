@@ -30,7 +30,8 @@
     "typecheck:admin": "npm run typecheck --prefix admin-ui",
     "smoke:admin-static": "node scripts/verify-admin-static.mjs",
     "check": "npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
-    "inspect:architecture": "node scripts/inspect-architecture.mjs"
+    "inspect:architecture": "node scripts/inspect-architecture.mjs",
+    "db:bootstrap": "node dist/scripts/bootstrap-admin.js"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

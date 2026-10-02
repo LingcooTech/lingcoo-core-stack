@@ -8,11 +8,11 @@ import {
   listDeliveryManifestAssetRequiredSecretKeys,
   listDeliveryManifestFields,
   normalizeDeliveryManifest,
-  type DeliveryManifestField
+  type DeliveryManifestField,
 } from './delivery-manifest';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 type SecretStatus = {
   configured: boolean;
@@ -49,13 +49,10 @@ export type StoredDeliverySettings = {
 
 const DEFAULT_INSTALLER = {
   repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-  repoBranch: 'main'
+  repoBranch: 'main',
 };
 
-const LEGACY_VALUE_KEY_MAP: Record<
-  string,
-  { envKey: string; kind: 'string' | 'boolean' }
-> = {
+const LEGACY_VALUE_KEY_MAP: Record<string, { envKey: string; kind: 'string' | 'boolean' }> = {
   frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
   websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
   letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
@@ -75,12 +72,12 @@ const LEGACY_VALUE_KEY_MAP: Record<
   fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
   wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
   wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' }
+  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' },
 };
 
 const LEGACY_SECRET_KEY_MAP: Record<string, string> = {
   acrPassword: 'ACR_PASSWORD',
-  githubToken: 'GH_TOKEN'
+  githubToken: 'GH_TOKEN',
 };
 
 function normalizeString(value: unknown) {
@@ -157,7 +154,7 @@ function createEmptyStoredSettings(): StoredDeliverySettings {
   return {
     values: {},
     secrets: {},
-    installer: { ...DEFAULT_INSTALLER }
+    installer: { ...DEFAULT_INSTALLER },
   };
 }
 
@@ -166,7 +163,7 @@ function normalizeInstallerOverrides(value: unknown) {
 
   return {
     repoUrl: normalizeString(raw.repoUrl) || DEFAULT_INSTALLER.repoUrl,
-    repoBranch: normalizeString(raw.repoBranch) || DEFAULT_INSTALLER.repoBranch
+    repoBranch: normalizeString(raw.repoBranch) || DEFAULT_INSTALLER.repoBranch,
   };
 }
 
@@ -203,7 +200,7 @@ function normalizeLegacySettings(value: Record<string, unknown>): StoredDelivery
 
   next.installer = {
     repoUrl: normalizeString(value.repoUrl) || DEFAULT_INSTALLER.repoUrl,
-    repoBranch: normalizeString(value.repoBranch) || DEFAULT_INSTALLER.repoBranch
+    repoBranch: normalizeString(value.repoBranch) || DEFAULT_INSTALLER.repoBranch,
   };
 
   return next;
@@ -216,7 +213,7 @@ function normalizeStoredSettings(value: unknown): StoredDeliverySettings {
     return {
       values: normalizeValueRecord(raw.values),
       secrets: normalizeSecretRecord(raw.secrets),
-      installer: normalizeInstallerOverrides(raw.installer)
+      installer: normalizeInstallerOverrides(raw.installer),
     };
   }
 
@@ -229,7 +226,7 @@ function normalizeInputPatch(input: DeliverySettingsInput) {
     return {
       values: normalizeValueRecord(raw.values),
       secrets: normalizeSecretRecord(raw.secrets),
-      installer: normalizeInstallerOverrides(raw.installer)
+      installer: normalizeInstallerOverrides(raw.installer),
     };
   }
 
@@ -271,11 +268,11 @@ export class DeliverySettingsService {
 
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private getSettingKey(appCode: string) {
@@ -322,7 +319,11 @@ export class DeliverySettingsService {
     return row.value;
   }
 
-  private async saveLegacyEncryptedSetting(appCode: string, value: StoredDeliverySettings, updatedByUserId: string) {
+  private async saveLegacyEncryptedSetting(
+    appCode: string,
+    value: StoredDeliverySettings,
+    updatedByUserId: string,
+  ) {
     const now = new Date();
     const encryptedValue = encryptJson(value, this.getEncryptionSecret());
 
@@ -334,7 +335,7 @@ export class DeliverySettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -342,12 +343,16 @@ export class DeliverySettingsService {
           value: encryptedValue,
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
   }
 
-  private async saveEncryptedSetting(appCode: string, value: StoredDeliverySettings, updatedByUserId: string) {
+  private async saveEncryptedSetting(
+    appCode: string,
+    value: StoredDeliverySettings,
+    updatedByUserId: string,
+  ) {
     const app = await new AppRepository(this.db).findAppByCode(appCode);
     if (!app) {
       throw httpError(404, 'App not found');
@@ -369,7 +374,7 @@ export class DeliverySettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: appDeliverySettings.appId,
@@ -377,8 +382,8 @@ export class DeliverySettingsService {
           value: encryptedValue,
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
 
     await this.db.delete(systemSettings).where(eq(systemSettings.key, this.getSettingKey(appCode)));
@@ -419,7 +424,7 @@ export class DeliverySettingsService {
         : {};
     const manifest = normalizeDeliveryManifest(appMeta.deliveryManifest);
     const secretStatuses = Object.fromEntries(
-      Object.entries(stored.secrets).map(([key, value]) => [key, { configured: Boolean(value) }])
+      Object.entries(stored.secrets).map(([key, value]) => [key, { configured: Boolean(value) }]),
     );
 
     for (const field of manifest?.secretFields ?? []) {
@@ -435,15 +440,19 @@ export class DeliverySettingsService {
     }
 
     const configured = manifest
-      ? listDeliveryManifestFields(manifest, { scope: 'preset' }).every((field) => isFieldConfigured(field, stored)) &&
-        listDeliveryManifestAssetRequiredSecretKeys(manifest).every((key) => Boolean(stored.secrets[key]))
+      ? listDeliveryManifestFields(manifest, { scope: 'preset' }).every((field) =>
+          isFieldConfigured(field, stored),
+        ) &&
+        listDeliveryManifestAssetRequiredSecretKeys(manifest).every((key) =>
+          Boolean(stored.secrets[key]),
+        )
       : Boolean(Object.keys(stored.values).length > 0 || Object.keys(stored.secrets).length > 0);
 
     return {
       appCode,
       configured,
       values: stored.values,
-      secrets: secretStatuses
+      secrets: secretStatuses,
     };
   }
 
@@ -454,16 +463,16 @@ export class DeliverySettingsService {
     const next: StoredDeliverySettings = {
       values: {
         ...current.values,
-        ...patch.values
+        ...patch.values,
       },
       secrets: {
         ...current.secrets,
-        ...patch.secrets
+        ...patch.secrets,
       },
       installer: {
         repoUrl: patch.installer.repoUrl || current.installer.repoUrl,
-        repoBranch: patch.installer.repoBranch || current.installer.repoBranch
-      }
+        repoBranch: patch.installer.repoBranch || current.installer.repoBranch,
+      },
     };
 
     if (next.secrets.GH_TOKEN && !next.secrets.GITHUB_TOKEN) {

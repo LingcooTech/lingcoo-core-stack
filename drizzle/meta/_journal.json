@@ -169,6 +169,13 @@
       "when": 1779724800000,
       "tag": "0023_order_refunding_status",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790907952545,
+      "tag": "0024_job_leases_and_attempts",
+      "breakpoints": true
     }
   ]
 }

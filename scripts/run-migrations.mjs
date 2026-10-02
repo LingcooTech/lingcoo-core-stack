@@ -13,7 +13,8 @@ const projectRoot = path.resolve(__dirname, '..');
 const migrationsFolder = path.join(projectRoot, 'drizzle');
 const journalPath = path.join(migrationsFolder, 'meta', '_journal.json');
 
-const databaseUrl = process.env.DATABASE_URL ?? 'postgres://fd_core:fd_core_password@localhost:5432/fd_core';
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error('DATABASE_URL must explicitly identify the migration target');
 
 const legacyChecks = {
   '0007_app_content_fields': async (client) => {

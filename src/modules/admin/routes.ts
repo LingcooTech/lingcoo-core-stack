@@ -411,7 +411,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.post(
     '/v1/admin/jobs/:jobId/retry',
-    { preHandler: requireObservabilityView },
+    { preHandler: app.requirePermission('jobs.manage') },
     async (request) => {
       const params = adminJobRunParamsSchema.parse(request.params);
       const result = await new AdminService(app.db, app.appEnv).retryJobRun(params.jobId);

@@ -6,7 +6,7 @@ import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type QiniuSettingsSource = 'database' | 'env' | 'none';
 
@@ -143,28 +143,29 @@ function sanitizeFilename(filename: string) {
   const rawBaseName = extensionIndex > 0 ? rawName.slice(0, extensionIndex) : rawName;
   const rawExtension = extensionIndex > 0 ? rawName.slice(extensionIndex).toLowerCase() : '';
 
-  const baseName = rawBaseName
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'image';
+  const baseName =
+    rawBaseName
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'image';
 
   const extension = rawExtension.replace(/[^a-z0-9.]/g, '').slice(0, 16);
 
   return {
     baseName,
-    extension
+    extension,
   };
 }
 
 export class QiniuSettingsService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private async findSettingRow() {
@@ -177,7 +178,9 @@ export class QiniuSettingsService {
     return row ?? null;
   }
 
-  private decodeSetting<T>(row: NonNullable<Awaited<ReturnType<QiniuSettingsService['findSettingRow']>>>) {
+  private decodeSetting<T>(
+    row: NonNullable<Awaited<ReturnType<QiniuSettingsService['findSettingRow']>>>,
+  ) {
     if (row.isEncrypted) {
       return decryptJson<T>(row.value, this.getEncryptionSecret());
     }
@@ -204,7 +207,7 @@ export class QiniuSettingsService {
       bucketName,
       publicBaseUrl,
       uploadHost,
-      defaultPrefix
+      defaultPrefix,
     };
   }
 
@@ -218,7 +221,8 @@ export class QiniuSettingsService {
     const secretKey = normalizeString(this.env.QINIU_SECRET_KEY);
     const bucketName = normalizeString(this.env.QINIU_BUCKET_NAME);
     const publicBaseUrl = normalizeUrl(this.env.QINIU_PUBLIC_BASE_URL);
-    const uploadHost = normalizeUrl(this.env.QINIU_UPLOAD_HOST, DEFAULT_UPLOAD_HOST) || DEFAULT_UPLOAD_HOST;
+    const uploadHost =
+      normalizeUrl(this.env.QINIU_UPLOAD_HOST, DEFAULT_UPLOAD_HOST) || DEFAULT_UPLOAD_HOST;
     const defaultPrefix = normalizePrefix(this.env.QINIU_DEFAULT_PREFIX);
 
     if (!accessKey && !secretKey && !bucketName && !publicBaseUrl && !defaultPrefix) {
@@ -231,7 +235,7 @@ export class QiniuSettingsService {
       bucketName,
       publicBaseUrl,
       uploadHost,
-      defaultPrefix
+      defaultPrefix,
     };
   }
 
@@ -247,7 +251,7 @@ export class QiniuSettingsService {
       publicBaseUrl?: string;
       uploadHost?: string;
       defaultPrefix?: string;
-    } = {}
+    } = {},
   ): Promise<QiniuSettings> {
     const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
 
@@ -256,8 +260,10 @@ export class QiniuSettingsService {
       secretKey: normalizeString(input.secretKey) || existing?.secretKey || '',
       bucketName: normalizeString(input.bucketName) || existing?.bucketName || '',
       publicBaseUrl: normalizeUrl(input.publicBaseUrl, existing?.publicBaseUrl ?? ''),
-      uploadHost: normalizeUrl(input.uploadHost, existing?.uploadHost ?? DEFAULT_UPLOAD_HOST) || DEFAULT_UPLOAD_HOST,
-      defaultPrefix: normalizePrefix(input.defaultPrefix) || existing?.defaultPrefix || ''
+      uploadHost:
+        normalizeUrl(input.uploadHost, existing?.uploadHost ?? DEFAULT_UPLOAD_HOST) ||
+        DEFAULT_UPLOAD_HOST,
+      defaultPrefix: normalizePrefix(input.defaultPrefix) || existing?.defaultPrefix || '',
     };
   }
 
@@ -270,9 +276,11 @@ export class QiniuSettingsService {
       uploadHost?: string;
       defaultPrefix?: string;
     },
-    options: { requirePublicBaseUrl?: boolean } = {}
+    options: { requirePublicBaseUrl?: boolean } = {},
   ) {
-    const settings = input ? await this.resolveDraftSettings(input) : await this.getRuntimeSettings();
+    const settings = input
+      ? await this.resolveDraftSettings(input)
+      : await this.getRuntimeSettings();
 
     if (!settings?.accessKey || !settings.secretKey || !settings.bucketName) {
       throw httpError(422, '七牛云配置不完整，请先填写 Access Key、Secret Key 和 Bucket');
@@ -289,23 +297,32 @@ export class QiniuSettingsService {
     const databaseSettings = await this.getDatabaseSettings();
     const envSettings = this.getEnvSettings();
     const effective = databaseSettings ?? envSettings;
-    const source: QiniuSettingsSource = databaseSettings ? 'database' : envSettings ? 'env' : 'none';
+    const source: QiniuSettingsSource = databaseSettings
+      ? 'database'
+      : envSettings
+        ? 'env'
+        : 'none';
 
     return {
-      configured: Boolean(effective?.accessKey && effective.secretKey && effective.bucketName && effective.publicBaseUrl),
+      configured: Boolean(
+        effective?.accessKey &&
+        effective.secretKey &&
+        effective.bucketName &&
+        effective.publicBaseUrl,
+      ),
       source,
       values: {
         accessKey: effective?.accessKey ?? '',
         bucketName: effective?.bucketName ?? '',
         publicBaseUrl: effective?.publicBaseUrl ?? '',
         uploadHost: effective?.uploadHost ?? DEFAULT_UPLOAD_HOST,
-        defaultPrefix: effective?.defaultPrefix ?? ''
+        defaultPrefix: effective?.defaultPrefix ?? '',
       },
       secrets: {
         secretKey: {
-          configured: hasSecret(effective?.secretKey)
-        }
-      }
+          configured: hasSecret(effective?.secretKey),
+        },
+      },
     };
   }
 
@@ -318,7 +335,7 @@ export class QiniuSettingsService {
       uploadHost?: string;
       defaultPrefix?: string;
     },
-    updatedByUserId: string
+    updatedByUserId: string,
   ) {
     const next = await this.resolveDraftSettings(input);
     const now = new Date();
@@ -331,7 +348,7 @@ export class QiniuSettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -339,8 +356,8 @@ export class QiniuSettingsService {
           value: encryptJson(next, this.getEncryptionSecret()),
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
 
     return this.getOverview();
@@ -363,7 +380,7 @@ export class QiniuSettingsService {
       marker?: string;
       limit?: number;
       imagesOnly?: boolean;
-    } = {}
+    } = {},
   ) {
     const url = new URL('/list', DEFAULT_LIST_API_BASE);
     url.searchParams.set('bucket', settings.bucketName);
@@ -382,14 +399,17 @@ export class QiniuSettingsService {
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `QBox ${this.createManagementToken(url.toString(), settings.accessKey, settings.secretKey ?? '')}`
+        Authorization: `QBox ${this.createManagementToken(url.toString(), settings.accessKey, settings.secretKey ?? '')}`,
       },
-      signal: AbortSignal.timeout(10_000)
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
       const detail = (await response.text()).trim();
-      throw httpError(502, detail ? `七牛云请求失败: ${detail}` : `七牛云请求失败 (${response.status})`);
+      throw httpError(
+        502,
+        detail ? `七牛云请求失败: ${detail}` : `七牛云请求失败 (${response.status})`,
+      );
     }
 
     const payload = (await response.json()) as {
@@ -420,7 +440,7 @@ export class QiniuSettingsService {
           url: settings.publicBaseUrl ? buildPublicUrl(settings.publicBaseUrl, key) : '',
           size: typeof item.fsize === 'number' && Number.isFinite(item.fsize) ? item.fsize : 0,
           mimeType,
-          uploadedAt: normalizeUploadedAt(item.putTime)
+          uploadedAt: normalizeUploadedAt(item.putTime),
         };
       })
       .filter((item): item is QiniuImageItem => Boolean(item));
@@ -429,7 +449,7 @@ export class QiniuSettingsService {
       items,
       marker: normalizeString(payload.marker) || null,
       prefix,
-      limit: normalizeLimit(input.limit, 60)
+      limit: normalizeLimit(input.limit, 60),
     };
   }
 
@@ -448,21 +468,17 @@ export class QiniuSettingsService {
       ok: true,
       bucketName: settings.bucketName,
       publicBaseUrl: settings.publicBaseUrl,
-      sampleCount: result.items.length
+      sampleCount: result.items.length,
     };
   }
 
-  async listImages(input: {
-    prefix?: string;
-    marker?: string;
-    limit?: number;
-  }) {
+  async listImages(input: { prefix?: string; marker?: string; limit?: number }) {
     const settings = await this.resolveRequiredSettings(undefined, { requirePublicBaseUrl: true });
     const result = await this.listBucketObjects(settings, {
       prefix: input.prefix,
       marker: input.marker,
       limit: input.limit,
-      imagesOnly: true
+      imagesOnly: true,
     });
 
     return {
@@ -470,7 +486,7 @@ export class QiniuSettingsService {
       marker: result.marker,
       hasMore: Boolean(result.marker),
       prefix: result.prefix,
-      limit: result.limit
+      limit: result.limit,
     };
   }
 
@@ -487,17 +503,23 @@ export class QiniuSettingsService {
     const datePrefix = [
       String(date.getUTCFullYear()),
       String(date.getUTCMonth() + 1).padStart(2, '0'),
-      String(date.getUTCDate()).padStart(2, '0')
+      String(date.getUTCDate()).padStart(2, '0'),
     ].join('/');
-    const prefix = [settings.defaultPrefix, normalizePrefix(input.prefix)].filter(Boolean).join('/');
-    const objectKey = [prefix, datePrefix, `${baseName}-${Date.now()}-${randomBytes(4).toString('hex')}${extension}`]
+    const prefix = [settings.defaultPrefix, normalizePrefix(input.prefix)]
+      .filter(Boolean)
+      .join('/');
+    const objectKey = [
+      prefix,
+      datePrefix,
+      `${baseName}-${Date.now()}-${randomBytes(4).toString('hex')}${extension}`,
+    ]
       .filter(Boolean)
       .join('/');
     const expiresIn = 3600;
     const deadline = Math.floor(Date.now() / 1000) + expiresIn;
     const policy = {
       scope: `${settings.bucketName}:${objectKey}`,
-      deadline
+      deadline,
     };
     const encodedPolicy = urlsafeBase64Encode(JSON.stringify(policy));
     const uploadToken = `${settings.accessKey}:${signWithSecret(encodedPolicy, settings.secretKey ?? '')}:${encodedPolicy}`;
@@ -507,7 +529,7 @@ export class QiniuSettingsService {
       key: objectKey,
       uploadHost: settings.uploadHost,
       publicUrl: buildPublicUrl(settings.publicBaseUrl, objectKey),
-      expiresIn
+      expiresIn,
     };
   }
 }

@@ -20,6 +20,7 @@ export type AppPermission =
   | 'installs.view'
   | 'tickets.manage'
   | 'notifications.manage'
+  | 'jobs.manage'
   | 'observability.view'
   | 'ai.manage';
 
@@ -44,6 +45,7 @@ const allPermissions: AppPermission[] = [
   'tickets.manage',
   'notifications.manage',
   'observability.view',
+  'jobs.manage',
   'ai.manage',
 ];
 

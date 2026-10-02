@@ -5,7 +5,7 @@ import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
 import { Mailer } from './mailer';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type SmtpSettingsSource = 'database' | 'env' | 'none';
 
@@ -104,11 +104,11 @@ function escapeHtml(value: string) {
 export class SmtpSettingsService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private getDefaultFrom() {
@@ -126,7 +126,9 @@ export class SmtpSettingsService {
     return row ?? null;
   }
 
-  private decodeSetting<T>(row: NonNullable<Awaited<ReturnType<SmtpSettingsService['findSettingRow']>>>) {
+  private decodeSetting<T>(
+    row: NonNullable<Awaited<ReturnType<SmtpSettingsService['findSettingRow']>>>,
+  ) {
     if (row.isEncrypted) {
       return decryptJson<T>(row.value, this.getEncryptionSecret());
     }
@@ -153,7 +155,7 @@ export class SmtpSettingsService {
       secure,
       user,
       password,
-      from
+      from,
     };
   }
 
@@ -180,7 +182,7 @@ export class SmtpSettingsService {
       secure,
       user,
       password,
-      from
+      from,
     };
   }
 
@@ -196,7 +198,7 @@ export class SmtpSettingsService {
       user?: string;
       password?: string;
       from?: string;
-    } = {}
+    } = {},
   ): Promise<SmtpSettings> {
     const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
 
@@ -206,10 +208,10 @@ export class SmtpSettingsService {
       secure:
         typeof input.secure === 'boolean'
           ? input.secure
-          : existing?.secure ?? normalizePort(input.port, 465) === 465,
+          : (existing?.secure ?? normalizePort(input.port, 465) === 465),
       user: normalizeString(input.user) || existing?.user || '',
       password: normalizeString(input.password) || existing?.password || '',
-      from: normalizeString(input.from) || existing?.from || this.getDefaultFrom()
+      from: normalizeString(input.from) || existing?.from || this.getDefaultFrom(),
     };
   }
 
@@ -227,13 +229,13 @@ export class SmtpSettingsService {
         port: effective?.port ?? 465,
         secure: effective?.secure ?? true,
         user: effective?.user ?? '',
-        from: effective?.from ?? this.getDefaultFrom()
+        from: effective?.from ?? this.getDefaultFrom(),
       },
       secrets: {
         password: {
-          configured: hasSecret(effective?.password)
-        }
-      }
+          configured: hasSecret(effective?.password),
+        },
+      },
     };
   }
 
@@ -246,7 +248,7 @@ export class SmtpSettingsService {
       password?: string;
       from?: string;
     },
-    updatedByUserId: string
+    updatedByUserId: string,
   ) {
     const next = await this.resolveDraftSettings(input);
 
@@ -260,7 +262,7 @@ export class SmtpSettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -268,8 +270,8 @@ export class SmtpSettingsService {
           value: encryptJson(next, this.getEncryptionSecret()),
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
 
     return this.getOverview();
@@ -298,9 +300,9 @@ export class SmtpSettingsService {
             secure: draft.secure,
             user: draft.user,
             password: draft.password,
-            from: draft.from
+            from: draft.from,
           }
-        : null
+        : null,
     );
 
     if (!mailer.isConfigured) {
@@ -311,14 +313,14 @@ export class SmtpSettingsService {
       to,
       subject,
       text,
-      html: `<div style="font-family:Arial,sans-serif;line-height:1.7;white-space:pre-wrap;">${escapeHtml(text)}</div>`
+      html: `<div style="font-family:Arial,sans-serif;line-height:1.7;white-space:pre-wrap;">${escapeHtml(text)}</div>`,
     });
 
     return {
       sent: true,
       to,
       from: draft.from,
-      subject
+      subject,
     };
   }
 

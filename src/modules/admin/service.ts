@@ -533,7 +533,14 @@ export class AdminService {
     if (!job) {
       throw httpError(404, 'Job not found');
     }
-    return job;
+    return {
+      id: job.id,
+      kind: job.kind,
+      queue: job.queue,
+      status: job.status,
+      attempts: job.attempts,
+      maxAttempts: job.maxAttempts,
+    };
   }
 
   async listAuditLogs(query: { limit: number; offset: number; search?: string }) {

@@ -836,6 +836,8 @@ export const jobRuns = pgTable(
     maxAttempts: integer('max_attempts').notNull().default(5),
     dedupeKey: varchar('dedupe_key', { length: 255 }),
     availableAt: timestamp('available_at', { withTimezone: true }).notNull().defaultNow(),
+    claimToken: uuid('claim_token'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     lockedAt: timestamp('locked_at', { withTimezone: true }),
     lockedBy: varchar('locked_by', { length: 120 }),
     startedAt: timestamp('started_at', { withTimezone: true }),
@@ -864,6 +866,21 @@ export const jobRuns = pgTable(
     dedupeKeyIdx: uniqueIndex('job_runs_dedupe_key_idx').on(table.dedupeKey),
   }),
 );
+
+export const jobAttempts = pgTable('job_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  jobId: uuid('job_id')
+    .notNull()
+    .references(() => jobRuns.id, { onDelete: 'cascade' }),
+  attempt: integer('attempt').notNull(),
+  claimToken: uuid('claim_token').notNull().unique(),
+  status: varchar('status', { length: 32 }).notNull(),
+  error: jsonb('error')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+});
 
 export const auditLogs = pgTable(
   'audit_logs',

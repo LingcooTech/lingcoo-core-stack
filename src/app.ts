@@ -9,7 +9,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import Fastify from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
-import { ZodError } from 'zod';
+import { safeErrorResponse } from './http/safe-errors';
 
 import { AuthRepository } from './modules/auth/repository';
 import { AppService } from './modules/app/service';
@@ -40,8 +40,16 @@ export async function buildApp(env: AppEnv) {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
+      redact: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'req.headers["x-fd-app-token"]',
+        'password',
+        'token',
+        'secrets',
+      ],
     },
-    trustProxy: env.TRUST_PROXY ?? true,
+    trustProxy: env.TRUST_PROXY ?? false,
   });
 
   app.decorate('appEnv', env);
@@ -70,6 +78,18 @@ export async function buildApp(env: AppEnv) {
   app.decorate('authenticate', async (request, reply) => {
     try {
       await request.jwtVerify();
+      if (
+        request.user.kind === 'app' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          request.user.sub ?? '',
+        )
+      ) {
+        return reply.unauthorized('A user access token is required');
+      }
+      const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+      if (!user || user.status !== 'active') return reply.unauthorized('User is unavailable');
+      request.user.role = user.role;
+      request.user.emailVerified = user.emailVerified;
     } catch (error) {
       return reply.unauthorized('Invalid or expired access token');
     }
@@ -196,41 +216,21 @@ export async function buildApp(env: AppEnv) {
       },
     },
   });
-  await app.register(swaggerUi, {
-    routePrefix: '/api-docs',
-  });
+  if (env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production') {
+    await app.register(swaggerUi, { routePrefix: '/api-docs' });
+  }
 
   for (const module of appModules) {
     await app.register(module.register);
   }
 
   app.setErrorHandler((error, request, reply) => {
-    request.log.error({ err: error }, 'request failed');
-
-    if (error instanceof ZodError) {
-      return reply.status(400).send({
-        error: 'ValidationError',
-        details: error.flatten(),
-      });
-    }
-
-    const statusCode =
-      typeof (error as { statusCode?: number }).statusCode === 'number'
-        ? (error as { statusCode: number }).statusCode
-        : 500;
-
-    const errorName = error instanceof Error ? error.name : 'InternalServerError';
-    const errorMessage = error instanceof Error ? error.message : 'Unexpected error';
-    const details =
-      error && typeof error === 'object' && 'details' in error
-        ? (error as { details?: unknown }).details
-        : undefined;
-
-    return reply.status(statusCode).send({
-      error: errorName,
-      message: errorMessage,
-      ...(typeof details === 'undefined' ? {} : { details }),
-    });
+    const response = safeErrorResponse(error, request.id);
+    request.log.error(
+      { requestId: request.id, code: response.body.code, statusCode: response.status },
+      'request failed',
+    );
+    return reply.status(response.status).send(response.body);
   });
 
   return app;

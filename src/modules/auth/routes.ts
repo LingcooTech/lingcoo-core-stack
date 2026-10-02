@@ -26,6 +26,7 @@ function toAuthResponse(
   const token = app.jwt.sign(
     {
       sub: user.id,
+      kind: 'user',
       email: user.email,
       role: user.role,
       emailVerified: user.emailVerified,

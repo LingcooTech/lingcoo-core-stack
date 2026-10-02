@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 
 import type { DbClient } from '../../db/types';
 import {
@@ -22,7 +23,7 @@ import {
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
-import { decryptJson, encryptJson } from '../../lib/settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
 import { AppRepository } from '../app/repository';
 import { AppService } from '../app/service';
 import { AuthRepository } from '../auth/repository';
@@ -277,7 +278,7 @@ export class DeploymentService {
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private async resolveDeployableApp(input: { userId: string; appCode: string }) {
@@ -1368,7 +1369,16 @@ export class DeploymentService {
     };
   }
 
-  async createDeployment(input: {
+  async createDeployment(input: Parameters<DeploymentService['createDeploymentLocked']>[0]) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select id from entitlements where id = ${input.entitlementId} for update`,
+      );
+      return new DeploymentService(tx as DbClient, this.env).createDeploymentLocked(input);
+    });
+  }
+
+  private async createDeploymentLocked(input: {
     userId: string;
     appCode: string;
     entitlementId: string;
@@ -1477,7 +1487,14 @@ export class DeploymentService {
     return hydrated;
   }
 
-  async updateDeployment(input: {
+  async updateDeployment(input: Parameters<DeploymentService['updateDeploymentLocked']>[0]) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).updateDeploymentLocked(input);
+    });
+  }
+
+  private async updateDeploymentLocked(input: {
     deploymentId: string;
     userId: string;
     label?: string;
@@ -1589,7 +1606,16 @@ export class DeploymentService {
     return hydrated;
   }
 
-  async issueDeploymentToken(input: {
+  async issueDeploymentToken(
+    input: Parameters<DeploymentService['issueDeploymentTokenLocked']>[0],
+  ) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).issueDeploymentTokenLocked(input);
+    });
+  }
+
+  private async issueDeploymentTokenLocked(input: {
     deploymentId: string;
     userId: string;
     expiresInHours: number;
@@ -1667,6 +1693,12 @@ export class DeploymentService {
   }
 
   async exchangeBootstrapToken(token: string) {
+    return this.db.transaction((tx) =>
+      new DeploymentService(tx as DbClient, this.env).exchangeBootstrapTokenLocked(token),
+    );
+  }
+
+  private async exchangeBootstrapTokenLocked(token: string) {
     const tokenHint = token.slice(-8);
     const candidates = await new DeploymentRepository(this.db).listActiveTokensByHint(tokenHint);
     const matched = candidates.find((item) => verifyPassword(token, item.tokenHash));
@@ -1689,7 +1721,9 @@ export class DeploymentService {
       app,
       deployment,
     });
-    await repository.markTokenUsed(matched.id);
+    await this.db.execute(sql`select id from deployments where id = ${deployment.id} for update`);
+    if (!(await repository.markTokenUsed(matched.id)))
+      throw httpError(401, 'Deployment token is invalid or expired');
     const boundDeployment = await this.bindDeploymentDomainOnExchange({
       deployment,
       entitlementId: entitlement.id,
@@ -1720,7 +1754,16 @@ export class DeploymentService {
     };
   }
 
-  async reportDeploymentStatus(input: DeploymentStatusReportPayload) {
+  async reportDeploymentStatus(
+    input: Parameters<DeploymentService['reportDeploymentStatusLocked']>[0],
+  ) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).reportDeploymentStatusLocked(input);
+    });
+  }
+
+  private async reportDeploymentStatusLocked(input: DeploymentStatusReportPayload) {
     const repository = new DeploymentRepository(this.db);
     const deployment = await repository.findDeploymentById(input.deploymentId);
 
@@ -1878,7 +1921,16 @@ export class DeploymentService {
     return { ok: true };
   }
 
-  async requestDeploymentAction(input: {
+  async requestDeploymentAction(
+    input: Parameters<DeploymentService['requestDeploymentActionLocked']>[0],
+  ) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).requestDeploymentActionLocked(input);
+    });
+  }
+
+  private async requestDeploymentActionLocked(input: {
     deploymentId: string;
     userId: string;
     kind: DeploymentActionKind;
@@ -1920,6 +1972,8 @@ export class DeploymentService {
       }
     }
 
+    if (normalizeString(this.normalizeMeta(meta.pendingAction).id))
+      throw httpError(409, 'A deployment action is already pending');
     meta.pendingAction = {
       id: `fdda_${randomBytes(12).toString('base64url')}`,
       kind: input.kind,
@@ -1987,7 +2041,16 @@ export class DeploymentService {
     };
   }
 
-  async completeDeploymentAction(input: {
+  async completeDeploymentAction(
+    input: Parameters<DeploymentService['completeDeploymentActionLocked']>[0],
+  ) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).completeDeploymentActionLocked(input);
+    });
+  }
+
+  private async completeDeploymentActionLocked(input: {
     deploymentId: string;
     token: string;
     actionId: string;
@@ -2022,6 +2085,13 @@ export class DeploymentService {
     }
 
     const pendingAction = this.normalizeMeta(meta.pendingAction);
+    const lastAction = this.normalizeMeta(meta.lastAction);
+    if (
+      !normalizeString(pendingAction.id) &&
+      normalizeString(lastAction.id) === input.actionId &&
+      lastAction.status === input.status
+    )
+      return { ok: true };
     if (normalizeString(pendingAction.id) !== input.actionId) {
       throw httpError(409, 'Deployment action does not match the current pending action');
     }
@@ -2055,7 +2125,16 @@ export class DeploymentService {
     return { ok: true };
   }
 
-  async deactivateDeployment(input: { deploymentId: string; userId: string }) {
+  async deactivateDeployment(
+    input: Parameters<DeploymentService['deactivateDeploymentLocked']>[0],
+  ) {
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      return new DeploymentService(tx as DbClient, this.env).deactivateDeploymentLocked(input);
+    });
+  }
+
+  private async deactivateDeploymentLocked(input: { deploymentId: string; userId: string }) {
     const repository = new DeploymentRepository(this.db);
     const deployment = await repository.findDeploymentById(input.deploymentId);
     if (!deployment || deployment.userId !== input.userId) {

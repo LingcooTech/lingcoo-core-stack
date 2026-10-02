@@ -90,6 +90,7 @@ export function ObservabilityPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const canManageSettings = hasPermission(normalizeRole(user?.role), 'settings.manage');
+  const canManageJobs = hasPermission(normalizeRole(user?.role), 'jobs.manage');
   const [alertEnabled, setAlertEnabled] = useState(false);
   const [alertMinimumLevel, setAlertMinimumLevel] =
     useState<AlertingSettingsInput['minimumLevel']>('warning');
@@ -417,35 +418,16 @@ export function ObservabilityPage() {
       ),
     },
     {
-      key: 'owner',
-      header: '来源',
-      cell: (row) => (
-        <div className="space-y-0.5 text-[10px]">
-          <p className="font-mono">{row.createdByUserId ?? '系统'}</p>
-          <p className="text-muted-foreground">Worker：{row.lockedBy ?? '—'}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'payload',
-      header: 'Payload',
-      cell: (row) => (
-        <JsonViewer
-          data={{
-            payload: row.payload,
-            result: row.result,
-            error: row.error,
-          }}
-          label="job"
-        />
-      ),
+      key: 'diagnostics',
+      header: '诊断',
+      cell: (row) => <JsonViewer data={row.error} label="诊断摘要" />,
     },
     {
       key: 'actions',
       header: '操作',
       className: 'w-[120px]',
       cell: (row) =>
-        row.status === 'failed' || row.status === 'dead' ? (
+        canManageJobs && (row.status === 'failed' || row.status === 'dead') ? (
           <Button
             size="sm"
             variant="outline"

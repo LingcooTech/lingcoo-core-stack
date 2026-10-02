@@ -18,6 +18,6 @@ export function verifyPassword(password: string, encodedHash: string): boolean {
   }
 
   const derivedHash = scryptSync(password, salt, KEY_LENGTH).toString('hex');
-
+  if (!/^[0-9a-f]{128}$/i.test(storedHash)) return false;
   return timingSafeEqual(Buffer.from(storedHash, 'hex'), Buffer.from(derivedHash, 'hex'));
 }

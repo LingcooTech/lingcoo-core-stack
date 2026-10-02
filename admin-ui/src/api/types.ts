@@ -1053,23 +1053,14 @@ export interface JobRun {
   queue: string;
   kind: string;
   status: 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
-  priority: number;
-  payload: unknown;
-  result: unknown;
-  error: unknown;
+  error: { code?: string; message?: string };
   attempts: number;
   maxAttempts: number;
-  dedupeKey: string | null;
   availableAt: string;
-  lockedAt: string | null;
-  lockedBy: string | null;
   startedAt: string | null;
   finishedAt: string | null;
-  createdByUserId: string | null;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
-  traceId: string | null;
-  meta: unknown;
   createdAt: string;
   updatedAt: string;
 }

@@ -78,10 +78,10 @@ async function main() {
             outcome: 'failed',
             summary: 'Alert dispatch failed',
             meta: {
-              error: error instanceof Error ? error.message : 'Unknown alert dispatch error',
+              error: 'Alert dispatch failed',
             },
           });
-          console.error('[worker] alert dispatch failed', error);
+          console.error('[worker] alert dispatch failed');
         }
       }
       const job = await jobs.claimNext(workerId);
@@ -91,6 +91,12 @@ async function main() {
         continue;
       }
 
+      const heartbeat = setInterval(
+        () => {
+          if (job.claimToken) void jobs.heartbeat(job.id, job.claimToken).catch(() => {});
+        },
+        Math.max(250, Math.min(30000, Math.floor(env.WORKER_STALE_JOB_TIMEOUT_MS / 3))),
+      );
       try {
         const result =
           job.kind === 'billing.refund.reconcile'
@@ -99,7 +105,8 @@ async function main() {
                 { forJob: true },
               )
             : await jobs.process(job);
-        await jobs.markSucceeded(job.id, result);
+        const succeeded = await jobs.markSucceeded(job.id, job.claimToken!, result);
+        if (!succeeded) continue;
         await audits.record({
           actorType: 'job',
           actorLabel: workerId,
@@ -131,14 +138,16 @@ async function main() {
             queue: job.queue,
             attempts: job.attempts,
             status: updated?.status ?? 'failed',
-            error: error instanceof Error ? error.message : 'Unknown worker error',
+            error: 'Job execution failed',
           },
         });
-        console.error('[worker] job failed', { jobId: job.id, kind: job.kind, error });
+        console.error('[worker] job failed', { jobId: job.id, kind: job.kind });
+      } finally {
+        clearInterval(heartbeat);
       }
     }
   } catch (error) {
-    console.error('[worker] failed to start', error);
+    console.error('[worker] failed to start');
     process.exit(1);
   }
 

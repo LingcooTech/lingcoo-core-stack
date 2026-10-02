@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type PaymentSettingsSource = 'database' | 'env' | 'none';
 
@@ -60,7 +60,7 @@ export type PaymentSettingsOverview = {
   items: PaymentSettingsOverviewItem[];
 };
 
-type SystemSettingRow = (typeof systemSettings.$inferSelect) | null;
+type SystemSettingRow = typeof systemSettings.$inferSelect | null;
 
 const WECHAT_KEY = 'billing.provider.wechat_pay';
 const ALIPAY_KEY = 'billing.provider.alipay';
@@ -149,15 +149,19 @@ export function readSecretValue(input: { inlineValue?: string; fileValue?: strin
 export class PaymentSettingsService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private async findSettingRow(key: string) {
-    const [row] = await this.db.select().from(systemSettings).where(eq(systemSettings.key, key)).limit(1);
+    const [row] = await this.db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key))
+      .limit(1);
     return row ?? null;
   }
 
@@ -172,7 +176,7 @@ export class PaymentSettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -180,8 +184,8 @@ export class PaymentSettingsService {
           value: encryptJson(value, this.getEncryptionSecret()),
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
   }
 
@@ -216,7 +220,7 @@ export class PaymentSettingsService {
       mchId,
       apiKey,
       disableH5,
-      notifyUrl
+      notifyUrl,
     };
   }
 
@@ -243,7 +247,7 @@ export class PaymentSettingsService {
       keyType,
       f2fPay,
       privateKeyPem,
-      publicKeyPem
+      publicKeyPem,
     };
   }
 
@@ -262,12 +266,19 @@ export class PaymentSettingsService {
       appId: normalizeString(this.env.WECHAT_PAY_APP_ID),
       appSecret: normalizeString(this.env.WECHAT_PAY_APP_SECRET),
       mchId: normalizeString(this.env.WECHAT_PAY_MCH_ID),
-      apiKey: normalizeString(this.env.WECHAT_PAY_KEY) || normalizeString(this.env.WECHAT_PAY_API_V3_KEY),
+      apiKey:
+        normalizeString(this.env.WECHAT_PAY_KEY) || normalizeString(this.env.WECHAT_PAY_API_V3_KEY),
       disableH5: normalizeBoolean(this.env.WECHAT_PAY_DISABLE_H5, false),
-      notifyUrl: normalizeUrlLikeValue(this.env.WECHAT_PAY_NOTIFY_URL)
+      notifyUrl: normalizeUrlLikeValue(this.env.WECHAT_PAY_NOTIFY_URL),
     };
 
-    if (!values.mchId && !values.appId && !values.appSecret && !values.apiKey && !values.notifyUrl) {
+    if (
+      !values.mchId &&
+      !values.appId &&
+      !values.appSecret &&
+      !values.apiKey &&
+      !values.notifyUrl
+    ) {
       return null;
     }
 
@@ -277,20 +288,21 @@ export class PaymentSettingsService {
   private getEnvAlipaySettings(): AlipayPaymentSettings | null {
     const values: AlipayPaymentSettings = {
       appId: normalizeString(this.env.ALIPAY_APP_ID),
-      gateway: normalizeUrlLikeValue(this.env.ALIPAY_GATEWAY) || 'https://openapi.alipay.com/gateway.do',
+      gateway:
+        normalizeUrlLikeValue(this.env.ALIPAY_GATEWAY) || 'https://openapi.alipay.com/gateway.do',
       notifyUrl: normalizeUrlLikeValue(this.env.ALIPAY_NOTIFY_URL),
       returnUrl: normalizeUrlLikeValue(this.env.ALIPAY_RETURN_URL),
       keyType: this.env.ALIPAY_KEY_TYPE ?? 'PKCS1',
-      f2fPay: normalizeBoolean(this.env.ALIPAY_F2F_PAY, false)
+      f2fPay: normalizeBoolean(this.env.ALIPAY_F2F_PAY, false),
     };
 
     const privateKeyPem = readSecretValue({
       inlineValue: this.env.ALIPAY_PRIVATE_KEY,
-      fileValue: undefined
+      fileValue: undefined,
     });
     const publicKeyPem = readSecretValue({
       inlineValue: this.env.ALIPAY_PUBLIC_KEY,
-      fileValue: undefined
+      fileValue: undefined,
     });
 
     if (
@@ -306,7 +318,7 @@ export class PaymentSettingsService {
     return {
       ...values,
       privateKeyPem,
-      publicKeyPem
+      publicKeyPem,
     };
   }
 
@@ -340,16 +352,17 @@ export class PaymentSettingsService {
 
   async upsertWechatSettings(
     input: Partial<WechatPaymentSettings>,
-    updatedByUserId: string
+    updatedByUserId: string,
   ): Promise<PaymentSettingsOverviewItem> {
-    const current = (await this.getDatabaseWechatSettings()) ?? this.getEnvWechatSettings() ?? {
-      appId: '',
-      appSecret: '',
-      mchId: '',
-      apiKey: '',
-      disableH5: false,
-      notifyUrl: '',
-    };
+    const current = (await this.getDatabaseWechatSettings()) ??
+      this.getEnvWechatSettings() ?? {
+        appId: '',
+        appSecret: '',
+        mchId: '',
+        apiKey: '',
+        disableH5: false,
+        notifyUrl: '',
+      };
 
     const next: WechatPaymentSettings = {
       appId: input.appId !== undefined ? normalizeString(input.appId) : current.appId,
@@ -357,7 +370,8 @@ export class PaymentSettingsService {
       mchId: input.mchId !== undefined ? normalizeString(input.mchId) : current.mchId,
       apiKey: input.apiKey ? normalizeString(input.apiKey) : current.apiKey,
       disableH5: input.disableH5 ?? current.disableH5,
-      notifyUrl: input.notifyUrl !== undefined ? normalizeUrlLikeValue(input.notifyUrl) : current.notifyUrl,
+      notifyUrl:
+        input.notifyUrl !== undefined ? normalizeUrlLikeValue(input.notifyUrl) : current.notifyUrl,
     };
 
     await this.saveEncryptedSetting(WECHAT_KEY, next, updatedByUserId);
@@ -367,18 +381,19 @@ export class PaymentSettingsService {
 
   async upsertAlipaySettings(
     input: Partial<AlipayPaymentSettings>,
-    updatedByUserId: string
+    updatedByUserId: string,
   ): Promise<PaymentSettingsOverviewItem> {
-    const current = (await this.getDatabaseAlipaySettings()) ?? this.getEnvAlipaySettings() ?? {
-      appId: '',
-      gateway: 'https://openapi.alipay.com/gateway.do',
-      notifyUrl: '',
-      returnUrl: '',
-      keyType: 'PKCS1' as const,
-      f2fPay: false,
-      privateKeyPem: '',
-      publicKeyPem: ''
-    };
+    const current = (await this.getDatabaseAlipaySettings()) ??
+      this.getEnvAlipaySettings() ?? {
+        appId: '',
+        gateway: 'https://openapi.alipay.com/gateway.do',
+        notifyUrl: '',
+        returnUrl: '',
+        keyType: 'PKCS1' as const,
+        f2fPay: false,
+        privateKeyPem: '',
+        publicKeyPem: '',
+      };
 
     const next: AlipayPaymentSettings = {
       appId: input.appId !== undefined ? normalizeString(input.appId) : current.appId,
@@ -386,12 +401,16 @@ export class PaymentSettingsService {
         input.gateway !== undefined
           ? normalizeUrlLikeValue(input.gateway) || 'https://openapi.alipay.com/gateway.do'
           : current.gateway,
-      notifyUrl: input.notifyUrl !== undefined ? normalizeUrlLikeValue(input.notifyUrl) : current.notifyUrl,
-      returnUrl: input.returnUrl !== undefined ? normalizeUrlLikeValue(input.returnUrl) : current.returnUrl,
+      notifyUrl:
+        input.notifyUrl !== undefined ? normalizeUrlLikeValue(input.notifyUrl) : current.notifyUrl,
+      returnUrl:
+        input.returnUrl !== undefined ? normalizeUrlLikeValue(input.returnUrl) : current.returnUrl,
       keyType: input.keyType ?? current.keyType,
       f2fPay: input.f2fPay ?? current.f2fPay,
-      privateKeyPem: input.privateKeyPem ? normalizePem(input.privateKeyPem) : current.privateKeyPem,
-      publicKeyPem: input.publicKeyPem ? normalizePem(input.publicKeyPem) : current.publicKeyPem
+      privateKeyPem: input.privateKeyPem
+        ? normalizePem(input.privateKeyPem)
+        : current.privateKeyPem,
+      publicKeyPem: input.publicKeyPem ? normalizePem(input.publicKeyPem) : current.publicKeyPem,
     };
 
     await this.saveEncryptedSetting(ALIPAY_KEY, next, updatedByUserId);
@@ -409,16 +428,8 @@ export class PaymentSettingsService {
     const wechat = wechatFromDb ?? this.getEnvWechatSettings();
     const alipay = alipayFromDb ?? this.getEnvAlipaySettings();
 
-    const wechatSource: PaymentSettingsSource = wechatFromDb
-      ? 'database'
-      : wechat
-        ? 'env'
-        : 'none';
-    const alipaySource: PaymentSettingsSource = alipayFromDb
-      ? 'database'
-      : alipay
-        ? 'env'
-        : 'none';
+    const wechatSource: PaymentSettingsSource = wechatFromDb ? 'database' : wechat ? 'env' : 'none';
+    const alipaySource: PaymentSettingsSource = alipayFromDb ? 'database' : alipay ? 'env' : 'none';
 
     return {
       items: [
@@ -427,48 +438,52 @@ export class PaymentSettingsService {
           source: wechatSource,
           configured: Boolean(
             wechat?.mchId &&
-              wechat.appId &&
-              secretConfigured(wechat.appSecret) &&
-              secretConfigured(wechat.apiKey)
+            wechat.appId &&
+            secretConfigured(wechat.appSecret) &&
+            secretConfigured(wechat.apiKey),
           ),
           values: {
             appId: wechat?.appId ?? '',
             mchId: wechat?.mchId ?? '',
-            disableH5: wechat?.disableH5 ?? false
+            disableH5: wechat?.disableH5 ?? false,
           },
           secrets: {
             appSecret: {
-              configured: secretConfigured(wechat?.appSecret)
+              configured: secretConfigured(wechat?.appSecret),
             },
             apiKey: {
-              configured: secretConfigured(wechat?.apiKey)
-            }
-          }
+              configured: secretConfigured(wechat?.apiKey),
+            },
+          },
         },
         {
           code: 'alipay',
           source: alipaySource,
           configured: Boolean(
             alipay?.appId &&
-              (secretConfigured(alipay.privateKeyPem) || fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)) &&
-              (secretConfigured(alipay.publicKeyPem) || fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH))
+            (secretConfigured(alipay.privateKeyPem) ||
+              fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)) &&
+            (secretConfigured(alipay.publicKeyPem) ||
+              fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH)),
           ),
           values: {
             appId: alipay?.appId ?? '',
-            f2fPay: alipay?.f2fPay ?? false
+            f2fPay: alipay?.f2fPay ?? false,
           },
           secrets: {
             privateKeyPem: {
               configured:
-                secretConfigured(alipay?.privateKeyPem) || fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH)
+                secretConfigured(alipay?.privateKeyPem) ||
+                fileSecretConfigured(this.env.ALIPAY_PRIVATE_KEY_PATH),
             },
             publicKeyPem: {
               configured:
-                secretConfigured(alipay?.publicKeyPem) || fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH)
-            }
-          }
-        }
-      ]
+                secretConfigured(alipay?.publicKeyPem) ||
+                fileSecretConfigured(this.env.ALIPAY_PUBLIC_KEY_PATH),
+            },
+          },
+        },
+      ],
     };
   }
 }

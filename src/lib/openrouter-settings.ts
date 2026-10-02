@@ -4,7 +4,7 @@ import { systemSettings } from '../db/schema';
 import type { DbClient } from '../db/types';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
-import { decryptJson, encryptJson } from './settings-crypto';
+import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
 export type OpenRouterSettingsSource = 'database' | 'env' | 'none';
 
@@ -95,9 +95,7 @@ function normalizeStringArray(value: unknown) {
     return [];
   }
 
-  return value
-    .map((item) => normalizeString(item))
-    .filter(Boolean);
+  return value.map((item) => normalizeString(item)).filter(Boolean);
 }
 
 function normalizeOpenRouterBaseUrl(value: unknown, fallback = DEFAULT_BASE_URL) {
@@ -107,11 +105,7 @@ function normalizeOpenRouterBaseUrl(value: unknown, fallback = DEFAULT_BASE_URL)
     const url = new URL(normalized);
     if (url.hostname === 'openrouter.ai') {
       const pathname = url.pathname.replace(/\/+$/, '') || '/';
-      if (
-        pathname === '/' ||
-        pathname === '/api' ||
-        !pathname.startsWith('/api/')
-      ) {
+      if (pathname === '/' || pathname === '/api' || !pathname.startsWith('/api/')) {
         return DEFAULT_BASE_URL;
       }
     }
@@ -143,11 +137,11 @@ function hasSecret(value: string | undefined) {
 export class OpenRouterSettingsService {
   constructor(
     private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly env: AppEnv,
   ) {}
 
   private getEncryptionSecret() {
-    return normalizeString(this.env.SETTINGS_ENCRYPTION_KEY) || this.env.JWT_SECRET;
+    return getEncryptionKeys(this.env);
   }
 
   private getDefaultSiteUrl() {
@@ -168,7 +162,9 @@ export class OpenRouterSettingsService {
     return row ?? null;
   }
 
-  private decodeSetting<T>(row: NonNullable<Awaited<ReturnType<OpenRouterSettingsService['findSettingRow']>>>) {
+  private decodeSetting<T>(
+    row: NonNullable<Awaited<ReturnType<OpenRouterSettingsService['findSettingRow']>>>,
+  ) {
     if (row.isEncrypted) {
       return decryptJson<T>(row.value, this.getEncryptionSecret());
     }
@@ -193,7 +189,7 @@ export class OpenRouterSettingsService {
       baseUrl,
       siteUrl,
       siteName,
-      defaultModel
+      defaultModel,
     };
   }
 
@@ -204,7 +200,9 @@ export class OpenRouterSettingsService {
 
   getEnvSettings(): OpenRouterSettings | null {
     const apiKey = normalizeString(this.env.OPENROUTER_API_KEY);
-    const baseUrl = normalizeOpenRouterBaseUrl(this.env.OPENROUTER_BASE_URL, DEFAULT_BASE_URL) || DEFAULT_BASE_URL;
+    const baseUrl =
+      normalizeOpenRouterBaseUrl(this.env.OPENROUTER_BASE_URL, DEFAULT_BASE_URL) ||
+      DEFAULT_BASE_URL;
     const siteUrl = normalizeUrl(this.env.OPENROUTER_SITE_URL, this.getDefaultSiteUrl());
     const siteName = normalizeString(this.env.OPENROUTER_SITE_NAME) || this.getDefaultSiteName();
     const defaultModel = normalizeString(this.env.OPENROUTER_DEFAULT_MODEL);
@@ -218,7 +216,7 @@ export class OpenRouterSettingsService {
       baseUrl,
       siteUrl,
       siteName,
-      defaultModel
+      defaultModel,
     };
   }
 
@@ -233,29 +231,31 @@ export class OpenRouterSettingsService {
       siteUrl?: string;
       siteName?: string;
       defaultModel?: string;
-    } = {}
+    } = {},
   ): Promise<OpenRouterSettings> {
     const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
 
     return {
       apiKey: normalizeString(input.apiKey) || existing?.apiKey || '',
-      baseUrl: normalizeOpenRouterBaseUrl(input.baseUrl, existing?.baseUrl ?? DEFAULT_BASE_URL) || DEFAULT_BASE_URL,
+      baseUrl:
+        normalizeOpenRouterBaseUrl(input.baseUrl, existing?.baseUrl ?? DEFAULT_BASE_URL) ||
+        DEFAULT_BASE_URL,
       siteUrl: normalizeUrl(input.siteUrl, existing?.siteUrl ?? this.getDefaultSiteUrl()),
       siteName: normalizeString(input.siteName) || existing?.siteName || this.getDefaultSiteName(),
-      defaultModel: normalizeString(input.defaultModel) || existing?.defaultModel || ''
+      defaultModel: normalizeString(input.defaultModel) || existing?.defaultModel || '',
     };
   }
 
-  private async resolveRequiredSettings(
-    input?: {
-      apiKey?: string;
-      baseUrl?: string;
-      siteUrl?: string;
-      siteName?: string;
-      defaultModel?: string;
-    }
-  ) {
-    const settings = input ? await this.resolveDraftSettings(input) : await this.getRuntimeSettings();
+  private async resolveRequiredSettings(input?: {
+    apiKey?: string;
+    baseUrl?: string;
+    siteUrl?: string;
+    siteName?: string;
+    defaultModel?: string;
+  }) {
+    const settings = input
+      ? await this.resolveDraftSettings(input)
+      : await this.getRuntimeSettings();
 
     if (!settings?.apiKey) {
       throw httpError(422, 'OpenRouter API Key 未配置');
@@ -268,7 +268,11 @@ export class OpenRouterSettingsService {
     const databaseSettings = await this.getDatabaseSettings();
     const envSettings = this.getEnvSettings();
     const effective = databaseSettings ?? envSettings;
-    const source: OpenRouterSettingsSource = databaseSettings ? 'database' : envSettings ? 'env' : 'none';
+    const source: OpenRouterSettingsSource = databaseSettings
+      ? 'database'
+      : envSettings
+        ? 'env'
+        : 'none';
 
     return {
       configured: Boolean(effective?.apiKey),
@@ -277,13 +281,13 @@ export class OpenRouterSettingsService {
         baseUrl: effective?.baseUrl ?? DEFAULT_BASE_URL,
         siteUrl: effective?.siteUrl ?? this.getDefaultSiteUrl(),
         siteName: effective?.siteName ?? this.getDefaultSiteName(),
-        defaultModel: effective?.defaultModel ?? ''
+        defaultModel: effective?.defaultModel ?? '',
       },
       secrets: {
         apiKey: {
-          configured: hasSecret(effective?.apiKey)
-        }
-      }
+          configured: hasSecret(effective?.apiKey),
+        },
+      },
     };
   }
 
@@ -295,7 +299,7 @@ export class OpenRouterSettingsService {
       siteName?: string;
       defaultModel?: string;
     },
-    updatedByUserId: string
+    updatedByUserId: string,
   ) {
     const next = await this.resolveDraftSettings(input);
     const now = new Date();
@@ -308,7 +312,7 @@ export class OpenRouterSettingsService {
         isEncrypted: true,
         updatedByUserId,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: systemSettings.key,
@@ -316,8 +320,8 @@ export class OpenRouterSettingsService {
           value: encryptJson(next, this.getEncryptionSecret()),
           isEncrypted: true,
           updatedByUserId,
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       });
 
     return this.getOverview();
@@ -330,20 +334,23 @@ export class OpenRouterSettingsService {
   private async requestJson<T>(
     settings: OpenRouterSettings,
     path: string,
-    init: RequestInit = {}
+    init: RequestInit = {},
   ): Promise<T> {
     const normalizedPath = path.replace(/^\/+/, '');
-    const response = await fetch(new URL(normalizedPath, `${settings.baseUrl.replace(/\/+$/, '')}/`), {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${settings.apiKey}`,
-        ...(settings.siteUrl ? { 'HTTP-Referer': settings.siteUrl } : {}),
-        ...(settings.siteName ? { 'X-Title': settings.siteName } : {}),
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(init.headers as Record<string, string> | undefined)
+    const response = await fetch(
+      new URL(normalizedPath, `${settings.baseUrl.replace(/\/+$/, '')}/`),
+      {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${settings.apiKey}`,
+          ...(settings.siteUrl ? { 'HTTP-Referer': settings.siteUrl } : {}),
+          ...(settings.siteName ? { 'X-Title': settings.siteName } : {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(init.headers as Record<string, string> | undefined),
+        },
+        signal: AbortSignal.timeout(15_000),
       },
-      signal: AbortSignal.timeout(15_000)
-    });
+    );
 
     if (!response.ok) {
       let message = `OpenRouter 请求失败 (${response.status})`;
@@ -362,22 +369,21 @@ export class OpenRouterSettingsService {
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('json')) {
       const detail = (await response.text()).trim();
-      const hint = 'OpenRouter 返回了非 JSON 响应，请确认 Base URL 使用 API 地址，例如 https://openrouter.ai/api/v1';
+      const hint =
+        'OpenRouter 返回了非 JSON 响应，请确认 Base URL 使用 API 地址，例如 https://openrouter.ai/api/v1';
       throw httpError(502, detail && !detail.startsWith('<!DOCTYPE') ? `${hint}。${detail}` : hint);
     }
 
     return response.json() as Promise<T>;
   }
 
-  async listModels(
-    input?: {
-      apiKey?: string;
-      baseUrl?: string;
-      siteUrl?: string;
-      siteName?: string;
-      defaultModel?: string;
-    }
-  ) {
+  async listModels(input?: {
+    apiKey?: string;
+    baseUrl?: string;
+    siteUrl?: string;
+    siteName?: string;
+    defaultModel?: string;
+  }) {
     const settings = await this.resolveRequiredSettings(input);
     const payload = await this.requestJson<{
       data?: Array<{
@@ -412,7 +418,7 @@ export class OpenRouterSettingsService {
           completionPricing: normalizeString(item.pricing?.completion) || null,
           modality: normalizeString(item.architecture?.modality) || null,
           inputModalities: normalizeStringArray(item.architecture?.input_modalities),
-          outputModalities: normalizeStringArray(item.architecture?.output_modalities)
+          outputModalities: normalizeStringArray(item.architecture?.output_modalities),
         };
       })
       .filter((item): item is OpenRouterModelSummary => Boolean(item))
@@ -426,7 +432,7 @@ export class OpenRouterSettingsService {
       siteUrl?: string;
       siteName?: string;
       defaultModel?: string;
-    } = {}
+    } = {},
   ) {
     const settings = await this.resolveRequiredSettings(input);
     const models = await this.listModels(input);
@@ -436,7 +442,7 @@ export class OpenRouterSettingsService {
       provider: 'openrouter' as const,
       modelCount: models.length,
       defaultModel: settings.defaultModel || '',
-      sampleModels: models.slice(0, 8).map((item) => item.id)
+      sampleModels: models.slice(0, 8).map((item) => item.id),
     };
   }
 
@@ -456,7 +462,7 @@ export class OpenRouterSettingsService {
       siteUrl?: string;
       siteName?: string;
       defaultModel?: string;
-    }
+    },
   ): Promise<OpenRouterChatCompletionResult> {
     const settings = await this.resolveRequiredSettings(settingsInput);
     const model = normalizeString(input.model) || settings.defaultModel;
@@ -486,8 +492,8 @@ export class OpenRouterSettingsService {
         model,
         messages: input.messages,
         ...(typeof input.temperature === 'number' ? { temperature: input.temperature } : {}),
-        ...(typeof input.maxTokens === 'number' ? { max_tokens: input.maxTokens } : {})
-      })
+        ...(typeof input.maxTokens === 'number' ? { max_tokens: input.maxTokens } : {}),
+      }),
     });
 
     const choice = payload.choices?.[0];
@@ -505,12 +511,12 @@ export class OpenRouterSettingsService {
       usage: {
         promptTokens: normalizeInteger(payload.usage?.prompt_tokens),
         completionTokens: normalizeInteger(payload.usage?.completion_tokens),
-        totalTokens: normalizeInteger(payload.usage?.total_tokens)
+        totalTokens: normalizeInteger(payload.usage?.total_tokens),
       },
       meta: {
         id: normalizeString(payload.id) || null,
-        created: normalizeInteger(payload.created)
-      }
+        created: normalizeInteger(payload.created),
+      },
     };
   }
 }

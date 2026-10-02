@@ -58,6 +58,11 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:8080'),
   CADDY_SITE_ADDRESS: z.string().default(':80'),
   SETTINGS_ENCRYPTION_KEY: z.string().optional(),
+  SETTINGS_ENCRYPTION_CURRENT_KEY_ID: z.string().optional(),
+  SETTINGS_ENCRYPTION_KEYS: z.string().optional(),
+  SETTINGS_ENCRYPTION_LEGACY_KEY: z.string().optional(),
+  ALLOW_LEGACY_SETTINGS_DECRYPTION: booleanishEnv,
+  API_DOCS_ENABLED: booleanishEnv,
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16),
@@ -108,5 +113,48 @@ const envSchema = z.object({
 export type AppEnv = z.infer<typeof envSchema>;
 
 export function loadEnv(): AppEnv {
-  return envSchema.parse(process.env);
+  return validateEnv(process.env);
+}
+
+export function validateEnv(input: Record<string, unknown>): AppEnv {
+  const env = envSchema.parse(input);
+  if (env.SETTINGS_ENCRYPTION_KEYS) {
+    let keys: Record<string, unknown>;
+    try {
+      keys = JSON.parse(env.SETTINGS_ENCRYPTION_KEYS);
+    } catch {
+      throw new Error('SETTINGS_ENCRYPTION_KEYS must contain valid keyring JSON');
+    }
+    if (
+      !keys ||
+      Array.isArray(keys) ||
+      typeof keys !== 'object' ||
+      !env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID ||
+      typeof keys[env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID] !== 'string' ||
+      Object.values(keys).some(
+        (key) => typeof key !== 'string' || key.length < 32 || key === env.JWT_SECRET,
+      )
+    ) {
+      throw new Error(
+        'Settings keyring must contain an active, independent key of at least 32 characters',
+      );
+    }
+  }
+  if (env.NODE_ENV === 'production') {
+    if (
+      env.JWT_SECRET.length < 32 ||
+      /change-this|replace[-_ ]?me|development/i.test(env.JWT_SECRET)
+    )
+      throw new Error('Production requires a strong JWT signing key');
+    if (
+      !env.SETTINGS_ENCRYPTION_KEYS &&
+      (!env.SETTINGS_ENCRYPTION_KEY ||
+        env.SETTINGS_ENCRYPTION_KEY.length < 32 ||
+        env.SETTINGS_ENCRYPTION_KEY === env.JWT_SECRET)
+    )
+      throw new Error('Production requires an independent settings encryption key');
+    if (env.CORS_ORIGIN.trim() === '*')
+      throw new Error('Production CORS must list explicit origins');
+  }
+  return env;
 }

@@ -1,8 +1,8 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
-import { and, asc, desc, eq, ilike, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, lte, gt, isNull, or, sql } from 'drizzle-orm';
 
-import { jobRuns, users } from '../db/schema';
+import { jobRuns, jobAttempts, users } from '../db/schema';
 import type { DbClient } from '../db/types';
 import { AlertingSettingsService } from './alerting-settings';
 import type { AppEnv } from './env';
@@ -65,18 +65,12 @@ export function computeJobBackoffMs(attempts: number) {
 }
 
 function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack ?? null,
-    };
-  }
-
+  const status =
+    error && typeof error === 'object' && 'statusCode' in error ? Number(error.statusCode) : 500;
   return {
-    name: 'UnknownError',
-    message: typeof error === 'string' ? error : 'Unknown job failure',
-    stack: null,
+    code: 'JOB_EXECUTION_FAILED',
+    message: 'Job execution failed',
+    retryable: ![400, 401, 403, 404, 422].includes(status),
   };
 }
 
@@ -239,101 +233,190 @@ export class JobRunService {
     ]);
 
     return {
-      items: rows.map((row) => row.item),
+      items: rows.map(({ item }) => ({
+        id: item.id,
+        queue: item.queue,
+        kind: item.kind,
+        status: item.status,
+        attempts: item.attempts,
+        maxAttempts: item.maxAttempts,
+        availableAt: item.availableAt,
+        startedAt: item.startedAt,
+        finishedAt: item.finishedAt,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        relatedEntityType: item.relatedEntityType,
+        relatedEntityId: item.relatedEntityId,
+        error:
+          item.status === 'dead' || item.status === 'failed'
+            ? { code: 'JOB_EXECUTION_FAILED', message: 'Job execution failed' }
+            : {},
+      })),
       total: countResult[0]?.count ?? 0,
     };
   }
 
-  async claimNext(workerId: string) {
+  async claimNext(workerId: string, queue?: string) {
     const now = new Date();
-    const candidates = await this.db
-      .select()
-      .from(jobRuns)
-      .where(and(eq(jobRuns.status, 'pending'), lte(jobRuns.availableAt, now)))
-      .orderBy(asc(jobRuns.priority), asc(jobRuns.availableAt), asc(jobRuns.createdAt))
-      .limit(10);
-
-    for (const candidate of candidates) {
-      const [claimed] = await this.db
+    return this.db.transaction(async (tx) => {
+      const [candidate] = await tx
+        .select()
+        .from(jobRuns)
+        .where(
+          and(
+            eq(jobRuns.status, 'pending'),
+            lte(jobRuns.availableAt, now),
+            queue ? eq(jobRuns.queue, queue) : undefined,
+          ),
+        )
+        .orderBy(asc(jobRuns.priority), asc(jobRuns.availableAt), asc(jobRuns.createdAt))
+        .limit(1)
+        .for('update', { skipLocked: true });
+      if (!candidate) return null;
+      const claimToken = randomUUID();
+      const [claimed] = await tx
         .update(jobRuns)
         .set({
           status: 'running',
           attempts: candidate.attempts + 1,
+          claimToken,
+          leaseExpiresAt: new Date(
+            now.getTime() + (this.env?.WORKER_STALE_JOB_TIMEOUT_MS ?? 600000),
+          ),
           lockedAt: now,
           lockedBy: workerId,
           startedAt: now,
+          finishedAt: null,
           updatedAt: now,
         })
-        .where(and(eq(jobRuns.id, candidate.id), eq(jobRuns.status, 'pending')))
+        .where(eq(jobRuns.id, candidate.id))
         .returning();
-
-      if (claimed) {
-        return claimed;
-      }
-    }
-
-    return null;
+      await tx.insert(jobAttempts).values({
+        jobId: claimed.id,
+        attempt: claimed.attempts,
+        claimToken,
+        status: 'running',
+        startedAt: now,
+      });
+      return claimed;
+    });
   }
 
-  async markSucceeded(jobId: string, result: Record<string, unknown> = {}) {
+  async heartbeat(jobId: string, claimToken: string) {
     const now = new Date();
-    const [updated] = await this.db
+    const [owned] = await this.db
       .update(jobRuns)
       .set({
-        status: 'succeeded',
-        result,
-        error: {},
-        lockedAt: null,
-        lockedBy: null,
-        finishedAt: now,
+        leaseExpiresAt: new Date(now.getTime() + (this.env?.WORKER_STALE_JOB_TIMEOUT_MS ?? 600000)),
         updatedAt: now,
       })
-      .where(eq(jobRuns.id, jobId))
-      .returning();
+      .where(
+        and(
+          eq(jobRuns.id, jobId),
+          eq(jobRuns.status, 'running'),
+          eq(jobRuns.claimToken, claimToken),
+          gt(jobRuns.leaseExpiresAt, now),
+        ),
+      )
+      .returning({ id: jobRuns.id });
+    return Boolean(owned);
+  }
 
+  async markSucceeded(jobId: string, claimToken: string, result: Record<string, unknown> = {}) {
+    const now = new Date();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(jobRuns)
+        .set({
+          status: 'succeeded',
+          result,
+          error: {},
+          claimToken: null,
+          leaseExpiresAt: null,
+          lockedAt: null,
+          lockedBy: null,
+          finishedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(jobRuns.id, jobId),
+            eq(jobRuns.status, 'running'),
+            eq(jobRuns.claimToken, claimToken),
+            gt(jobRuns.leaseExpiresAt, now),
+          ),
+        )
+        .returning();
+      if (updated)
+        await tx
+          .update(jobAttempts)
+          .set({ status: 'succeeded', finishedAt: now })
+          .where(eq(jobAttempts.claimToken, claimToken));
+      return updated ?? null;
+    });
+  }
+
+  private async failOwned(
+    tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+    job: typeof jobRuns.$inferSelect,
+    error: unknown,
+    timedOut = false,
+  ) {
+    const now = new Date();
+    const failure = serializeError(error);
+    const status: JobRunStatus =
+      !failure.retryable || job.attempts >= job.maxAttempts ? 'dead' : 'pending';
+    const ownership = job.claimToken
+      ? eq(jobRuns.claimToken, job.claimToken)
+      : isNull(jobRuns.claimToken);
+    const [updated] = await tx
+      .update(jobRuns)
+      .set({
+        status,
+        error: failure,
+        claimToken: null,
+        leaseExpiresAt: null,
+        lockedAt: null,
+        lockedBy: null,
+        availableAt:
+          status === 'pending'
+            ? new Date(now.getTime() + computeJobBackoffMs(job.attempts))
+            : job.availableAt,
+        finishedAt: status === 'dead' ? now : null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(jobRuns.id, job.id),
+          eq(jobRuns.status, 'running'),
+          ownership,
+          timedOut ? undefined : gt(jobRuns.leaseExpiresAt, now),
+        ),
+      )
+      .returning();
+    if (updated && job.claimToken)
+      await tx
+        .update(jobAttempts)
+        .set({ status: timedOut ? 'timed_out' : 'failed', error: failure, finishedAt: now })
+        .where(eq(jobAttempts.claimToken, job.claimToken));
     return updated ?? null;
   }
 
   async markFailed(job: typeof jobRuns.$inferSelect, error: unknown) {
-    const now = new Date();
-    const nextStatus: JobRunStatus = job.attempts >= job.maxAttempts ? 'dead' : 'failed';
-    const availableAt =
-      nextStatus === 'dead'
-        ? job.availableAt
-        : new Date(now.getTime() + computeJobBackoffMs(job.attempts));
-    const [updated] = await this.db
-      .update(jobRuns)
-      .set({
-        status: nextStatus,
-        error: serializeError(error),
-        lockedAt: null,
-        lockedBy: null,
-        availableAt,
-        finishedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(jobRuns.id, job.id))
-      .returning();
-
-    return updated ?? null;
+    if (!job.claimToken) return null;
+    return this.db.transaction((tx) => this.failOwned(tx, job, error));
   }
 
   async retry(jobId: string) {
-    const [existing] = await this.db.select().from(jobRuns).where(eq(jobRuns.id, jobId)).limit(1);
-    if (!existing) {
-      throw httpError(404, 'Job not found');
-    }
-
-    if (!['failed', 'dead'].includes(existing.status)) {
-      throw httpError(409, 'Only failed or dead jobs can be retried');
-    }
-
     const now = new Date();
     const [updated] = await this.db
       .update(jobRuns)
       .set({
         status: 'pending',
         availableAt: now,
+        maxAttempts: sql`greatest(${jobRuns.maxAttempts}, ${jobRuns.attempts} + 1)`,
+        claimToken: null,
+        leaseExpiresAt: null,
         lockedAt: null,
         lockedBy: null,
         startedAt: null,
@@ -341,28 +424,38 @@ export class JobRunService {
         error: {},
         updatedAt: now,
       })
-      .where(eq(jobRuns.id, jobId))
+      .where(
+        and(eq(jobRuns.id, jobId), or(eq(jobRuns.status, 'failed'), eq(jobRuns.status, 'dead'))),
+      )
       .returning();
-
-    return updated ?? null;
+    if (!updated) throw httpError(409, 'Only failed or dead jobs can be retried');
+    return updated;
   }
 
-  async recoverStaleRunningJobs(timeoutMs: number, workerId: string) {
-    const staleBefore = new Date(Date.now() - timeoutMs);
-    const staleJobs = await this.db
-      .select()
-      .from(jobRuns)
-      .where(and(eq(jobRuns.status, 'running'), lte(jobRuns.lockedAt, staleBefore)))
-      .limit(100);
-
-    for (const job of staleJobs) {
-      await this.markFailed(
-        { ...job, lockedBy: workerId },
-        new Error(`Job timed out after ${timeoutMs}ms`),
-      );
-    }
-
-    return staleJobs.length;
+  async recoverStaleRunningJobs(timeoutMs: number, _workerId: string) {
+    const now = new Date();
+    return this.db.transaction(async (tx) => {
+      const staleJobs = await tx
+        .select()
+        .from(jobRuns)
+        .where(
+          and(
+            eq(jobRuns.status, 'running'),
+            or(
+              lte(jobRuns.leaseExpiresAt, now),
+              and(
+                isNull(jobRuns.leaseExpiresAt),
+                lte(jobRuns.lockedAt, new Date(now.getTime() - timeoutMs)),
+              ),
+            ),
+          ),
+        )
+        .limit(100)
+        .for('update', { skipLocked: true });
+      for (const job of staleJobs)
+        await this.failOwned(tx, job, new Error('Job lease expired'), true);
+      return staleJobs.length;
+    });
   }
 
   private async buildMailer() {

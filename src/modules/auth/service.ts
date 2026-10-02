@@ -123,31 +123,6 @@ export class AuthService {
     return { verified: true, user };
   }
 
-  private async ensureBootstrapAdmin(userId: string) {
-    const repository = new AuthRepository(this.db);
-    const adminCount = await repository.countAdmins();
-
-    if (adminCount > 0) {
-      return repository.findUserById(userId);
-    }
-
-    const promotedUser = await repository.updateUserRole(userId, 'admin');
-
-    if (!promotedUser) {
-      throw httpError(500, 'Failed to grant bootstrap admin role');
-    }
-
-    await new EventService(this.db).capture({
-      userId: promotedUser.id,
-      eventName: 'auth.admin_bootstrapped',
-      properties: {
-        source: 'bootstrap',
-      },
-    });
-
-    return promotedUser;
-  }
-
   async register(input: RegisterInput) {
     const existing = await new AuthRepository(this.db).findUserByEmail(input.email);
 
@@ -157,7 +132,7 @@ export class AuthService {
 
     const user = await this.db.transaction(async (tx) => {
       const repository = new AuthRepository(tx);
-      const role = (await repository.countAdmins()) === 0 ? 'admin' : 'user';
+      const role = 'user' as const;
       const createdUser = await repository.createUser({
         email: input.email,
         displayName: input.displayName,
@@ -196,8 +171,8 @@ export class AuthService {
       } catch {
         // Non-fatal: user can resend later
       }
-    } else {
-      // Auto-verify if mailer is not configured
+    } else if (this.env?.NODE_ENV !== 'production') {
+      // Development-only verification convenience
       await new AuthRepository(this.db).markEmailVerified(user.id);
       const updated = await new AuthRepository(this.db).findUserById(user.id);
       if (updated) return updated;
@@ -208,7 +183,7 @@ export class AuthService {
 
   async login(input: LoginInput) {
     const repository = new AuthRepository(this.db);
-    let user = await repository.findUserByEmail(input.email);
+    const user = await repository.findUserByEmail(input.email);
 
     if (!user) {
       throw httpError(401, 'Invalid email or password');
@@ -230,8 +205,6 @@ export class AuthService {
         provider: 'password',
       },
     });
-
-    user = (await this.ensureBootstrapAdmin(user.id)) ?? user;
 
     return user;
   }

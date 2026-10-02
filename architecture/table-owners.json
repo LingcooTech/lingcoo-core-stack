@@ -32,5 +32,6 @@
   "events": "event",
   "notifications": "notifications",
   "jobRuns": "jobs",
-  "auditLogs": "audit"
+  "auditLogs": "audit",
+  "jobAttempts": "jobs"
 }

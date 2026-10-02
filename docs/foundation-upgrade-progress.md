@@ -15,3 +15,13 @@
 新增 `npm run check`、隔离 Compose 与集成测试入口，CI 同时检查后端与 Admin 并执行数据库回归；Docker 路径过滤包含 Admin 和 scripts。构建脚本不再隐式安装依赖。完整表所有权清单与可重复的 AST 导入报告已建立。
 
 本机验证使用 Node 24，CI 保留 Node 22；生产 Node 22 镜像验证安排在阶段 F。阶段 A 未改变业务代码。
+
+## 阶段 B 正确性与安全
+
+已实施 F01–F09：任务延迟重试、领取凭据、租约与独立尝试记录；显式且并发安全的管理员初始化；用户主体与停用状态检查；任务操作权限与安全诊断；安全 5xx 响应；独立加密 Keyring 及旧密文兼容；部署额度锁、Token 原子消费、动作互斥与完成重放；迁移连接必须显式指定。
+
+真实 PostgreSQL 的 19 个集成测试全部通过，包括两个 Worker 竞争、过期恢复、旧 Worker 写回拒绝、并发初始化管理员，以及部署额度、Token 和动作并发。单元测试增加生产配置、安全错误与密钥兼容检查，共 10 个通过。完整 check 包含后端、测试、Admin 类型检查及两端构建。
+
+生产切换前必须配置独立 `SETTINGS_ENCRYPTION_KEY` 或 Keyring。已有使用 JWT 加密的密文暂通过 legacy 读取兼容，轮换后才能关闭此能力。无管理员的环境使用 `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` 执行 `npm run db:bootstrap`，不会在公开注册或登录时提升权限。已有管理员保留。
+
+Jobs migration 使用扩展字段，切换时必须先停止或排空旧 Worker，再运行 migration 并启动新 Worker，禁止混合旧的无凭据写回进程。Token 兑换仍保留现有交付状态语义，新的实例生命周期留待独立方案。
