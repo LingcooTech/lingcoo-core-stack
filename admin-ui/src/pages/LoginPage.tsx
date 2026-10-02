@@ -4,7 +4,10 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { bootstrapStatus, login, register } from '@/api/auth';
+import { bootstrapStatus, login } from '@/api/auth';
+import { loginSchema } from '@lingcoo/contracts';
+import { canAccessAdminConsole } from '@/lib/rbac';
+import { clearToken } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -17,9 +20,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
-const formSchema = z.object({
+const formSchema = loginSchema.extend({
   email: z.string().email('请输入有效邮箱'),
-  password: z.string().min(6, '密码至少 6 位'),
+  password: loginSchema.shape.password.min(8, '密码至少 8 位'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -27,7 +30,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function LoginPage() {
   const navigate = useNavigate();
   const { isAuthenticated, login: authLogin } = useAuth();
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,8 +39,8 @@ export function LoginPage() {
       return;
     }
     bootstrapStatus()
-      .then((s) => setIsRegisterMode(!s.hasAdmin))
-      .catch(() => setIsRegisterMode(false))
+      .then((s) => setNeedsAdminSetup(!s.hasAdmin))
+      .catch(() => setNeedsAdminSetup(false))
       .finally(() => setLoading(false));
   }, [isAuthenticated, navigate]);
 
@@ -48,11 +51,13 @@ export function LoginPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const result = isRegisterMode
-        ? await register(values.email, values.password)
-        : await login(values.email, values.password);
+      const result = await login(values.email, values.password);
+      if (!canAccessAdminConsole(result.user.role)) {
+        clearToken();
+        throw new Error('该账号没有管理后台访问权限');
+      }
       authLogin(result.token);
-      toast.success(isRegisterMode ? '管理员账号创建成功' : '登录成功');
+      toast.success('登录成功');
       navigate('/admin', { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '操作失败');
@@ -61,14 +66,14 @@ export function LoginPage() {
 
   if (loading) {
     return (
-      <div className="bg-muted flex min-h-screen items-center justify-center">
-        <div className="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-muted">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="bg-background relative flex min-h-screen items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.10),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.08),_transparent_44%)] dark:bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.14),_transparent_44%)]"
@@ -76,22 +81,22 @@ export function LoginPage() {
       <div className="relative w-full max-w-sm">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="bg-foreground text-background flex h-12 w-12 items-center justify-center rounded-lg text-base font-bold shadow-lg">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-foreground text-base font-bold text-background shadow-lg">
             FD
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight">fd-core-stack</h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">管理后台</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">管理后台</p>
           </div>
         </div>
 
         {/* Card */}
-        <div className="bg-card/95 border-border rounded-xl border p-7 shadow-xl backdrop-blur-xl">
-          <h2 className="text-foreground mb-1 text-lg font-semibold tracking-tight">
-            {isRegisterMode ? '创建管理员账号' : '欢迎回来'}
-          </h2>
-          <p className="text-muted-foreground mb-5 text-xs">
-            {isRegisterMode ? '这是系统首次启动，请创建管理员账号。' : '使用管理员账号登录后台。'}
+        <div className="rounded-xl border border-border bg-card/95 p-7 shadow-xl backdrop-blur-xl">
+          <h2 className="mb-1 text-lg font-semibold tracking-tight text-foreground">欢迎回来</h2>
+          <p className="mb-5 text-xs text-muted-foreground">
+            {needsAdminSetup
+              ? '管理账号尚未配置，请联系平台维护人员完成初始化。'
+              : '使用管理账号登录后台。'}
           </p>
 
           <Form {...form}>
@@ -124,7 +129,7 @@ export function LoginPage() {
                       <Input
                         type="password"
                         placeholder="••••••••"
-                        autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
+                        autoComplete="current-password"
                         {...field}
                       />
                     </FormControl>
@@ -133,7 +138,7 @@ export function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? '处理中...' : isRegisterMode ? '创建账号' : '登录'}
+                {form.formState.isSubmitting ? '处理中...' : '登录'}
               </Button>
             </form>
           </Form>

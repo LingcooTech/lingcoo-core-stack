@@ -34,5 +34,6 @@
   "jobRuns": "jobs",
   "auditLogs": "audit",
   "jobAttempts": "jobs",
-  "settingsRevisions": "settings"
+  "settingsRevisions": "settings",
+  "idempotencyRequests": "idempotency"
 }

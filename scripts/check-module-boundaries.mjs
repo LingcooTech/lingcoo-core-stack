@@ -25,7 +25,11 @@ export function collectViolations(root = process.cwd()) {
   };
   const add = (file, rule, detail) =>
     violations.push({ file: relative(root, file).split(sep).join('/'), rule, detail });
-  for (const file of walk(src)) {
+  for (const file of [
+    ...walk(src),
+    ...walk(resolve(root, 'packages/contracts/src')),
+    ...walk(resolve(root, 'packages/api-client/src')),
+  ]) {
     const source = moduleOf(file),
       ast = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true),
       tables = new Map();
@@ -33,6 +37,16 @@ export function collectViolations(root = process.cwd()) {
       const target =
         ts.resolveModuleName(specifier, file, config.options, ts.sys).resolvedModule
           ?.resolvedFileName || resolve(dirname(file), specifier + '.ts');
+      if (
+        file.includes('/packages/contracts/src/') &&
+        /fastify|drizzle|react|^pg$|ioredis|src\/lib\/env/.test(specifier)
+      )
+        add(file, 'contract-infrastructure', specifier);
+      if (
+        file.includes('/packages/api-client/src/') &&
+        /^react|fastify|drizzle|^pg$/.test(specifier)
+      )
+        add(file, 'client-infrastructure', specifier);
       const dest = moduleOf(target);
       if (source && dest && source !== dest) {
         if (!target.endsWith('/public.ts')) add(file, 'internal-import', specifier);

@@ -216,6 +216,7 @@ export class CheckoutService {
     successUrl?: string;
     cancelUrl?: string;
     clientIp?: string;
+    commandId?: string;
   }) {
     const appService = this.capabilities.createAppService(this.db);
     const licenseService = this.capabilities.createLicenseService(this.db);
@@ -287,6 +288,7 @@ export class CheckoutService {
         offerCode: input.offerCode,
         provider,
         clientIp: input.clientIp,
+        commandId: input.commandId,
       });
     const action = normalizePreparedPaymentToCheckoutAction(billingResult.payment);
     const sessionCode = createCheckoutSessionCode();
@@ -307,6 +309,7 @@ export class CheckoutService {
         cancelUrl: input.cancelUrl,
         expiresAt,
         meta: {
+          commandId: input.commandId ?? null,
           offerCode: billingResult.offer.code,
           offerTitle: billingResult.offer.title,
           offerPriceAmount: billingResult.offer.priceAmount,

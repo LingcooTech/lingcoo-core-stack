@@ -38,6 +38,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (app) => {
       const payload = createCheckoutSessionSchema.parse(request.body);
       const result = await app.services.CheckoutService.createSession({
         userId: request.user.sub,
+        commandId: request.idempotencyClaim?.id,
         clientIp: request.ip,
         ...payload,
       });

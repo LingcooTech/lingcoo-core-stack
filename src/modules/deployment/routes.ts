@@ -22,6 +22,7 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
     const deployment = await app.services.DeploymentService.createDeployment({
       userId: request.user.sub,
       ...payload,
+      commandId: request.idempotencyClaim?.id,
     });
 
     return reply.status(201).send(deployment);
@@ -77,6 +78,7 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
         deploymentId: params.deploymentId,
         userId: request.user.sub,
         kind: payload.kind,
+        commandId: request.idempotencyClaim?.id,
       });
     },
   );

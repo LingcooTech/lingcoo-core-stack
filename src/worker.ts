@@ -1,3 +1,4 @@
+import { pruneIdempotencyResults } from './modules/idempotency/public';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createWorkerRuntime } from './composition/worker-runtime';
@@ -35,6 +36,7 @@ export async function runWorker(
         nextMaintenance = Date.now() + env.ALERT_DISPATCH_INTERVAL_MS;
         await jobs.recoverStaleRunningJobs(env.WORKER_STALE_JOB_TIMEOUT_MS, workerId);
         await jobs.pruneCompleted(env.JOB_RETENTION_DAYS);
+        await pruneIdempotencyResults(runtime.db);
         try {
           await alertDelivery.dispatchActiveAlerts({ traceId: workerId });
         } catch {

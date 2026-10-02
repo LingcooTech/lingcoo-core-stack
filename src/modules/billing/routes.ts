@@ -15,6 +15,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     const payload = createOrderSchema.parse(request.body);
     const result = await app.services.BillingService.createOrder({
       userId: request.user.sub,
+      commandId: request.idempotencyClaim?.id,
       clientIp: request.ip,
       ...payload,
     });

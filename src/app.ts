@@ -1,3 +1,4 @@
+import { registerRequestContracts } from './http/idempotency';
 import { createAdminCommandRunner } from './http/admin-commands';
 import {
   SettingsRegistry,
@@ -71,6 +72,7 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
   await app.register(cors, {
     origin: normalizeCorsOrigin(env.CORS_ORIGIN),
     credentials: true,
+    exposedHeaders: ['x-request-id', 'etag', 'idempotency-replayed'],
   });
   await app.register(helmet);
   await app.register(cookie);
@@ -216,6 +218,7 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
   });
   await app.register(dbPlugin, { env });
   app.decorate('services', createApiServices(app.db, env, options.factories));
+  registerRequestContracts(app);
   app.decorate('runAdminCommand', createAdminCommandRunner(app.db, env, options.factories));
   app.decorate('settings', new SettingsRegistry(app.db));
   app.addHook('onSend', async (request, reply, payload) => {

@@ -7,11 +7,10 @@ USER 0
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
-
-# Install admin-ui dependencies
-COPY admin-ui/package*.json ./admin-ui/
-RUN cd admin-ui && npm ci
+COPY admin-ui/package.json ./admin-ui/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY packages/api-client/package.json ./packages/api-client/package.json
+RUN npm ci --ignore-scripts
 
 FROM deps AS build
 
@@ -20,11 +19,12 @@ COPY drizzle.config.ts ./
 COPY scripts ./scripts
 COPY app-products ./app-products
 COPY src ./src
+COPY packages ./packages
 COPY drizzle ./drizzle
 
 # Build admin-ui SPA
 COPY admin-ui ./admin-ui
-RUN cd admin-ui && npm run build
+RUN npm run build:packages && npm run build:admin
 
 # Build backend
 RUN npm run build
@@ -51,6 +51,7 @@ COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/app-products ./app-products
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/packages ./packages
 COPY --from=build /app/admin-ui/dist ./admin-ui/dist
 
 RUN chown -R 1001:0 /app

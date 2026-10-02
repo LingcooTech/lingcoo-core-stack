@@ -34,6 +34,7 @@ declare module 'fastify' {
 
   interface FastifyRequest {
     rawBody?: string | Buffer;
+    idempotencyClaim?: { id: string; ownerToken: string };
     appClient?: {
       appId: string;
       appCode: string;

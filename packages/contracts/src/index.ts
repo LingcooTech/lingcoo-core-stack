@@ -1,0 +1,118 @@
+import { z } from 'zod';
+export * from './auth.js';
+export * from './billing.js';
+export * from './checkout.js';
+export * from './deployment.js';
+export const roleSchema = z.enum(['user', 'support', 'finance', 'editor', 'operator', 'admin']);
+export const userSchema = z
+  .object({
+    id: z.uuid(),
+    email: z.email(),
+    displayName: z.string().nullable(),
+    role: roleSchema,
+    emailVerified: z.boolean(),
+  })
+  .passthrough();
+export const authResponseSchema = z
+  .object({ token: z.string().min(1), user: userSchema })
+  .passthrough();
+export type AuthResponse = z.infer<typeof authResponseSchema>;
+export type CurrentUser = z.infer<typeof userSchema>;
+export const meResponseSchema = z
+  .object({ authenticated: z.literal(true), user: userSchema })
+  .passthrough();
+export const errorResponseSchema = z
+  .object({
+    error: z.string(),
+    message: z.string(),
+    code: z.string().optional(),
+    requestId: z.string().optional(),
+    details: z.unknown().optional(),
+  })
+  .passthrough();
+export const jobDiagnosticSchema = z
+  .object({
+    id: z.uuid(),
+    kind: z.string(),
+    queue: z.string(),
+    status: z.enum(['pending', 'running', 'succeeded', 'failed', 'dead']),
+    attempts: z.number().int().nonnegative(),
+    maxAttempts: z.number().int().positive(),
+    availableAt: z.iso.datetime({ offset: true }),
+    createdAt: z.iso.datetime({ offset: true }),
+    updatedAt: z.iso.datetime({ offset: true }),
+    startedAt: z.iso.datetime({ offset: true }).nullable(),
+    finishedAt: z.iso.datetime({ offset: true }).nullable(),
+    relatedEntityType: z.string().nullable(),
+    relatedEntityId: z.string().nullable(),
+    error: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export const jobsResponseSchema = z
+  .object({
+    items: z.array(jobDiagnosticSchema),
+    total: z.number().int().nonnegative(),
+    limit: z.number().int().positive(),
+    offset: z.number().int().nonnegative(),
+  })
+  .passthrough();
+export const entitlementSchema = z
+  .object({ id: z.uuid(), userId: z.uuid(), appId: z.uuid(), planId: z.uuid(), status: z.string() })
+  .passthrough();
+export const entitlementsResponseSchema = z
+  .object({ items: z.array(entitlementSchema) })
+  .passthrough();
+export const deploymentSchema = z
+  .object({
+    id: z.uuid(),
+    userId: z.uuid(),
+    appId: z.uuid(),
+    entitlementId: z.uuid(),
+    status: z.string(),
+    label: z.string(),
+  })
+  .passthrough();
+export const deploymentsResponseSchema = z
+  .object({ items: z.array(deploymentSchema) })
+  .passthrough();
+export const orderSchema = z
+  .object({
+    id: z.uuid(),
+    orderNo: z.string().min(8),
+    userId: z.uuid(),
+    amount: z.number().int().nonnegative(),
+    currency: z.string(),
+    status: z.string(),
+  })
+  .passthrough();
+export const ordersResponseSchema = z.object({ items: z.array(orderSchema) }).passthrough();
+export const checkoutResponseSchema = z
+  .object({
+    sessionId: z.uuid(),
+    sessionCode: z.string().min(8),
+    status: z.string(),
+    order: orderSchema.omit({ userId: true }),
+  })
+  .passthrough();
+export function responseSchemaFor(method: string, path: string): z.ZodType | undefined {
+  const clean = path.split('?')[0];
+  if (method === 'POST' && ['/v1/auth/login', '/v1/auth/register'].includes(clean))
+    return authResponseSchema;
+  if (method === 'GET' && clean === '/v1/me') return meResponseSchema;
+  if (method === 'GET' && clean === '/v1/admin/jobs') return jobsResponseSchema;
+  if (method === 'GET' && clean === '/v1/entitlements/me') return entitlementsResponseSchema;
+  if (method === 'GET' && clean === '/v1/deployments/me') return deploymentsResponseSchema;
+  if (method === 'POST' && clean === '/v1/deployments') return deploymentSchema;
+  if (method === 'GET' && clean === '/v1/billing/orders/me') return ordersResponseSchema;
+  if (method === 'POST' && clean === '/v1/checkout/sessions') return checkoutResponseSchema;
+  return undefined;
+}
+export function isIdempotentCommand(method: string, path: string) {
+  if (method.toUpperCase() !== 'POST') return false;
+  const clean = path.split('?')[0];
+  return (
+    ['/v1/billing/orders', '/v1/checkout/sessions', '/v1/deployments'].includes(clean) ||
+    /^\/v1\/admin\/orders\/[^/]+\/refund$/.test(clean) ||
+    /^\/v1\/deployments\/[^/]+\/actions$/.test(clean)
+  );
+}

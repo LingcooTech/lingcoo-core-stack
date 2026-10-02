@@ -1,0 +1,21 @@
+{
+  "name": "@lingcoo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-shared-package.mjs"
+  },
+  "dependencies": {
+    "zod": "4.3.6"
+  }
+}

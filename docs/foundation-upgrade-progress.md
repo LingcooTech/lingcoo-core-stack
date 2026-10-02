@@ -47,3 +47,11 @@ Deployment Facade 拆出配置和 bootstrap 组装用例，Billing 拆出退款�
 Event 不再直接构造通知服务。事件和仅包含 eventId 的通知投影任务共享事务；Worker 使用 Notifications 公开投影接口，已有 dedupe 约束保证重放不会重复通知。投影失败保留事实和任务并自动重试。本轮采用持久 Jobs 承载投影，不引入通用事件总线。
 
 阶段 D 验证：25 个隔离数据库/HTTP 集成测试通过，16 个单元测试通过，两端类型与构建通过。配置值与 ETag 在同一锁定事务中读取；成功保存的响应保留本次提交的版本，避免并发响应错配。
+
+## 阶段 E 共享协议、客户端与请求幂等
+
+已建立 npm workspaces，以根 lockfile 冻结安装；contracts 和 api-client 提供真实 CommonJS / ESM 产物。统一 Zod 4.3.6 与表单 resolver，修正设置表单输入、输出类型。认证与支付、Checkout、部署请求共用 Schema；关键响应由后端及客户端校验，错误保留旧字符串并提供 code、requestId。Admin 登录不再尝试通过公开注册初始化管理员。
+
+关键创建、退款和部署动作支持可选 Idempotency-Key。保留旧客户端兼容；新客户端对同一未完成命令复用 key。数据库按主体、命令与 key 隔离，校验请求摘要，重复请求返回加密保存的结果。支付订单、Checkout 和部署记录关联 commandId。结果保留 24 小时，清理结果后保留摘要墓碑，禁止旧 key 自动复用。超时、进程中断或未知结果不得盲目重试，需先通过订单号、退款请求号或资源 commandId 对账；本轮不宣称跨外部 Provider 的 exactly-once。
+
+28 个隔离数据库/HTTP 回归通过，包含并发订单的单次 Provider 调用、失败安全重放、部署重放与原资源关联。共享包真实双格式消费和客户端协议/取消测试纳入 check；生产镜像与浏览器交互在阶段 F 验证。

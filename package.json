@@ -8,7 +8,7 @@
     "dev:worker": "tsx watch src/worker.ts",
     "build": "tsc -p tsconfig.json",
     "build:admin": "npm run build --prefix admin-ui",
-    "build:all": "npm run build:admin && npm run build",
+    "build:all": "npm run build:packages && npm run build:admin && npm run build",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "test": "node --import tsx --test test/*.test.ts test/*.test.mjs",
@@ -29,11 +29,12 @@
     "lint:admin": "npm run lint --prefix admin-ui",
     "typecheck:admin": "npm run typecheck --prefix admin-ui",
     "smoke:admin-static": "node scripts/verify-admin-static.mjs",
-    "check": "npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
+    "check": "npm run build:packages && npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
     "inspect:architecture": "node scripts/inspect-architecture.mjs",
     "db:bootstrap": "node dist/scripts/bootstrap-admin.js",
     "check:boundaries": "node scripts/check-module-boundaries.mjs",
-    "settings:rotate": "node dist/scripts/rotate-settings-keys.js"
+    "settings:rotate": "node dist/scripts/rotate-settings-keys.js",
+    "build:packages": "npm run build --workspace @lingcoo/contracts && npm run build --workspace @lingcoo/api-client"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",
@@ -57,7 +58,8 @@
     "nodemailer": "^8.0.4",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
-    "zod": "^4.1.11"
+    "zod": "4.3.6",
+    "@lingcoo/contracts": "0.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -78,5 +80,9 @@
   },
   "engines": {
     "node": ">=22.0.0"
-  }
+  },
+  "workspaces": [
+    "admin-ui",
+    "packages/*"
+  ]
 }

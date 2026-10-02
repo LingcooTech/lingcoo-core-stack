@@ -44,6 +44,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
   }
 
   private async createDeploymentLocked(input: {
+    commandId?: string;
     userId: string;
     appCode: string;
     entitlementId: string;
@@ -105,6 +106,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     }
 
     const deploymentMeta: Record<string, unknown> = {
+      commandId: input.commandId,
       appCode: selection.app.code,
       planCode: plan.code,
       runtimeUpdate: {
@@ -604,6 +606,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
   }
 
   private async requestDeploymentActionLocked(input: {
+    commandId?: string;
     deploymentId: string;
     userId: string;
     kind: DeploymentActionKind;
@@ -648,6 +651,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     if (normalizeString(this.normalizeMeta(meta.pendingAction).id))
       throw httpError(409, 'A deployment action is already pending');
     meta.pendingAction = {
+      commandId: input.commandId,
       id: `fdda_${randomBytes(12).toString('base64url')}`,
       kind: input.kind,
       requestedAt: this.capabilities.now().toISOString(),

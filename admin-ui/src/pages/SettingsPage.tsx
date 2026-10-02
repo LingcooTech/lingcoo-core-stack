@@ -70,7 +70,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const smtpSchema = z.object({
   host: z.string().optional(),
-  port: z.coerce.number().int().min(1).max(65535),
+  port: z.coerce.number<string | number>().int().min(1).max(65535),
   secure: z.boolean().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
@@ -78,7 +78,7 @@ const smtpSchema = z.object({
 });
 
 const optionalUrlField = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() : value),
+  (value: string) => (typeof value === 'string' ? value.trim() : value),
   z.union([z.string().url('请输入有效链接'), z.literal('')]),
 );
 
@@ -92,7 +92,7 @@ const qiniuSchema = z.object({
 });
 
 const optionalSiteLinkField = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() : value),
+  (value: string) => (typeof value === 'string' ? value.trim() : value),
   z
     .union([
       z.string().startsWith('/'),
@@ -401,7 +401,7 @@ export function SettingsPage() {
     queryFn: getPublicPagesSettings,
   });
 
-  const smtpForm = useForm<SmtpValues>({
+  const smtpForm = useForm<z.input<typeof smtpSchema>, unknown, SmtpValues>({
     resolver: zodResolver(smtpSchema),
     defaultValues: {
       host: '',
@@ -1010,10 +1010,10 @@ export function SettingsPage() {
       <SectionHeader sectionKey="settings" />
       <div className="space-y-6 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-5xl space-y-5">
-          <div className="border-border bg-card rounded-lg border p-6 shadow-sm">
+          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-foreground text-lg font-semibold">系统设置</h2>
+                <h2 className="text-lg font-semibold text-foreground">系统设置</h2>
                 <SettingsSearch
                   query={settingsQuery}
                   onQueryChange={setSettingsQuery}
@@ -1023,7 +1023,7 @@ export function SettingsPage() {
                   }}
                 />
               </div>
-              <TabsList className="bg-muted/70 h-auto w-full justify-start gap-1 rounded-lg p-1">
+              <TabsList className="h-auto w-full justify-start gap-1 rounded-lg bg-muted/70 p-1">
                 <TabsTrigger value="site" className="min-w-[108px] rounded-md">
                   品牌与页脚
                 </TabsTrigger>
@@ -1047,9 +1047,9 @@ export function SettingsPage() {
           </div>
 
           <TabsContent value="site" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={siteData?.configured ? 'ok' : 'neutral'}
                     label={siteData?.configured ? '品牌设置已自定义' : '使用默认站点展示'}
@@ -1059,13 +1059,13 @@ export function SettingsPage() {
                     label={`来源: ${siteData?.source === 'database' ? '数据库' : '默认值'}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">品牌与页脚</h2>
+                <h2 className="text-lg font-semibold text-foreground">品牌与页脚</h2>
               </div>
 
               {siteLoading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -1182,7 +1182,7 @@ export function SettingsPage() {
                                 value={field.value || '#000000'}
                                 onChange={(event) => field.onChange(event.target.value)}
                                 aria-label="选择品牌主色"
-                                className="border-border bg-card h-10 w-10 shrink-0 cursor-pointer rounded-md border p-1"
+                                className="h-10 w-10 shrink-0 cursor-pointer rounded-md border border-border bg-card p-1"
                               />
                               <Input
                                 placeholder="#000000（留空使用系统默认）"
@@ -1202,7 +1202,7 @@ export function SettingsPage() {
                               )}
                             </div>
                           </FormControl>
-                          <p className="text-muted-foreground text-[12px] leading-5">
+                          <p className="text-[12px] leading-5 text-muted-foreground">
                             填入 #RRGGBB 形式的十六进制颜色，会作为前后台 primary
                             色注入到所有页面；留空则使用系统默认。
                           </p>
@@ -1211,9 +1211,9 @@ export function SettingsPage() {
                       )}
                     />
 
-                    <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
+                    <div className="space-y-4 rounded-lg border border-border bg-muted/70 p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-foreground text-sm font-semibold">顶部导航菜单</h3>
+                        <h3 className="text-sm font-semibold text-foreground">顶部导航菜单</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1229,7 +1229,7 @@ export function SettingsPage() {
                         {headerNavigation.map((item, index) => (
                           <div
                             key={`site-nav-${index}`}
-                            className="border-border bg-card rounded-lg border p-4"
+                            className="rounded-lg border border-border bg-card p-4"
                           >
                             <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
                               <div className="space-y-2">
@@ -1238,7 +1238,7 @@ export function SettingsPage() {
                                   placeholder="应用中心"
                                   {...siteForm.register(`headerNavigation.${index}.label`)}
                                 />
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                   {
                                     siteForm.formState.errors.headerNavigation?.[index]?.label
                                       ?.message
@@ -1252,7 +1252,7 @@ export function SettingsPage() {
                                   placeholder="/ or https://...，有二级菜单时可留空"
                                   {...siteForm.register(`headerNavigation.${index}.url`)}
                                 />
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                   {
                                     siteForm.formState.errors.headerNavigation?.[index]?.url
                                       ?.message
@@ -1274,7 +1274,7 @@ export function SettingsPage() {
                                   control={siteForm.control}
                                   name={`headerNavigation.${index}.openInNewTab`}
                                   render={({ field }) => (
-                                    <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
+                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2">
                                       <FormControl>
                                         <Checkbox
                                           checked={field.value}
@@ -1292,9 +1292,9 @@ export function SettingsPage() {
                               </div>
                             </div>
 
-                            <div className="border-border bg-muted/60 mt-4 space-y-3 rounded-lg border border-dashed p-4">
+                            <div className="mt-4 space-y-3 rounded-lg border border-dashed border-border bg-muted/60 p-4">
                               <div className="flex items-center justify-between gap-4">
-                                <p className="text-foreground text-sm font-semibold">
+                                <p className="text-sm font-semibold text-foreground">
                                   二级下拉菜单
                                 </p>
                                 <Button
@@ -1314,7 +1314,7 @@ export function SettingsPage() {
                                   {item.children.map((_, childIndex) => (
                                     <div
                                       key={`site-nav-${index}-child-${childIndex}`}
-                                      className="border-border bg-card grid gap-4 rounded-lg border p-4 lg:grid-cols-[minmax(0,160px),minmax(0,1fr),auto] lg:items-start"
+                                      className="grid gap-4 rounded-lg border border-border bg-card p-4 lg:grid-cols-[minmax(0,160px),minmax(0,1fr),auto] lg:items-start"
                                     >
                                       <div className="space-y-2">
                                         <FormLabel>二级菜单名称</FormLabel>
@@ -1324,7 +1324,7 @@ export function SettingsPage() {
                                             `headerNavigation.${index}.children.${childIndex}.label`,
                                           )}
                                         />
-                                        <p className="text-destructive text-xs">
+                                        <p className="text-xs text-destructive">
                                           {
                                             siteForm.formState.errors.headerNavigation?.[index]
                                               ?.children?.[childIndex]?.label?.message
@@ -1340,7 +1340,7 @@ export function SettingsPage() {
                                             `headerNavigation.${index}.children.${childIndex}.url`,
                                           )}
                                         />
-                                        <p className="text-destructive text-xs">
+                                        <p className="text-xs text-destructive">
                                           {
                                             siteForm.formState.errors.headerNavigation?.[index]
                                               ?.children?.[childIndex]?.url?.message
@@ -1364,7 +1364,7 @@ export function SettingsPage() {
                                           control={siteForm.control}
                                           name={`headerNavigation.${index}.children.${childIndex}.openInNewTab`}
                                           render={({ field }) => (
-                                            <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
+                                            <FormItem className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2">
                                               <FormControl>
                                                 <Checkbox
                                                   checked={field.value}
@@ -1388,7 +1388,7 @@ export function SettingsPage() {
 
                             {typeof siteForm.formState.errors.headerNavigation?.[index]?.message ===
                             'string' ? (
-                              <p className="text-destructive mt-3 text-xs">
+                              <p className="mt-3 text-xs text-destructive">
                                 {siteForm.formState.errors.headerNavigation[index]?.message}
                               </p>
                             ) : null}
@@ -1396,16 +1396,16 @@ export function SettingsPage() {
                         ))}
 
                         {typeof siteForm.formState.errors.headerNavigation?.message === 'string' ? (
-                          <p className="text-destructive text-sm">
+                          <p className="text-sm text-destructive">
                             {siteForm.formState.errors.headerNavigation.message}
                           </p>
                         ) : null}
                       </div>
                     </div>
 
-                    <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
+                    <div className="space-y-4 rounded-lg border border-border bg-muted/70 p-4">
                       <div className="flex items-center justify-between gap-4">
-                        <h3 className="text-foreground text-sm font-semibold">Footer 菜单链接</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Footer 菜单链接</h3>
                         <Button
                           type="button"
                           variant="outline"
@@ -1423,7 +1423,7 @@ export function SettingsPage() {
                         {siteLinkFields.map((field, index) => (
                           <div
                             key={field.id}
-                            className="border-border bg-card rounded-lg border p-4"
+                            className="rounded-lg border border-border bg-card p-4"
                           >
                             <div className="grid gap-4 lg:grid-cols-[minmax(0,180px),minmax(0,1fr),auto] lg:items-start">
                               <div className="space-y-2">
@@ -1432,7 +1432,7 @@ export function SettingsPage() {
                                   placeholder="应用中心"
                                   {...siteForm.register(`footerLinks.${index}.label`)}
                                 />
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                   {siteForm.formState.errors.footerLinks?.[index]?.label?.message}
                                 </p>
                               </div>
@@ -1443,7 +1443,7 @@ export function SettingsPage() {
                                   placeholder="/ or https://..."
                                   {...siteForm.register(`footerLinks.${index}.url`)}
                                 />
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                   {siteForm.formState.errors.footerLinks?.[index]?.url?.message}
                                 </p>
                               </div>
@@ -1462,7 +1462,7 @@ export function SettingsPage() {
                                   control={siteForm.control}
                                   name={`footerLinks.${index}.openInNewTab`}
                                   render={({ field }) => (
-                                    <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-3 py-2">
+                                    <FormItem className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-2">
                                       <FormControl>
                                         <Checkbox
                                           checked={field.value}
@@ -1483,7 +1483,7 @@ export function SettingsPage() {
                         ))}
 
                         {typeof siteForm.formState.errors.footerLinks?.message === 'string' ? (
-                          <p className="text-destructive text-sm">
+                          <p className="text-sm text-destructive">
                             {siteForm.formState.errors.footerLinks.message}
                           </p>
                         ) : null}
@@ -1510,9 +1510,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="public-pages" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={publicPagesData?.configured ? 'ok' : 'neutral'}
                     label={publicPagesData?.configured ? '公共页面文案已自定义' : '使用默认文案'}
@@ -1522,8 +1522,8 @@ export function SettingsPage() {
                     label={`来源: ${publicPagesData?.source === 'database' ? '数据库' : '默认值'}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">内容中心 / 文档中心 文案</h2>
-                <p className="text-muted-foreground text-sm">
+                <h2 className="text-lg font-semibold text-foreground">内容中心 / 文档中心 文案</h2>
+                <p className="text-sm text-muted-foreground">
                   配置消费侧「内容中心」「文档中心」Hub
                   页头部展示的栏目标签、主标题与副标题描述。留空则使用系统默认值。
                 </p>
@@ -1532,7 +1532,7 @@ export function SettingsPage() {
               {publicPagesLoading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -1554,12 +1554,12 @@ export function SettingsPage() {
                     )}
                     className="space-y-6"
                   >
-                    <div className="border-border space-y-4 rounded-lg border p-5">
+                    <div className="space-y-4 rounded-lg border border-border p-5">
                       <div>
-                        <h3 className="text-foreground text-base font-semibold">内容中心 Hub</h3>
-                        <p className="text-muted-foreground mt-1 text-xs">
+                        <h3 className="text-base font-semibold text-foreground">内容中心 Hub</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
                           访问路径：
-                          <code className="bg-muted/60 rounded px-1 py-0.5">/content</code>
+                          <code className="rounded bg-muted/60 px-1 py-0.5">/content</code>
                         </p>
                       </div>
 
@@ -1610,11 +1610,11 @@ export function SettingsPage() {
                       />
                     </div>
 
-                    <div className="border-border space-y-4 rounded-lg border p-5">
+                    <div className="space-y-4 rounded-lg border border-border p-5">
                       <div>
-                        <h3 className="text-foreground text-base font-semibold">文档中心 Hub</h3>
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          访问路径：<code className="bg-muted/60 rounded px-1 py-0.5">/docs</code>
+                        <h3 className="text-base font-semibold text-foreground">文档中心 Hub</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          访问路径：<code className="rounded bg-muted/60 px-1 py-0.5">/docs</code>
                         </p>
                       </div>
 
@@ -1685,9 +1685,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="smtp" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={smtpData?.configured ? 'ok' : 'neutral'}
                     label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'}
@@ -1703,13 +1703,13 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">SMTP 配置</h2>
+                <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
               </div>
 
               {smtpLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -1812,7 +1812,7 @@ export function SettingsPage() {
                       control={smtpForm.control}
                       name="secure"
                       render={({ field }) => (
-                        <FormItem className="border-border bg-muted flex items-center gap-3 rounded-md border px-4 py-3">
+                        <FormItem className="flex items-center gap-3 rounded-md border border-border bg-muted px-4 py-3">
                           <FormControl>
                             <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                           </FormControl>
@@ -1835,8 +1835,8 @@ export function SettingsPage() {
                       </Button>
                     </div>
 
-                    <div className="border-border bg-muted/70 rounded-lg border p-4">
-                      <h3 className="text-foreground text-sm font-semibold">发送测试邮件</h3>
+                    <div className="rounded-lg border border-border bg-muted/70 p-4">
+                      <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
                       <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <Input
                           type="email"
@@ -1878,9 +1878,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="qiniu" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={qiniuData?.configured ? 'ok' : 'neutral'}
                     label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'}
@@ -1896,13 +1896,13 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">七牛云存储</h2>
+                <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
               </div>
 
               {qiniuLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -2037,9 +2037,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="content" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={contentImportData?.configured ? 'ok' : 'neutral'}
                     label={contentImportData?.configured ? '导入配置已保存' : '尚未配置导入连接'}
@@ -2049,13 +2049,13 @@ export function SettingsPage() {
                     label={`来源: ${contentImportData?.source === 'database' ? '数据库' : '未配置'}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">内容导入连接</h2>
+                <h2 className="text-lg font-semibold text-foreground">内容导入连接</h2>
               </div>
 
               {contentImportLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -2076,10 +2076,10 @@ export function SettingsPage() {
                     className="space-y-6"
                   >
                     <div className="grid gap-6 xl:grid-cols-2">
-                      <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
+                      <div className="space-y-4 rounded-lg border border-border bg-muted/70 p-4">
                         <div className="space-y-1">
-                          <h3 className="text-foreground text-sm font-semibold">WordPress</h3>
-                          <p className="text-muted-foreground text-xs">
+                          <h3 className="text-sm font-semibold text-foreground">WordPress</h3>
+                          <p className="text-xs text-muted-foreground">
                             用于内容管理页面按文章 URL 导入 WordPress 文章。
                           </p>
                         </div>
@@ -2127,10 +2127,10 @@ export function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="border-border bg-muted/70 space-y-4 rounded-lg border p-4">
+                      <div className="space-y-4 rounded-lg border border-border bg-muted/70 p-4">
                         <div className="space-y-1">
-                          <h3 className="text-foreground text-sm font-semibold">Notion</h3>
-                          <p className="text-muted-foreground text-xs">
+                          <h3 className="text-sm font-semibold text-foreground">Notion</h3>
+                          <p className="text-xs text-muted-foreground">
                             用于内容管理页面按页面 URL 导入 Notion 页面。
                           </p>
                         </div>
@@ -2185,9 +2185,9 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="ai" className="mt-0">
-            <div className="border-border bg-card space-y-5 rounded-lg border p-6 shadow-sm">
+            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="space-y-3">
-                <div className="border-border bg-muted/40 flex flex-wrap items-center gap-3 rounded-lg border p-4">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
                   <StatusPill
                     tone={configuredAiProviders > 0 ? 'ok' : 'neutral'}
                     label={`AI Providers ${configuredAiProviders}/${totalAiProviders}`}
@@ -2207,13 +2207,13 @@ export function SettingsPage() {
                     label={`来源: ${sourceLabel(openrouterData?.source ?? 'none')}`}
                   />
                 </div>
-                <h2 className="text-foreground text-lg font-semibold">AI API Hub</h2>
+                <h2 className="text-lg font-semibold text-foreground">AI API Hub</h2>
               </div>
 
               {openrouterLoading ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-md" />
+                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : (
@@ -2224,8 +2224,8 @@ export function SettingsPage() {
                     )}
                     className="space-y-5"
                   >
-                    <div className="border-border bg-muted/70 rounded-lg border p-4">
-                      <h3 className="text-foreground text-sm font-semibold">OpenRouter</h3>
+                    <div className="rounded-lg border border-border bg-muted/70 p-4">
+                      <h3 className="text-sm font-semibold text-foreground">OpenRouter</h3>
                     </div>
 
                     <FormField
@@ -2282,7 +2282,7 @@ export function SettingsPage() {
                     </div>
 
                     {openrouterConnectionResult ? (
-                      <div className="border-border bg-card rounded-lg border p-4">
+                      <div className="rounded-lg border border-border bg-card p-4">
                         <div className="flex flex-wrap items-center gap-3">
                           <StatusPill tone="ok" label="连接成功" />
                           <StatusPill
@@ -2300,14 +2300,14 @@ export function SettingsPage() {
                         </div>
                         {openrouterConnectionResult.sampleModels.length ? (
                           <div className="mt-3">
-                            <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                               示例模型
                             </p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {openrouterConnectionResult.sampleModels.map((item) => (
                                 <span
                                   key={item}
-                                  className="border-border bg-muted text-muted-foreground rounded-full border px-3 py-1 text-xs"
+                                  className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground"
                                 >
                                   {item}
                                 </span>
@@ -2318,9 +2318,9 @@ export function SettingsPage() {
                       </div>
                     ) : null}
 
-                    <div className="border-border bg-card space-y-4 rounded-lg border p-4">
+                    <div className="space-y-4 rounded-lg border border-border bg-card p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-foreground text-sm font-semibold">默认模型</h3>
+                        <h3 className="text-sm font-semibold text-foreground">默认模型</h3>
                         {openrouterModelsLoaded ? (
                           <StatusPill
                             tone={openrouterModels.length ? 'info' : 'neutral'}
@@ -2375,13 +2375,13 @@ export function SettingsPage() {
                       />
 
                       {selectedOpenRouterModel ? (
-                        <div className="border-border bg-muted/70 rounded-lg border p-4 text-sm">
+                        <div className="rounded-lg border border-border bg-muted/70 p-4 text-sm">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <p className="text-foreground font-semibold">
+                              <p className="font-semibold text-foreground">
                                 {selectedOpenRouterModel.name || selectedOpenRouterModel.id}
                               </p>
-                              <p className="text-muted-foreground font-mono text-xs">
+                              <p className="font-mono text-xs text-muted-foreground">
                                 {selectedOpenRouterModel.id}
                               </p>
                             </div>
@@ -2391,52 +2391,52 @@ export function SettingsPage() {
                             />
                           </div>
                           <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 上下文
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatCompactNumber(selectedOpenRouterModel.contextLength)} tokens
                               </p>
                             </div>
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 最大输出
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatCompactNumber(selectedOpenRouterModel.maxCompletionTokens)}{' '}
                                 tokens
                               </p>
                             </div>
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 输入价格
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatPricePerMillion(selectedOpenRouterModel.promptPricing)}
                               </p>
                             </div>
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 输出价格
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatPricePerMillion(selectedOpenRouterModel.completionPricing)}
                               </p>
                             </div>
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 输入模态
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatModalities(selectedOpenRouterModel.inputModalities)}
                               </p>
                             </div>
-                            <div className="border-border bg-card rounded-md border px-3 py-2">
-                              <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                            <div className="rounded-md border border-border bg-card px-3 py-2">
+                              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 输出模态
                               </p>
-                              <p className="text-foreground mt-1 text-sm font-semibold">
+                              <p className="mt-1 text-sm font-semibold text-foreground">
                                 {formatModalities(selectedOpenRouterModel.outputModalities)}
                               </p>
                             </div>
@@ -2445,8 +2445,8 @@ export function SettingsPage() {
                       ) : null}
                     </div>
 
-                    <div className="border-border bg-card space-y-4 rounded-lg border p-4">
-                      <h3 className="text-foreground text-sm font-semibold">模型测试</h3>
+                    <div className="space-y-4 rounded-lg border border-border bg-card p-4">
+                      <h3 className="text-sm font-semibold text-foreground">模型测试</h3>
                       <Textarea
                         value={openrouterTestMessage}
                         onChange={(event) => setOpenrouterTestMessage(event.target.value)}
@@ -2466,7 +2466,7 @@ export function SettingsPage() {
                         </Button>
                       </div>
                       {openrouterChatResult ? (
-                        <div className="border-border bg-muted/70 rounded-lg border p-4">
+                        <div className="rounded-lg border border-border bg-muted/70 p-4">
                           <div className="flex flex-wrap items-center gap-3">
                             <StatusPill tone="ok" label={openrouterChatResult.model} />
                             <StatusPill
@@ -2474,13 +2474,13 @@ export function SettingsPage() {
                               label={`Prompt ${openrouterChatResult.usage.promptTokens ?? 0} / Completion ${openrouterChatResult.usage.completionTokens ?? 0}`}
                             />
                           </div>
-                          <ScrollArea className="border-border bg-card mt-4 h-[220px] rounded-lg border">
+                          <ScrollArea className="mt-4 h-[220px] rounded-lg border border-border bg-card">
                             <div className="space-y-3 p-4 text-sm">
-                              <p className="text-foreground whitespace-pre-wrap leading-6">
+                              <p className="leading-6 whitespace-pre-wrap text-foreground">
                                 {openrouterChatResult.content}
                               </p>
                               {openrouterChatResult.finishReason ? (
-                                <p className="text-muted-foreground text-xs">
+                                <p className="text-xs text-muted-foreground">
                                   结束原因：{openrouterChatResult.finishReason}
                                 </p>
                               ) : null}
@@ -2667,7 +2667,7 @@ function SettingsSearch({
 
   return (
     <div className="relative w-full max-w-[320px]">
-      <Search className="text-muted-foreground/60 pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+      <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
       <Input
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
@@ -2675,16 +2675,16 @@ function SettingsSearch({
         className="h-9 pl-8 text-[12px]"
       />
       {hits.length > 0 ? (
-        <div className="border-border bg-card absolute left-0 right-0 top-full z-30 mt-1 max-h-[260px] overflow-y-auto rounded-lg border p-1 shadow-lg">
+        <div className="absolute top-full right-0 left-0 z-30 mt-1 max-h-[260px] overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
           {hits.map((hit) => (
             <button
               key={`${hit.tab}-${hit.field}`}
               type="button"
               onClick={() => onJump(hit.tab)}
-              className="hover:bg-muted flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-[12px] transition-colors"
+              className="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-muted"
             >
-              <span className="text-foreground truncate font-medium">{hit.field}</span>
-              <span className="text-muted-foreground shrink-0 text-[11px]">{hit.tabLabel}</span>
+              <span className="truncate font-medium text-foreground">{hit.field}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{hit.tabLabel}</span>
             </button>
           ))}
         </div>

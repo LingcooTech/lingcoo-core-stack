@@ -32,6 +32,7 @@ export class BillingService extends BillingRefundUseCases {
     offerCode?: string;
     provider: 'wechat_pay' | 'alipay';
     clientIp?: string;
+    commandId?: string;
   }) {
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     const providerAdapter = this.capabilities.getBillingProviderAdapter(input.provider);
@@ -71,6 +72,7 @@ export class BillingService extends BillingRefundUseCases {
       amount: offer.priceAmount,
       currency: offer.currency,
       meta: {
+        commandId: input.commandId ?? null,
         appCode: input.appCode,
         offerCode: offer.code,
         offerTitle: offer.title,

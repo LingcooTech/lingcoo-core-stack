@@ -7,7 +7,8 @@ export default tseslint.config(
   {
     ignores: [
       'node_modules',
-      'dist',
+      '**/dist',
+      'packages',
       'coverage',
       'admin-ui',
       'drizzle',

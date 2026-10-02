@@ -1,3 +1,4 @@
+import { rotateIdempotencyKeyring } from '../idempotency/public';
 import { rotateDeliveryKeyring } from '../deployment/public';
 import { eq } from 'drizzle-orm';
 import { systemSettings } from '../../db/schema';
@@ -28,9 +29,10 @@ export async function rotateSettingKeys(db: DbExecutor, env: AppEnv, dryRun = tr
           .where(eq(systemSettings.key, row.key));
     }
     const delivery = await rotateDeliveryKeyring(tx, keyring, dryRun);
+    const requests = await rotateIdempotencyKeyring(tx, env, dryRun);
     return {
-      checked: checked + delivery.checked,
-      rotated: rotated + delivery.rotated,
+      checked: checked + delivery.checked + requests.checked,
+      rotated: rotated + delivery.rotated + requests.rotated,
       dryRun,
       currentKeyId: keyring.currentKeyId,
     };

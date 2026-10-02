@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { loginSchema } from '@lingcoo/contracts';
 
 import { login, register } from '@/api/auth';
 import { Button } from '@/components/ui/button';
@@ -19,9 +20,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
-const formSchema = z.object({
+const formSchema = loginSchema.extend({
   email: z.string().email('请输入有效邮箱'),
-  password: z.string().min(8, '密码至少 8 位'),
+  password: loginSchema.shape.password.min(8, '密码至少 8 位'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -65,7 +66,7 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="border-border/80 w-full">
+      <Card className="w-full border-border/80">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">
             {mode === 'register' ? '创建用户账号' : '登录用户中心'}
@@ -120,12 +121,12 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
             </form>
           </Form>
 
-          <div className="text-muted-foreground mt-5 text-sm">
+          <div className="mt-5 text-sm text-muted-foreground">
             {mode === 'login' ? (
               <div className="mb-3">
                 <Link
                   to={`/forgot-password${form.getValues('email') ? `?email=${encodeURIComponent(form.getValues('email'))}` : ''}`}
-                  className="text-primary font-bold hover:underline"
+                  className="font-bold text-primary hover:underline"
                 >
                   忘记密码？
                 </Link>
@@ -137,7 +138,7 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
                 pathname: mode === 'register' ? '/login' : '/register',
                 search: location.search,
               }}
-              className="text-primary font-bold hover:underline"
+              className="font-bold text-primary hover:underline"
             >
               {mode === 'register' ? '直接登录' : '立即注册'}
             </Link>

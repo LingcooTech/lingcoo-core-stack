@@ -1,3 +1,4 @@
+import type { AuthResponse as SharedAuthResponse, CurrentUser } from '@lingcoo/contracts';
 // ─── Common ────────────────────────────────────────────────────────────────
 
 export interface UserSummary {
@@ -60,24 +61,8 @@ export interface BootstrapStatus {
   hasAdmin: boolean;
 }
 
-export interface AuthResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    displayName: string | null;
-    role: string;
-    emailVerified: boolean;
-  };
-}
-
-export interface CurrentUserProfile {
-  id: string;
-  email: string;
-  displayName: string | null;
-  role: string;
-  emailVerified: boolean;
-}
+export type AuthResponse = SharedAuthResponse;
+export type CurrentUserProfile = CurrentUser;
 
 export interface VerifyEmailResponse {
   verified: boolean;
