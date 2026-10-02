@@ -1,37 +1,37 @@
 import { z } from 'zod';
 
 export const appCodeParamsSchema = z.object({
-  appCode: z.string().trim().min(1).max(64)
+  appCode: z.string().trim().min(1).max(64),
 });
 
 export const appSecretParamsSchema = appCodeParamsSchema.extend({
-  secretId: z.string().uuid()
+  secretId: z.string().uuid(),
 });
 
 export const purgeAppConfigurationSchema = z.object({
-  confirmAppCode: z.string().trim().min(1).max(64)
+  confirmAppCode: z.string().trim().min(1).max(64),
 });
 
 const screenshotSchema = z.object({
   url: z.string().trim().min(1).max(2048),
-  caption: z.string().trim().max(200).optional()
+  caption: z.string().trim().max(200).optional(),
 });
 
 const highlightSchema = z.object({
   icon: z.string().trim().max(64).optional(),
   title: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(500)
+  description: z.string().trim().max(500),
 });
 
 const faqSchema = z.object({
   question: z.string().trim().min(1).max(200),
-  answer: z.string().trim().min(1).max(2000)
+  answer: z.string().trim().min(1).max(2000),
 });
 
 const linkSchema = z.object({
   label: z.string().trim().min(1).max(64),
   url: z.string().trim().min(1).max(2048),
-  type: z.enum(['docs', 'support', 'website', 'download', 'other']).default('other')
+  type: z.enum(['docs', 'support', 'website', 'download', 'other']).default('other'),
 });
 
 export const upsertAppSchema = z.object({
@@ -55,8 +55,8 @@ export const upsertAppSchema = z.object({
         code: z.string().trim().min(1).max(64),
         name: z.string().trim().min(1).max(120),
         kind: z.string().trim().min(1).max(32).default('boolean'),
-        status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active')
-      })
+        status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
+      }),
     )
     .max(100)
     .optional(),
@@ -72,8 +72,8 @@ export const upsertAppSchema = z.object({
         interval: z.enum(['month', 'year', 'one_time']),
         status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
         featureCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(100),
-        meta: z.record(z.string(), z.unknown()).optional()
-      })
+        meta: z.record(z.string(), z.unknown()).optional(),
+      }),
     )
     .max(100)
     .optional(),
@@ -89,26 +89,26 @@ export const upsertAppSchema = z.object({
         currency: z.string().trim().min(1).max(16).default('CNY'),
         status: z.enum(['active', 'inactive', 'cancelled', 'expired']).default('active'),
         isDefault: z.boolean().optional(),
-        sortOrder: z.number().int().min(0).max(9999).optional()
-      })
+        sortOrder: z.number().int().min(0).max(9999).optional(),
+      }),
     )
     .max(100)
     .optional(),
-  meta: z.record(z.string(), z.unknown()).optional()
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const createAppSecretSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
-  expiresAt: z.string().datetime().optional()
+  expiresAt: z.string().datetime().optional(),
 });
 
 export const syncDeliveryManifestSchema = z.object({
   repoUrl: z.string().trim().url().optional(),
   repoBranch: z.string().trim().min(1).max(120).optional(),
   manifestPath: z.string().trim().min(1).max(255).optional(),
-  manifestUrl: z.string().trim().url().optional()
+  manifestUrl: z.string().trim().url().optional(),
 });
 
 export const createAppSessionSchema = z.object({
-  appSecret: z.string().trim().min(16).max(255)
+  appSecret: z.string().trim().min(16).max(255),
 });

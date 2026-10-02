@@ -50,7 +50,7 @@ export const FromStatusString: Story = {
     <div className="flex flex-col gap-2">
       {['active', 'paid', 'pending', 'failed', 'env', 'unknown'].map((status) => (
         <div key={status} className="flex items-center gap-3">
-          <code className="text-muted-foreground w-24 text-xs">{status}</code>
+          <code className="w-24 text-xs text-muted-foreground">{status}</code>
           <StatusPill tone={statusToTone(status)} label={status} />
         </div>
       ))}

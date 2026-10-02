@@ -108,15 +108,9 @@ function buildDraftSnapshot(
   deliverySettings: DeliverySettingsDraft,
   deliverySecrets: DeliverySecretState,
 ) {
-  return serializeDraft(
-    form,
-    editableFeatures,
-    editablePlans,
-    editableOffers,
-    {
-      delivery: serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
-    },
-  );
+  return serializeDraft(form, editableFeatures, editablePlans, editableOffers, {
+    delivery: serializeDeliverySettingsDraft(form.deliveryMode, deliverySettings, deliverySecrets),
+  });
 }
 
 export function AppEditPage() {
@@ -161,7 +155,8 @@ export function AppEditPage() {
   });
 
   const app = useMemo(
-    () => (isCreateMode ? null : (appsData?.items ?? []).find((item) => item.code === appCode) ?? null),
+    () =>
+      isCreateMode ? null : ((appsData?.items ?? []).find((item) => item.code === appCode) ?? null),
     [appsData, appCode, isCreateMode],
   );
 
@@ -232,7 +227,13 @@ export function AppEditPage() {
   }, [appCode, isCreateMode]);
 
   useEffect(() => {
-    if (isCreateMode || !app || initialized || !isCatalogFetched || !deliverySettingsQuery.isFetched) {
+    if (
+      isCreateMode ||
+      !app ||
+      initialized ||
+      !isCatalogFetched ||
+      !deliverySettingsQuery.isFetched
+    ) {
       return;
     }
 
@@ -315,10 +316,15 @@ export function AppEditPage() {
     !allowNavigation &&
     (currentSnapshot !== savedDraftSnapshot ||
       currentManifestSourceSnapshot !== savedManifestSourceSnapshot);
-  const { isDialogOpen, confirmNavigation, stayOnPage } = useUnsavedChangesPrompt(hasUnsavedChanges);
+  const { isDialogOpen, confirmNavigation, stayOnPage } =
+    useUnsavedChangesPrompt(hasUnsavedChanges);
 
   const saveMutation = useMutation({
-    mutationFn: async ({ appRequest, saveDeliverySettings, deliveryDraft }: SaveMutationRequest) => {
+    mutationFn: async ({
+      appRequest,
+      saveDeliverySettings,
+      deliveryDraft,
+    }: SaveMutationRequest) => {
       const appResult = await upsertApp(appRequest.appCode, appRequest.payload);
       const deliveryOverview = saveDeliverySettings
         ? await upsertDeliverySettings(appResult.code, buildDeliverySettingsPayload(deliveryDraft))
@@ -379,7 +385,10 @@ export function AppEditPage() {
   });
 
   const syncManifestMutation = useMutation({
-    mutationFn: async ({ appCode: targetAppCode, payload }: SyncManifestRequest): Promise<SyncManifestResult> => {
+    mutationFn: async ({
+      appCode: targetAppCode,
+      payload,
+    }: SyncManifestRequest): Promise<SyncManifestResult> => {
       const syncedApp = await syncAppDeliveryManifest(targetAppCode, payload);
       const deliveryOverview = await getDeliverySettings(targetAppCode);
       return { app: syncedApp, deliveryOverview };
@@ -609,14 +618,9 @@ export function AppEditPage() {
     });
   };
 
-  const updateOffer = (
-    offerId: string,
-    updater: (offer: EditableOffer) => EditableOffer,
-  ) => {
+  const updateOffer = (offerId: string, updater: (offer: EditableOffer) => EditableOffer) => {
     setEditableOffers((prev) =>
-      ensureDefaultOffer(
-        prev.map((offer) => (offer.id === offerId ? updater(offer) : offer)),
-      ),
+      ensureDefaultOffer(prev.map((offer) => (offer.id === offerId ? updater(offer) : offer))),
     );
   };
 
@@ -737,9 +741,9 @@ export function AppEditPage() {
 
   const hasSyncedManifest = Boolean(
     app?.meta &&
-      typeof app.meta === 'object' &&
-      !Array.isArray(app.meta) &&
-      Object.prototype.hasOwnProperty.call(app.meta, 'deliveryManifest'),
+    typeof app.meta === 'object' &&
+    !Array.isArray(app.meta) &&
+    Object.prototype.hasOwnProperty.call(app.meta, 'deliveryManifest'),
   );
   const isBusy =
     saveMutation.isPending || clearDeliveryMutation.isPending || syncManifestMutation.isPending;
@@ -758,7 +762,7 @@ export function AppEditPage() {
     clearDeliveryMutation.mutate(form.appCode.trim());
   };
 
-  const pageTitle = form.name.trim() || (isCreateMode ? '新建应用' : app?.name ?? '应用详情');
+  const pageTitle = form.name.trim() || (isCreateMode ? '新建应用' : (app?.name ?? '应用详情'));
   const isWaitingForCreateInit = isCreateMode && !initialized;
   const isWaitingForEditInit =
     !isCreateMode && !!app && (!initialized || !deliverySettingsQuery.isFetched);

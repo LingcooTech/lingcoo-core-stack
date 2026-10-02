@@ -167,7 +167,7 @@ export function DeploymentRecordCard({
       : null);
 
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm">
+    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
       <CardHeader className="space-y-2.5">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -352,11 +352,11 @@ export function DeploymentRecordCard({
           />
         ) : null}
 
-        <div className="border-border bg-muted/85 rounded-lg border p-4">
+        <div className="rounded-lg border border-border bg-muted/85 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-foreground text-sm font-semibold tracking-tight">安装令牌</p>
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="text-sm font-semibold tracking-tight text-foreground">安装令牌</p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {deployment.latestToken
                   ? `最近一次令牌尾号 ${deployment.latestToken.tokenHint}，状态 ${deploymentTokenStatusLabel(deployment.latestToken.status)}`
                   : '还没有签发安装令牌'}
@@ -377,7 +377,7 @@ export function DeploymentRecordCard({
             </p>
           ) : null}
           {deployment.pendingAction ? (
-            <p className="text-muted-foreground mt-3 text-xs">
+            <p className="mt-3 text-xs text-muted-foreground">
               待执行动作：{getActionLabel(deployment.pendingAction.kind)}
               {deployment.pendingAction.requestedAt
                 ? ` · ${formatTime(deployment.pendingAction.requestedAt)}`
@@ -385,7 +385,7 @@ export function DeploymentRecordCard({
             </p>
           ) : null}
           {deployment.lastAction ? (
-            <p className="text-muted-foreground mt-3 text-xs">
+            <p className="mt-3 text-xs text-muted-foreground">
               最近动作：{getActionLabel(deployment.lastAction.kind)} ·
               {deployment.lastAction.status === 'completed' ? ' 已完成' : ' 失败'}
               {deployment.lastAction.finishedAt
@@ -395,7 +395,7 @@ export function DeploymentRecordCard({
             </p>
           ) : null}
           {deployment.domainBinding.isLocked ? (
-            <p className="text-muted-foreground mt-3 text-xs">
+            <p className="mt-3 text-xs text-muted-foreground">
               当前{domainBindingLabel}已绑定为 {boundDomain ?? '已绑定'}
               。如需更换，需要提交工单处理。
             </p>
@@ -406,7 +406,7 @@ export function DeploymentRecordCard({
               <InfoLine label="本次令牌尾号" value={issuedToken.tokenHint} mono />
               <InfoLine label="过期时间" value={formatTime(issuedToken.expiresAt)} />
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                <p className="text-xs font-bold tracking-wide text-muted-foreground">
                   远程安装命令
                 </p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
@@ -414,19 +414,19 @@ export function DeploymentRecordCard({
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold tracking-wide">兑换地址</p>
+                <p className="text-xs font-bold tracking-wide text-muted-foreground">兑换地址</p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.exchangeUrl}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold tracking-wide">一次性令牌</p>
+                <p className="text-xs font-bold tracking-wide text-muted-foreground">一次性令牌</p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                   {issuedToken.token}
                 </pre>
               </div>
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                <p className="text-xs font-bold tracking-wide text-muted-foreground">
                   调试命令（cURL）
                 </p>
                 <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
@@ -443,9 +443,9 @@ export function DeploymentRecordCard({
 
 function InfoLine({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="border-border bg-card rounded-md border px-3 py-2">
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">{label}</p>
-      <p className={`text-foreground mt-1 text-sm ${mono ? 'font-mono' : 'font-medium'}`}>
+    <div className="rounded-md border border-border bg-card px-3 py-2">
+      <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-sm text-foreground ${mono ? 'font-mono' : 'font-medium'}`}>
         {value}
       </p>
     </div>
@@ -462,27 +462,27 @@ function DiffSection({
   offeredAt?: string | null;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-foreground text-sm font-semibold tracking-tight">{title}</p>
+        <p className="text-sm font-semibold tracking-tight text-foreground">{title}</p>
         {offeredAt ? (
-          <span className="text-muted-foreground text-xs">{formatTime(offeredAt)}</span>
+          <span className="text-xs text-muted-foreground">{formatTime(offeredAt)}</span>
         ) : null}
       </div>
       <div className="mt-3 space-y-2">
         {rows.map((row) => (
           <div
             key={row.label}
-            className="border-border bg-muted grid grid-cols-[110px,1fr,20px,1fr] items-start gap-2 rounded-md border px-3 py-2"
+            className="grid grid-cols-[110px,1fr,20px,1fr] items-start gap-2 rounded-md border border-border bg-muted px-3 py-2"
           >
-            <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+            <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               {row.label}
             </span>
-            <span className="text-foreground min-w-0 break-all font-mono text-xs">
+            <span className="min-w-0 font-mono text-xs break-all text-foreground">
               {row.current ?? '-'}
             </span>
-            <span className={cn('text-muted-foreground text-center text-xs')}>→</span>
-            <span className="text-foreground min-w-0 break-all font-mono text-xs">
+            <span className={cn('text-center text-xs text-muted-foreground')}>→</span>
+            <span className="min-w-0 font-mono text-xs break-all text-foreground">
               {row.next ?? '-'}
             </span>
           </div>

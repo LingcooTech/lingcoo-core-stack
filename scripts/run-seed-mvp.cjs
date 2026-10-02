@@ -7,7 +7,7 @@ const commandArgs = existsSync('./dist/scripts/seed-mvp.js')
 
 const result = spawnSync(process.execPath, commandArgs, {
   stdio: 'inherit',
-  env: process.env
+  env: process.env,
 });
 
 process.exit(result.status ?? 1);

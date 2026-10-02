@@ -18,12 +18,11 @@ export function AppEditScreenshotsCard({
   screenshots,
   onChange,
 }: AppEditScreenshotsCardProps) {
-  const updateScreenshot = (
-    index: number,
-    patch: Partial<FormState['screenshots'][number]>,
-  ) => {
+  const updateScreenshot = (index: number, patch: Partial<FormState['screenshots'][number]>) => {
     const next = [...screenshots];
-    next[index] = { ...next[index], ...patch };
+    const item = next[index];
+    if (!item) return;
+    next[index] = { ...item, ...patch };
     onChange(next);
   };
 
@@ -75,9 +74,7 @@ export function AppEditScreenshotsCard({
               variant="ghost"
               size="icon"
               className="mt-1 h-7 w-7 shrink-0"
-              onClick={() =>
-                onChange(screenshots.filter((_, itemIndex) => itemIndex !== index))
-              }
+              onClick={() => onChange(screenshots.filter((_, itemIndex) => itemIndex !== index))}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

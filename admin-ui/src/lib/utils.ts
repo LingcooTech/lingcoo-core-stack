@@ -16,7 +16,7 @@ export function formatAmount(amount: number, currency = 'CNY'): string {
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2
+    minimumFractionDigits: 2,
   }).format(amount / 100);
 }
 

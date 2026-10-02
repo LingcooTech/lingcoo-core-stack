@@ -9,6 +9,7 @@ export class NotificationsRepository {
 
   async insert(input: typeof notifications.$inferInsert) {
     const [item] = await this.db.insert(notifications).values(input).returning();
+    if (!item) throw new Error('Missing required write result: notifications item');
     return item;
   }
 

@@ -55,7 +55,7 @@ export function ArticleToc({ items, pathname = '', className }: ArticleTocProps)
 
   return (
     <nav aria-label="文章目录" className={cn('text-sm', className)}>
-      <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.16em]">
+      <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
         目录
       </p>
       <ul className="mt-3 space-y-1.5">
@@ -68,8 +68,8 @@ export function ArticleToc({ items, pathname = '', className }: ArticleTocProps)
                 className={cn(
                   'block border-l-2 py-1 pl-3 text-[13px] leading-5 transition-colors',
                   isActive
-                    ? 'border-primary text-foreground font-medium'
-                    : 'text-muted-foreground hover:text-foreground border-transparent',
+                    ? 'border-primary font-medium text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
                 style={{ paddingLeft: `${12 + (item.level - 2) * 12}px` }}
               >

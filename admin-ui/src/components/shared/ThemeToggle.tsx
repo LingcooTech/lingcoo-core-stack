@@ -52,7 +52,7 @@ export function ThemeToggle({ variant = 'ghost', className }: ThemeToggleProps) 
             }}
             className={cn(
               'gap-2 rounded-md text-sm',
-              theme === value && 'text-foreground font-semibold',
+              theme === value && 'font-semibold text-foreground',
             )}
           >
             <Icon className="size-4" />

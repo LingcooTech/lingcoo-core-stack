@@ -124,19 +124,19 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
   return (
     <div
       className={cn(
-        'border-border bg-card group relative my-6 overflow-hidden rounded-xl border shadow-sm',
+        'group relative my-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm',
         className,
       )}
     >
-      <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2">
-        <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+      <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2">
+        <span className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
           {language || 'code'}
         </span>
         <button
           type="button"
           onClick={handleCopy}
           aria-label="复制代码"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] transition-colors"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           {copied ? (
             <>
@@ -157,7 +157,7 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="bg-muted/20 text-foreground overflow-x-auto p-4 text-[13px] leading-6">
+        <pre className="overflow-x-auto bg-muted/20 p-4 text-[13px] leading-6 text-foreground">
           <code className="font-mono">{code}</code>
         </pre>
       )}

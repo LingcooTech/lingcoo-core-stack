@@ -50,19 +50,19 @@ export function ContentHubPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-3 pt-2">
-        <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           <FileText className="h-3.5 w-3.5" />
           {hub.eyebrow}
         </div>
-        <h1 className="text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
           {hub.title}
         </h1>
-        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">{hub.description}</p>
+        <p className="max-w-2xl text-[15px] leading-7 text-muted-foreground">{hub.description}</p>
       </header>
 
-      <div className="border-border bg-card/50 sticky top-12 z-10 -mx-1 flex items-center gap-3 border-b px-1 py-2 backdrop-blur-md">
+      <div className="sticky top-12 z-10 -mx-1 flex items-center gap-3 border-b border-border bg-card/50 px-1 py-2 backdrop-blur-md">
         <div className="relative max-w-md flex-1">
-          <Search className="text-muted-foreground/60 pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -71,7 +71,7 @@ export function ContentHubPage() {
           />
         </div>
         {total > 0 && (
-          <span className="text-muted-foreground shrink-0 text-[12px] tabular-nums">
+          <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">
             共 {total} 篇
           </span>
         )}
@@ -80,11 +80,11 @@ export function ContentHubPage() {
       {contentQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="border-border bg-card rounded-xl border p-5">
-              <div className="bg-muted h-3 w-1/3 animate-pulse rounded" />
-              <div className="bg-muted mt-3 h-5 w-3/4 animate-pulse rounded" />
-              <div className="bg-muted mt-3 h-3 w-full animate-pulse rounded" />
-              <div className="bg-muted mt-2 h-3 w-4/5 animate-pulse rounded" />
+            <div key={index} className="rounded-xl border border-border bg-card p-5">
+              <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-5 w-3/4 animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-3 w-full animate-pulse rounded bg-muted" />
+              <div className="mt-2 h-3 w-4/5 animate-pulse rounded bg-muted" />
             </div>
           ))}
         </div>
@@ -111,19 +111,19 @@ export function ContentHubPage() {
             <Link
               key={item.id}
               to={`/content/${item.slug}`}
-              className="border-border bg-card hover:border-foreground/20 group flex flex-col gap-3 rounded-xl border p-5 no-underline transition-colors"
+              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 no-underline transition-colors hover:border-foreground/20"
             >
-              <div className="text-muted-foreground flex items-center justify-between gap-3 text-[11px] tabular-nums">
+              <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground tabular-nums">
                 <span className="truncate">{item.authorName || '匿名作者'}</span>
                 <span className="shrink-0">{formatTime(item.publishedAt || item.createdAt)}</span>
               </div>
-              <h2 className="text-foreground line-clamp-2 text-[16px] font-semibold leading-snug tracking-tight">
+              <h2 className="line-clamp-2 text-[16px] leading-snug font-semibold tracking-tight text-foreground">
                 {item.title}
               </h2>
-              <p className="text-muted-foreground line-clamp-3 flex-1 text-[13px] leading-6">
+              <p className="line-clamp-3 flex-1 text-[13px] leading-6 text-muted-foreground">
                 {item.excerpt || '暂无摘要。'}
               </p>
-              <div className="text-muted-foreground/60 group-hover:text-foreground inline-flex items-center gap-1 text-[11px] font-medium transition-colors">
+              <div className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/60 transition-colors group-hover:text-foreground">
                 阅读全文
                 <ArrowRight className="h-3 w-3" />
               </div>
@@ -133,7 +133,7 @@ export function ContentHubPage() {
       )}
 
       {total > PAGE_SIZE && (
-        <div className="text-muted-foreground flex items-center justify-center gap-4 text-[12px] tabular-nums">
+        <div className="flex items-center justify-center gap-4 text-[12px] text-muted-foreground tabular-nums">
           <Button
             size="sm"
             variant="outline"

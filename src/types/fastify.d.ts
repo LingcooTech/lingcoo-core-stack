@@ -2,10 +2,10 @@ import type { createAdminCommandRunner } from '../http/admin-commands';
 import type { SettingsRegistry } from '../modules/settings/public';
 import type { ApiServices } from '../composition/api-runtime';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { FastifyJWT } from '@fastify/jwt';
+import '@fastify/jwt';
 import type Redis from 'ioredis';
 import type { Pool } from 'pg';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest as Request } from 'fastify';
 
 import type * as schema from '../db/schema';
 import type { AppEnv } from '../lib/env';
@@ -21,16 +21,13 @@ declare module 'fastify' {
     db: NodePgDatabase<typeof schema>;
     pg: Pool;
     redis: Redis;
-    authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
-    authenticateApp: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
-    requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
+    authenticate: (request: Request, reply: FastifyReply) => Promise<void | FastifyReply>;
+    authenticateApp: (request: Request, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requireAdmin: (request: Request, reply: FastifyReply) => Promise<void | FastifyReply>;
     requirePermission: (
       permissions: AppPermission | AppPermission[],
-    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void | FastifyReply>;
-    requireEmailVerified: (
-      request: FastifyRequest,
-      reply: FastifyReply,
-    ) => Promise<void | FastifyReply>;
+    ) => (request: Request, reply: FastifyReply) => Promise<void | FastifyReply>;
+    requireEmailVerified: (request: Request, reply: FastifyReply) => Promise<void | FastifyReply>;
   }
 
   interface FastifyRequest {

@@ -60,19 +60,19 @@ export function AiTranslateWorkflowSupportPage() {
   return (
     <div className="space-y-10 py-4">
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="text-muted-foreground px-0">
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/apps/ai-translate-workflow">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回 AI Translate Workflow
           </Link>
         </Button>
 
-        <section className="border-border/80 bg-card/95 rounded-lg border p-8 shadow-sm">
-          <p className="text-primary text-xs font-semibold uppercase tracking-wider">Support</p>
-          <h1 className="text-foreground mt-3 text-4xl font-semibold tracking-tight">
+        <section className="rounded-lg border border-border/80 bg-card/95 p-8 shadow-sm">
+          <p className="text-xs font-semibold tracking-wider text-primary uppercase">Support</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-foreground">
             AI Translate Workflow 支持页
           </h1>
-          <p className="text-muted-foreground mt-4 max-w-3xl text-base leading-7">
+          <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground">
             这份页面优先给出自助排障路径。因为扩展默认使用你自己的 OpenRouter key
             和你自己的导出目标， 最常见的问题通常出在凭据、额度、站点权限或当前页面本身。
           </p>
@@ -101,7 +101,7 @@ export function AiTranslateWorkflowSupportPage() {
           return (
             <Card key={item.title} className="border-border/80 bg-card/95">
               <CardHeader className="space-y-3">
-                <span className="bg-muted text-foreground flex h-11 w-11 items-center justify-center rounded-lg">
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-foreground">
                   <Icon className="h-5 w-5" />
                 </span>
                 <CardTitle>{item.title}</CardTitle>
@@ -119,7 +119,7 @@ export function AiTranslateWorkflowSupportPage() {
               <CardHeader>
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </CardHeader>
-              <CardContent className="text-foreground space-y-3 text-sm leading-7">
+              <CardContent className="space-y-3 text-sm leading-7 text-foreground">
                 {section.points.map((point) => (
                   <p key={point}>{point}</p>
                 ))}
@@ -154,7 +154,7 @@ export function AiTranslateWorkflowSupportPage() {
             <CardHeader>
               <CardTitle>排障顺序</CardTitle>
             </CardHeader>
-            <CardContent className="text-foreground space-y-3 text-sm leading-6">
+            <CardContent className="space-y-3 text-sm leading-6 text-foreground">
               <p>1. 先确认账号与授权。</p>
               <p>2. 再确认 OpenRouter key、额度与模型。</p>
               <p>3. 最后检查 WordPress / Notion 目标配置。</p>

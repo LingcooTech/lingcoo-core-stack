@@ -25,6 +25,7 @@ export class BillingRepository {
         meta: input.meta ?? {},
       })
       .returning();
+    if (!order) throw new Error('Missing required write result: billing order');
 
     return order;
   }

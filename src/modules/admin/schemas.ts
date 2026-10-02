@@ -174,9 +174,6 @@ export const adminJobRunParamsSchema = z.object({
   jobId: z.string().uuid(),
 });
 
-const recordStatusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);
-const intervalSchema = z.enum(['month', 'year', 'one_time']);
-
 export const adminAppCodeParamsSchema = z.object({
   appCode: z.string().trim().min(1).max(64),
 });

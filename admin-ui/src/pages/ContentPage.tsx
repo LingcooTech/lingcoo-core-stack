@@ -136,10 +136,10 @@ export function ContentPage() {
       header: '内容',
       cell: (row) => (
         <div className="space-y-1">
-          <p className="text-foreground text-sm font-semibold">{row.title}</p>
-          <p className="text-muted-foreground font-mono text-[11px]">{row.slug}</p>
+          <p className="text-sm font-semibold text-foreground">{row.title}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">{row.slug}</p>
           {row.excerpt ? (
-            <p className="text-muted-foreground line-clamp-2 text-sm">{row.excerpt}</p>
+            <p className="line-clamp-2 text-sm text-muted-foreground">{row.excerpt}</p>
           ) : null}
         </div>
       ),
@@ -152,7 +152,7 @@ export function ContentPage() {
         <div className="space-y-1">
           <StatusPill tone="info" label={getSourceLabel(row.sourceType)} />
           {row.authorName ? (
-            <p className="text-muted-foreground text-xs">{row.authorName}</p>
+            <p className="text-xs text-muted-foreground">{row.authorName}</p>
           ) : null}
         </div>
       ),
@@ -167,13 +167,13 @@ export function ContentPage() {
     {
       key: 'publishedAt',
       header: '发布时间',
-      cell: (row) => <span className="text-foreground text-xs">{formatTime(row.publishedAt)}</span>,
+      cell: (row) => <span className="text-xs text-foreground">{formatTime(row.publishedAt)}</span>,
     },
     {
       key: 'importedAt',
       header: '导入时间',
       cell: (row) => (
-        <span className="text-foreground text-xs">
+        <span className="text-xs text-foreground">
           {formatTime(row.importedAt || row.createdAt)}
         </span>
       ),
@@ -215,10 +215,10 @@ export function ContentPage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm"
+              className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm"
             >
-              <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-              <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
                 {item.value}
               </p>
             </div>
@@ -227,8 +227,8 @@ export function ContentPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-foreground text-lg font-semibold">导入与管理</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-lg font-semibold text-foreground">导入与管理</h2>
+            <p className="text-sm text-muted-foreground">
               支持导入外部内容，也支持手动创建本地内容。
             </p>
           </div>
@@ -374,7 +374,7 @@ export function ContentPage() {
           </Card>
         </div>
 
-        <div className="border-border bg-card space-y-3 rounded-xl border p-4 shadow-sm">
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
           <FilterChipBar
             searchValue={search}
             onSearchChange={setSearch}
@@ -408,7 +408,7 @@ export function ContentPage() {
             onClearAll={clearFilters}
           />
 
-          <div className="border-border bg-card overflow-hidden rounded-xl border">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <DataTable
               columns={columns}
               data={items}

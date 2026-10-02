@@ -38,7 +38,11 @@ export const APP_EDIT_TABS: Array<{
 }> = [
   { key: 'basics', label: '基本信息', description: '名称、Code、状态、分类和视觉素材' },
   { key: 'content', label: '展示内容', description: '详情正文、亮点、截图、FAQ 和外链' },
-  { key: 'delivery', label: '交付配置', description: '先确定一键部署 manifest、域名槽位和部署参数' },
+  {
+    key: 'delivery',
+    label: '交付配置',
+    description: '先确定一键部署 manifest、域名槽位和部署参数',
+  },
   { key: 'features', label: '功能', description: '创建并维护当前应用的 features' },
   { key: 'plans', label: '套餐', description: '定义购买层、部署权益和功能组合' },
   { key: 'offers', label: 'Offers', description: '管理应用售卖层的定价呈现' },
@@ -207,8 +211,7 @@ export function createDeploymentPolicyDraft(metaInput?: unknown): DeploymentPoli
       : 'none';
 
   return {
-    maxActiveDeployments:
-      Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
+    maxActiveDeployments: Number.isFinite(parsedMax) && parsedMax >= 1 ? Math.floor(parsedMax) : 1,
     domainBindingMode: normalizedMode,
     domainBindingSource: normalizedMode === 'none' ? 'none' : normalizedSource,
     domainBindingScope: scope === 'exact_host' ? 'exact_host' : 'registrable_domain',
@@ -308,7 +311,9 @@ export function createEditablePlans(
   app: AppWithDetails,
   planFeatures: PlanFeatureSummary[],
 ): EditablePlan[] {
-  const featureCodeById = new Map((app.features ?? []).map((feature) => [feature.id, feature.code]));
+  const featureCodeById = new Map(
+    (app.features ?? []).map((feature) => [feature.id, feature.code]),
+  );
   const featureCodesByPlanId = new Map<string, string[]>();
 
   for (const mapping of planFeatures) {

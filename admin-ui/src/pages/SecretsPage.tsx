@@ -73,11 +73,11 @@ export function SecretsPage() {
     <div>
       <div className="p-6">
         <h1 className="text-2xl font-semibold tracking-tight">应用密钥</h1>
-        <p className="text-muted-foreground mt-1 text-sm">生成和管理应用 API 密钥</p>
+        <p className="mt-1 text-sm text-muted-foreground">生成和管理应用 API 密钥</p>
       </div>
       <div className="p-6 pt-0">
         <div className="max-w-xl space-y-6">
-          <div className="border-border bg-card rounded-lg border p-5">
+          <div className="rounded-lg border border-border bg-card p-5">
             <h3 className="mb-4 text-sm font-semibold">生成 App Secret</h3>
             <div className="space-y-4">
               <div>
@@ -124,20 +124,20 @@ export function SecretsPage() {
             .map((app) => (
               <div
                 key={app.code}
-                className="border-border bg-card overflow-hidden rounded-lg border"
+                className="overflow-hidden rounded-lg border border-border bg-card"
               >
-                <div className="border-border bg-muted/30 border-b px-4 py-3">
+                <div className="border-b border-border bg-muted/30 px-4 py-3">
                   <p className="text-sm font-semibold">{app.name}</p>
-                  <p className="text-muted-foreground font-mono text-xs">{app.code}</p>
+                  <p className="font-mono text-xs text-muted-foreground">{app.code}</p>
                 </div>
                 {app.secrets?.map((secret) => (
                   <div
                     key={secret.id}
-                    className="border-border flex items-center justify-between gap-3 border-b px-4 py-3 last:border-0"
+                    className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-foreground font-mono text-xs">{secret.hint}</p>
-                      <p className="text-muted-foreground text-xs">
+                      <p className="font-mono text-xs text-foreground">{secret.hint}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatTime(secret.expiresAt)}
                       </p>
                     </div>
@@ -186,16 +186,16 @@ export function SecretsPage() {
                 </p>
               </div>
               <div className="relative">
-                <div className="break-all rounded-md bg-slate-950 p-3 pr-16 font-mono text-xs text-green-400">
+                <div className="rounded-md bg-slate-950 p-3 pr-16 font-mono text-xs break-all text-green-400">
                   {secretVisible
                     ? secretResult.secret
                     : '\u2022'.repeat(Math.min(secretResult.secret.length, 40))}
                 </div>
-                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
+                <div className="absolute top-1/2 right-2 flex -translate-y-1/2 gap-1">
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="text-muted-foreground h-7 w-7 hover:text-white"
+                    className="h-7 w-7 text-muted-foreground hover:text-white"
                     onClick={() => setSecretVisible((value) => !value)}
                   >
                     {secretVisible ? (
@@ -207,7 +207,7 @@ export function SecretsPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="text-muted-foreground h-7 w-7 hover:text-white"
+                    className="h-7 w-7 text-muted-foreground hover:text-white"
                     onClick={() => {
                       void navigator.clipboard.writeText(secretResult.secret);
                       toast.success('已复制到剪贴板');

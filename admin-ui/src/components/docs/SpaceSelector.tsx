@@ -36,7 +36,7 @@ export function SpaceSelector({ currentSlug }: SpaceSelectorProps) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="border-border bg-card text-foreground hover:border-foreground/30 inline-flex h-9 max-w-[200px] items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors"
+          className="inline-flex h-9 max-w-[200px] items-center gap-2 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:border-foreground/30"
         >
           <span className="truncate">{currentSpace?.title || '所有文档空间'}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
@@ -45,7 +45,7 @@ export function SpaceSelector({ currentSlug }: SpaceSelectorProps) {
       <DropdownMenuContent
         align="start"
         sideOffset={8}
-        className="border-border bg-card w-72 rounded-xl border p-2"
+        className="w-72 rounded-xl border border-border bg-card p-2"
       >
         <DropdownMenuItem
           className={cn(
@@ -76,7 +76,7 @@ export function SpaceSelector({ currentSlug }: SpaceSelectorProps) {
             >
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium">{space.title}</span>
-                <span className="text-muted-foreground text-[11px] tabular-nums">
+                <span className="text-[11px] text-muted-foreground tabular-nums">
                   {space.pageCount} 页
                 </span>
               </div>

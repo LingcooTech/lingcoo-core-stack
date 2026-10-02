@@ -69,13 +69,13 @@ export function DocsCommandPalette({ open, onOpenChange }: DocsCommandPalettePro
               >
                 <FileText className="text-muted-foreground" />
                 <div className="flex flex-col">
-                  <span className="text-foreground text-sm font-medium">{page.pageTitle}</span>
+                  <span className="text-sm font-medium text-foreground">{page.pageTitle}</span>
                   {page.summary ? (
-                    <span className="text-muted-foreground line-clamp-1 text-xs">
+                    <span className="line-clamp-1 text-xs text-muted-foreground">
                       {page.summary}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground text-xs">{page.pagePath}</span>
+                    <span className="text-xs text-muted-foreground">{page.pagePath}</span>
                   )}
                 </div>
               </CommandItem>
@@ -107,11 +107,11 @@ export function DocsSearchTrigger({ onOpen }: SearchTriggerProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex h-9 w-[360px] items-center justify-between gap-2 rounded-full border px-3 text-[13px] transition-colors xl:w-[460px]"
+      className="inline-flex h-9 w-[360px] items-center justify-between gap-2 rounded-full border border-border bg-card px-3 text-[13px] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground xl:w-[460px]"
       aria-label="搜索文档"
     >
       <span>搜索文档…</span>
-      <kbd className="border-border bg-muted ml-1 inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-[10px]">
+      <kbd className="ml-1 inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
         ⌘ K
       </kbd>
     </button>

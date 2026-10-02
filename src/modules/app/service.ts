@@ -1,3 +1,4 @@
+import { requireResult } from '../../db/required-result';
 import { queryBatch } from '../../db/query-batch';
 import { pickAppDependencies, type AppDependencies } from './dependencies';
 import { randomBytes } from 'node:crypto';
@@ -98,7 +99,7 @@ export class AppService {
         })
         .sort((a, b) => a.sortOrder - b.sortOrder);
 
-      if (result.length > 0 && !result.some((o) => o.isDefault)) {
+      if (result[0] && !result.some((o) => o.isDefault)) {
         result[0] = { ...result[0], isDefault: true };
       }
 
@@ -257,7 +258,7 @@ export class AppService {
     }
 
     const [hydrated] = await this.hydrateApps([app]);
-    return hydrated;
+    return requireResult(hydrated, 'app projection');
   }
 
   async getManagedApp(appCode: string) {
@@ -267,7 +268,7 @@ export class AppService {
     }
 
     const [hydrated] = await this.hydrateApps([app], true);
-    return hydrated;
+    return requireResult(hydrated, 'app projection');
   }
 
   async requireActiveApp(appCode: string) {
@@ -361,7 +362,7 @@ export class AppService {
     if (!offer && input.planCode) {
       const matched = activeOffers.filter((o) => o.planCode === input.planCode);
       if (matched.length === 1) {
-        [offer] = matched;
+        offer = matched[0] ?? null;
       } else if (matched.length > 1) {
         offer = matched.find((o) => o.isDefault) ?? matched[0] ?? null;
       } else {

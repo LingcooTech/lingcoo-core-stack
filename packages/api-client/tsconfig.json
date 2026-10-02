@@ -9,7 +9,10 @@
     "declaration": true,
     "rootDir": "src",
     "outDir": "dist/cjs",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*.ts"]
 }

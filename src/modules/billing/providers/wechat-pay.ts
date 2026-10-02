@@ -124,6 +124,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
 
     for (const match of inner.matchAll(pattern)) {
       const [, key, cdataValue, plainValue] = match;
+      if (!key) continue;
       result[key] = (cdataValue ?? plainValue ?? '').trim();
     }
 

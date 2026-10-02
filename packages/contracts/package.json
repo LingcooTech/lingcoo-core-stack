@@ -10,6 +10,11 @@
       "types": "./dist/cjs/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./models": {
+      "types": "./dist/cjs/models.d.ts",
+      "import": "./dist/esm/models.js",
+      "require": "./dist/cjs/models.js"
     }
   },
   "scripts": {

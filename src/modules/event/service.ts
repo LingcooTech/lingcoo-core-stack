@@ -1,3 +1,4 @@
+import { requireResult } from '../../db/required-result';
 import { createHash } from 'node:crypto';
 import type { DbExecutor } from '../../db/types';
 import { JobRunService } from '../jobs/public';
@@ -6,7 +7,7 @@ export class EventService {
   constructor(private readonly db: DbExecutor) {}
   async capture(item: EventRecordInput) {
     const records = await this.captureMany([item]);
-    return records[0];
+    return requireResult(records[0], 'event projection');
   }
   async captureMany(items: EventRecordInput[]) {
     return this.db.transaction(async (tx) => {

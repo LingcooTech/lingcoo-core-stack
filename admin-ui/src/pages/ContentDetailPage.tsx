@@ -48,7 +48,7 @@ export function ContentDetailPage() {
   if (contentQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -56,7 +56,7 @@ export function ContentDetailPage() {
   if (!contentQuery.data) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="text-muted-foreground px-0">
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/content">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回内容中心
@@ -95,7 +95,7 @@ export function ContentDetailPage() {
 
   return (
     <article className="space-y-10">
-      <Button variant="ghost" asChild className="text-muted-foreground px-0">
+      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
         <Link to="/content">
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回内容中心
@@ -103,7 +103,7 @@ export function ContentDetailPage() {
       </Button>
 
       {item.coverUrl ? (
-        <div className="border-border bg-muted/40 mx-auto max-w-5xl overflow-hidden rounded-2xl border shadow-sm">
+        <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-muted/40 shadow-sm">
           <img
             src={item.coverUrl}
             alt={item.title}
@@ -114,15 +114,15 @@ export function ContentDetailPage() {
       ) : null}
 
       <header className="mx-auto max-w-[760px] space-y-4">
-        <h1 className="text-foreground text-3xl font-semibold leading-tight tracking-tight md:text-4xl md:leading-[1.2]">
+        <h1 className="text-3xl leading-tight font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.2]">
           {item.title}
         </h1>
-        <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Avatar className="h-7 w-7">
               <AvatarFallback className="text-[11px]">{getInitials(authorName)}</AvatarFallback>
             </Avatar>
-            <span className="text-foreground font-medium">{authorName}</span>
+            <span className="font-medium text-foreground">{authorName}</span>
           </div>
           <span className="text-border">·</span>
           <span>{formatTime(publishedAt)}</span>
@@ -136,7 +136,7 @@ export function ContentDetailPage() {
           ) : null}
         </div>
         {item.excerpt ? (
-          <p className="text-muted-foreground border-l-primary/40 border-l-2 pl-4 text-[15px] italic leading-7">
+          <p className="border-l-2 border-l-primary/40 pl-4 text-[15px] leading-7 text-muted-foreground italic">
             {item.excerpt}
           </p>
         ) : null}
@@ -187,8 +187,8 @@ export function ContentDetailPage() {
         </aside>
       </div>
 
-      <div className="border-border mx-auto flex max-w-[760px] flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 sm:flex-nowrap">
-        <span className="text-muted-foreground inline-flex items-center gap-2 text-sm">
+      <div className="mx-auto flex max-w-[760px] flex-wrap items-center justify-between gap-3 rounded-2xl border border-border p-4 sm:flex-nowrap">
+        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
           <Share2 className="h-4 w-4" />
           觉得有帮助？分享给更多人
         </span>
@@ -209,7 +209,7 @@ export function ContentDetailPage() {
       {related.length > 0 ? (
         <section className="mx-auto max-w-[1040px] space-y-4">
           <div className="flex items-end justify-between">
-            <h2 className="text-foreground text-xl font-semibold tracking-tight">相关推荐</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">相关推荐</h2>
             <Button variant="ghost" asChild size="sm" className="text-muted-foreground">
               <Link to="/content">
                 查看全部
@@ -222,17 +222,17 @@ export function ContentDetailPage() {
               <Link
                 key={row.id}
                 to={`/content/${row.slug}`}
-                className="border-border bg-card hover:border-foreground/20 group flex flex-col gap-2.5 rounded-xl border p-5 no-underline transition-colors"
+                className="group flex flex-col gap-2.5 rounded-xl border border-border bg-card p-5 no-underline transition-colors hover:border-foreground/20"
               >
-                <div className="text-muted-foreground flex items-center justify-between gap-3 text-[11px] tabular-nums">
+                <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground tabular-nums">
                   <span className="truncate">{row.authorName || '匿名作者'}</span>
                   <span className="shrink-0">{formatTime(row.publishedAt || row.createdAt)}</span>
                 </div>
-                <h3 className="text-foreground line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight">
+                <h3 className="line-clamp-2 text-[15px] leading-snug font-semibold tracking-tight text-foreground">
                   {row.title}
                 </h3>
                 {row.excerpt ? (
-                  <p className="text-muted-foreground line-clamp-2 flex-1 text-[13px] leading-6">
+                  <p className="line-clamp-2 flex-1 text-[13px] leading-6 text-muted-foreground">
                     {row.excerpt}
                   </p>
                 ) : null}

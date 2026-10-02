@@ -1,3 +1,11 @@
+import { type z } from 'zod';
+import {
+  wordpressPostSchema,
+  type notionRichTextSchema,
+  notionPageSchema,
+  notionBlockListSchema,
+  type NotionBlock,
+} from './external-schemas';
 import { pickContentDependencies, type ContentDependencies } from './dependencies';
 import * as cheerio from 'cheerio';
 
@@ -141,26 +149,10 @@ function extractNotionPageId(input: { pageUrl?: string; pageId?: string }) {
   }
 
   const matched = pageUrl.match(/([a-fA-F0-9]{32})/);
-  return matched ? normalizeNotionId(matched[1]) : pageUrl;
+  return matched?.[1] ? normalizeNotionId(matched[1]) : pageUrl;
 }
 
-type NotionRichText = {
-  plain_text?: string;
-  href?: string | null;
-  annotations?: {
-    bold?: boolean;
-    italic?: boolean;
-    underline?: boolean;
-    strikethrough?: boolean;
-    code?: boolean;
-  };
-};
-
-type NotionBlock = Record<string, any> & {
-  type: string;
-  has_children?: boolean;
-  children?: NotionBlock[];
-};
+type NotionRichText = z.infer<typeof notionRichTextSchema>;
 
 function renderNotionRichText(items: NotionRichText[] | undefined) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -190,7 +182,7 @@ function wrapTag(tag: string, inner: string, className?: string) {
 }
 
 function renderNotionBlock(block: NotionBlock): string {
-  const node = block[block.type] ?? {};
+  const node = block.payload;
   const richText = renderNotionRichText(node.rich_text);
   const nested =
     Array.isArray(block.children) && block.children.length > 0
@@ -247,13 +239,16 @@ function renderNotionBlocks(blocks: NotionBlock[]) {
 
   for (let index = 0; index < blocks.length; index += 1) {
     const block = blocks[index];
+    if (!block) continue;
 
     if (block.type === 'bulleted_list_item' || block.type === 'numbered_list_item') {
       const listTag = block.type === 'bulleted_list_item' ? 'ul' : 'ol';
       const items: string[] = [];
 
       while (index < blocks.length && blocks[index]?.type === block.type) {
-        items.push(renderNotionBlock(blocks[index]));
+        const current = blocks[index];
+        if (!current) break;
+        items.push(renderNotionBlock(current));
         index += 1;
       }
 
@@ -519,7 +514,7 @@ export class ContentService {
       requestUrl = `${siteUrl}/wp-json/wp/v2/posts?slug=${encodeURIComponent(explicitSlug || urlSlug)}&_embed=1`;
     }
 
-    const { response, data } = await this.requestJson<any>(requestUrl, {
+    const { response, data } = await this.requestJson<unknown>(requestUrl, {
       headers: auth ? { Authorization: auth } : undefined,
     });
 
@@ -527,7 +522,8 @@ export class ContentService {
       throw new Error(`WordPress 导入失败：${response.status} ${response.statusText}`);
     }
 
-    const post = Array.isArray(data) ? data[0] : data;
+    const candidate = Array.isArray(data) ? data[0] : data;
+    const post = candidate ? wordpressPostSchema.parse(candidate) : null;
     if (!post?.id) {
       throw new Error('没有找到对应的 WordPress 文章');
     }
@@ -540,7 +536,8 @@ export class ContentService {
       normalizeOptionalUrl(post?.jetpack_featured_media_url) ||
       null;
     const authorName = normalizeString(post?._embedded?.author?.[0]?.name);
-    const publishedAt = post.date_gmt || post.date ? new Date(post.date_gmt || post.date) : null;
+    const publishedAt =
+      post.date_gmt || post.date ? new Date(post.date_gmt || post.date || '') : null;
 
     return this.upsertImportedContent(
       {
@@ -578,7 +575,7 @@ export class ContentService {
       signal: AbortSignal.timeout(20_000),
     });
 
-    const data = (await response.json()) as any;
+    const data = (await response.json()) as unknown;
     return { response, data };
   }
 
@@ -599,7 +596,8 @@ export class ContentService {
         throw new Error(`读取 Notion 内容失败：${response.status} ${response.statusText}`);
       }
 
-      const results = Array.isArray(data.results) ? data.results : [];
+      const page = notionBlockListSchema.parse(data);
+      const results: NotionBlock[] = page.results;
       for (const block of results) {
         if (block.has_children) {
           block.children = await this.fetchNotionBlockTree(block.id, apiToken);
@@ -607,8 +605,8 @@ export class ContentService {
         blocks.push(block);
       }
 
-      hasMore = Boolean(data.has_more);
-      cursor = data.next_cursor || '';
+      hasMore = page.has_more;
+      cursor = page.next_cursor || '';
     }
 
     return blocks;
@@ -628,14 +626,18 @@ export class ContentService {
       throw new Error('无效的 Notion 页面标识');
     }
 
-    const { response, data } = await this.requestNotion(`/pages/${pageId}`, input.apiToken);
+    const { response, data: rawData } = await this.requestNotion(
+      `/pages/${pageId}`,
+      input.apiToken,
+    );
     if (!response.ok) {
       throw new Error(`Notion 导入失败：${response.status} ${response.statusText}`);
     }
 
-    const titleProperty = Object.values(data.properties ?? {}).find(
-      (property: any) => property?.type === 'title',
-    ) as any;
+    const data = notionPageSchema.parse(rawData);
+    const titleProperty = Object.values(data.properties).find(
+      (property) => property.type === 'title',
+    );
     const title = stripHtml(renderNotionRichText(titleProperty?.title)) || 'Untitled';
     const blocks = await this.fetchNotionBlockTree(pageId, input.apiToken);
     const contentHtml = renderNotionBlocks(blocks);
@@ -704,7 +706,7 @@ export class ContentService {
     const coverUrl = normalizeOptionalUrl($('meta[property="og:image"]').attr('content'));
     const contentElement = $('#js_content');
 
-    contentElement.find('img').each((_: number, element: any) => {
+    contentElement.find('img').each((_, element) => {
       const image = $(element);
       const bestUrl = image.attr('data-src') || image.attr('src') || '';
       if (bestUrl) {

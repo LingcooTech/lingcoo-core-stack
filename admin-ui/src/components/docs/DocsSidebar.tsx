@@ -66,18 +66,18 @@ export function DocsSidebar({
   }, [flat, query]);
 
   return (
-    <aside className="border-border bg-card flex h-full flex-col overflow-hidden rounded-2xl border shadow-sm">
-      <div className="border-border space-y-3 border-b p-4">
+    <aside className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="space-y-3 border-b border-border p-4">
         <div>
-          <p className="text-foreground text-[15px] font-semibold tracking-tight">{spaceTitle}</p>
+          <p className="text-[15px] font-semibold tracking-tight text-foreground">{spaceTitle}</p>
           {spaceDescription ? (
-            <p className="text-muted-foreground mt-1 line-clamp-2 text-[11px] leading-5">
+            <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
               {spaceDescription}
             </p>
           ) : null}
         </div>
         <div className="relative">
-          <Search className="text-muted-foreground/60 pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -88,7 +88,7 @@ export function DocsSidebar({
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="文档导航">
         {visible.length === 0 ? (
-          <p className="text-muted-foreground p-3 text-xs">没有匹配的文档</p>
+          <p className="p-3 text-xs text-muted-foreground">没有匹配的文档</p>
         ) : (
           visible.map((node) => {
             const href = `/docs/${spaceSlug}/${node.path}`;
@@ -100,7 +100,7 @@ export function DocsSidebar({
                 className={cn(
                   'block rounded-lg px-3 py-1.5 text-[13px] leading-5 transition-colors',
                   isActive
-                    ? 'bg-foreground text-background font-medium'
+                    ? 'bg-foreground font-medium text-background'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
                 style={{ paddingLeft: `${12 + node.depth * 14}px` }}

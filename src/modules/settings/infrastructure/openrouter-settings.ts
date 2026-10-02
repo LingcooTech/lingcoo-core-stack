@@ -1,3 +1,5 @@
+import type { z } from 'zod';
+import { openRouterModelsSchema, openRouterCompletionSchema } from './openrouter-protocol';
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../../../db/schema';
@@ -334,6 +336,7 @@ export class OpenRouterSettingsService {
   private async requestJson<T>(
     settings: OpenRouterSettings,
     path: string,
+    schema: z.ZodType<T>,
     init: RequestInit = {},
   ): Promise<T> {
     const normalizedPath = path.replace(/^\/+/, '');
@@ -352,29 +355,23 @@ export class OpenRouterSettingsService {
       },
     );
 
-    if (!response.ok) {
-      let message = `OpenRouter 请求失败 (${response.status})`;
-      try {
-        const payload = (await response.clone().json()) as { error?: { message?: string } };
-        message = payload.error?.message ?? message;
-      } catch {
-        const detail = (await response.text()).trim();
-        if (detail) {
-          message = detail;
-        }
-      }
-      throw httpError(502, message);
-    }
-
+    if (!response.ok) throw httpError(502, `OpenRouter 请求失败 (${response.status})`);
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('json')) {
-      const detail = (await response.text()).trim();
       const hint =
         'OpenRouter 返回了非 JSON 响应，请确认 Base URL 使用 API 地址，例如 https://openrouter.ai/api/v1';
-      throw httpError(502, detail && !detail.startsWith('<!DOCTYPE') ? `${hint}。${detail}` : hint);
+      throw httpError(502, hint);
     }
 
-    return response.json() as Promise<T>;
+    let raw: unknown;
+    try {
+      raw = await response.json();
+    } catch {
+      throw httpError(502, 'OpenRouter 返回了无效 JSON');
+    }
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) throw httpError(502, 'OpenRouter 响应不符合协议');
+    return parsed.data;
   }
 
   async listModels(input?: {
@@ -385,21 +382,7 @@ export class OpenRouterSettingsService {
     defaultModel?: string;
   }) {
     const settings = await this.resolveRequiredSettings(input);
-    const payload = await this.requestJson<{
-      data?: Array<{
-        id?: string;
-        name?: string;
-        description?: string;
-        context_length?: number;
-        architecture?: {
-          modality?: string;
-          input_modalities?: string[];
-          output_modalities?: string[];
-        };
-        top_provider?: { max_completion_tokens?: number };
-        pricing?: { prompt?: string; completion?: string };
-      }>;
-    }>(settings, '/models');
+    const payload = await this.requestJson(settings, '/models', openRouterModelsSchema);
 
     return (payload.data ?? [])
       .map((item): OpenRouterModelSummary | null => {
@@ -471,30 +454,20 @@ export class OpenRouterSettingsService {
       throw httpError(422, '未指定模型，且 OpenRouter 默认模型未配置');
     }
 
-    const payload = await this.requestJson<{
-      id?: string;
-      created?: number;
-      model?: string;
-      choices?: Array<{
-        finish_reason?: string;
-        message?: {
-          content?: string;
-        };
-      }>;
-      usage?: {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
-      };
-    }>(settings, '/chat/completions', {
-      method: 'POST',
-      body: JSON.stringify({
-        model,
-        messages: input.messages,
-        ...(typeof input.temperature === 'number' ? { temperature: input.temperature } : {}),
-        ...(typeof input.maxTokens === 'number' ? { max_tokens: input.maxTokens } : {}),
-      }),
-    });
+    const payload = await this.requestJson(
+      settings,
+      '/chat/completions',
+      openRouterCompletionSchema,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          model,
+          messages: input.messages,
+          ...(typeof input.temperature === 'number' ? { temperature: input.temperature } : {}),
+          ...(typeof input.maxTokens === 'number' ? { max_tokens: input.maxTokens } : {}),
+        }),
+      },
+    );
 
     const choice = payload.choices?.[0];
     const content = normalizeString(choice?.message?.content);

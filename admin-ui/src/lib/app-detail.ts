@@ -1,10 +1,6 @@
 import type { AppWithDetails } from '@/api/types';
 
-export type AppPurchaseType =
-  | 'free'
-  | 'onsite_onetime'
-  | 'onsite_subscription'
-  | 'offsite';
+export type AppPurchaseType = 'free' | 'onsite_onetime' | 'onsite_subscription' | 'offsite';
 
 export interface AppDetailSubscriptionPlan {
   period: string;
@@ -60,9 +56,7 @@ function normalizeString(value: unknown) {
 
 function normalizeStringArray(value: unknown) {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => normalizeString(item))
-      .filter(Boolean);
+    return value.map((item) => normalizeString(item)).filter(Boolean);
   }
 
   const single = normalizeString(value);
@@ -129,9 +123,7 @@ function normalizeSubscriptionPlans(value: unknown): AppDetailSubscriptionPlan[]
     .filter((item): item is AppDetailSubscriptionPlan => Boolean(item));
 }
 
-export function getAppDetailProfile(
-  app?: Pick<AppWithDetails, 'meta'> | null,
-): AppDetailProfile {
+export function getAppDetailProfile(app?: Pick<AppWithDetails, 'meta'> | null): AppDetailProfile {
   const meta = normalizeMetaRecord(app?.meta);
   const raw = normalizeMetaRecord(meta.appDetail);
 
@@ -157,20 +149,20 @@ export function getAppDetailProfile(
 export function hasAppDetailProfileContent(profile: AppDetailProfile) {
   return Boolean(
     profile.developer ||
-      profile.version ||
-      profile.updateDate ||
-      profile.size ||
-      profile.platforms.length ||
-      profile.languages ||
-      profile.systemRequirements ||
-      profile.technicalNotes ||
-      profile.purchaseType !== 'free' ||
-      profile.price ||
-      profile.purchaseUrl ||
-      profile.usageInstructions ||
-      profile.trialDays > 0 ||
-      profile.notes ||
-      profile.subscriptionPlans.length,
+    profile.version ||
+    profile.updateDate ||
+    profile.size ||
+    profile.platforms.length ||
+    profile.languages ||
+    profile.systemRequirements ||
+    profile.technicalNotes ||
+    profile.purchaseType !== 'free' ||
+    profile.price ||
+    profile.purchaseUrl ||
+    profile.usageInstructions ||
+    profile.trialDays > 0 ||
+    profile.notes ||
+    profile.subscriptionPlans.length,
   );
 }
 

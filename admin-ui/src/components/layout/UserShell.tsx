@@ -76,7 +76,7 @@ function hasActiveNavigationItem(item: SiteNavigationItem, pathname: string) {
 
 function desktopNavItemClass(isActive: boolean) {
   return cn(
-    'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-medium transition-all duration-200',
+    'inline-flex items-center gap-1 rounded-full px-3 py-2 text-[13px] font-medium whitespace-nowrap transition-all duration-200',
     isActive
       ? 'bg-card text-foreground shadow-sm'
       : 'text-muted-foreground hover:bg-card/80 hover:text-foreground',
@@ -138,7 +138,7 @@ export function UserShell() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_22%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_46%,#f7f9fc_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.06),_transparent_24%),linear-gradient(180deg,hsl(222.2_84%_4.9%)_0%,hsl(217.2_32.6%_10%)_46%,hsl(222.2_84%_4.9%)_100%)]">
-      <header className="bg-card/88 border-border sticky top-0 z-30 border-b backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border bg-card/88 backdrop-blur-xl">
         <Container className="py-1.5">
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
@@ -147,15 +147,15 @@ export function UserShell() {
                   <img
                     src={siteSettings.logoUrl}
                     alt={siteName}
-                    className="border-border/90 bg-card h-9 w-9 rounded-xl border object-contain p-1.5 shadow-sm"
+                    className="h-9 w-9 rounded-xl border border-border/90 bg-card object-contain p-1.5 shadow-sm"
                   />
                 ) : (
-                  <div className="bg-foreground text-background flex h-9 w-9 items-center justify-center rounded-xl text-[13px] font-semibold tracking-wide">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-[13px] font-semibold tracking-wide text-background">
                     {getInitials(siteName)}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-foreground truncate text-[14px] font-semibold tracking-tight">
+                  <p className="truncate text-[14px] font-semibold tracking-tight text-foreground">
                     {siteName}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export function UserShell() {
                       <DropdownMenuContent
                         align="center"
                         sideOffset={10}
-                        className="border-border bg-card w-60 rounded-xl border p-2 shadow-[0_20px_48px_-24px_rgba(15,23,42,0.24)]"
+                        className="w-60 rounded-xl border border-border bg-card p-2 shadow-[0_20px_48px_-24px_rgba(15,23,42,0.24)]"
                       >
                         {item.url ? (
                           <>
@@ -259,13 +259,13 @@ export function UserShell() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="text-muted-foreground hover:bg-card hover:text-foreground relative hidden h-9 w-9 rounded-full transition lg:inline-flex"
+                  className="relative hidden h-9 w-9 rounded-full text-muted-foreground transition hover:bg-card hover:text-foreground lg:inline-flex"
                   onClick={() => navigate('/account?tab=notifications')}
                   aria-label="打开消息通知"
                 >
                   <Bell className="h-4 w-4" />
                   {unreadNotificationCount > 0 ? (
-                    <span className="bg-destructive text-destructive-foreground absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </span>
                   ) : null}
@@ -276,16 +276,16 @@ export function UserShell() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="focus-visible:ring-primary hover:bg-card hidden items-center gap-2 rounded-full py-1 pl-1.5 pr-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:inline-flex"
+                      className="hidden items-center gap-2 rounded-full py-1 pr-2 pl-1.5 transition hover:bg-card focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none lg:inline-flex"
                       aria-label="打开用户菜单"
                     >
                       <Avatar className="h-7 w-7">
                         <AvatarFallback>{getInitials(accountName)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-foreground hidden max-w-[96px] truncate text-[13px] font-medium sm:block">
+                      <span className="hidden max-w-[96px] truncate text-[13px] font-medium text-foreground sm:block">
                         {accountName}
                       </span>
-                      <span className="text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground">
                         <ChevronDown className="h-3.5 w-3.5" />
                       </span>
                     </button>
@@ -293,13 +293,13 @@ export function UserShell() {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={10}
-                    className="border-border bg-card w-[280px] rounded-xl border p-0 shadow-lg"
+                    className="w-[280px] rounded-xl border border-border bg-card p-0 shadow-lg"
                   >
                     <DropdownMenuLabel className="px-0 py-0">
                       <div className="relative rounded-t-xl bg-gradient-to-b from-green-50 to-emerald-50/50 px-4 py-4 dark:from-slate-800 dark:to-slate-900/80">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
+                          className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
@@ -315,11 +315,11 @@ export function UserShell() {
                               {getInitials(accountName)}
                             </AvatarFallback>
                           </Avatar>
-                          <p className="text-foreground mt-2 text-lg font-semibold tracking-tight">
+                          <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">
                             {accountName}
                           </p>
                           {accountEmail ? (
-                            <p className="text-muted-foreground mt-0.5 text-xs">{accountEmail}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{accountEmail}</p>
                           ) : null}
                         </div>
                       </div>
@@ -333,7 +333,7 @@ export function UserShell() {
                             navigate('/account?tab=notifications');
                           }}
                         >
-                          <Bell className="text-muted-foreground h-4 w-4" />
+                          <Bell className="h-4 w-4 text-muted-foreground" />
                           消息通知
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -343,7 +343,7 @@ export function UserShell() {
                             navigate('/account?tab=profile');
                           }}
                         >
-                          <UserCircle2 className="text-muted-foreground h-4 w-4" />
+                          <UserCircle2 className="h-4 w-4 text-muted-foreground" />
                           个人资料
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -353,7 +353,7 @@ export function UserShell() {
                             navigate('/account?tab=orders');
                           }}
                         >
-                          <ShoppingBag className="text-muted-foreground h-4 w-4" />
+                          <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                           我的订单
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -363,7 +363,7 @@ export function UserShell() {
                             navigate('/account?tab=apps');
                           }}
                         >
-                          <Package2 className="text-muted-foreground h-4 w-4" />
+                          <Package2 className="h-4 w-4 text-muted-foreground" />
                           我的应用
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -373,7 +373,7 @@ export function UserShell() {
                             navigate('/tickets');
                           }}
                         >
-                          <CircleHelp className="text-muted-foreground h-4 w-4" />
+                          <CircleHelp className="h-4 w-4 text-muted-foreground" />
                           我的工单
                         </DropdownMenuItem>
                       </div>
@@ -388,7 +388,7 @@ export function UserShell() {
                             navigate('/admin');
                           }}
                         >
-                          <LayoutDashboard className="text-muted-foreground h-4 w-4" />
+                          <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                           管理后台
                         </DropdownMenuItem>
                       ) : null}
@@ -396,7 +396,7 @@ export function UserShell() {
                       <DropdownMenuSeparator className="my-2" />
 
                       <DropdownMenuItem
-                        className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg px-3 py-2.5 text-[14px]"
+                        className="rounded-lg px-3 py-2.5 text-[14px] text-destructive focus:bg-destructive/10 focus:text-destructive"
                         onSelect={(event) => {
                           event.preventDefault();
                           logout();
@@ -429,9 +429,9 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="border-border bg-card mt-3 rounded-xl border p-4 shadow-lg lg:hidden">
+            <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-lg lg:hidden">
               <div className="space-y-3">
-                <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   导航
                 </p>
                 <div className="space-y-2">
@@ -441,17 +441,17 @@ export function UserShell() {
                         key={`${item.label}:${index}`}
                         type="single"
                         collapsible
-                        className="border-border rounded-lg border px-4"
+                        className="rounded-lg border border-border px-4"
                       >
                         <AccordionItem value={`mobile-nav-${index}`} className="border-b-0">
-                          <AccordionTrigger className="text-foreground py-3 text-sm font-medium hover:no-underline">
+                          <AccordionTrigger className="py-3 text-sm font-medium text-foreground hover:no-underline">
                             {item.label}
                           </AccordionTrigger>
                           <AccordionContent className="space-y-2 pb-3">
                             {item.url ? (
                               <button
                                 type="button"
-                                className="hover:text-primary text-muted-foreground hover:bg-muted block w-full rounded-lg px-3 py-2 text-left text-sm transition"
+                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
                                 onClick={() => handleSiteNavigation(item.url, item.openInNewTab)}
                               >
                                 进入 {item.label}
@@ -461,7 +461,7 @@ export function UserShell() {
                               <button
                                 key={`${item.label}:${child.label}:${child.url}`}
                                 type="button"
-                                className="hover:text-primary text-muted-foreground hover:bg-muted block w-full rounded-lg px-3 py-2 text-left text-sm transition"
+                                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
                                 onClick={() => handleSiteNavigation(child.url, child.openInNewTab)}
                               >
                                 {child.label}
@@ -476,7 +476,7 @@ export function UserShell() {
                         href={item.url}
                         target={item.openInNewTab ? '_blank' : undefined}
                         rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
-                        className="hover:text-primary border-border text-foreground hover:bg-muted block rounded-lg border px-4 py-3 text-sm font-medium transition"
+                        className="block rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground transition hover:bg-muted hover:text-primary"
                       >
                         {item.label}
                       </a>
@@ -486,10 +486,10 @@ export function UserShell() {
                         to={item.url}
                         className={({ isActive }) =>
                           cn(
-                            'border-border block rounded-lg border px-4 py-3 text-sm font-medium transition',
+                            'block rounded-lg border border-border px-4 py-3 text-sm font-medium transition',
                             isActive
                               ? 'border-primary/20 bg-primary/5 text-primary'
-                              : 'hover:text-primary text-foreground hover:bg-muted',
+                              : 'text-foreground hover:bg-muted hover:text-primary',
                           )
                         }
                       >
@@ -500,15 +500,15 @@ export function UserShell() {
                 </div>
 
                 {isAuthenticated ? (
-                  <div className="border-border space-y-2 border-t pt-3">
-                    <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                       账户
                     </p>
-                    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+                    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                       <div className="relative bg-gradient-to-b from-green-50 to-emerald-50/50 px-3 py-3 dark:from-slate-800 dark:to-slate-900/80">
                         <button
                           type="button"
-                          className="bg-card/90 text-muted-foreground hover:bg-card hover:text-foreground border-border absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border transition-colors"
+                          className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
                           onClick={() => navigate('/account?tab=profile')}
                           aria-label="打开账户设置"
                         >
@@ -521,11 +521,11 @@ export function UserShell() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="text-foreground truncate text-sm font-semibold tracking-tight">
+                            <p className="truncate text-sm font-semibold tracking-tight text-foreground">
                               {accountName}
                             </p>
                             {accountEmail ? (
-                              <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
                                 {accountEmail}
                               </p>
                             ) : null}
@@ -536,71 +536,71 @@ export function UserShell() {
                       <div className="space-y-0.5 px-2 py-2">
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/account?tab=notifications')}
                         >
-                          <Bell className="text-muted-foreground h-4 w-4" />
+                          <Bell className="h-4 w-4 text-muted-foreground" />
                           消息通知
                           {unreadNotificationCount > 0 ? (
-                            <span className="bg-destructive text-destructive-foreground ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold">
+                            <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
                               {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                             </span>
                           ) : null}
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/account?tab=profile')}
                         >
-                          <UserCircle2 className="text-muted-foreground h-4 w-4" />
+                          <UserCircle2 className="h-4 w-4 text-muted-foreground" />
                           个人资料
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/account?tab=orders')}
                         >
-                          <ShoppingBag className="text-muted-foreground h-4 w-4" />
+                          <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                           我的订单
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/account?tab=apps')}
                         >
-                          <Package2 className="text-muted-foreground h-4 w-4" />
+                          <Package2 className="h-4 w-4 text-muted-foreground" />
                           我的应用
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/tickets')}
                         >
-                          <CircleHelp className="text-muted-foreground h-4 w-4" />
+                          <CircleHelp className="h-4 w-4 text-muted-foreground" />
                           我的工单
                         </button>
                         <button
                           type="button"
-                          className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                           onClick={() => navigate('/account?tab=profile')}
                         >
-                          <Settings className="text-muted-foreground h-4 w-4" />
+                          <Settings className="h-4 w-4 text-muted-foreground" />
                           设置
                         </button>
                         {isAdmin ? (
                           <button
                             type="button"
-                            className="hover:text-primary text-foreground hover:bg-muted flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition"
+                            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
                             onClick={() => navigate('/admin')}
                           >
-                            <LayoutDashboard className="text-muted-foreground h-4 w-4" />
+                            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                             管理后台
                           </button>
                         ) : null}
-                        <div className="border-border mx-1 border-t" />
+                        <div className="mx-1 border-t border-border" />
                         <button
                           type="button"
-                          className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium transition-colors"
+                          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-destructive transition-colors hover:bg-destructive/10"
                           onClick={logout}
                         >
                           <LogOut className="h-4 w-4" />
@@ -610,7 +610,7 @@ export function UserShell() {
                     </div>
                   </div>
                 ) : (
-                  <div className="border-border flex gap-2 border-t pt-3 sm:hidden">
+                  <div className="flex gap-2 border-t border-border pt-3 sm:hidden">
                     <Button variant="ghost" asChild className="flex-1">
                       <Link to="/login">登录</Link>
                     </Button>

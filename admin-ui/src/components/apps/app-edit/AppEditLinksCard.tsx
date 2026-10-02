@@ -3,7 +3,13 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import type { FormState } from './model';
 
@@ -22,7 +28,9 @@ export function AppEditLinksCard({ links, onChange, deliveryMode }: AppEditLinks
 
   const updateLink = (index: number, patch: Partial<FormState['links'][number]>) => {
     const next = [...links];
-    next[index] = { ...next[index], ...patch };
+    const item = next[index];
+    if (!item) return;
+    next[index] = { ...item, ...patch };
     onChange(next);
   };
 
@@ -93,7 +101,9 @@ export function AppEditLinksCard({ links, onChange, deliveryMode }: AppEditLinks
       <CardContent className="space-y-4">
         {links.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            {isDirectAccessApp ? '暂无访问入口，点击右上角添加在线使用或下载链接。' : '暂无链接，点击右上角添加。'}
+            {isDirectAccessApp
+              ? '暂无访问入口，点击右上角添加在线使用或下载链接。'
+              : '暂无链接，点击右上角添加。'}
           </p>
         ) : null}
         {links.map((item, index) => (

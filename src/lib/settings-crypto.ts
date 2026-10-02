@@ -85,7 +85,9 @@ export function decryptJson<T>(value: unknown, material: EncryptionMaterial): T 
     typeof material === 'string'
       ? [material]
       : envelope.version === 2
-        ? [material.keys[envelope.keyId ?? '']].filter(Boolean)
+        ? [material.keys[envelope.keyId ?? '']].filter((secret): secret is string =>
+            Boolean(secret),
+          )
         : material.legacySecrets;
   for (const secret of secrets) {
     try {

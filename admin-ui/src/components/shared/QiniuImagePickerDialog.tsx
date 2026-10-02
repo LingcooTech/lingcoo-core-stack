@@ -151,14 +151,14 @@ export function QiniuImagePickerDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl p-0">
-        <DialogHeader className="border-border border-b px-6 py-5">
+        <DialogHeader className="border-b border-border px-6 py-5">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-6 py-5">
           {!qiniuSettings?.configured ? (
-            <div className="border-border bg-muted/40 text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
+            <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
               七牛云尚未配置完整。请先到“系统设置”里填写 Access Key、Secret Key、Bucket
               和公共访问域名。
             </div>
@@ -212,20 +212,20 @@ export function QiniuImagePickerDialog({
                 />
               </div>
 
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 当前目录: {prefix || '根目录'}。上传时会自动附带日期目录，避免文件名冲突。
               </p>
 
-              <ScrollArea className="border-border h-[420px] rounded-lg border">
+              <ScrollArea className="h-[420px] rounded-lg border border-border">
                 <div className="p-4">
                   {loadImagesMutation.isPending && items.length === 0 ? (
-                    <div className="text-muted-foreground flex h-[340px] items-center justify-center text-sm">
+                    <div className="flex h-[340px] items-center justify-center text-sm text-muted-foreground">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       正在加载图片...
                     </div>
                   ) : items.length === 0 ? (
-                    <div className="text-muted-foreground flex h-[340px] flex-col items-center justify-center gap-3 text-center text-sm">
-                      <ImagePlus className="text-muted-foreground/70 h-8 w-8" />
+                    <div className="flex h-[340px] flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
+                      <ImagePlus className="h-8 w-8 text-muted-foreground/70" />
                       <div>
                         <p>当前目录下还没有图片。</p>
                         <p>可以先上传一张，或者换一个目录前缀再刷新。</p>
@@ -237,13 +237,13 @@ export function QiniuImagePickerDialog({
                         <button
                           key={item.key}
                           type="button"
-                          className="border-border bg-card hover:border-primary/40 overflow-hidden rounded-lg border text-left transition hover:shadow-sm"
+                          className="overflow-hidden rounded-lg border border-border bg-card text-left transition hover:border-primary/40 hover:shadow-sm"
                           onClick={() => {
                             onSelect(item.url);
                             onOpenChange(false);
                           }}
                         >
-                          <div className="bg-muted aspect-[4/3]">
+                          <div className="aspect-[4/3] bg-muted">
                             <img
                               src={item.url}
                               alt={item.key}
@@ -251,10 +251,10 @@ export function QiniuImagePickerDialog({
                             />
                           </div>
                           <div className="space-y-1 p-3">
-                            <p className="text-foreground line-clamp-2 break-all text-sm font-semibold">
+                            <p className="line-clamp-2 text-sm font-semibold break-all text-foreground">
                               {item.key}
                             </p>
-                            <p className="text-muted-foreground text-xs">
+                            <p className="text-xs text-muted-foreground">
                               {formatFileSize(item.size)} · {formatUploadedAt(item.uploadedAt)}
                             </p>
                           </div>
@@ -268,7 +268,7 @@ export function QiniuImagePickerDialog({
           )}
         </div>
 
-        <DialogFooter className="border-border border-t px-6 py-4">
+        <DialogFooter className="border-t border-border px-6 py-4">
           {marker && qiniuSettings?.configured ? (
             <Button
               type="button"

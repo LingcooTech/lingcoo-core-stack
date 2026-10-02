@@ -74,7 +74,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="bg-card/95 border-border w-full shadow-xl backdrop-blur-xl">
+      <Card className="w-full border-border bg-card/95 shadow-xl backdrop-blur-xl">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">找回密码</CardTitle>
         </CardHeader>
@@ -112,9 +112,9 @@ export function ForgotPasswordPage() {
             </form>
           </Form>
 
-          <div className="border-border bg-muted rounded-lg border p-4">
-            <p className="text-foreground text-sm font-bold">重置密码</p>
-            <p className="text-muted-foreground mt-1 text-xs">
+          <div className="rounded-lg border border-border bg-muted p-4">
+            <p className="text-sm font-bold text-foreground">重置密码</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               当前邮箱：{submittedEmail || activeEmail || '请先填写邮箱并发送验证码'}
             </p>
 
@@ -174,9 +174,9 @@ export function ForgotPasswordPage() {
             </Form>
           </div>
 
-          <div className="text-muted-foreground text-sm">
+          <div className="text-sm text-muted-foreground">
             想起密码了？{' '}
-            <Link to="/login" className="text-primary font-bold hover:underline">
+            <Link to="/login" className="font-bold text-primary hover:underline">
               返回登录
             </Link>
           </div>

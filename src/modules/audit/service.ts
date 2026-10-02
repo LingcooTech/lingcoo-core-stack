@@ -47,6 +47,7 @@ export class AuditLogService {
         createdAt: now,
       })
       .returning();
+    if (!created) throw new Error('Missing required write result: audit created');
 
     return created;
   }

@@ -48,8 +48,8 @@ export function MyAccessPage() {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <h1 className="text-foreground text-3xl font-semibold tracking-tight">我的应用</h1>
-        <p className="text-muted-foreground text-sm">查看已购应用和可用能力。</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">我的应用</h1>
+        <p className="text-sm text-muted-foreground">查看已购应用和可用能力。</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -60,10 +60,10 @@ export function MyAccessPage() {
         ].map((item) => (
           <div
             key={item.label}
-            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+            className="rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm"
           >
-            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+            <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
               {item.value}
             </p>
           </div>
@@ -71,9 +71,9 @@ export function MyAccessPage() {
       </div>
 
       {entitlementsQuery.isLoading ? (
-        <Card className="border-border bg-card rounded-xl">
-          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+        <Card className="rounded-xl border-border bg-card">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载授权状态...
           </CardContent>
         </Card>
@@ -93,8 +93,8 @@ export function MyAccessPage() {
       ) : (
         <section className="space-y-5">
           <div className="space-y-1">
-            <h2 className="text-foreground text-2xl font-semibold tracking-tight">已购产品</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">已购产品</h2>
+            <p className="text-sm text-muted-foreground">
               优先展示当前可用入口；授权历史和订单来源作为次级信息保留在卡片内。
             </p>
           </div>

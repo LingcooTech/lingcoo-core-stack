@@ -1,7 +1,7 @@
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -611,16 +611,19 @@ export function SettingsPage() {
     });
   }, [openrouterData, openrouterForm]);
 
-  const buildManagedOpenRouterPayload = (values: OpenRouterValues) =>
-    buildOpenRouterPayload(
-      {
-        ...values,
-        baseUrl: OPENROUTER_DEFAULT_BASE_URL,
-      },
-      {
-        includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey),
-      },
-    );
+  const buildManagedOpenRouterPayload = useCallback(
+    (values: OpenRouterValues) =>
+      buildOpenRouterPayload(
+        {
+          ...values,
+          baseUrl: OPENROUTER_DEFAULT_BASE_URL,
+        },
+        {
+          includeApiKey: Boolean(openrouterForm.formState.dirtyFields.apiKey),
+        },
+      ),
+    [openrouterForm.formState.dirtyFields.apiKey],
+  );
 
   const buildCurrentOpenRouterPayload = () =>
     buildManagedOpenRouterPayload(openrouterForm.getValues());
@@ -914,7 +917,12 @@ export function SettingsPage() {
         defaultModel: openrouterData.values.defaultModel,
       }),
     );
-  }, [openrouterData, openrouterModelsLoaded, previewOpenRouterModelsMutation]);
+  }, [
+    openrouterData,
+    openrouterModelsLoaded,
+    previewOpenRouterModelsMutation,
+    buildManagedOpenRouterPayload,
+  ]);
 
   const handleSendTestEmail = smtpForm.handleSubmit((values) => {
     const parsedTo = testEmailSchema.safeParse(testTo);

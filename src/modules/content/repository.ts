@@ -162,6 +162,7 @@ export class ContentRepository {
 
   async create(input: typeof contentItems.$inferInsert) {
     const [item] = await this.db.insert(contentItems).values(input).returning();
+    if (!item) throw new Error('Missing required write result: content item');
     return item;
   }
 

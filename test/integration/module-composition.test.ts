@@ -57,6 +57,7 @@ test('manifest persistence rolls back metadata and presets when event recording 
     ),
   );
   const [app] = await db.select().from(apps).where(eq(apps.id, fixture.app.id));
+  if (!app) throw new Error('Missing test fixture: app');
   assert.deepEqual(app.meta, fixture.app.meta);
   assert.equal(
     (
@@ -84,6 +85,7 @@ test('manifest synchronization preserves metadata changed while a remote fetch i
     fixture.user.id,
   );
   const [app] = await db.select().from(apps).where(eq(apps.id, fixture.app.id));
+  if (!app) throw new Error('Missing test fixture: app');
   assert.equal((app.meta as Record<string, unknown>).preserved, 'concurrent change');
   assert.equal(
     ((app.meta as Record<string, unknown>).deliveryManifest as Record<string, unknown>).version,

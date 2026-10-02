@@ -262,9 +262,9 @@ export function UsersPage() {
       header: '用户',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate text-[12px] font-medium">{row.email}</p>
+          <p className="truncate text-[12px] font-medium text-foreground">{row.email}</p>
           {row.displayName ? (
-            <p className="text-muted-foreground truncate text-[10px]">{row.displayName}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{row.displayName}</p>
           ) : null}
         </div>
       ),
@@ -299,7 +299,7 @@ export function UsersPage() {
       key: 'createdAt',
       header: '注册时间',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -339,7 +339,7 @@ export function UsersPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-muted-foreground h-7 px-2 text-xs"
+                className="h-7 px-2 text-xs text-muted-foreground"
                 disabled={isSelf(row)}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -352,7 +352,7 @@ export function UsersPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-muted-foreground h-7 px-2 text-xs"
+                className="h-7 px-2 text-xs text-muted-foreground"
                 onClick={(event) => {
                   event.stopPropagation();
                   setConfirmAction({ type: 'activate', user: row });
@@ -366,7 +366,7 @@ export function UsersPage() {
             <Button
               size="sm"
               variant="ghost"
-              className="text-destructive hover:text-destructive h-7 px-2 text-xs"
+              className="h-7 px-2 text-xs text-destructive hover:text-destructive"
               onClick={(event) => {
                 event.stopPropagation();
                 setResetConfirm(row);
@@ -392,7 +392,7 @@ export function UsersPage() {
           onClearAll={clearFilters}
         />
 
-        <div className="border-border bg-card overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <DataTable
             columns={columns}
             data={users}
@@ -412,11 +412,11 @@ export function UsersPage() {
           }}
         >
           <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-4xl">
-            <SheetHeader className="border-border border-b px-6 py-4">
-              <SheetDescription className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+            <SheetHeader className="border-b border-border px-6 py-4">
+              <SheetDescription className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 用户详情
               </SheetDescription>
-              <SheetTitle className="text-foreground truncate text-base font-semibold">
+              <SheetTitle className="truncate text-base font-semibold text-foreground">
                 {userDetailQuery.data?.email ?? selectedUserId}
               </SheetTitle>
             </SheetHeader>
@@ -424,7 +424,7 @@ export function UsersPage() {
               {userDetailQuery.isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="bg-muted h-9 animate-pulse rounded-md" />
+                    <div key={index} className="h-9 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : userDetailQuery.data ? (
@@ -471,7 +471,7 @@ export function UsersPage() {
                 </SelectContent>
               </Select>
               {editingUser && (isSelf(editingUser) || !canManageRoles) && (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {isSelf(editingUser) ? '不能修改自己的角色' : '当前角色没有修改用户角色的权限'}
                 </p>
               )}
@@ -494,7 +494,7 @@ export function UsersPage() {
                 </SelectContent>
               </Select>
               {editingUser && (isSelf(editingUser) || !canSuspendUsers) && (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {isSelf(editingUser) ? '不能修改自己的状态' : '当前角色没有修改用户状态的权限'}
                 </p>
               )}
@@ -583,8 +583,8 @@ export function UsersPage() {
               用户 {tempPassword?.email} 的临时密码如下，请妥善传达给用户。此密码仅显示一次。
             </DialogDescription>
           </DialogHeader>
-          <div className="border-border bg-muted/50 rounded-lg border p-4 text-center">
-            <p className="select-all font-mono text-lg font-bold tracking-widest">
+          <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+            <p className="font-mono text-lg font-bold tracking-widest select-all">
               {tempPassword?.password}
             </p>
           </div>
@@ -612,10 +612,10 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       header: '产品',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate text-[12px] font-medium">
+          <p className="truncate text-[12px] font-medium text-foreground">
             {row.app?.name ?? row.appId}
           </p>
-          <p className="text-muted-foreground truncate text-[10px]">
+          <p className="truncate text-[10px] text-muted-foreground">
             {row.plan?.name ?? row.planId}
           </p>
         </div>
@@ -641,7 +641,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'createdAt',
       header: '创建时间',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -672,10 +672,10 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       header: '套餐',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate text-[12px] font-medium">
+          <p className="truncate text-[12px] font-medium text-foreground">
             {row.plan?.name ?? row.planId}
           </p>
-          <p className="text-muted-foreground truncate font-mono text-[10px]">
+          <p className="truncate font-mono text-[10px] text-muted-foreground">
             {row.plan?.code ?? row.sourceType}
           </p>
         </div>
@@ -692,7 +692,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'expiresAt',
       header: '到期时间',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.expiresAt)}
         </span>
       ),
@@ -734,7 +734,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'lastSeenAt',
       header: '最后活跃',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.lastSeenAt)}
         </span>
       ),
@@ -774,7 +774,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'eventTime',
       header: '发生时间',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.eventTime)}
         </span>
       ),
@@ -818,7 +818,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'createdAt',
       header: '时间',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -844,10 +844,10 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       header: '工单号',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate font-mono text-[12px] font-semibold">
+          <p className="truncate font-mono text-[12px] font-semibold text-foreground">
             {row.ticketNo}
           </p>
-          <p className="text-muted-foreground truncate text-[10px]">{row.subject}</p>
+          <p className="truncate text-[10px] text-muted-foreground">{row.subject}</p>
         </div>
       ),
     },
@@ -865,7 +865,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'context',
       header: '关联',
       cell: (row) => (
-        <div className="text-muted-foreground space-y-0.5 text-[10px]">
+        <div className="space-y-0.5 text-[10px] text-muted-foreground">
           <p>{row.app?.name ?? row.app?.code ?? '未关联应用'}</p>
           {row.order ? <p className="font-mono">order: {row.order.orderNo}</p> : null}
           {row.install ? (
@@ -878,7 +878,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'lastActivityAt',
       header: '最近活动',
       cell: (row) => (
-        <span className="text-muted-foreground text-[11px] tabular-nums">
+        <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.lastActivityAt)}
         </span>
       ),
@@ -900,7 +900,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
 
   return (
     <div className="space-y-5 text-sm">
-      <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
         <InfoBlock label="邮箱" value={detail.email} />
         <InfoBlock label="显示名称" value={detail.displayName ?? '—'} />
         <InfoBlock
@@ -942,11 +942,11 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <MetricCard label="产品事件" value={activity.summary.events} />
       </section>
 
-      <section className="border-border bg-card rounded-xl border p-4">
+      <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-foreground text-sm font-semibold">运营入口</h3>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <h3 className="text-sm font-semibold text-foreground">运营入口</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
               按当前用户过滤关联模块，进入后可继续执行订单同步、退款、授权撤销或排障。
             </p>
           </div>
@@ -1032,11 +1032,11 @@ function ActionLink({ to, label }: { to: string; label: string }) {
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border-border bg-card rounded-xl border p-3">
-      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+    <div className="rounded-xl border border-border bg-card p-3">
+      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="text-foreground mt-1 text-xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">{value}</p>
     </div>
   );
 }
@@ -1044,10 +1044,10 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="text-muted-foreground mb-2 text-[11px] font-semibold uppercase tracking-wider">
+      <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
         {title}
       </h3>
-      <div className="border-border bg-card overflow-hidden rounded-lg border">{children}</div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">{children}</div>
     </section>
   );
 }
@@ -1063,11 +1063,11 @@ function InfoBlock({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
       <div className="mt-1">
-        {render ?? <p className="text-foreground truncate text-xs font-medium">{value}</p>}
+        {render ?? <p className="truncate text-xs font-medium text-foreground">{value}</p>}
       </div>
     </div>
   );

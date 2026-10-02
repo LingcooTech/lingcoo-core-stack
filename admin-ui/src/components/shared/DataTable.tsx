@@ -157,7 +157,7 @@ export function DataTable<T extends RowData>({
                       type="button"
                       onClick={() => onSort(col.sortKey!)}
                       className={cn(
-                        'hover:text-foreground inline-flex items-center gap-1.5 font-semibold transition-colors',
+                        'inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground',
                         isSorted && 'text-foreground',
                       )}
                     >
@@ -184,7 +184,7 @@ export function DataTable<T extends RowData>({
           <TableRow>
             <TableCell
               colSpan={totalCols}
-              className="text-muted-foreground py-12 text-center text-sm"
+              className="py-12 text-center text-sm text-muted-foreground"
             >
               {emptyMessage}
             </TableCell>
@@ -197,7 +197,7 @@ export function DataTable<T extends RowData>({
               data-state={row.getIsSelected() ? 'selected' : undefined}
               className={cn(
                 'transition-colors',
-                onRowClick && 'hover:bg-muted/40 cursor-pointer',
+                onRowClick && 'cursor-pointer hover:bg-muted/40',
                 row.getIsSelected() &&
                   'bg-primary/[0.04] shadow-[inset_2px_0_0_hsl(var(--primary))]',
                 rowClassName ? rowClassName(row.original) : '',

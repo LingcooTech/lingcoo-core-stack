@@ -16,16 +16,16 @@ const optionalUrlString = z
 export const aiProviderCodeSchema = z.enum(['openrouter']);
 
 export const aiProviderParamsSchema = z.object({
-  provider: aiProviderCodeSchema
+  provider: aiProviderCodeSchema,
 });
 
 export const aiAppCodeParamsSchema = z.object({
-  appCode: z.string().trim().min(1).max(64)
+  appCode: z.string().trim().min(1).max(64),
 });
 
 export const aiAppProviderParamsSchema = z.object({
   appCode: aiAppCodeParamsSchema.shape.appCode,
-  provider: aiProviderCodeSchema
+  provider: aiProviderCodeSchema,
 });
 
 export const openrouterSettingsSchema = z.object({
@@ -33,7 +33,7 @@ export const openrouterSettingsSchema = z.object({
   baseUrl: optionalUrlString,
   siteUrl: optionalUrlString,
   siteName: optionalTrimmedString(120),
-  defaultModel: optionalTrimmedString(255)
+  defaultModel: optionalTrimmedString(255),
 });
 
 export const aiChatCompletionSchema = z.object({
@@ -42,17 +42,17 @@ export const aiChatCompletionSchema = z.object({
     .array(
       z.object({
         role: z.enum(['system', 'user', 'assistant', 'tool']),
-        content: z.string().trim().min(1).max(100_000)
-      })
+        content: z.string().trim().min(1).max(100_000),
+      }),
     )
     .min(1)
     .max(100),
   temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.coerce.number().int().min(1).max(32_000).optional()
+  maxTokens: z.coerce.number().int().min(1).max(32_000).optional(),
 });
 
 export const openrouterPreviewChatSchema = openrouterSettingsSchema.merge(aiChatCompletionSchema);
 
 export const aiProxyChatCompletionSchema = aiChatCompletionSchema.extend({
-  operation: z.enum(['chat', 'translation', 'proofreading']).optional()
+  operation: z.enum(['chat', 'translation', 'proofreading']).optional(),
 });

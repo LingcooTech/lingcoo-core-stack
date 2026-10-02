@@ -231,7 +231,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       const user = await service.getUserById(request.user.sub);
 
       if (user.emailVerified) {
-        return { alreadyVerified: true };
+        return { sent: false, alreadyVerified: true };
       }
 
       return service.sendVerificationCode(user.id, user.email);

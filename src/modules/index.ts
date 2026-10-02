@@ -31,7 +31,7 @@ export const appModules: AppModule[] = [
   checkoutModule,
   billingModule,
   licenseModule,
-  eventModule
+  eventModule,
 ];
 
 export function getModuleNames(): string[] {

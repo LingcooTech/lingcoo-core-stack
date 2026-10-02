@@ -120,7 +120,7 @@ function AppsTableSkeleton() {
           {Array.from({ length: 7 }).map((__, cellIndex) => (
             <TableCell key={cellIndex}>
               <div
-                className="bg-muted h-4 animate-pulse rounded"
+                className="h-4 animate-pulse rounded bg-muted"
                 style={{ width: `${60 + ((rowIndex + cellIndex) % 4) * 10}%` }}
               />
             </TableCell>
@@ -258,7 +258,7 @@ export function AppsPage() {
       id: 'state',
       label: '状态',
       values: stateValue === 'all' ? [] : [stateValue],
-      onChange: (next) => setFilter('state', next.length === 0 ? null : [next[next.length - 1]]),
+      onChange: (next) => setFilter('state', next.length === 0 ? null : next.slice(-1)),
       options: [
         { value: 'active', label: '已上架' },
         { value: 'archived', label: '已归档' },
@@ -316,14 +316,14 @@ export function AppsPage() {
               return (
                 <div
                   key={item.label}
-                  className="border-border bg-card rounded-lg border px-4 py-4 shadow-sm transition-all duration-300"
+                  className="rounded-lg border border-border bg-card px-4 py-4 shadow-sm transition-all duration-300"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+                      <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
                         {item.label}
                       </p>
-                      <p className="text-foreground mt-2 text-2xl font-semibold tracking-tight">
+                      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                         {item.value}
                       </p>
                     </div>
@@ -338,8 +338,8 @@ export function AppsPage() {
             })}
       </div>
 
-      <section className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
-        <div className="border-border flex flex-col gap-3 border-b px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
           <FilterChipBar
             className="flex-1"
             searchValue={search}
@@ -349,7 +349,7 @@ export function AppsPage() {
             onClearAll={clearFilters}
           />
 
-          <div className="text-muted-foreground flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>结果 {filteredApps.length}</span>
             <span className="hidden text-gray-300 md:inline">|</span>
             <span className="hidden md:inline">分类 {categories.length}</span>
@@ -377,7 +377,7 @@ export function AppsPage() {
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="text-muted-foreground py-14 text-center text-sm"
+                    className="py-14 text-center text-sm text-muted-foreground"
                   >
                     没有符合当前筛选条件的应用。
                   </TableCell>
@@ -396,23 +396,23 @@ export function AppsPage() {
                             <img
                               src={app.iconUrl}
                               alt={app.name}
-                              className="border-border bg-card h-11 w-11 rounded-xl border object-contain"
+                              className="h-11 w-11 rounded-xl border border-border bg-card object-contain"
                             />
                           ) : (
-                            <div className="border-border bg-muted text-muted-foreground flex h-11 w-11 items-center justify-center rounded-xl border text-sm font-semibold">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-muted text-sm font-semibold text-muted-foreground">
                               {getInitials(app.name)}
                             </div>
                           )}
 
                           <div className="min-w-0">
-                            <p className="text-foreground truncate text-sm font-semibold">
+                            <p className="truncate text-sm font-semibold text-foreground">
                               {app.name}
                             </p>
-                            <p className="text-muted-foreground mt-1 font-mono text-xs">
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">
                               {app.code}
                             </p>
                             {app.tagline ? (
-                              <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-6">
+                              <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
                                 {app.tagline}
                               </p>
                             ) : null}
@@ -427,16 +427,16 @@ export function AppsPage() {
                               {app.category}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-sm">未分类</span>
+                            <span className="text-sm text-muted-foreground">未分类</span>
                           )}
-                          <p className="text-foreground text-sm font-medium">
+                          <p className="text-sm font-medium text-foreground">
                             {getAppTypeLabel(app.type)}
                           </p>
                         </div>
                       </TableCell>
 
                       <TableCell>
-                        <div className="text-muted-foreground space-y-2 text-sm">
+                        <div className="space-y-2 text-sm text-muted-foreground">
                           <p>{app.features.length} Features</p>
                           <p>{app.plans.length} Plans</p>
                           <p>{app.checkoutOffers.length} Offers</p>
@@ -445,16 +445,16 @@ export function AppsPage() {
 
                       <TableCell>
                         <div className="space-y-2">
-                          <p className="text-foreground text-sm font-semibold">
+                          <p className="text-sm font-semibold text-foreground">
                             {formatOfferPriceLabel(preferredOffer)}
                           </p>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-xs text-muted-foreground">
                             {preferredOffer
                               ? `${preferredOffer.title} · ${formatPlanInterval(preferredOffer.interval)}`
                               : '暂无活动 Offer'}
                           </p>
                           {activeOffers.length > 1 ? (
-                            <p className="text-muted-foreground text-xs">
+                            <p className="text-xs text-muted-foreground">
                               另有 {activeOffers.length - 1} 个活动方案
                             </p>
                           ) : null}
@@ -474,7 +474,7 @@ export function AppsPage() {
                       </TableCell>
 
                       <TableCell>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                           {formatUpdatedAt(app.updatedAt)}
                         </p>
                       </TableCell>

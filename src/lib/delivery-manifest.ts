@@ -116,18 +116,24 @@ function normalizeNotes(value: unknown) {
     return [];
   }
 
-  return value
-    .map((item) => normalizeString(item))
-    .filter((item) => item.length > 0);
+  return value.map((item) => normalizeString(item)).filter((item) => item.length > 0);
 }
 
 function normalizeScope(value: unknown): DeliveryManifestFieldScope {
   return normalizeString(value) === 'preset' ? 'preset' : 'user_input';
 }
 
-function normalizeFieldType(value: unknown, fallback: DeliveryManifestFieldType): DeliveryManifestFieldType {
+function normalizeFieldType(
+  value: unknown,
+  fallback: DeliveryManifestFieldType,
+): DeliveryManifestFieldType {
   const normalized = normalizeString(value);
-  if (normalized === 'text' || normalized === 'email' || normalized === 'boolean' || normalized === 'secret') {
+  if (
+    normalized === 'text' ||
+    normalized === 'email' ||
+    normalized === 'boolean' ||
+    normalized === 'secret'
+  ) {
     return normalized;
   }
 
@@ -145,7 +151,7 @@ function normalizeFieldDefaultValue(type: DeliveryManifestFieldType, value: unkn
 
 function normalizeField(
   value: unknown,
-  fallbackType: DeliveryManifestFieldType
+  fallbackType: DeliveryManifestFieldType,
 ): DeliveryManifestField | null {
   const raw = normalizeObject(value);
   const key = normalizeString(raw.key);
@@ -169,7 +175,7 @@ function normalizeField(
     group: normalizeString(raw.group) || undefined,
     placeholder: normalizeString(raw.placeholder) || undefined,
     description: normalizeString(raw.description) || undefined,
-    defaultValue
+    defaultValue,
   };
 }
 
@@ -220,7 +226,7 @@ function normalizeAsset(value: unknown): DeliveryManifestAsset | null {
     urlEnv: normalizeString(raw.urlEnv) || undefined,
     authSecret: normalizeString(raw.authSecret) || undefined,
     checksum: normalizeString(raw.checksum) || undefined,
-    checksumEnv: normalizeString(raw.checksumEnv) || undefined
+    checksumEnv: normalizeString(raw.checksumEnv) || undefined,
   };
 }
 
@@ -236,7 +242,7 @@ function normalizeGroup(value: unknown): DeliveryManifestGroup | null {
   return {
     key,
     label,
-    description: normalizeString(raw.description) || undefined
+    description: normalizeString(raw.description) || undefined,
   };
 }
 
@@ -258,7 +264,7 @@ function normalizeDomainSlot(value: unknown): DeliveryManifestDomainSlot | null 
     sourceField,
     required: normalizeBoolean(raw.required) ?? false,
     placeholder: normalizeString(raw.placeholder) || undefined,
-    description: normalizeString(raw.description) || undefined
+    description: normalizeString(raw.description) || undefined,
   };
 }
 
@@ -273,7 +279,7 @@ export function normalizeDeliveryManifest(value: unknown): DeliveryManifest | nu
     repoUrl: normalizeString(installerRaw.repoUrl),
     repoBranch: normalizeString(installerRaw.repoBranch) || 'main',
     remoteInstallScriptUrl: normalizeString(installerRaw.remoteInstallScriptUrl),
-    installPath: normalizeString(installerRaw.installPath) || '/opt/fd-headless-wp-system'
+    installPath: normalizeString(installerRaw.installPath) || '/opt/fd-headless-wp-system',
   };
 
   return {
@@ -305,7 +311,7 @@ export function normalizeDeliveryManifest(value: unknown): DeliveryManifest | nu
           .map((item) => normalizeAsset(item))
           .filter((item): item is DeliveryManifestAsset => Boolean(item))
       : [],
-    notes: normalizeNotes(raw.notes)
+    notes: normalizeNotes(raw.notes),
   };
 }
 
@@ -314,7 +320,7 @@ export function listDeliveryManifestFields(
   input?: {
     scope?: DeliveryManifestFieldScope;
     includeSecrets?: boolean;
-  }
+  },
 ) {
   if (!manifest) {
     return [];
@@ -352,8 +358,10 @@ export function listDeliveryManifestAssetRequiredSecretKeys(manifest: DeliveryMa
   return [
     ...new Set(
       manifest.assets
-        .filter((asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret))
-        .map((asset) => asset.authSecret!)
-    )
+        .filter(
+          (asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret),
+        )
+        .map((asset) => asset.authSecret!),
+    ),
   ];
 }

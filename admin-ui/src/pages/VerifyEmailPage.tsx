@@ -50,10 +50,10 @@ export function VerifyEmailPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-md items-center">
-      <Card className="border-border/80 w-full">
+      <Card className="w-full border-border/80">
         <CardHeader className="space-y-2">
           <CardTitle className="text-2xl font-semibold">验证邮箱</CardTitle>
-          <p className="text-muted-foreground text-sm">{user?.email ?? '您的邮箱'}</p>
+          <p className="text-sm text-muted-foreground">{user?.email ?? '您的邮箱'}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>

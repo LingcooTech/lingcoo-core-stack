@@ -30,7 +30,7 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     lead: '发现并获取优质应用',
     href: '/',
     contextCards: [],
-    heroActions: []
+    heroActions: [],
   },
   orders: {
     navTitle: '订单记录',
@@ -42,8 +42,8 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     contextCards: [],
     heroActions: [
       { label: '刷新订单', href: '/orders', tone: 'primary' },
-      { label: '应用中心', href: '/', tone: 'secondary' }
-    ]
+      { label: '应用中心', href: '/', tone: 'secondary' },
+    ],
   },
   access: {
     navTitle: '我的应用',
@@ -55,8 +55,8 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     contextCards: [],
     heroActions: [
       { label: '查看授权', href: '/access', tone: 'primary' },
-      { label: '应用中心', href: '/', tone: 'secondary' }
-    ]
+      { label: '应用中心', href: '/', tone: 'secondary' },
+    ],
   },
   deploy: {
     navTitle: '部署管理',
@@ -68,7 +68,7 @@ export const userSectionMeta: Record<UserSectionKey, UserSectionMeta> = {
     contextCards: [],
     heroActions: [
       { label: '部署管理', href: '/deploy', tone: 'primary' },
-      { label: '我的应用', href: '/access', tone: 'secondary' }
-    ]
-  }
+      { label: '我的应用', href: '/access', tone: 'secondary' },
+    ],
+  },
 };

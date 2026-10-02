@@ -1,5 +1,9 @@
 import { apiClient } from './client';
 import type {
+  DocPage,
+  DocSpace,
+  AdminUser,
+  JobRetryResponse,
   AuditLogsResponse,
   AdminNotificationsResponse,
   AdminDocSpaceDetail,
@@ -10,7 +14,6 @@ import type {
   AdminUpdateUserInput,
   AdminUserDetail,
   AdminUsersResponse,
-  JobRun,
   JobRunsResponse,
   ContentItem,
   ContentListResponse,
@@ -108,7 +111,7 @@ export async function createDocSpace(payload: {
   status: 'active' | 'hidden' | 'archived';
   meta?: Record<string, unknown>;
 }) {
-  return apiClient('/v1/admin/docs/spaces', {
+  return apiClient<DocSpace>('/v1/admin/docs/spaces', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -128,14 +131,14 @@ export async function updateDocSpace(
     meta?: Record<string, unknown>;
   },
 ) {
-  return apiClient(`/v1/admin/docs/spaces/${encodeURIComponent(spaceId)}`, {
+  return apiClient<DocSpace>(`/v1/admin/docs/spaces/${encodeURIComponent(spaceId)}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
 
 export async function getDocPage(pageId: string) {
-  return apiClient(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`);
+  return apiClient<DocPage>(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`);
 }
 
 export async function createDocPage(payload: {
@@ -150,7 +153,7 @@ export async function createDocPage(payload: {
   publishedAt?: string;
   meta?: Record<string, unknown>;
 }) {
-  return apiClient('/v1/admin/docs/pages', {
+  return apiClient<DocPage>('/v1/admin/docs/pages', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -171,7 +174,7 @@ export async function updateDocPage(
     meta?: Record<string, unknown>;
   },
 ) {
-  return apiClient(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`, {
+  return apiClient<DocPage>(`/v1/admin/docs/pages/${encodeURIComponent(pageId)}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
@@ -392,8 +395,8 @@ export async function listJobRuns(params: AdminListParams = {}): Promise<JobRuns
   return apiClient<JobRunsResponse>(`/v1/admin/jobs${qs ? `?${qs}` : ''}`);
 }
 
-export async function retryJobRun(jobId: string): Promise<JobRun> {
-  return apiClient<JobRun>(`/v1/admin/jobs/${encodeURIComponent(jobId)}/retry`, {
+export async function retryJobRun(jobId: string): Promise<JobRetryResponse> {
+  return apiClient<JobRetryResponse>(`/v1/admin/jobs/${encodeURIComponent(jobId)}/retry`, {
     method: 'POST',
   });
 }
@@ -445,21 +448,21 @@ export async function getUser(userId: string): Promise<AdminUserDetail> {
 export async function updateUser(
   userId: string,
   payload: AdminUpdateUserInput,
-): Promise<AdminUserDetail> {
-  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}`, {
-    method: 'PATCH',
+): Promise<AdminUser> {
+  return apiClient<AdminUser>(`/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
 
-export async function suspendUser(userId: string): Promise<AdminUserDetail> {
-  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}/suspend`, {
+export async function suspendUser(userId: string): Promise<AdminUser> {
+  return apiClient<AdminUser>(`/v1/admin/users/${encodeURIComponent(userId)}/suspend`, {
     method: 'POST',
   });
 }
 
-export async function activateUser(userId: string): Promise<AdminUserDetail> {
-  return apiClient<AdminUserDetail>(`/v1/admin/users/${encodeURIComponent(userId)}/activate`, {
+export async function activateUser(userId: string): Promise<AdminUser> {
+  return apiClient<AdminUser>(`/v1/admin/users/${encodeURIComponent(userId)}/activate`, {
     method: 'POST',
   });
 }

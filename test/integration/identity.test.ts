@@ -38,8 +38,9 @@ test('App Tokens and suspended users cannot authenticate as users', async () => 
     .insert(users)
     .values({ email: `${randomUUID()}@example.test`, status: 'suspended', role: 'admin' })
     .returning();
+  if (!user) throw new Error('Missing test fixture: user');
   for (const kind of ['user', 'app'] as const) {
-    const token = app.jwt.sign({ sub: user.id, kind });
+    const token: string = app.jwt.sign({ sub: user.id, kind });
     const response = await app.inject({
       method: 'GET',
       url: '/v1/me',
@@ -53,7 +54,8 @@ test('read-only observability permission cannot retry tasks', async () => {
     .insert(users)
     .values({ email: `${randomUUID()}@example.test`, role: 'support' })
     .returning();
-  const token = app.jwt.sign({ sub: user.id });
+  if (!user) throw new Error('Missing test fixture: user');
+  const token: string = app.jwt.sign({ sub: user.id });
   const response = await app.inject({
     method: 'POST',
     url: `/v1/admin/jobs/${randomUUID()}/retry`,

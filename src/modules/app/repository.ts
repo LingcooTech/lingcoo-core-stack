@@ -100,6 +100,7 @@ export class AppRepository {
         },
       })
       .returning();
+    if (!app) throw new Error('Missing required write result: app app');
 
     return app;
   }
@@ -238,6 +239,7 @@ export class AppRepository {
         createdAt: new Date(),
       })
       .returning();
+    if (!secret) throw new Error('Missing required write result: app secret');
 
     return secret;
   }

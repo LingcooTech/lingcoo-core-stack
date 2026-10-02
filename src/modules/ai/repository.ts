@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import { aiUsageEvents } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -23,16 +23,16 @@ export class AiRepository {
         responseChars: sql<number>`coalesce(sum(${aiUsageEvents.responseChars}), 0)::int`,
         promptTokens: sql<number>`coalesce(sum(${aiUsageEvents.promptTokens}), 0)::int`,
         completionTokens: sql<number>`coalesce(sum(${aiUsageEvents.completionTokens}), 0)::int`,
-        totalTokens: sql<number>`coalesce(sum(${aiUsageEvents.totalTokens}), 0)::int`
+        totalTokens: sql<number>`coalesce(sum(${aiUsageEvents.totalTokens}), 0)::int`,
       })
       .from(aiUsageEvents)
       .where(
         and(
           eq(aiUsageEvents.userId, userId),
           eq(aiUsageEvents.appId, appId),
-          eq(aiUsageEvents.status, 'succeeded'),
-          gte(aiUsageEvents.createdAt, since)
-        )
+          inArray(aiUsageEvents.status, ['pending', 'succeeded']),
+          gte(aiUsageEvents.createdAt, since),
+        ),
       );
 
     return {
@@ -41,8 +41,35 @@ export class AiRepository {
       responseChars: row?.responseChars ?? 0,
       promptTokens: row?.promptTokens ?? 0,
       completionTokens: row?.completionTokens ?? 0,
-      totalTokens: row?.totalTokens ?? 0
+      totalTokens: row?.totalTokens ?? 0,
     };
+  }
+
+  async lockQuota(userId: string, appCode: string) {
+    await this.db.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${'ai-quota:' + userId + ':' + appCode},0))`,
+    );
+  }
+  async finishUsageEvent(
+    id: string,
+    input: Pick<
+      typeof aiUsageEvents.$inferInsert,
+      | 'status'
+      | 'model'
+      | 'responseChars'
+      | 'promptTokens'
+      | 'completionTokens'
+      | 'totalTokens'
+      | 'meta'
+    >,
+  ) {
+    const [row] = await this.db
+      .update(aiUsageEvents)
+      .set(input)
+      .where(and(eq(aiUsageEvents.id, id), eq(aiUsageEvents.status, 'pending')))
+      .returning();
+    if (!row) throw new Error('AI quota reservation was already finalized');
+    return row;
   }
 
   async createUsageEvent(input: {
@@ -52,7 +79,7 @@ export class AiRepository {
     model: string;
     operation: string;
     accessScope: 'trial' | 'entitled';
-    status: 'succeeded' | 'failed';
+    status: 'pending' | 'succeeded' | 'failed';
     requestChars: number;
     responseChars: number;
     promptTokens: number;
@@ -76,9 +103,10 @@ export class AiRepository {
         completionTokens: input.completionTokens,
         totalTokens: input.totalTokens,
         meta: input.meta ?? {},
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .returning();
+    if (!row) throw new Error('Missing required write result: ai row');
 
     return row;
   }

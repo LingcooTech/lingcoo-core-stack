@@ -1,6 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 
-import type { HydratedOrder } from '@/api/types';
+import type { MyOrder } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,12 +31,12 @@ export function OrderCard({
   onSync,
   syncing,
 }: {
-  order: HydratedOrder;
+  order: MyOrder;
   onSync: (orderNo: string) => void;
   syncing?: boolean;
 }) {
   return (
-    <Card className="border-border/80 bg-card/95 rounded-lg shadow-sm">
+    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -52,26 +52,26 @@ export function OrderCard({
             {paymentProviderLabel(order.provider)}
           </CardDescription>
           <div className="flex flex-wrap gap-2">
-            <span className="border-border bg-muted text-foreground inline-flex rounded-full border px-3 py-1.5 text-xs font-medium">
+            <span className="inline-flex rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground">
               创建于 {formatTime(order.createdAt)}
             </span>
-            <span className="border-border bg-muted text-foreground inline-flex rounded-full border px-3 py-1.5 text-xs font-medium">
+            <span className="inline-flex rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground">
               支付时间 {order.paidAt ? formatTime(order.paidAt) : '未支付'}
             </span>
           </div>
         </div>
-        <div className="border-border bg-muted/80 rounded-lg border px-4 py-3.5 text-left sm:min-w-[170px] sm:text-right">
-          <p className="text-muted-foreground text-[11px] font-semibold tracking-wider">订单金额</p>
-          <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight">
+        <div className="rounded-lg border border-border bg-muted/80 px-4 py-3.5 text-left sm:min-w-[170px] sm:text-right">
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground">订单金额</p>
+          <p className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
             {formatAmount(order.amount, order.currency)}
           </p>
-          <p className="text-muted-foreground mt-1 text-xs">
+          <p className="mt-1 text-xs text-muted-foreground">
             支付会话：{order.checkoutSession?.sessionCode ?? '—'}
           </p>
         </div>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-4">
-        <div className="text-muted-foreground text-sm leading-7">
+        <div className="text-sm leading-7 text-muted-foreground">
           {orderStatusDescription(order.status)}
         </div>
         {canSyncOrderStatus(order.status) ? (

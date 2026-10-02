@@ -41,11 +41,12 @@ export function AppEditHeader({
   onSave,
 }: AppEditHeaderProps) {
   const visibleTabs = APP_EDIT_TABS.filter((tab) => visibleTabKeys.includes(tab.key));
-  const activeTabMeta =
-    visibleTabs.find((tab) => tab.key === activeTab) ?? visibleTabs[0] ?? APP_EDIT_TABS[0];
+  const activeTabMeta = visibleTabs.find((tab) => tab.key === activeTab) ??
+    visibleTabs[0] ??
+    APP_EDIT_TABS[0] ?? { key: 'intro', label: '应用', description: '' };
 
   return (
-    <div className="border-border bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
+    <div className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
       <div className="flex flex-col gap-3 px-6 py-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
@@ -58,7 +59,7 @@ export function AppEditHeader({
             <Separator orientation="vertical" className="hidden h-8 lg:block" />
             <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-foreground truncate text-[15px] font-semibold">{title}</p>
+                <p className="truncate text-[15px] font-semibold text-foreground">{title}</p>
                 {isCreateMode ? (
                   <Badge variant="outline" className="text-muted-foreground">
                     新建
@@ -70,7 +71,7 @@ export function AppEditHeader({
                   label={hasUnsavedChanges ? '有未保存变更' : '已保存'}
                 />
               </div>
-              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                 <span className="font-mono">{appCode || '请先填写 App Code'}</span>
                 <span className="text-muted-foreground/40">·</span>
                 <span>{activeTabMeta.description}</span>
@@ -78,7 +79,7 @@ export function AppEditHeader({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-muted-foreground hidden items-center gap-3 text-[11px] tabular-nums sm:flex">
+            <div className="hidden items-center gap-3 text-[11px] text-muted-foreground tabular-nums sm:flex">
               <span>{offersCount} Offers</span>
               <span className="text-muted-foreground/40">·</span>
               <span>{plansCount} Plans</span>

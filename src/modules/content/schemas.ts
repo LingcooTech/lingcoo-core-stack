@@ -7,7 +7,7 @@ export const contentListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   search: optionalTrimmedString(255),
   status: z.enum(['draft', 'published', 'archived']).optional(),
-  sourceType: z.enum(['manual', 'wordpress', 'notion', 'wechat']).optional()
+  sourceType: z.enum(['manual', 'wordpress', 'notion', 'wechat']).optional(),
 });
 
 export const contentIdParamsSchema = z.object({
@@ -35,15 +35,19 @@ export const upsertContentSchema = z.object({
 
 export const importWordPressContentSchema = z.object({
   postUrl: z.string().trim().url(),
-  status: z.enum(['draft', 'published']).default('draft')
+  status: z.enum(['draft', 'published']).default('draft'),
 });
 
 export const importNotionContentSchema = z.object({
   pageUrl: z.string().trim().url(),
-  status: z.enum(['draft', 'published']).default('draft')
+  status: z.enum(['draft', 'published']).default('draft'),
 });
 
 export const importWechatContentSchema = z.object({
-  url: z.string().trim().url().refine((value) => value.includes('mp.weixin.qq.com'), '请输入有效的微信公众号文章链接'),
-  status: z.enum(['draft', 'published']).default('draft')
+  url: z
+    .string()
+    .trim()
+    .url()
+    .refine((value) => value.includes('mp.weixin.qq.com'), '请输入有效的微信公众号文章链接'),
+  status: z.enum(['draft', 'published']).default('draft'),
 });

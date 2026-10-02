@@ -160,9 +160,9 @@ export function LicensesPage() {
         <div>
           <p className="text-xs font-bold">{row.user?.email ?? row.userId}</p>
           {row.user?.displayName && (
-            <p className="text-muted-foreground text-xs">{row.user.displayName}</p>
+            <p className="text-xs text-muted-foreground">{row.user.displayName}</p>
           )}
-          <p className="text-muted-foreground max-w-[120px] truncate font-mono text-[10px]">
+          <p className="max-w-[120px] truncate font-mono text-[10px] text-muted-foreground">
             {row.id}
           </p>
         </div>
@@ -174,7 +174,7 @@ export function LicensesPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.app?.code ?? row.appId}</p>
-          {row.plan && <p className="text-muted-foreground text-xs">{row.plan.code}</p>}
+          {row.plan && <p className="text-xs text-muted-foreground">{row.plan.code}</p>}
         </div>
       ),
     },
@@ -184,7 +184,7 @@ export function LicensesPage() {
       cell: (row) => (
         <div className="flex flex-col gap-1">
           <StatusPill tone={statusToTone(row.status)} label={entitlementStatusLabel(row.status)} />
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-[10px] text-muted-foreground">
             {entitlementSourceLabel(row.sourceType)}
           </span>
         </div>
@@ -198,11 +198,11 @@ export function LicensesPage() {
           {row.sourceOrder ? (
             <p className="font-mono text-xs">{row.sourceOrder.orderNo}</p>
           ) : (
-            <p className="text-muted-foreground max-w-[120px] truncate font-mono text-xs">
+            <p className="max-w-[120px] truncate font-mono text-xs text-muted-foreground">
               {row.sourceId ?? '—'}
             </p>
           )}
-          <p className="text-muted-foreground text-[10px]">
+          <p className="text-[10px] text-muted-foreground">
             {entitlementSourceLabel(row.sourceType)}
           </p>
         </div>
@@ -215,7 +215,7 @@ export function LicensesPage() {
         <div>
           <p className="text-xs">{row.expiresAt ? formatTime(row.expiresAt) : '永不过期'}</p>
           {row.startsAt && (
-            <p className="text-muted-foreground text-[10px]">从 {formatTime(row.startsAt)}</p>
+            <p className="text-[10px] text-muted-foreground">从 {formatTime(row.startsAt)}</p>
           )}
         </div>
       ),
@@ -228,14 +228,14 @@ export function LicensesPage() {
           <Button
             size="sm"
             variant="outline"
-            className="text-destructive hover:text-destructive text-xs"
+            className="text-xs text-destructive hover:text-destructive"
             disabled={revokeMutation.isPending}
             onClick={() => setEntitlementToRevoke(row)}
           >
             撤销
           </Button>
         ) : (
-          <span className="text-muted-foreground text-xs">已撤销</span>
+          <span className="text-xs text-muted-foreground">已撤销</span>
         ),
     },
   ];
@@ -245,7 +245,7 @@ export function LicensesPage() {
       <SectionHeader sectionKey="licenses" />
       <div className="space-y-6 p-6">
         {/* Grant Form */}
-        <div className="border-border bg-card max-w-lg rounded-lg border p-5">
+        <div className="max-w-lg rounded-lg border border-border bg-card p-5">
           <h3 className="mb-4 text-sm font-semibold">人工发放授权</h3>
           <Form {...grantForm}>
             <form
@@ -338,7 +338,7 @@ export function LicensesPage() {
         {/* Entitlements Table */}
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-muted-foreground text-sm font-semibold uppercase tracking-wider">
+            <h3 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
               授权明细 ({totalEntitlements})
             </h3>
           </div>
@@ -349,7 +349,7 @@ export function LicensesPage() {
               searchPlaceholder="搜索用户、应用、套餐、订单号..."
             />
           </div>
-          <div className="border-border bg-card overflow-hidden rounded-lg border">
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
             <DataTable
               columns={columns}
               data={entitlements}

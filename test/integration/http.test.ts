@@ -35,6 +35,7 @@ test('expired and revoked deployment tokens cannot exchange bootstrap', async ()
     .insert(deployments)
     .values({ userId: fixture.user.id, appId: fixture.app.id, label: 'Fixture' })
     .returning();
+  if (!deployment) throw new Error('Missing test fixture: deployment');
   for (const state of ['expired', 'inactive'] as const) {
     const token = `fixture_deployment_token_${state}`;
     await db.insert(deploymentTokens).values({

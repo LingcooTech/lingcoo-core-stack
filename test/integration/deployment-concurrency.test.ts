@@ -27,6 +27,7 @@ async function fixture() {
     .select()
     .from(entitlements)
     .where(eq(entitlements.sourceId, seeded.order.id));
+  if (!entitlement) throw new Error('Missing test fixture: entitlement');
   const input = {
     userId: seeded.user.id,
     appCode: seeded.app.code,

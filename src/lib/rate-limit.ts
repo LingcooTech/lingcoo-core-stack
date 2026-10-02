@@ -30,21 +30,23 @@ export function buildEmailRateLimitKey(request: FastifyRequest, scope: string): 
 }
 
 export function buildUserRateLimitKey(request: FastifyRequest, scope: string): string {
-  const userId = ((request as RequestShape).user && (request as RequestShape).user?.sub) || 'anonymous';
+  const userId =
+    ((request as RequestShape).user && (request as RequestShape).user?.sub) || 'anonymous';
   return `user:${userId}:${scope}`;
 }
 
 export function buildSessionRateLimitKey(
   request: FastifyRequest,
   scope: string,
-  sessionParamName = 'sessionCode'
+  sessionParamName = 'sessionCode',
 ): string {
   const sessionCode = getParamValue(request, sessionParamName) || 'unknown';
   return `ip:${request.ip}:${scope}:${sessionCode}`;
 }
 
 export function buildAppCodeUserRateLimitKey(request: FastifyRequest, scope: string): string {
-  const userId = ((request as RequestShape).user && (request as RequestShape).user?.sub) || 'anonymous';
+  const userId =
+    ((request as RequestShape).user && (request as RequestShape).user?.sub) || 'anonymous';
   const appCode = getParamValue(request, 'appCode') || 'unknown-app';
   return `user:${userId}:${scope}:${appCode}`;
 }

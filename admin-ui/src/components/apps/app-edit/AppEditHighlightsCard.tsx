@@ -13,16 +13,12 @@ interface AppEditHighlightsCardProps {
   onChange: (value: FormState['highlights']) => void;
 }
 
-export function AppEditHighlightsCard({
-  highlights,
-  onChange,
-}: AppEditHighlightsCardProps) {
-  const updateHighlight = (
-    index: number,
-    patch: Partial<FormState['highlights'][number]>,
-  ) => {
+export function AppEditHighlightsCard({ highlights, onChange }: AppEditHighlightsCardProps) {
+  const updateHighlight = (index: number, patch: Partial<FormState['highlights'][number]>) => {
     const next = [...highlights];
-    next[index] = { ...next[index], ...patch };
+    const item = next[index];
+    if (!item) return;
+    next[index] = { ...item, ...patch };
     onChange(next);
   };
 
@@ -39,9 +35,7 @@ export function AppEditHighlightsCard({
             variant="outline"
             size="sm"
             disabled={highlights.length >= 8}
-            onClick={() =>
-              onChange([...highlights, { icon: '', title: '', description: '' }])
-            }
+            onClick={() => onChange([...highlights, { icon: '', title: '', description: '' }])}
           >
             <Plus className="h-4 w-4" />
             添加亮点
@@ -61,9 +55,7 @@ export function AppEditHighlightsCard({
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() =>
-                  onChange(highlights.filter((_, itemIndex) => itemIndex !== index))
-                }
+                onClick={() => onChange(highlights.filter((_, itemIndex) => itemIndex !== index))}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -90,9 +82,7 @@ export function AppEditHighlightsCard({
               <Label>描述</Label>
               <Textarea
                 value={item.description}
-                onChange={(event) =>
-                  updateHighlight(index, { description: event.target.value })
-                }
+                onChange={(event) => updateHighlight(index, { description: event.target.value })}
                 placeholder="功能亮点描述"
                 rows={2}
               />

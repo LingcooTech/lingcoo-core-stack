@@ -385,7 +385,7 @@ export function getManifestFieldGroups(
 
   return [...grouped.entries()].map(([groupKey, groupFields]) => ({
     key: groupKey,
-    label: groupKey === '__default__' ? '未分组字段' : groups.get(groupKey)?.label ?? groupKey,
+    label: groupKey === '__default__' ? '未分组字段' : (groups.get(groupKey)?.label ?? groupKey),
     description: groupKey === '__default__' ? undefined : groups.get(groupKey)?.description,
     fields: groupFields,
   }));
@@ -405,7 +405,7 @@ export function getManifestAssetGroups(manifest: DeliveryManifest | null) {
 
   return [...grouped.entries()].map(([groupKey, groupAssets]) => ({
     key: groupKey,
-    label: groupKey === '__default__' ? '未分组资产' : groups.get(groupKey)?.label ?? groupKey,
+    label: groupKey === '__default__' ? '未分组资产' : (groups.get(groupKey)?.label ?? groupKey),
     description: groupKey === '__default__' ? undefined : groups.get(groupKey)?.description,
     assets: groupAssets,
   }));
@@ -415,7 +415,9 @@ export function listRequiredAssetSecretKeys(manifest: DeliveryManifest | null) {
   return [
     ...new Set(
       (manifest?.assets ?? [])
-        .filter((asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret))
+        .filter(
+          (asset) => asset.required && asset.visibility === 'private' && Boolean(asset.authSecret),
+        )
         .map((asset) => asset.authSecret!),
     ),
   ];
@@ -454,7 +456,9 @@ export function createDeliverySettingsDraft(
   return createDraftFromFields(getManifestFields(manifest ?? null, 'preset'), overview?.values);
 }
 
-export function createDeploymentInputDraft(manifest?: DeliveryManifest | null): DeliverySettingsDraft {
+export function createDeploymentInputDraft(
+  manifest?: DeliveryManifest | null,
+): DeliverySettingsDraft {
   return createDraftFromFields(getManifestFields(manifest ?? null, 'user_input'));
 }
 
@@ -464,7 +468,9 @@ export function createDeliverySecretState(
 ): DeliverySecretState {
   const next: DeliverySecretState = {};
 
-  for (const field of getManifestFields(manifest ?? null, 'preset').filter((item) => item.type === 'secret')) {
+  for (const field of getManifestFields(manifest ?? null, 'preset').filter(
+    (item) => item.type === 'secret',
+  )) {
     next[field.key] = overview?.secrets[field.key]?.configured ?? false;
   }
 
@@ -482,16 +488,20 @@ export function createDeliverySecretState(
 export function createDeploymentSecretDraft(manifest?: DeliveryManifest | null) {
   const next: Record<string, string> = {};
 
-  for (const field of getManifestFields(manifest ?? null, 'user_input').filter((item) => item.type === 'secret')) {
+  for (const field of getManifestFields(manifest ?? null, 'user_input').filter(
+    (item) => item.type === 'secret',
+  )) {
     next[field.key] = '';
   }
 
   return next;
 }
 
-export function createDeliveryManifestSourceDraft(input?: {
-  meta?: Record<string, unknown> | undefined;
-} | null): DeliveryManifestSourceDraft {
+export function createDeliveryManifestSourceDraft(
+  input?: {
+    meta?: Record<string, unknown> | undefined;
+  } | null,
+): DeliveryManifestSourceDraft {
   const meta = normalizeMeta(input?.meta);
   const source = normalizeMeta(meta.deliveryManifestSource);
 
@@ -545,8 +555,7 @@ export function serializeDeliveryManifestSourceDraft(draft: DeliveryManifestSour
   return JSON.stringify({
     repoUrl: draft.repoUrl.trim(),
     repoBranch: draft.repoBranch.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.repoBranch,
-    manifestPath:
-      draft.manifestPath.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.manifestPath,
+    manifestPath: draft.manifestPath.trim() || DEFAULT_DELIVERY_MANIFEST_SOURCE_DRAFT.manifestPath,
     manifestUrl: draft.manifestUrl.trim(),
   });
 }
@@ -566,22 +575,24 @@ export function computeDeliveryConfigured(
     return Object.keys(draft.values).length > 0 || Object.keys(secrets).length > 0;
   }
 
-  return fields.every((field) => {
-    if (!field.required) {
-      return true;
-    }
+  return (
+    fields.every((field) => {
+      if (!field.required) {
+        return true;
+      }
 
-    if (field.type === 'secret') {
-      return Boolean(secrets[field.key]);
-    }
+      if (field.type === 'secret') {
+        return Boolean(secrets[field.key]);
+      }
 
-    const value = draft.values[field.key];
-    if (typeof value === 'boolean') {
-      return true;
-    }
+      const value = draft.values[field.key];
+      if (typeof value === 'boolean') {
+        return true;
+      }
 
-    return typeof value === 'string' && value.trim().length > 0;
-  }) && requiredAssetSecretKeys.every((key) => Boolean(secrets[key]));
+      return typeof value === 'string' && value.trim().length > 0;
+    }) && requiredAssetSecretKeys.every((key) => Boolean(secrets[key]))
+  );
 }
 
 export function serializeDeliverySettingsDraft(
@@ -599,9 +610,7 @@ export function serializeDeliverySettingsDraft(
   };
 }
 
-export function buildManifestInputPayload(
-  draft: DeliverySettingsDraft,
-) {
+export function buildManifestInputPayload(draft: DeliverySettingsDraft) {
   const values: Record<string, string | boolean> = {};
   const secrets: Record<string, string> = {};
 

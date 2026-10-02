@@ -34,7 +34,7 @@ export const FilterChipEdit: Story = {
       </PopoverTrigger>
       <PopoverContent className="w-72" align="start">
         <div className="space-y-3">
-          <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             按状态筛选
           </Label>
           <div className="space-y-1">

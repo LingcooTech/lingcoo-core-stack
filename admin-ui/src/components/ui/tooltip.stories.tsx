@@ -40,7 +40,7 @@ export const InfoHint: Story = {
       <span>支付宝 App-Token</span>
       <Tooltip>
         <TooltipTrigger>
-          <Info className="text-muted-foreground size-4" />
+          <Info className="size-4 text-muted-foreground" />
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           支付宝开发者中心 → 网页/移动应用 → 应用详情 → 应用 AppId，长度 16 位。

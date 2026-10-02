@@ -50,6 +50,7 @@ test('browser sessions store only digests and enforce session-bound CSRF and ori
   assert.equal(raw.httpOnly, true);
   assert.equal(raw.sameSite, 'Lax');
   const [stored] = await db.select().from(authSessions).where(eq(authSessions.id, session.id));
+  if (!stored) throw new Error('Missing test fixture: stored');
   assert.notEqual(stored.tokenDigest, raw.value);
   assert.notEqual(stored.csrfDigest, session.csrf);
   assert.equal((await me(session.cookie)).statusCode, 200);

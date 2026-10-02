@@ -1,3 +1,4 @@
+import { requireResult } from '../../src/db/required-result';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
@@ -55,6 +56,7 @@ test('worker drains with a deadline even when a handler ignores cancellation', a
     await worker;
   }
   const [row] = await db.select().from(jobRuns).where(eq(jobRuns.id, job!.id));
+  if (!row) throw new Error('Missing test fixture: row');
   assert.equal(row.status, 'running');
   // Terminated work remains fenced by its lease and is recovered by the next worker.
   await db
@@ -69,7 +71,10 @@ test('worker drains with a deadline even when a handler ignores cancellation', a
     await recovery.pool.end();
   }
   assert.equal(
-    (await db.select().from(jobRuns).where(eq(jobRuns.id, row.id)))[0].status,
+    requireResult(
+      (await db.select().from(jobRuns).where(eq(jobRuns.id, row.id)))[0],
+      'fixture array element',
+    ).status,
     'pending',
   );
 });
@@ -123,13 +128,19 @@ test('SIGKILL leaves a lease that another worker can recover', async () => {
     const [, signal] = await exit;
     assert.equal(signal, 'SIGKILL');
     assert.equal(
-      (await db.select().from(jobRuns).where(eq(jobRuns.id, job.id)))[0].status,
+      requireResult(
+        (await db.select().from(jobRuns).where(eq(jobRuns.id, job.id)))[0],
+        'fixture array element',
+      ).status,
       'running',
     );
     await delay(1200);
     await runtime.jobs.recoverStaleRunningJobs(1000, 'kill-recovery');
     assert.equal(
-      (await db.select().from(jobRuns).where(eq(jobRuns.id, job.id)))[0].status,
+      requireResult(
+        (await db.select().from(jobRuns).where(eq(jobRuns.id, job.id)))[0],
+        'fixture array element',
+      ).status,
       'pending',
     );
   } finally {

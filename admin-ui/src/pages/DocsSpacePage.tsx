@@ -61,7 +61,7 @@ export function DocsSpacePage() {
   if (pageQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -69,7 +69,7 @@ export function DocsSpacePage() {
   if (!pageQuery.data) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="text-muted-foreground px-0">
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/docs">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回文档中心
@@ -112,7 +112,7 @@ export function DocsSpacePage() {
         </div>
 
         <nav
-          className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs"
+          className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
           aria-label="面包屑"
         >
           <Link to="/docs" className="hover:text-foreground">
@@ -121,7 +121,7 @@ export function DocsSpacePage() {
           {breadcrumb.map((crumb, index) => (
             <span key={`${crumb.label}-${index}`} className="inline-flex items-center gap-2">
               <ChevronRight className="h-3 w-3" />
-              <span className={crumb.isCurrent ? 'text-foreground font-medium' : ''}>
+              <span className={crumb.isCurrent ? 'font-medium text-foreground' : ''}>
                 {crumb.label}
               </span>
             </span>
@@ -129,11 +129,11 @@ export function DocsSpacePage() {
         </nav>
 
         <header className="space-y-3">
-          <h1 className="text-foreground text-3xl font-semibold leading-tight tracking-tight md:text-4xl md:leading-[1.2]">
+          <h1 className="text-3xl leading-tight font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.2]">
             {page.title}
           </h1>
           {page.summary ? (
-            <p className="text-muted-foreground text-[15px] leading-7">{page.summary}</p>
+            <p className="text-[15px] leading-7 text-muted-foreground">{page.summary}</p>
           ) : null}
         </header>
 
@@ -176,7 +176,7 @@ export function DocsSpacePage() {
 
         <DocsFeedback spaceSlug={space.slug} pagePath={page.path} editUrl={editUrl} />
 
-        <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
           {previousPage ? (
             <Button variant="outline" asChild>
               <Link
@@ -184,7 +184,7 @@ export function DocsSpacePage() {
                 className="max-w-[280px] text-left"
               >
                 <span className="block w-full">
-                  <span className="text-muted-foreground block text-[11px]">上一页</span>
+                  <span className="block text-[11px] text-muted-foreground">上一页</span>
                   <span className="block truncate text-sm font-medium">{previousPage.title}</span>
                 </span>
               </Link>
@@ -199,7 +199,7 @@ export function DocsSpacePage() {
                 className="max-w-[280px] text-right"
               >
                 <span className="block w-full">
-                  <span className="text-muted-foreground block text-[11px]">下一页</span>
+                  <span className="block text-[11px] text-muted-foreground">下一页</span>
                   <span className="block truncate text-sm font-medium">{nextPage.title}</span>
                 </span>
               </Link>

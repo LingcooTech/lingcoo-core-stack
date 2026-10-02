@@ -26,7 +26,7 @@ export function SortableTableHead({
     return (
       <th
         className={cn(
-          'text-muted-foreground px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider',
+          'px-4 py-3 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase',
           className,
         )}
       >
@@ -38,7 +38,7 @@ export function SortableTableHead({
   return (
     <th
       className={cn(
-        'text-muted-foreground px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider',
+        'px-4 py-3 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase',
         className,
       )}
     >
@@ -46,20 +46,20 @@ export function SortableTableHead({
         type="button"
         onClick={onSort}
         className={cn(
-          'hover:text-foreground group inline-flex items-center gap-1.5 transition-colors',
+          'group inline-flex items-center gap-1.5 transition-colors hover:text-foreground',
           isSorted && 'text-foreground',
         )}
       >
         <span>{children}</span>
         <span className="relative flex h-4 w-4 items-center justify-center">
           {!isSorted && (
-            <ArrowUpDown className="text-muted-foreground h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           )}
           {isSorted && sortDirection === 'asc' && (
-            <ArrowUp className="text-primary animate-fadeIn h-3.5 w-3.5" />
+            <ArrowUp className="animate-fadeIn h-3.5 w-3.5 text-primary" />
           )}
           {isSorted && sortDirection === 'desc' && (
-            <ArrowDown className="text-primary animate-fadeIn h-3.5 w-3.5" />
+            <ArrowDown className="animate-fadeIn h-3.5 w-3.5 text-primary" />
           )}
         </span>
       </button>

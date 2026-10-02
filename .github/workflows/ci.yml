@@ -64,11 +64,14 @@ jobs:
       - name: Install browser
         run: npx playwright install --with-deps chromium
 
+      - name: Verify Admin authentication components
+        run: npm run test:admin
+
       - name: Verify browser critical paths
         run: npm run test:e2e
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
 
-      - name: Audit high severity dependencies
-        run: npm audit --audit-level=high
+      - name: Audit all dependencies
+        run: npm audit --audit-level=moderate

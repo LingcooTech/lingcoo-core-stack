@@ -121,9 +121,9 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div className="border-border bg-muted/70 rounded-lg border px-3 py-2.5">
-      <p className="text-muted-foreground text-[11px] font-medium">{label}</p>
-      <p className={cn('text-foreground mt-1 text-sm', mono && 'font-mono text-xs')}>
+    <div className="rounded-lg border border-border bg-muted/70 px-3 py-2.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className={cn('mt-1 text-sm text-foreground', mono && 'font-mono text-xs')}>
         {value || '—'}
       </p>
     </div>
@@ -132,7 +132,7 @@ function MetaField({
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-muted-foreground text-sm">暂无会话记录。</p>;
+    return <p className="text-sm text-muted-foreground">暂无会话记录。</p>;
   }
 
   return (
@@ -145,17 +145,17 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
               className={cn(
                 'max-w-[88%] rounded-xl border px-4 py-3 shadow-sm',
                 isUser
-                  ? 'text-foreground border-blue-200 bg-blue-50'
+                  ? 'border-blue-200 bg-blue-50 text-foreground'
                   : 'border-border bg-card text-foreground',
               )}
             >
-              <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
-                <span className="text-foreground font-semibold">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground">
                   {ticketMessageAuthorLabel(message)}
                 </span>
                 <span>{formatTime(message.createdAt)}</span>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
+              <p className="mt-2 text-sm leading-6 whitespace-pre-wrap">{message.body}</p>
             </div>
           </div>
         );
@@ -188,13 +188,13 @@ export function NotificationDetailDialog({
   return (
     <Dialog open={Boolean(notification)} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-4xl gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-border border-b px-6 py-5">
+        <DialogHeader className="border-b border-border px-6 py-5">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill
               tone={notificationTone(notification.level)}
               label={notificationCategoryLabel(notification.category)}
             />
-            <p className="text-muted-foreground text-xs">{formatTime(notification.createdAt)}</p>
+            <p className="text-xs text-muted-foreground">{formatTime(notification.createdAt)}</p>
           </div>
           <DialogTitle className="mt-3 text-2xl tracking-tight">{notification.title}</DialogTitle>
           <DialogDescription className="mt-2 leading-6">
@@ -208,7 +208,7 @@ export function NotificationDetailDialog({
               isTicketLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="bg-muted h-10 animate-pulse rounded-lg" />
+                    <div key={index} className="h-10 animate-pulse rounded-lg bg-muted" />
                   ))}
                 </div>
               ) : ticketDetail ? (
@@ -248,13 +248,13 @@ export function NotificationDetailDialog({
                   </div>
 
                   <div className="space-y-3">
-                    <p className="text-foreground text-sm font-semibold">会话记录</p>
+                    <p className="text-sm font-semibold text-foreground">会话记录</p>
                     <TicketMessageList messages={ticketDetail.messages} />
                   </div>
                 </>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-foreground text-sm leading-6">{notification.body}</p>
+                  <p className="text-sm leading-6 text-foreground">{notification.body}</p>
                   <p className="text-sm text-amber-700">
                     {ticketErrorMessage ||
                       '暂时无法加载关联工单详情，你仍然可以进入工单页继续处理。'}
@@ -264,8 +264,8 @@ export function NotificationDetailDialog({
               )
             ) : (
               <div className="space-y-4">
-                <div className="border-border bg-card rounded-xl border px-5 py-4 shadow-sm">
-                  <p className="text-foreground whitespace-pre-wrap text-sm leading-7">
+                <div className="rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+                  <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
                     {notification.body}
                   </p>
                 </div>
@@ -275,7 +275,7 @@ export function NotificationDetailDialog({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-border border-t px-6 py-4">
+        <DialogFooter className="border-t border-border px-6 py-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             关闭
           </Button>

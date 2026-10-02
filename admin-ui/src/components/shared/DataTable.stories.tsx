@@ -28,7 +28,7 @@ const COLUMNS: Column<AppRow>[] = [
   {
     key: 'code',
     header: 'Code',
-    cell: (r) => <code className="text-muted-foreground text-xs">{r.code}</code>,
+    cell: (r) => <code className="text-xs text-muted-foreground">{r.code}</code>,
   },
   {
     key: 'status',
@@ -84,7 +84,7 @@ export const WithSelection: Story = {
           </BulkActionButton>
         </BulkActionBar>
 
-        <div className="border-border rounded-lg border bg-white">
+        <div className="rounded-lg border border-border bg-white">
           <DataTable<AppRow>
             columns={COLUMNS}
             data={APPS}
@@ -95,7 +95,7 @@ export const WithSelection: Story = {
           />
         </div>
 
-        {lastAction && <p className="text-muted-foreground text-sm">✔ {lastAction}</p>}
+        {lastAction && <p className="text-sm text-muted-foreground">✔ {lastAction}</p>}
       </div>
     );
   },
@@ -105,7 +105,7 @@ export const Empty: Story = {
   render: () => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     return (
-      <div className="border-border rounded-lg border bg-white">
+      <div className="rounded-lg border border-border bg-white">
         <DataTable<AppRow>
           columns={COLUMNS}
           data={[]}

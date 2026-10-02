@@ -38,16 +38,16 @@ export function DocsFeedback({ spaceSlug, pagePath, editUrl }: DocsFeedbackProps
   };
 
   return (
-    <div className="border-border mt-12 rounded-2xl border p-5">
+    <div className="mt-12 rounded-2xl border border-border p-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-foreground text-sm font-medium">本页对你有帮助吗？</p>
+          <p className="text-sm font-medium text-foreground">本页对你有帮助吗？</p>
           {submitted ? (
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="mt-1 text-xs text-muted-foreground">
               {submitted === 'helpful' ? '已收到正向反馈' : '已记录待改进'}
             </p>
           ) : (
-            <p className="text-muted-foreground mt-1 text-xs">你的反馈会帮助我们改进文档质量。</p>
+            <p className="mt-1 text-xs text-muted-foreground">你的反馈会帮助我们改进文档质量。</p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -25,7 +25,7 @@ export function QiniuImageField({
   previewAlt,
   previewClassName = 'h-20 w-full rounded-md border object-cover',
   dialogTitle,
-  dialogDescription
+  dialogDescription,
 }: QiniuImageFieldProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
 

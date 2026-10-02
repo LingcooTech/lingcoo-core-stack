@@ -124,6 +124,7 @@ function parseArgs(argv: string[]): CliOptions {
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+    if (!arg) continue;
     if (arg === '--dry-run') {
       dryRun = true;
       continue;
@@ -350,7 +351,7 @@ async function main() {
     Boolean(product.delivery?.settings) && !options.skipDeliverySettings;
 
   if (options.dryRun) {
-    console.log(
+    console.info(
       JSON.stringify(
         {
           mode: 'dry-run',
@@ -396,7 +397,7 @@ async function main() {
       );
     }
 
-    console.log(
+    console.info(
       JSON.stringify(
         {
           imported: true,

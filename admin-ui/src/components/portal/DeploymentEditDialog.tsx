@@ -11,18 +11,24 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   buildManifestInputPayload,
   createDeploymentInputDraft,
   createDeploymentSecretDraft,
   getManifestFieldGroups,
   type DeliveryManifest,
-  type DeliveryManifestField
+  type DeliveryManifestField,
 } from '@/lib/app-delivery';
 import { cn } from '@/lib/utils';
 
@@ -61,15 +67,15 @@ function getBooleanFieldValue(draft: DeploymentDraft, field: DeliveryManifestFie
 
 function createEditDraft(
   manifest: DeliveryManifest | null,
-  deployment: DeploymentSummary | null
+  deployment: DeploymentSummary | null,
 ): DeploymentDraft {
   const base = createDeploymentInputDraft(manifest);
   return {
     values: {
       ...base.values,
-      ...(deployment?.deliveryValues ?? {})
+      ...(deployment?.deliveryValues ?? {}),
     },
-    secrets: createDeploymentSecretDraft(manifest)
+    secrets: createDeploymentSecretDraft(manifest),
   };
 }
 
@@ -79,7 +85,7 @@ export function DeploymentEditDialog({
   deployment,
   appOption,
   saving,
-  onSave
+  onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -105,7 +111,9 @@ export function DeploymentEditDialog({
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
   const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
-  const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(createEditDraft(null, null));
+  const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
+    createEditDraft(null, null),
+  );
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const userInputGroups = useMemo(() => getManifestFieldGroups(manifest, 'user_input'), [manifest]);
@@ -114,20 +122,20 @@ export function DeploymentEditDialog({
       userInputGroups
         .map((group) => ({
           ...group,
-          fields: group.fields.filter((field) => !field.advanced)
+          fields: group.fields.filter((field) => !field.advanced),
         }))
         .filter((group) => group.fields.length > 0),
-    [userInputGroups]
+    [userInputGroups],
   );
   const advancedUserInputGroups = useMemo(
     () =>
       userInputGroups
         .map((group) => ({
           ...group,
-          fields: group.fields.filter((field) => field.advanced)
+          fields: group.fields.filter((field) => field.advanced),
         }))
         .filter((group) => group.fields.length > 0),
-    [userInputGroups]
+    [userInputGroups],
   );
   const bindingSourceField = deployment?.domainBinding.sourceField ?? 'none';
   const boundDomain = deployment?.domainBinding.boundDomain ?? null;
@@ -149,7 +157,9 @@ export function DeploymentEditDialog({
     setEnvironment(deployment.environment);
     setServerHost(deployment.serverHost ?? '');
     setDomainValues(deployment.domainValues ?? {});
-    setInstallPath(deployment.installPath || appOption?.defaultInstallPath || '/opt/fd-headless-wp-system');
+    setInstallPath(
+      deployment.installPath || appOption?.defaultInstallPath || '/opt/fd-headless-wp-system',
+    );
     setUpdatePolicy(deployment.updatePolicy ?? 'manual');
     setDeploymentDraft(createEditDraft(manifest, deployment));
     setAdvancedOpen(Boolean(deployment.serverHost));
@@ -160,8 +170,8 @@ export function DeploymentEditDialog({
       ...prev,
       values: {
         ...prev.values,
-        [key]: value
-      }
+        [key]: value,
+      },
     }));
   }, []);
 
@@ -170,8 +180,8 @@ export function DeploymentEditDialog({
       ...prev,
       secrets: {
         ...prev.secrets,
-        [key]: value
-      }
+        [key]: value,
+      },
     }));
   }, []);
 
@@ -210,7 +220,10 @@ export function DeploymentEditDialog({
           }
 
           if (field.type === 'boolean') {
-            if (!hasOwnValue(deploymentDraft.values, field.key) && typeof field.defaultValue !== 'boolean') {
+            if (
+              !hasOwnValue(deploymentDraft.values, field.key) &&
+              typeof field.defaultValue !== 'boolean'
+            ) {
               toast.error(`${field.label}不能为空`);
               return false;
             }
@@ -226,7 +239,7 @@ export function DeploymentEditDialog({
     }
 
     return true;
-  }, [deployment, deploymentDraft.secrets, deploymentDraft.values, domainValues, label, manifest, userInputGroups]);
+  }, [deployment, deploymentDraft, domainValues, label, manifest, userInputGroups]);
 
   const handleSave = useCallback(async () => {
     if (!deployment || !validateInputs()) {
@@ -241,13 +254,14 @@ export function DeploymentEditDialog({
       serverHost: serverHost.trim() || undefined,
       domainValues: Object.fromEntries(
         Object.entries(domainValues)
-          .map(([key, value]) => [key, value.trim()])
+          .map(([key, value]) => [key, value.trim()] as const)
           .filter(([, value]) => value.length > 0),
       ),
       installPath: installPath.trim() || undefined,
       updatePolicy,
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
-      secrets: Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined
+      secrets:
+        Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined,
     });
   }, [
     deployment,
@@ -259,14 +273,15 @@ export function DeploymentEditDialog({
     onSave,
     serverHost,
     updatePolicy,
-    validateInputs
+    validateInputs,
   ]);
 
-  const hasAdvancedSection = advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
+  const hasAdvancedSection =
+    advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>编辑 Deployment 配置</DialogTitle>
           <DialogDescription>
@@ -318,9 +333,13 @@ export function DeploymentEditDialog({
                       value={value}
                       onChange={(event) => onChange(event.target.value)}
                       placeholder={slot.placeholder}
-                      disabled={deployment?.domainBinding.isLocked === true && bindingSourceField === slot.sourceField}
+                      disabled={
+                        deployment?.domainBinding.isLocked === true &&
+                        bindingSourceField === slot.sourceField
+                      }
                     />
-                    {deployment?.domainBinding.isLocked === true && bindingSourceField === slot.sourceField ? (
+                    {deployment?.domainBinding.isLocked === true &&
+                    bindingSourceField === slot.sourceField ? (
                       <p className="text-xs text-amber-700">
                         当前{slot.label}已绑定为 {boundDomain ?? value}。如需更换，需要提交工单。
                       </p>
@@ -341,13 +360,18 @@ export function DeploymentEditDialog({
             <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
               <div>
                 <p className="text-sm font-bold">{group.label}</p>
-                {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
+                {group.description ? (
+                  <p className="text-sm text-muted-foreground">{group.description}</p>
+                ) : null}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {group.fields.map((field) => {
                   if (field.type === 'boolean') {
                     return (
-                      <label key={field.key} className="flex items-center gap-3 rounded-md border border-border p-3">
+                      <label
+                        key={field.key}
+                        className="flex items-center gap-3 rounded-md border border-border p-3"
+                      >
                         <Checkbox
                           checked={getBooleanFieldValue(deploymentDraft, field)}
                           onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}
@@ -355,7 +379,9 @@ export function DeploymentEditDialog({
                         <span className="space-y-1">
                           <span className="block text-sm font-medium">{field.label}</span>
                           {field.description ? (
-                            <span className="block text-xs text-muted-foreground">{field.description}</span>
+                            <span className="block text-xs text-muted-foreground">
+                              {field.description}
+                            </span>
                           ) : null}
                         </span>
                       </label>
@@ -363,7 +389,8 @@ export function DeploymentEditDialog({
                   }
 
                   if (field.type === 'secret') {
-                    const hasSavedSecret = deployment?.configuredSecretKeys.includes(field.key) ?? false;
+                    const hasSavedSecret =
+                      deployment?.configuredSecretKeys.includes(field.key) ?? false;
                     return (
                       <div key={field.key} className="space-y-2">
                         <Label htmlFor={`edit-field-${field.key}`}>
@@ -377,7 +404,9 @@ export function DeploymentEditDialog({
                           onChange={(event) => setDraftSecret(field.key, event.target.value)}
                           placeholder={hasSavedSecret ? '已保存，留空保持不变' : field.placeholder}
                         />
-                        {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+                        {field.description ? (
+                          <p className="text-xs text-muted-foreground">{field.description}</p>
+                        ) : null}
                       </div>
                     );
                   }
@@ -395,7 +424,9 @@ export function DeploymentEditDialog({
                         onChange={(event) => setDraftValue(field.key, event.target.value)}
                         placeholder={field.placeholder}
                       />
-                      {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+                      {field.description ? (
+                        <p className="text-xs text-muted-foreground">{field.description}</p>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -410,10 +441,12 @@ export function DeploymentEditDialog({
               onClick={() => setAdvancedOpen((current) => !current)}
             >
               高级选项
-              <ChevronDown className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')} />
+              <ChevronDown
+                className={cn('h-4 w-4 transition-transform', advancedOpen && 'rotate-180')}
+              />
             </button>
             {advancedOpen ? (
-              <div className="space-y-4 border-t border-border px-4 pb-4 pt-3">
+              <div className="space-y-4 border-t border-border px-4 pt-3 pb-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="edit-deployment-server">服务器 / Host</Label>
@@ -457,21 +490,30 @@ export function DeploymentEditDialog({
                   <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                     <div>
                       <p className="text-sm font-bold">{group.label}</p>
-                      {group.description ? <p className="text-sm text-muted-foreground">{group.description}</p> : null}
+                      {group.description ? (
+                        <p className="text-sm text-muted-foreground">{group.description}</p>
+                      ) : null}
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       {group.fields.map((field) => {
                         if (field.type === 'boolean') {
                           return (
-                            <label key={field.key} className="flex items-center gap-3 rounded-md border border-border p-3">
+                            <label
+                              key={field.key}
+                              className="flex items-center gap-3 rounded-md border border-border p-3"
+                            >
                               <Checkbox
                                 checked={getBooleanFieldValue(deploymentDraft, field)}
-                                onCheckedChange={(checked) => setDraftValue(field.key, Boolean(checked))}
+                                onCheckedChange={(checked) =>
+                                  setDraftValue(field.key, Boolean(checked))
+                                }
                               />
                               <span className="space-y-1">
                                 <span className="block text-sm font-medium">{field.label}</span>
                                 {field.description ? (
-                                  <span className="block text-xs text-muted-foreground">{field.description}</span>
+                                  <span className="block text-xs text-muted-foreground">
+                                    {field.description}
+                                  </span>
                                 ) : null}
                               </span>
                             </label>
@@ -479,7 +521,8 @@ export function DeploymentEditDialog({
                         }
 
                         if (field.type === 'secret') {
-                          const hasSavedSecret = deployment?.configuredSecretKeys.includes(field.key) ?? false;
+                          const hasSavedSecret =
+                            deployment?.configuredSecretKeys.includes(field.key) ?? false;
                           return (
                             <div key={field.key} className="space-y-2">
                               <Label htmlFor={`edit-advanced-${field.key}`}>
@@ -491,7 +534,9 @@ export function DeploymentEditDialog({
                                 type="password"
                                 value={deploymentDraft.secrets[field.key] ?? ''}
                                 onChange={(event) => setDraftSecret(field.key, event.target.value)}
-                                placeholder={hasSavedSecret ? '已保存，留空保持不变' : field.placeholder}
+                                placeholder={
+                                  hasSavedSecret ? '已保存，留空保持不变' : field.placeholder
+                                }
                               />
                               {field.description ? (
                                 <p className="text-xs text-muted-foreground">{field.description}</p>
@@ -513,7 +558,9 @@ export function DeploymentEditDialog({
                               onChange={(event) => setDraftValue(field.key, event.target.value)}
                               placeholder={field.placeholder}
                             />
-                            {field.description ? <p className="text-xs text-muted-foreground">{field.description}</p> : null}
+                            {field.description ? (
+                              <p className="text-xs text-muted-foreground">{field.description}</p>
+                            ) : null}
                           </div>
                         );
                       })}
@@ -521,7 +568,9 @@ export function DeploymentEditDialog({
                   </div>
                 ))}
 
-                {!hasAdvancedSection ? <p className="text-sm text-muted-foreground">当前没有额外的高级配置项。</p> : null}
+                {!hasAdvancedSection ? (
+                  <p className="text-sm text-muted-foreground">当前没有额外的高级配置项。</p>
+                ) : null}
               </div>
             ) : null}
           </div>

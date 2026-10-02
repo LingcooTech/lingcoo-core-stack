@@ -157,17 +157,17 @@ export function DashboardPage() {
   return (
     <div className="space-y-6 p-6">
       {showOnboarding ? (
-        <section className="border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.08] rounded-xl border p-5">
+        <section className="rounded-xl border border-primary/20 bg-primary/[0.04] p-5 dark:bg-primary/[0.08]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-foreground text-base font-semibold tracking-tight">
+              <h3 className="text-base font-semibold tracking-tight text-foreground">
                 欢迎来到 fd-core-stack 后台
               </h3>
-              <p className="text-muted-foreground mt-0.5 text-[12px]">
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
                 完成下面 3 步即可让系统开始运转
               </p>
             </div>
-            <span className="text-muted-foreground text-[11px] tabular-nums">
+            <span className="text-[11px] text-muted-foreground tabular-nums">
               {onboardingSteps.filter((s) => s.done).length} / {onboardingSteps.length} 已完成
             </span>
           </div>
@@ -176,7 +176,7 @@ export function DashboardPage() {
               <li
                 key={step.key}
                 className={cn(
-                  'border-border bg-card flex items-center justify-between gap-3 rounded-lg border p-3',
+                  'flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3',
                   step.done && 'opacity-60',
                 )}
               >
@@ -190,14 +190,14 @@ export function DashboardPage() {
                     {step.done ? '✓' : idx + 1}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-foreground truncate text-[13px] font-medium">{step.title}</p>
-                    <p className="text-muted-foreground truncate text-[11px]">{step.description}</p>
+                    <p className="truncate text-[13px] font-medium text-foreground">{step.title}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{step.description}</p>
                   </div>
                 </div>
                 {!step.done ? (
                   <Link
                     to={step.href}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium no-underline transition-colors"
+                    className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 text-[12px] font-medium text-primary-foreground no-underline transition-colors hover:bg-primary/90"
                   >
                     去配置
                     <ArrowUpRight className="h-3 w-3" />
@@ -224,12 +224,12 @@ export function DashboardPage() {
       <section className="space-y-2.5">
         <SectionTitle title="待处理事项" />
         {todoItems.length === 0 ? (
-          <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-lg border px-4 py-3 text-[13px]">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[13px] text-muted-foreground">
             <ShieldCheck className="text-emerald-500" />
             目前没有需要处理的事项
           </div>
         ) : (
-          <div className="border-border bg-card overflow-hidden rounded-lg border">
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
             {todoItems.map((item, idx) => {
               const Icon = item.icon;
               return (
@@ -237,8 +237,8 @@ export function DashboardPage() {
                   key={item.key}
                   to={item.href}
                   className={cn(
-                    'hover:bg-muted/40 flex items-center justify-between gap-3 px-4 py-3 no-underline transition-colors',
-                    idx > 0 && 'border-border border-t',
+                    'flex items-center justify-between gap-3 px-4 py-3 no-underline transition-colors hover:bg-muted/40',
+                    idx > 0 && 'border-t border-border',
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-3">
@@ -253,15 +253,15 @@ export function DashboardPage() {
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-foreground truncate text-[13px] font-medium">
+                      <p className="truncate text-[13px] font-medium text-foreground">
                         {item.title}
                       </p>
-                      <p className="text-muted-foreground truncate text-[11px]">
+                      <p className="truncate text-[11px] text-muted-foreground">
                         {item.description}
                       </p>
                     </div>
                   </div>
-                  <ArrowUpRight className="text-muted-foreground/60 h-4 w-4 shrink-0" />
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
                 </Link>
               );
             })}
@@ -296,9 +296,9 @@ export function DashboardPage() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="border-border bg-card hover:bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[12px] no-underline transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-[12px] text-foreground no-underline transition-colors hover:bg-muted"
               >
-                <Icon className="text-muted-foreground h-3.5 w-3.5" strokeWidth={1.75} />
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
                 {link.label}
               </Link>
             );
@@ -312,32 +312,32 @@ export function DashboardPage() {
             <SectionTitle title="最近订单" />
             <Link
               to="/admin/orders"
-              className="text-muted-foreground hover:text-foreground text-[12px] font-medium transition-colors"
+              className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               查看全部 →
             </Link>
           </div>
-          <div className="border-border bg-card overflow-hidden rounded-lg border">
+          <div className="overflow-hidden rounded-lg border border-border bg-card">
             {orders.slice(0, 6).map((order, idx) => (
               <Link
                 key={order.orderNo}
                 to="/admin/orders"
                 className={cn(
-                  'hover:bg-muted/40 flex items-center justify-between gap-3 px-4 py-2.5 no-underline transition-colors',
-                  idx > 0 && 'border-border border-t',
+                  'flex items-center justify-between gap-3 px-4 py-2.5 no-underline transition-colors hover:bg-muted/40',
+                  idx > 0 && 'border-t border-border',
                 )}
               >
                 <div className="min-w-0">
-                  <p className="text-foreground truncate font-mono text-[12px] font-semibold">
+                  <p className="truncate font-mono text-[12px] font-semibold text-foreground">
                     {order.orderNo}
                   </p>
-                  <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                     {order.user?.email ?? order.userId} · {order.app?.name ?? order.appId} ·{' '}
                     {formatTime(order.createdAt)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="text-foreground text-[13px] font-semibold tabular-nums">
+                  <span className="text-[13px] font-semibold text-foreground tabular-nums">
                     {formatAmount(order.amount, order.currency)}
                   </span>
                   <StatusPill tone={statusToTone(order.status)} label={order.status} />
@@ -353,7 +353,7 @@ export function DashboardPage() {
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <h2 className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.12em]">
+    <h2 className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
       {title}
     </h2>
   );
@@ -371,16 +371,16 @@ function MetricCard({
   alert?: boolean;
 }) {
   return (
-    <div className="border-border bg-card rounded-lg border p-4">
-      <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
       {loading ? (
-        <div className="bg-muted mt-2 h-7 w-12 animate-pulse rounded" />
+        <div className="mt-2 h-7 w-12 animate-pulse rounded bg-muted" />
       ) : (
         <p
           className={cn(
-            'mt-1.5 text-[28px] font-semibold tabular-nums leading-none tracking-tight',
+            'mt-1.5 text-[28px] leading-none font-semibold tracking-tight tabular-nums',
             alert ? 'text-amber-600 dark:text-amber-400' : 'text-foreground',
           )}
         >
@@ -405,20 +405,20 @@ function PaymentStatusCard({
   return (
     <Link
       to={href}
-      className="border-border hover:border-foreground/20 bg-card flex items-center justify-between gap-3 rounded-lg border p-4 no-underline transition-colors"
+      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 no-underline transition-colors hover:border-foreground/20"
     >
       <div>
-        <p className="text-foreground text-[13px] font-semibold">{name}</p>
+        <p className="text-[13px] font-semibold text-foreground">{name}</p>
         {loading ? (
-          <div className="bg-muted mt-1 h-3 w-20 animate-pulse rounded" />
+          <div className="mt-1 h-3 w-20 animate-pulse rounded bg-muted" />
         ) : config ? (
-          <p className="text-muted-foreground mt-0.5 text-[11px]">{config.source}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{config.source}</p>
         ) : (
-          <p className="text-muted-foreground mt-0.5 text-[11px]">未配置</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">未配置</p>
         )}
       </div>
       {loading ? (
-        <div className="bg-muted h-5 w-16 animate-pulse rounded-full" />
+        <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
       ) : (
         <StatusPill
           tone={config?.configured ? 'ok' : 'neutral'}

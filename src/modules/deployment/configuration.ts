@@ -114,7 +114,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected async loadDeploymentEntitlement(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
     if (!deployment?.entitlementId) {
       throw httpError(
@@ -375,7 +375,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected async ensureDeploymentStatusReportAuth(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
@@ -474,10 +474,10 @@ export class DeploymentConfigurationUseCases {
 
     return Object.fromEntries(
       Object.entries(values)
-        .map(([key, value]) => [
-          key,
-          typeof value === 'boolean' ? String(value) : normalizeString(value),
-        ])
+        .map(
+          ([key, value]) =>
+            [key, typeof value === 'boolean' ? String(value) : normalizeString(value)] as const,
+        )
         .filter(([, value]) => value.length > 0),
     );
   }
@@ -535,7 +535,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected readDeploymentRuntimeUpdatePolicy(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ): DeploymentRuntimeUpdatePolicy {
     const meta = this.normalizeMeta(deployment?.meta);
     const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
@@ -543,7 +543,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected readDeploymentInputValues(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const inputs = this.normalizeMeta(meta.deliveryInputs);
@@ -551,7 +551,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected readDeploymentInputSecrets(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const inputs = this.normalizeMeta(meta.deliveryInputs);
@@ -570,7 +570,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected readDeploymentDomainValues(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
     const meta = this.normalizeMeta(deployment?.meta);
     const domains = this.normalizeMeta(meta.deliveryDomains);
@@ -697,7 +697,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected assertDomainBindingEditable(input: {
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>;
     policy: DeploymentPolicy;
     binding: DeploymentBindingState;
     requestedDomainValues?: Record<string, string>;
@@ -732,7 +732,7 @@ export class DeploymentConfigurationUseCases {
 
   protected async ensureDeploymentReadyForTokenIssue(input: {
     app: DeploymentAppRecord;
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>;
   }) {
     const { entitlement } = await this.loadDeploymentEntitlement(input.deployment);
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
@@ -788,7 +788,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected async bindDeploymentDomainOnExchange(input: {
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>;
     entitlementId: string;
     policy: DeploymentPolicy;
   }) {
@@ -830,7 +830,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected getSourceFieldValue(
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
     sourceField: DeliveryManifestDomainSourceField,
   ) {
     const domainValues = this.readDeploymentDomainValues(deployment);
@@ -938,7 +938,7 @@ export class DeploymentConfigurationUseCases {
 
   protected async buildBootstrapPayload(input: {
     app: DeploymentAppRecord;
-    deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>;
+    deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>;
     entitlement?: Awaited<ReturnType<LicenseRepository['findEntitlementById']>> | null;
     token?: string;
   }) {

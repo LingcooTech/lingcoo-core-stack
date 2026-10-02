@@ -147,9 +147,9 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div className="border-border bg-muted/70 rounded-lg border px-3 py-2.5">
-      <p className="text-muted-foreground text-[11px] font-medium">{label}</p>
-      <p className={cn('text-foreground mt-1 text-sm', mono && 'font-mono text-xs')}>
+    <div className="rounded-lg border border-border bg-muted/70 px-3 py-2.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className={cn('mt-1 text-sm text-foreground', mono && 'font-mono text-xs')}>
         {value || '—'}
       </p>
     </div>
@@ -158,7 +158,7 @@ function MetaField({
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-muted-foreground text-sm">暂无会话记录。</p>;
+    return <p className="text-sm text-muted-foreground">暂无会话记录。</p>;
   }
 
   return (
@@ -168,14 +168,14 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
         return (
           <div
             key={message.id}
-            className="border-border bg-card rounded-xl border px-4 py-3 shadow-sm"
+            className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
           >
-            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="text-foreground font-semibold">{messageAuthorLabel(message)}</span>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{messageAuthorLabel(message)}</span>
               <span>{formatTime(message.createdAt)}</span>
               {isInternal ? <StatusPill tone="neutral" label="内部备注" /> : null}
             </div>
-            <p className="text-foreground mt-2 whitespace-pre-wrap text-sm leading-6">
+            <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-foreground">
               {message.body}
             </p>
           </div>
@@ -264,7 +264,7 @@ function TicketDetailPanel({
 
       <CardContent className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-          <div className="border-border bg-muted/60 space-y-3 rounded-xl border border-dashed p-4">
+          <div className="space-y-3 rounded-xl border border-dashed border-border bg-muted/60 p-4">
             <div className="space-y-2">
               <Label>工单状态</Label>
               <Select
@@ -295,7 +295,7 @@ function TicketDetailPanel({
             <div className="h-px bg-gray-200" />
 
             <div className="space-y-2">
-              <p className="text-foreground text-sm font-semibold">指派</p>
+              <p className="text-sm font-semibold text-foreground">指派</p>
               <Button type="button" variant="outline" onClick={onAssignToMe} disabled={isAssigning}>
                 {isAssigning ? '处理中...' : '指派给我'}
               </Button>
@@ -307,16 +307,16 @@ function TicketDetailPanel({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-foreground text-sm font-semibold">会话记录</p>
-              <p className="text-muted-foreground text-xs">{messages.length} 条消息</p>
+              <p className="text-sm font-semibold text-foreground">会话记录</p>
+              <p className="text-xs text-muted-foreground">{messages.length} 条消息</p>
             </div>
             <TicketMessageList messages={messages} />
           </div>
         </div>
 
-        <div className="border-border bg-muted/60 space-y-3 rounded-xl border border-dashed p-4">
+        <div className="space-y-3 rounded-xl border border-dashed border-border bg-muted/60 p-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-foreground text-sm font-semibold">回复工单</p>
+            <p className="text-sm font-semibold text-foreground">回复工单</p>
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={internalNote}
@@ -463,8 +463,8 @@ export function TicketsPage() {
       className: 'min-w-[260px]',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate text-[13px] font-medium">{row.subject}</p>
-          <p className="text-muted-foreground truncate font-mono text-[10px]">
+          <p className="truncate text-[13px] font-medium text-foreground">{row.subject}</p>
+          <p className="truncate font-mono text-[10px] text-muted-foreground">
             {row.ticketNo}
             {row.app?.name ? ` · ${row.app.name}` : ''}
           </p>
@@ -494,10 +494,10 @@ export function TicketsPage() {
       header: '指派 / 更新',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate text-[12px]">
+          <p className="truncate text-[12px] text-foreground">
             {row.assignee?.displayName ?? row.assignee?.email ?? '未分配'}
           </p>
-          <p className="text-muted-foreground text-[10px] tabular-nums">
+          <p className="text-[10px] text-muted-foreground tabular-nums">
             {formatTime(row.lastActivityAt)}
           </p>
         </div>
@@ -578,7 +578,7 @@ export function TicketsPage() {
           onClearAll={clearFilters}
         />
 
-        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <DataTable
             columns={columns}
             data={tickets}
@@ -605,7 +605,7 @@ export function TicketsPage() {
             }}
           >
             <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
-              <SheetHeader className="border-border border-b">
+              <SheetHeader className="border-b border-border">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <SheetTitle className="font-mono text-sm">{selectedTicketNo}</SheetTitle>
@@ -685,7 +685,7 @@ export function TicketsPage() {
                 ) : detailQuery.isLoading ? (
                   <div className="space-y-3 pt-4">
                     {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="bg-muted h-10 animate-pulse rounded-lg" />
+                      <div key={index} className="h-10 animate-pulse rounded-lg bg-muted" />
                     ))}
                   </div>
                 ) : null}

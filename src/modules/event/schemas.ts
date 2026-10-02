@@ -6,9 +6,9 @@ export const eventItemSchema = z.object({
   productId: z.string().uuid().optional(),
   installId: z.string().uuid().optional(),
   eventTime: z.iso.datetime().optional(),
-  properties: z.record(z.string(), z.unknown()).default({})
+  properties: z.record(z.string(), z.unknown()).default({}),
 });
 
 export const eventBatchSchema = z.object({
-  items: z.array(eventItemSchema).min(1).max(100)
+  items: z.array(eventItemSchema).min(1).max(100),
 });

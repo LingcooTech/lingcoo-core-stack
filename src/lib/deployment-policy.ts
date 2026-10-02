@@ -34,7 +34,9 @@ const COMPOUND_PUBLIC_SUFFIXES = new Set([
 ]);
 
 function normalizeObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 export function normalizeHostname(value: unknown) {
@@ -71,7 +73,9 @@ function normalizeMax(value: unknown) {
       : typeof value === 'string' && value.trim().length > 0
         ? Number(value)
         : Number.NaN;
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : DEFAULT_DEPLOYMENT_POLICY.maxActiveDeployments;
+  return Number.isFinite(parsed) && parsed >= 1
+    ? Math.floor(parsed)
+    : DEFAULT_DEPLOYMENT_POLICY.maxActiveDeployments;
 }
 
 function normalizeBindingSource(value: unknown): DeploymentDomainBindingSource {
@@ -79,7 +83,10 @@ function normalizeBindingSource(value: unknown): DeploymentDomainBindingSource {
   return normalized && normalized !== 'none' ? normalized : 'none';
 }
 
-function normalizeBindingMode(value: unknown, source: DeploymentDomainBindingSource): DeploymentDomainBindingMode {
+function normalizeBindingMode(
+  value: unknown,
+  source: DeploymentDomainBindingSource,
+): DeploymentDomainBindingMode {
   const normalized = normalizeString(value);
   if (normalized === 'lock_on_first_success' && source !== 'none') {
     return 'lock_on_first_success';
@@ -100,7 +107,9 @@ export function normalizeDeploymentPolicy(value: unknown): DeploymentPolicy {
     domainBindingMode: mode,
     domainBindingSource: mode === 'none' ? 'none' : source,
     domainBindingScope: normalizeBindingScope(raw.domainBindingScope),
-    allowMultiplePurchases: normalizeBoolean(raw.allowMultiplePurchases) ?? DEFAULT_DEPLOYMENT_POLICY.allowMultiplePurchases,
+    allowMultiplePurchases:
+      normalizeBoolean(raw.allowMultiplePurchases) ??
+      DEFAULT_DEPLOYMENT_POLICY.allowMultiplePurchases,
   };
 }
 

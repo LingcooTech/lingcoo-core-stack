@@ -19,6 +19,7 @@ test.beforeAll(async () => {
     .insert(users)
     .values({ email: adminEmail, role: 'admin', emailVerified: true })
     .returning();
+  if (!admin) throw new Error('Missing test fixture: admin');
   for (const userId of [admin.id, fixture.user.id])
     await db.insert(passwordCredentials).values({ userId, passwordHash: hashPassword(password) });
   const factories = createServiceFactories();
@@ -37,6 +38,7 @@ test.beforeAll(async () => {
     .select()
     .from(entitlements)
     .where(eq(entitlements.sourceId, fixture.order.id));
+  if (!entitlement) throw new Error('Missing test fixture: entitlement');
   deploymentLabel = 'Browser fixture ' + randomUUID();
   await new DeploymentService(factories, db, env).createDeployment({
     userId: fixture.user.id,

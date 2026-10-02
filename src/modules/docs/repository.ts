@@ -78,6 +78,7 @@ export class DocsRepository {
 
   async createSpace(input: typeof docSpaces.$inferInsert) {
     const [space] = await this.db.insert(docSpaces).values(input).returning();
+    if (!space) throw new Error('Missing required write result: docs space');
     return space;
   }
 
@@ -95,6 +96,7 @@ export class DocsRepository {
 
   async createPage(input: typeof docPages.$inferInsert) {
     const [page] = await this.db.insert(docPages).values(input).returning();
+    if (!page) throw new Error('Missing required write result: docs page');
     return page;
   }
 
@@ -112,6 +114,7 @@ export class DocsRepository {
 
   async createFeedback(input: typeof docFeedback.$inferInsert) {
     const [row] = await this.db.insert(docFeedback).values(input).returning();
+    if (!row) throw new Error('Missing required write result: docs row');
     return row;
   }
 

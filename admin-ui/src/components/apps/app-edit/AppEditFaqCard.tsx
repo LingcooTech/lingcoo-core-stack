@@ -16,7 +16,9 @@ interface AppEditFaqCardProps {
 export function AppEditFaqCard({ faq, onChange }: AppEditFaqCardProps) {
   const updateFaq = (index: number, patch: Partial<FormState['faq'][number]>) => {
     const next = [...faq];
-    next[index] = { ...next[index], ...patch };
+    const item = next[index];
+    if (!item) return;
+    next[index] = { ...item, ...patch };
     onChange(next);
   };
 

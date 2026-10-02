@@ -290,6 +290,7 @@ export class JobRunService {
         })
         .where(eq(jobRuns.id, candidate.id))
         .returning();
+      if (!claimed) throw new Error('Missing claimed job after row lock');
       await tx.insert(jobAttempts).values({
         jobId: claimed.id,
         attempt: claimed.attempts,

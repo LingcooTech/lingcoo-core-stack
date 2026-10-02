@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -274,7 +275,7 @@ export const docPages = pgTable(
     spaceId: uuid('space_id')
       .notNull()
       .references(() => docSpaces.id, { onDelete: 'cascade' }),
-    parentId: uuid('parent_id').references((): any => docPages.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): AnyPgColumn => docPages.id, { onDelete: 'cascade' }),
     slug: varchar('slug', { length: 160 }).notNull(),
     path: varchar('path', { length: 500 }).notNull(),
     title: varchar('title', { length: 200 }).notNull(),

@@ -46,6 +46,7 @@ export class InstallRepository {
         updatedAt: now,
       })
       .returning();
+    if (!install) throw new Error('Missing required write result: install install');
 
     return install;
   }

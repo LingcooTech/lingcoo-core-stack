@@ -23,7 +23,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
   return (
     <>
-      <header className="border-border bg-card/70 sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4 backdrop-blur-md">
+      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/70 px-4 backdrop-blur-md">
         {/* Mobile hamburger + Breadcrumb */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {onMenuClick ? (
@@ -31,7 +31,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               type="button"
               onClick={onMenuClick}
               aria-label="打开侧边栏"
-              className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors lg:hidden"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
             >
               <Menu className="h-4 w-4" />
             </button>
@@ -39,11 +39,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <nav aria-label="面包屑" className="flex min-w-0 items-center gap-1.5 text-[13px]">
             {section ? (
               <>
-                <span className="text-muted-foreground/80 hidden sm:inline">
+                <span className="hidden text-muted-foreground/80 sm:inline">
                   {section.groupLabel}
                 </span>
-                <ChevronRight className="text-muted-foreground/40 hidden h-3.5 w-3.5 sm:inline" />
-                <span className="text-foreground truncate font-semibold">{section.title}</span>
+                <ChevronRight className="hidden h-3.5 w-3.5 text-muted-foreground/40 sm:inline" />
+                <span className="truncate font-semibold text-foreground">{section.title}</span>
               </>
             ) : (
               <span className="text-muted-foreground">FD Core Stack</span>
@@ -57,14 +57,14 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="text-muted-foreground border-border bg-muted/50 hover:bg-muted hover:text-foreground inline-flex h-8 w-10 items-center gap-2 rounded-md border px-2.5 text-[12px] transition-colors md:w-56 lg:w-64"
+            className="inline-flex h-8 w-10 items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:w-56 lg:w-64"
             title="搜索 / 跳转 (⌘K)"
           >
             <Search className="h-3.5 w-3.5" />
-            <span className="text-muted-foreground/80 hidden flex-1 text-left md:inline">
+            <span className="hidden flex-1 text-left text-muted-foreground/80 md:inline">
               搜索...
             </span>
-            <kbd className="border-border bg-card text-muted-foreground/80 ml-1 hidden h-4 items-center rounded border px-1 font-mono text-[10px] md:inline-flex">
+            <kbd className="ml-1 hidden h-4 items-center rounded border border-border bg-card px-1 font-mono text-[10px] text-muted-foreground/80 md:inline-flex">
               ⌘K
             </kbd>
           </button>
@@ -89,7 +89,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                 target={action.external ? '_blank' : undefined}
                 rel={action.external ? 'noreferrer' : undefined}
                 className={cn(
-                  'bg-primary hover:bg-primary/90 inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium text-white shadow-sm transition-colors',
+                  'inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-primary/90',
                 )}
               >
                 <span>{action.label}</span>

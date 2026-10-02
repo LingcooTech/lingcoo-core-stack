@@ -20,8 +20,8 @@ export function SectionHeader({ sectionKey, className, showLead = false }: Secti
   if (!showLead) return null;
 
   return (
-    <div className={cn('border-border border-b px-6 py-3', className)}>
-      <p className="text-muted-foreground text-[13px] leading-relaxed">{section.lead}</p>
+    <div className={cn('border-b border-border px-6 py-3', className)}>
+      <p className="text-[13px] leading-relaxed text-muted-foreground">{section.lead}</p>
     </div>
   );
 }

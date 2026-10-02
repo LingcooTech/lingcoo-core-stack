@@ -395,65 +395,82 @@ export class AiService {
       access: ReturnType<AiService['buildUserAccessResponse']>;
     }
   > {
-    const state = await this.resolveUserAccessState(appCode, userId);
-    this.ensureProviderAvailable(state, provider);
-
-    if (!state.user.emailVerified) {
-      throw httpError(403, 'Please verify your email address');
-    }
-
-    const { requestChars, effectiveMaxTokens } = this.validateUserChatInput(state, input);
     const operation = input.operation ?? 'chat';
     const requestedModel = input.model?.trim() || '';
-
+    // Reserve quota in a short transaction. The remote request runs after the lock is released.
+    const { state, requestChars, effectiveMaxTokens, reservation } = await this.db.transaction(
+      async (tx) => {
+        const repository = new AiRepository(tx);
+        await repository.lockQuota(userId, appCode);
+        const service = new AiService(this.capabilities, tx, this.env);
+        const state = await service.resolveUserAccessState(appCode, userId);
+        service.ensureProviderAvailable(state, provider);
+        if (!state.user.emailVerified) throw httpError(403, 'Please verify your email address');
+        const budget = service.validateUserChatInput(state, input);
+        const reservation = await repository.createUsageEvent({
+          userId,
+          appId: state.app.id,
+          provider,
+          model: requestedModel || 'default',
+          operation,
+          accessScope: state.accessScope,
+          status: 'pending',
+          requestChars: budget.requestChars,
+          responseChars: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: budget.effectiveMaxTokens,
+          meta: { appCode, state: 'reserved' },
+        });
+        return { state, ...budget, reservation };
+      },
+    );
+    let providerCompleted = false;
     try {
       const result = await getAiProviderAdapter(provider).createChatCompletion(this.getContext(), {
         ...input,
         maxTokens: effectiveMaxTokens,
       });
 
+      providerCompleted = true;
       const promptTokens = normalizeCount(result.usage.promptTokens);
       const completionTokens = normalizeCount(result.usage.completionTokens);
       const totalTokens =
         normalizeCount(result.usage.totalTokens) || Math.max(promptTokens + completionTokens, 0);
       const responseChars = result.content.length;
 
-      await new AiRepository(this.db).createUsageEvent({
-        userId,
-        appId: state.app.id,
-        provider,
-        model: result.model,
-        operation,
-        accessScope: state.accessScope,
-        status: 'succeeded',
-        requestChars,
-        responseChars,
-        promptTokens,
-        completionTokens,
-        totalTokens,
-        meta: {
-          appCode: state.app.code,
-          finishReason: result.finishReason,
-          requestedModel: requestedModel || null,
-          messageCount: input.messages.length,
-          responseId: result.meta.id,
-        },
-      });
-
-      await this.capabilities.createEventService(this.db).capture({
-        userId,
-        appId: state.app.id,
-        eventName: 'ai.proxy.chat_completed',
-        properties: {
-          appCode: state.app.code,
-          provider,
+      await this.db.transaction(async (tx) => {
+        await new AiRepository(tx).finishUsageEvent(reservation.id, {
           model: result.model,
-          operation,
-          accessScope: state.accessScope,
-          requestChars,
+          status: 'succeeded',
           responseChars,
+          promptTokens,
+          completionTokens,
           totalTokens,
-        },
+          meta: {
+            appCode: state.app.code,
+            finishReason: result.finishReason,
+            requestedModel: requestedModel || null,
+            messageCount: input.messages.length,
+            responseId: result.meta.id,
+          },
+        });
+
+        await this.capabilities.createEventService(tx).capture({
+          userId,
+          appId: state.app.id,
+          eventName: 'ai.proxy.chat_completed',
+          properties: {
+            appCode: state.app.code,
+            provider,
+            model: result.model,
+            operation,
+            accessScope: state.accessScope,
+            requestChars,
+            responseChars,
+            totalTokens,
+          },
+        });
       });
 
       const nextState: UserAccessState = {
@@ -483,42 +500,38 @@ export class AiService {
         access: this.buildUserAccessResponse(nextState),
       };
     } catch (error) {
-      await new AiRepository(this.db).createUsageEvent({
-        userId,
-        appId: state.app.id,
-        provider,
-        model: requestedModel || 'default',
-        operation,
-        accessScope: state.accessScope,
-        status: 'failed',
-        requestChars,
-        responseChars: 0,
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        meta: {
-          appCode: state.app.code,
-          message: error instanceof Error ? error.message : 'Unknown AI proxy error',
-          requestedModel: requestedModel || null,
-          messageCount: input.messages.length,
-        },
-      });
+      if (providerCompleted) throw error;
+      await this.db.transaction(async (tx) => {
+        await new AiRepository(tx).finishUsageEvent(reservation.id, {
+          model: requestedModel || 'default',
+          status: 'failed',
+          responseChars: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          meta: {
+            appCode: state.app.code,
+            message: error instanceof Error ? error.message : 'Unknown AI proxy error',
+            requestedModel: requestedModel || null,
+            messageCount: input.messages.length,
+          },
+        });
 
-      await this.capabilities.createEventService(this.db).capture({
-        userId,
-        appId: state.app.id,
-        eventName: 'ai.proxy.chat_failed',
-        properties: {
-          appCode: state.app.code,
-          provider,
-          model: requestedModel || null,
-          operation,
-          accessScope: state.accessScope,
-          requestChars,
-          error: error instanceof Error ? error.message : 'Unknown AI proxy error',
-        },
+        await this.capabilities.createEventService(tx).capture({
+          userId,
+          appId: state.app.id,
+          eventName: 'ai.proxy.chat_failed',
+          properties: {
+            appCode: state.app.code,
+            provider,
+            model: requestedModel || null,
+            operation,
+            accessScope: state.accessScope,
+            requestChars,
+            error: error instanceof Error ? error.message : 'Unknown AI proxy error',
+          },
+        });
       });
-
       throw error;
     }
   }

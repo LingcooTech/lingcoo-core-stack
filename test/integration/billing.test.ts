@@ -1,3 +1,4 @@
+import { requireResult } from '../../src/db/required-result';
 import { randomUUID } from 'node:crypto';
 import { JobRunService } from '../../src/modules/jobs/public';
 import { createServiceFactories } from '../../src/composition/service-factories';
@@ -56,7 +57,10 @@ for (const field of ['amount', 'currency'] as const) {
       /mismatch/,
     );
     assert.equal(
-      (await db.select().from(orders).where(eq(orders.id, fixture.order.id)))[0].status,
+      requireResult(
+        (await db.select().from(orders).where(eq(orders.id, fixture.order.id)))[0],
+        'fixture array element',
+      ).status,
       'pending',
     );
     assert.equal(
@@ -80,7 +84,10 @@ test('entitlement failure rolls back the paid order and webhook record', async (
     /feature mappings/,
   );
   assert.equal(
-    (await db.select().from(orders).where(eq(orders.id, fixture.order.id)))[0].status,
+    requireResult(
+      (await db.select().from(orders).where(eq(orders.id, fixture.order.id)))[0],
+      'fixture array element',
+    ).status,
     'pending',
   );
   assert.equal(
@@ -112,8 +119,10 @@ test('refund reconciliation replay preserves revoked entitlement and skips the p
   assert.equal((await service.reconcileRefundByOrderNo(fixture.order.orderNo)).changed, false);
   assert.equal(provider.mock.callCount(), 1);
   assert.equal(
-    (await db.select().from(entitlements).where(eq(entitlements.sourceId, fixture.order.id)))[0]
-      .status,
+    requireResult(
+      (await db.select().from(entitlements).where(eq(entitlements.sourceId, fixture.order.id)))[0],
+      'fixture array element',
+    ).status,
     'cancelled',
   );
 });
@@ -151,5 +160,6 @@ test('refund reconciliation enqueue failure rolls back order and event changes',
     ),
   );
   const [order] = await db.select().from(orders).where(eq(orders.id, purchase.order.id));
+  if (!order) throw new Error('Missing test fixture: order');
   assert.equal(order.status, 'paid');
 });

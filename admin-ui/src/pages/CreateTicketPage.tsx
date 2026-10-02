@@ -62,26 +62,26 @@ export function CreateTicketPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Button variant="ghost" asChild className="text-muted-foreground px-0">
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/tickets">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回我的工单
           </Link>
         </Button>
 
-        <section className="border-border bg-card/95 rounded-xl border px-6 py-6 shadow-sm">
-          <p className="text-primary text-xs font-semibold uppercase tracking-[0.18em]">
+        <section className="rounded-xl border border-border bg-card/95 px-6 py-6 shadow-sm">
+          <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">
             Create Ticket
           </p>
-          <h1 className="text-foreground mt-3 text-3xl font-semibold tracking-tight">提交新工单</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">提交新工单</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             请把关联应用、订单号、安装实例
             ID、复现步骤和已尝试过的排查动作写完整，这样后续处理更高效。
           </p>
         </section>
       </div>
 
-      <Card className="border-border bg-card rounded-xl shadow-sm">
+      <Card className="rounded-xl border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl tracking-tight">工单内容</CardTitle>
           <CardDescription>问题越具体，定位和处理越快。</CardDescription>

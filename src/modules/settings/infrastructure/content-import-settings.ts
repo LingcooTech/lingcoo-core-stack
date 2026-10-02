@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../../../db/schema';
@@ -282,7 +283,10 @@ export class ContentImportSettingsService {
       throw httpError(502, `WordPress 连接失败 (${response.status})`);
     }
 
-    const data = (await response.json()) as any;
+    const rawData: unknown = await response.json();
+    const data = auth
+      ? z.object({ name: z.string().optional(), slug: z.string().optional() }).parse(rawData)
+      : undefined;
     const userName = auth ? normalizeString(data?.name || data?.slug) : '';
 
     return {
@@ -313,7 +317,14 @@ export class ContentImportSettingsService {
       throw httpError(502, `Notion 连接失败 (${response.status})`);
     }
 
-    const data = (await response.json()) as any;
+    const data = z
+      .object({
+        name: z.string().nullable().optional(),
+        bot: z
+          .object({ owner: z.object({ workspace_name: z.string().optional() }).optional() })
+          .optional(),
+      })
+      .parse(await response.json());
 
     return {
       ok: true,

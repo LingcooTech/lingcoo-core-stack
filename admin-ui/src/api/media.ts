@@ -12,7 +12,9 @@ export interface CreateQiniuUploadTokenInput {
   prefix?: string;
 }
 
-export async function listQiniuImages(input: ListQiniuImagesInput = {}): Promise<QiniuImageListResult> {
+export async function listQiniuImages(
+  input: ListQiniuImagesInput = {},
+): Promise<QiniuImageListResult> {
   const params = new URLSearchParams();
 
   if (input.prefix) {
@@ -33,10 +35,10 @@ export async function listQiniuImages(input: ListQiniuImagesInput = {}): Promise
 }
 
 export async function createQiniuUploadToken(
-  payload: CreateQiniuUploadTokenInput
+  payload: CreateQiniuUploadTokenInput,
 ): Promise<QiniuUploadTokenResult> {
   return apiClient<QiniuUploadTokenResult>('/v1/admin/media/qiniu/upload-token', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }

@@ -64,7 +64,7 @@ export interface SiteFooterLinkInput {
   openInNewTab?: boolean;
 }
 
-export interface SiteNavigationChildInput extends SiteFooterLinkInput {}
+export type SiteNavigationChildInput = SiteFooterLinkInput;
 
 export interface SiteNavigationItemInput {
   label: string;

@@ -39,7 +39,7 @@ function readDeploymentDomainValues(meta: unknown) {
   const values = normalizeRecord(raw.values);
   return Object.fromEntries(
     Object.entries(values)
-      .map(([key, value]) => [key, normalizeString(value)])
+      .map(([key, value]) => [key, normalizeString(value)] as const)
       .filter(([, value]) => value.length > 0),
   );
 }

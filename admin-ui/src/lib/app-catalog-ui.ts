@@ -46,9 +46,9 @@ export function getActiveOffers<T extends { status: string }>(offers: T[]) {
   return offers.filter((offer) => offer.status === 'active');
 }
 
-export function getPreferredOffer<T extends { isDefault?: boolean; priceAmount: number; status: string }>(
-  offers: T[],
-) {
+export function getPreferredOffer<
+  T extends { isDefault?: boolean; priceAmount: number; status: string },
+>(offers: T[]) {
   const activeOffers = getActiveOffers(offers);
   if (!activeOffers.length) {
     return null;
@@ -68,9 +68,9 @@ export function formatOfferPriceLabel(offer: OfferLike | null | undefined) {
   return formatOfferPriceAmount(offer.priceAmount, offer.currency);
 }
 
-export function formatOfferStartingPriceLabel<T extends { priceAmount: number; currency: string; status: string }>(
-  offers: T[],
-) {
+export function formatOfferStartingPriceLabel<
+  T extends { priceAmount: number; currency: string; status: string },
+>(offers: T[]) {
   const activeOffers = getActiveOffers(offers);
   if (!activeOffers.length) {
     return '即将开放';
@@ -79,6 +79,7 @@ export function formatOfferStartingPriceLabel<T extends { priceAmount: number; c
   const sorted = [...activeOffers].sort((left, right) => left.priceAmount - right.priceAmount);
   const minOffer = sorted[0];
   const maxOffer = sorted[sorted.length - 1];
+  if (!minOffer || !maxOffer) return '即将开放';
 
   if (minOffer.priceAmount === maxOffer.priceAmount) {
     return formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency);
@@ -87,9 +88,9 @@ export function formatOfferStartingPriceLabel<T extends { priceAmount: number; c
   return `${formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency)} 起`;
 }
 
-export function formatOfferRangeLabel<T extends { priceAmount: number; currency: string; status: string }>(
-  offers: T[],
-) {
+export function formatOfferRangeLabel<
+  T extends { priceAmount: number; currency: string; status: string },
+>(offers: T[]) {
   const activeOffers = getActiveOffers(offers);
   if (!activeOffers.length) {
     return '即将开放';
@@ -98,6 +99,7 @@ export function formatOfferRangeLabel<T extends { priceAmount: number; currency:
   const sorted = [...activeOffers].sort((left, right) => left.priceAmount - right.priceAmount);
   const minOffer = sorted[0];
   const maxOffer = sorted[sorted.length - 1];
+  if (!minOffer || !maxOffer) return '即将开放';
 
   if (minOffer.priceAmount === maxOffer.priceAmount) {
     return formatOfferPriceAmount(minOffer.priceAmount, minOffer.currency);
@@ -137,18 +139,12 @@ export function getLinkTypeLabel(type: AppLink['type']) {
   }
 }
 
-export function getLinksByType(
-  links: AppLink[] | null | undefined,
-  type: AppLink['type'],
-) {
+export function getLinksByType(links: AppLink[] | null | undefined, type: AppLink['type']) {
   return (links ?? []).filter((link) => link.type === type && link.url.trim());
 }
 
 export function getAccessLinks(links: AppLink[] | null | undefined) {
-  return [
-    ...getLinksByType(links, 'website'),
-    ...getLinksByType(links, 'download'),
-  ];
+  return [...getLinksByType(links, 'website'), ...getLinksByType(links, 'download')];
 }
 
 export function getPrimaryWebsiteLink(links: AppLink[] | null | undefined) {

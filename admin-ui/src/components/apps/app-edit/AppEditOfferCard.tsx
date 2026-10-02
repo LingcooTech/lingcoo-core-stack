@@ -5,7 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import {
   formatPlanInterval,
@@ -51,7 +57,7 @@ export function AppEditOfferCard({
               <Badge className="bg-amber-500 text-white hover:bg-amber-500">默认</Badge>
             ) : null}
           </div>
-          <p className="text-xs font-mono text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {offer.code || '未填写 Offer Code'}
           </p>
         </div>

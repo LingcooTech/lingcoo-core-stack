@@ -32,6 +32,7 @@ export class DeploymentRepository {
         updatedAt: new Date(),
       })
       .returning();
+    if (!deployment) throw new Error('Missing required write result: deployment deployment');
 
     return deployment;
   }
@@ -101,6 +102,7 @@ export class DeploymentRepository {
         updatedAt: new Date(),
       })
       .returning();
+    if (!token) throw new Error('Missing required write result: deployment token');
 
     return token;
   }

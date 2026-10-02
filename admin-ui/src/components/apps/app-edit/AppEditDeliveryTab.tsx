@@ -105,7 +105,9 @@ function renderPresetField(input: {
           disabled={!field.editable}
           onChange={(event) => updateSecretField(field.key, event.target.value)}
           placeholder={
-            deliverySecrets[field.key] ? '已保存，留空保持不变' : field.placeholder ?? '当前未保存'
+            deliverySecrets[field.key]
+              ? '已保存，留空保持不变'
+              : (field.placeholder ?? '当前未保存')
           }
         />
         {field.description ? (
@@ -187,7 +189,8 @@ export function AppEditDeliveryTab({
         <CardHeader>
           <CardTitle>交付配置</CardTitle>
           <CardDescription>
-            应用后台只维护 manifest 中声明为 `preset` 的字段。`user_input` 字段会在终端用户创建部署时填写。
+            应用后台只维护 manifest 中声明为 `preset` 的字段。`user_input`
+            字段会在终端用户创建部署时填写。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -225,7 +228,8 @@ export function AppEditDeliveryTab({
                 <div>
                   <CardTitle className="text-base">交付 Manifest</CardTitle>
                   <CardDescription>
-                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，并把新的 preset 默认值合并进交付配置；已保存的密钥会保留。
+                    从仓库同步 `fd-delivery.manifest.json` 到应用 meta，并把新的 preset
+                    默认值合并进交付配置；已保存的密钥会保留。
                   </CardDescription>
                 </div>
                 <Button
@@ -294,7 +298,9 @@ export function AppEditDeliveryTab({
               <Card className="border-dashed">
                 <CardHeader>
                   <CardTitle className="text-base">安装器信息</CardTitle>
-                  <CardDescription>这些值直接来自 manifest 的 installer 段，不在后台单独硬编码。</CardDescription>
+                  <CardDescription>
+                    这些值直接来自 manifest 的 installer 段，不在后台单独硬编码。
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -349,44 +355,44 @@ export function AppEditDeliveryTab({
                 </Card>
               )}
 
-              {assetGroups.length > 0 ? (
-                assetGroups.map((group) => (
-                  <Card key={`assets-${group.key}`} className="border-dashed">
-                    <CardHeader>
-                      <CardTitle className="text-base">{group.label}资产</CardTitle>
-                      <CardDescription>
-                        {group.description ??
-                          'manifest 声明的交付资产；中台据此识别公开/私有资产和所需凭据。'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-2">
-                      {group.assets.map((asset) => (
-                        <div key={asset.key} className="rounded-lg border bg-muted/20 p-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold">{asset.label}</p>
-                            <StatusPill
-                              tone={asset.visibility === 'private' ? 'warn' : 'ok'}
-                              label={asset.visibility === 'private' ? '私有资产' : '公开资产'}
-                            />
-                            <StatusPill
-                              tone={asset.required ? 'ok' : 'neutral'}
-                              label={asset.required ? '必需' : '可选'}
-                            />
-                          </div>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {ASSET_TYPE_LABELS[asset.type]} · {renderAssetMeta(asset)}
-                          </p>
-                          {asset.description ? (
+              {assetGroups.length > 0
+                ? assetGroups.map((group) => (
+                    <Card key={`assets-${group.key}`} className="border-dashed">
+                      <CardHeader>
+                        <CardTitle className="text-base">{group.label}资产</CardTitle>
+                        <CardDescription>
+                          {group.description ??
+                            'manifest 声明的交付资产；中台据此识别公开/私有资产和所需凭据。'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 md:grid-cols-2">
+                        {group.assets.map((asset) => (
+                          <div key={asset.key} className="rounded-lg border bg-muted/20 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold">{asset.label}</p>
+                              <StatusPill
+                                tone={asset.visibility === 'private' ? 'warn' : 'ok'}
+                                label={asset.visibility === 'private' ? '私有资产' : '公开资产'}
+                              />
+                              <StatusPill
+                                tone={asset.required ? 'ok' : 'neutral'}
+                                label={asset.required ? '必需' : '可选'}
+                              />
+                            </div>
                             <p className="mt-2 text-xs text-muted-foreground">
-                              {asset.description}
+                              {ASSET_TYPE_LABELS[asset.type]} · {renderAssetMeta(asset)}
                             </p>
-                          ) : null}
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ))
-              ) : null}
+                            {asset.description ? (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {asset.description}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  ))
+                : null}
 
               <Card className="border-dashed">
                 <CardHeader>
@@ -452,7 +458,8 @@ export function AppEditDeliveryTab({
               <CardHeader>
                 <CardTitle className="text-base">Manifest 未同步</CardTitle>
                 <CardDescription>
-                  当前应用还没有 `deliveryManifest`。同步之后，后台和用户部署页才会按 manifest 自动渲染。
+                  当前应用还没有 `deliveryManifest`。同步之后，后台和用户部署页才会按 manifest
+                  自动渲染。
                 </CardDescription>
               </CardHeader>
             </Card>

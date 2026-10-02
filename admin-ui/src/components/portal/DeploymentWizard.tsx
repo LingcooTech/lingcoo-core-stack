@@ -184,7 +184,7 @@ export function DeploymentWizard({
   useEffect(() => {
     setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
     setSelectedEntitlementId(
-      selectedApp?.entitlements.length === 1 ? selectedApp.entitlements[0].id : '',
+      selectedApp?.entitlements.length === 1 ? (selectedApp.entitlements[0]?.id ?? '') : '',
     );
     setDomainValues({});
     setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
@@ -287,7 +287,7 @@ export function DeploymentWizard({
       updatePolicy,
       domainValues: Object.fromEntries(
         Object.entries(domainValues)
-          .map(([key, value]) => [key, value.trim()])
+          .map(([key, value]) => [key, value.trim()] as const)
           .filter(([, value]) => value.length > 0),
       ),
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
@@ -364,7 +364,7 @@ export function DeploymentWizard({
             const isDone = step > stepNum;
             return (
               <div key={sLabel} className="flex items-center gap-2">
-                {idx > 0 && <ChevronRight className="text-muted-foreground h-4 w-4" />}
+                {idx > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                 <div
                   className={cn(
                     'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors',
@@ -374,7 +374,7 @@ export function DeploymentWizard({
                     !isActive && !isDone && 'bg-muted text-muted-foreground',
                   )}
                 >
-                  <span className="bg-card/20 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card/20 text-[10px] font-semibold">
                     {isDone ? <Check className="h-3 w-3" /> : stepNum}
                   </span>
                   {sLabel}
@@ -388,7 +388,7 @@ export function DeploymentWizard({
       <CardContent className="space-y-4">
         {step === 1 && (
           <>
-            <p className="text-muted-foreground text-sm">选择一个已购的系统应用来创建部署记录。</p>
+            <p className="text-sm text-muted-foreground">选择一个已购的系统应用来创建部署记录。</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {options.map((app) => {
                 const isSelected = selectedAppCode === app.appCode;
@@ -415,24 +415,24 @@ export function DeploymentWizard({
                       {getInitials(app.appName)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-foreground truncate text-sm font-bold">{app.appName}</p>
+                      <p className="truncate text-sm font-bold text-foreground">{app.appName}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge variant="secondary" className="text-[10px]">
                           {app.appType}
                         </Badge>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {app.featureCount} 项能力
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {app.entitlements.length} 个可用授权
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {app.manifest ? 'Manifest 已同步' : 'Manifest 未同步'}
                         </span>
                       </div>
                     </div>
                     {isSelected && (
-                      <div className="bg-primary text-primary-foreground flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+                      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                         <Check className="h-3 w-3" />
                       </div>
                     )}
@@ -460,10 +460,10 @@ export function DeploymentWizard({
             ) : null}
 
             {selectedApp ? (
-              <div className="border-border space-y-3 rounded-lg border p-4">
+              <div className="space-y-3 rounded-lg border border-border p-4">
                 <div>
                   <p className="text-sm font-bold">选择部署授权 *</p>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     一个授权实例独立计算部署上限和域名绑定；需要部署多个客户站点时，应购买多个授权。
                   </p>
                 </div>
@@ -482,7 +482,7 @@ export function DeploymentWizard({
                   </SelectContent>
                 </Select>
                 {selectedEntitlement ? (
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {selectedEntitlement.domainBindingMode === 'lock_on_first_success'
                       ? `首次成功部署后将锁定 ${
                           manifest?.domainSlots.find(
@@ -544,7 +544,7 @@ export function DeploymentWizard({
                         placeholder={slot.placeholder}
                       />
                       {slot.description ? (
-                        <p className="text-muted-foreground text-xs">{slot.description}</p>
+                        <p className="text-xs text-muted-foreground">{slot.description}</p>
                       ) : null}
                     </div>
                   );
@@ -553,11 +553,11 @@ export function DeploymentWizard({
             ) : null}
 
             {visibleUserInputGroups.map((group) => (
-              <div key={group.key} className="border-border space-y-4 rounded-lg border p-4">
+              <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                 <div>
                   <p className="text-sm font-bold">{group.label}</p>
                   {group.description ? (
-                    <p className="text-muted-foreground text-sm">{group.description}</p>
+                    <p className="text-sm text-muted-foreground">{group.description}</p>
                   ) : null}
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -566,7 +566,7 @@ export function DeploymentWizard({
                       return (
                         <label
                           key={field.key}
-                          className="border-border flex items-center gap-3 rounded-md border p-3"
+                          className="flex items-center gap-3 rounded-md border border-border p-3"
                         >
                           <Checkbox
                             checked={getBooleanFieldValue(deploymentDraft, field)}
@@ -577,7 +577,7 @@ export function DeploymentWizard({
                           <span className="space-y-1">
                             <span className="block text-sm font-medium">{field.label}</span>
                             {field.description ? (
-                              <span className="text-muted-foreground block text-xs">
+                              <span className="block text-xs text-muted-foreground">
                                 {field.description}
                               </span>
                             ) : null}
@@ -601,7 +601,7 @@ export function DeploymentWizard({
                             placeholder={field.placeholder}
                           />
                           {field.description ? (
-                            <p className="text-muted-foreground text-xs">{field.description}</p>
+                            <p className="text-xs text-muted-foreground">{field.description}</p>
                           ) : null}
                         </div>
                       );
@@ -621,7 +621,7 @@ export function DeploymentWizard({
                           placeholder={field.placeholder}
                         />
                         {field.description ? (
-                          <p className="text-muted-foreground text-xs">{field.description}</p>
+                          <p className="text-xs text-muted-foreground">{field.description}</p>
                         ) : null}
                       </div>
                     );
@@ -630,10 +630,10 @@ export function DeploymentWizard({
               </div>
             ))}
 
-            <div className="border-border rounded-lg border">
+            <div className="rounded-lg border border-border">
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => setAdvancedOpen(!advancedOpen)}
               >
                 高级选项
@@ -642,7 +642,7 @@ export function DeploymentWizard({
                 />
               </button>
               {advancedOpen && (
-                <div className="border-border space-y-4 border-t px-4 pb-4 pt-3">
+                <div className="space-y-4 border-t border-border px-4 pt-3 pb-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="wizard-server">服务器 / Host</Label>
@@ -678,18 +678,18 @@ export function DeploymentWizard({
                           <SelectItem value="auto">自动更新</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-xs text-muted-foreground">
                         手动更新只记录新镜像可用状态，不自动切换；自动更新会在收到新镜像时直接应用。
                       </p>
                     </div>
                   </div>
 
                   {advancedUserInputGroups.map((group) => (
-                    <div key={group.key} className="border-border space-y-4 rounded-lg border p-4">
+                    <div key={group.key} className="space-y-4 rounded-lg border border-border p-4">
                       <div>
                         <p className="text-sm font-bold">{group.label}</p>
                         {group.description ? (
-                          <p className="text-muted-foreground text-sm">{group.description}</p>
+                          <p className="text-sm text-muted-foreground">{group.description}</p>
                         ) : null}
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
@@ -698,7 +698,7 @@ export function DeploymentWizard({
                             return (
                               <label
                                 key={field.key}
-                                className="border-border flex items-center gap-3 rounded-md border p-3"
+                                className="flex items-center gap-3 rounded-md border border-border p-3"
                               >
                                 <Checkbox
                                   checked={getBooleanFieldValue(deploymentDraft, field)}
@@ -709,7 +709,7 @@ export function DeploymentWizard({
                                 <span className="space-y-1">
                                   <span className="block text-sm font-medium">{field.label}</span>
                                   {field.description ? (
-                                    <span className="text-muted-foreground block text-xs">
+                                    <span className="block text-xs text-muted-foreground">
                                       {field.description}
                                     </span>
                                   ) : null}
@@ -735,7 +735,7 @@ export function DeploymentWizard({
                                   placeholder={field.placeholder}
                                 />
                                 {field.description ? (
-                                  <p className="text-muted-foreground text-xs">
+                                  <p className="text-xs text-muted-foreground">
                                     {field.description}
                                   </p>
                                 ) : null}
@@ -757,7 +757,7 @@ export function DeploymentWizard({
                                 placeholder={field.placeholder}
                               />
                               {field.description ? (
-                                <p className="text-muted-foreground text-xs">{field.description}</p>
+                                <p className="text-xs text-muted-foreground">{field.description}</p>
                               ) : null}
                             </div>
                           );
@@ -767,7 +767,7 @@ export function DeploymentWizard({
                   ))}
 
                   {!hasAdvancedSection ? (
-                    <p className="text-muted-foreground text-sm">当前没有额外的高级配置项。</p>
+                    <p className="text-sm text-muted-foreground">当前没有额外的高级配置项。</p>
                   ) : null}
                 </div>
               )}
@@ -808,7 +808,7 @@ export function DeploymentWizard({
             {tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
                     远程安装命令
                   </p>
                   <div className="relative">
@@ -818,7 +818,7 @@ export function DeploymentWizard({
                     {tokenResult.remoteInstallCommand ? (
                       <button
                         type="button"
-                        className="absolute right-2 top-2 rounded-lg bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                        className="absolute top-2 right-2 rounded-lg bg-slate-800 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                         onClick={() => handleCopyCommand(tokenResult.remoteInstallCommand!)}
                       >
                         {copied ? (
@@ -832,33 +832,33 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="border-border bg-card rounded-md border px-3 py-2">
-                    <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
+                  <div className="rounded-md border border-border bg-card px-3 py-2">
+                    <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">
                       令牌尾号
                     </p>
-                    <p className="text-foreground mt-1 font-mono text-sm">
+                    <p className="mt-1 font-mono text-sm text-foreground">
                       {tokenResult.tokenHint}
                     </p>
                   </div>
-                  <div className="border-border bg-card rounded-md border px-3 py-2">
-                    <p className="text-muted-foreground text-[10px] font-semibold tracking-wide">
+                  <div className="rounded-md border border-border bg-card px-3 py-2">
+                    <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">
                       过期时间
                     </p>
-                    <p className="text-foreground mt-1 text-sm font-medium">
+                    <p className="mt-1 text-sm font-medium text-foreground">
                       {formatTime(tokenResult.expiresAt)}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold tracking-wide">兑换地址</p>
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">兑换地址</p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
                     {tokenResult.exchangeUrl}
                   </pre>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
                     一次性令牌
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
@@ -867,7 +867,7 @@ export function DeploymentWizard({
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs font-bold tracking-wide">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
                     调试命令（cURL）
                   </p>
                   <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">

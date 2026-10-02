@@ -1,7 +1,7 @@
 import { ArrowUpRight, Boxes, Download, KeyRound, Rocket } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import type { AppLink, HydratedEntitlement } from '@/api/types';
+import type { AppLink, MyEntitlement } from '@/api/types';
 import {
   Accordion,
   AccordionContent,
@@ -36,7 +36,7 @@ export function EntitlementProductCard({
   productName: string;
   featureNames: string[];
   relatedApps: string[];
-  items: HydratedEntitlement[];
+  items: MyEntitlement[];
   deploymentHref?: string;
   accessLinks?: AppLink[];
   appHref?: string;
@@ -50,11 +50,11 @@ export function EntitlementProductCard({
   const activePlanLabel = latestActive?.plan?.name ?? latestActive?.plan?.code ?? '当前有效授权';
 
   return (
-    <Card className="border-border/80 bg-card/95 overflow-hidden rounded-lg shadow-sm">
+    <Card className="overflow-hidden rounded-lg border-border/80 bg-card/95 shadow-sm">
       <CardHeader className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="text-muted-foreground bg-muted rounded-lg p-3">
+            <div className="rounded-lg bg-muted p-3 text-muted-foreground">
               <Boxes className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
@@ -83,14 +83,14 @@ export function EntitlementProductCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {latestActive ? (
-          <div className="bg-muted/60 rounded-lg border px-4 py-3">
+          <div className="rounded-lg border bg-muted/60 px-4 py-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="text-muted-foreground text-xs font-medium">当前有效授权</p>
-                <p className="text-foreground mt-1 truncate text-base font-semibold">
+                <p className="text-xs font-medium text-muted-foreground">当前有效授权</p>
+                <p className="mt-1 truncate text-base font-semibold text-foreground">
                   {activePlanLabel}
                 </p>
-                <p className="text-muted-foreground mt-1 text-xs">有效期：{validityLabel}</p>
+                <p className="mt-1 text-xs text-muted-foreground">有效期：{validityLabel}</p>
               </div>
               {deploymentHref || visibleAccessLinks.length || appHref ? (
                 <div className="flex shrink-0 flex-wrap gap-2">
@@ -140,7 +140,7 @@ export function EntitlementProductCard({
 
         {featureNames.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-muted-foreground text-xs font-medium">已开通能力</p>
+            <p className="text-xs font-medium text-muted-foreground">已开通能力</p>
             <div className="flex flex-wrap gap-2">
               {featureNames.map((featureName) => (
                 <Badge
@@ -148,7 +148,7 @@ export function EntitlementProductCard({
                   variant="secondary"
                   className="inline-flex items-center gap-1.5"
                 >
-                  <KeyRound className="text-muted-foreground h-3 w-3" />
+                  <KeyRound className="h-3 w-3 text-muted-foreground" />
                   {formatFeatureName(featureName)}
                 </Badge>
               ))}
@@ -162,14 +162,14 @@ export function EntitlementProductCard({
               授权记录（{items.length}）
             </AccordionTrigger>
             <AccordionContent>
-              <div className="text-muted-foreground space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-muted-foreground">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="border-border bg-muted/60 rounded-lg border px-4 py-3"
+                    className="rounded-lg border border-border bg-muted/60 px-4 py-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-foreground font-medium">
+                      <span className="font-medium text-foreground">
                         {item.plan?.name ?? item.plan?.code ?? '未命名授权'}
                       </span>
                       <Badge variant={item.status === 'active' ? 'default' : 'secondary'}>
@@ -179,25 +179,25 @@ export function EntitlementProductCard({
                     <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
                       <div>
                         <dt className="text-muted-foreground">来源</dt>
-                        <dd className="text-foreground mt-0.5">
+                        <dd className="mt-0.5 text-foreground">
                           {entitlementSourceLabel(item.sourceType, item.sourceOrder?.orderNo)}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-muted-foreground">有效期</dt>
-                        <dd className="text-foreground mt-0.5">
+                        <dd className="mt-0.5 text-foreground">
                           {item.expiresAt ? formatTime(item.expiresAt) : '永不过期'}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-muted-foreground">生效时间</dt>
-                        <dd className="text-foreground mt-0.5">
+                        <dd className="mt-0.5 text-foreground">
                           {item.startsAt ? formatTime(item.startsAt) : '立即生效'}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-muted-foreground">创建时间</dt>
-                        <dd className="text-foreground mt-0.5">{formatTime(item.createdAt)}</dd>
+                        <dd className="mt-0.5 text-foreground">{formatTime(item.createdAt)}</dd>
                       </div>
                     </dl>
                   </div>

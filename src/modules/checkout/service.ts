@@ -153,7 +153,7 @@ export class CheckoutService {
         .createBillingService(this.db, this.env)
         .syncOrderStatusByOrderNo(detail.order.orderNo);
       return this.loadSessionDetail(detail.session.sessionCode);
-    } catch (error) {
+    } catch {
       return detail;
     }
   }

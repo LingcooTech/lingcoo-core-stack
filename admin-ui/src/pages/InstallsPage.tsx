@@ -55,9 +55,9 @@ export function InstallsPage() {
         <div>
           <p className="font-mono text-xs font-bold">{row.extensionInstallId}</p>
           {row.chromeProfileHint && (
-            <p className="text-muted-foreground text-[10px]">{row.chromeProfileHint}</p>
+            <p className="text-[10px] text-muted-foreground">{row.chromeProfileHint}</p>
           )}
-          {row.appVersion && <p className="text-muted-foreground text-[10px]">v{row.appVersion}</p>}
+          {row.appVersion && <p className="text-[10px] text-muted-foreground">v{row.appVersion}</p>}
         </div>
       ),
     },
@@ -78,7 +78,7 @@ export function InstallsPage() {
         <div>
           <p className="text-xs font-bold">{row.user?.email ?? '未绑定'}</p>
           {row.user?.displayName && (
-            <p className="text-muted-foreground text-[10px]">{row.user.displayName}</p>
+            <p className="text-[10px] text-muted-foreground">{row.user.displayName}</p>
           )}
         </div>
       ),
@@ -89,7 +89,7 @@ export function InstallsPage() {
       cell: (row) => (
         <div className="flex flex-col gap-1">
           <StatusPill tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -99,7 +99,7 @@ export function InstallsPage() {
       cell: (row) => (
         <div>
           <p className="text-xs">{formatTime(row.lastSeenAt)}</p>
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.updatedAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.updatedAt)}</p>
         </div>
       ),
     },
@@ -131,7 +131,7 @@ export function InstallsPage() {
           searchPlaceholder="搜索安装 ID、用户、应用..."
         />
 
-        <div className="border-border bg-card overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <DataTable
             columns={installColumns}
             data={installs}

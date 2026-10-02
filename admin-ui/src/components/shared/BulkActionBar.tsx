@@ -37,7 +37,7 @@ export function BulkActionBar({
       aria-label="批量操作"
       className={cn(
         'z-overlay sticky top-0 flex items-center justify-between gap-3 rounded-lg',
-        'bg-foreground text-background px-4 py-2.5 shadow-md',
+        'bg-foreground px-4 py-2.5 text-background shadow-md',
         'animate-fadeIn',
         className,
       )}
@@ -47,7 +47,7 @@ export function BulkActionBar({
           type="button"
           onClick={onClear}
           aria-label="取消选择"
-          className="hover:bg-background/10 inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-background/10"
         >
           <X className="size-4" />
         </button>

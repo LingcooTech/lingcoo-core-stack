@@ -97,7 +97,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       policy,
     });
 
-    if (creationIssues.length > 0) {
+    if (creationIssues[0]) {
       const firstIssue = creationIssues[0];
       throw httpError(422, `${firstIssue.label} is required`);
     }
@@ -148,6 +148,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     });
 
     const [hydrated] = await this.hydrateDeployments([deployment]);
+    if (!hydrated) throw new Error('Missing deployment projection');
     return hydrated;
   }
 
@@ -380,6 +381,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     }
 
     const [hydrated] = await this.hydrateDeployments([deployment]);
+    if (!hydrated) throw new Error('Missing deployment projection');
     const app = await this.capabilities
       .createAppService(this.db)
       .getPublicApp(hydrated.app?.code ?? '');

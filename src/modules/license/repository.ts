@@ -132,6 +132,7 @@ export class LicenseRepository {
         },
       })
       .returning();
+    if (!plan) throw new Error('Missing required write result: license plan');
 
     return plan;
   }
@@ -163,6 +164,7 @@ export class LicenseRepository {
         },
       })
       .returning();
+    if (!feature) throw new Error('Missing required write result: license feature');
 
     return feature;
   }
@@ -268,6 +270,7 @@ export class LicenseRepository {
     meta?: Record<string, unknown>;
   }) {
     const [entitlement] = await this.db.insert(entitlements).values(input).returning();
+    if (!entitlement) throw new Error('Missing required write result: license entitlement');
 
     return entitlement;
   }

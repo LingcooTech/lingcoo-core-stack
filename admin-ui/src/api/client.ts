@@ -2,7 +2,7 @@ import { createApiClient, ApiError, type ApiRequestOptions } from '@lingcoo/api-
 import { isIdempotentCommand } from '@lingcoo/contracts';
 const settingVersions = new Map<string, string>();
 const settingVersionKey = (path: string) =>
-  path.replace(/^(\/v1\/admin\/payment-settings)\/(wechat_pay|alipay)$/, '$1');
+  path.replace(/^(\/v1\/admin\/payment-settings)\/(wechat|wechat_pay|alipay)$/, '$1');
 export function clearToken(): void {
   localStorage.removeItem('fd_core_token');
   localStorage.removeItem('fd_core_admin_token');

@@ -23,14 +23,14 @@ export interface AlipaySettings {
 export async function upsertWechatSettings(payload: WechatPaySettings): Promise<unknown> {
   return apiClient('/v1/admin/payment-settings/wechat', {
     method: 'PUT',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export async function upsertAlipaySettings(payload: AlipaySettings): Promise<unknown> {
   return apiClient('/v1/admin/payment-settings/alipay', {
     method: 'PUT',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 

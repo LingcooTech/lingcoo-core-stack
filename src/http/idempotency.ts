@@ -1,10 +1,20 @@
 import type { FastifyInstance } from 'fastify';
-import { isIdempotentCommand, responseSchemaFor } from '@lingcoo/contracts';
+import { isIdempotentCommand, responseSchemaFor, isNonJsonResponseRoute } from '@lingcoo/contracts';
 import { IdempotencyService } from '../modules/idempotency/public';
 import { httpError } from '../lib/errors';
 export function registerRequestContracts(app: FastifyInstance) {
   const requests = new IdempotencyService(app.db, app.appEnv);
   app.addHook('onRoute', (route) => {
+    const methods = Array.isArray(route.method) ? route.method : [route.method];
+    for (const method of methods) {
+      if (
+        method !== 'HEAD' &&
+        route.url.startsWith('/v1/') &&
+        !responseSchemaFor(method, route.url) &&
+        !isNonJsonResponseRoute(method, route.url)
+      )
+        throw new Error(`Missing response contract: ${method} ${route.url}`);
+    }
     if (typeof route.method !== 'string' || !isIdempotentCommand(route.method, route.url)) return;
     const before = route.preHandler
       ? Array.isArray(route.preHandler)
@@ -42,8 +52,14 @@ export function registerRequestContracts(app: FastifyInstance) {
     const data = JSON.parse(payload);
     if (reply.statusCode < 400) {
       const schema = responseSchemaFor(request.method, request.url);
-      if (schema && !schema.safeParse(data).success)
+      const parsed = schema?.safeParse(data);
+      if (parsed && !parsed.success) {
+        request.log.error(
+          { issues: parsed.error.issues.map(({ path, code }) => ({ path, code })) },
+          'Response contract violation',
+        );
         throw httpError(500, 'Response contract violation');
+      }
     } else if (data && typeof data === 'object' && typeof data.error === 'string') {
       data.code ??= `HTTP_${reply.statusCode}`;
       data.requestId = request.id;

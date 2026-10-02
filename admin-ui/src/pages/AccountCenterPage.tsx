@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { listApps } from '@/api/apps';
 import { changePassword, forgotPassword, getCurrentUser, updateCurrentUser } from '@/api/auth';
 import type {
-  HydratedEntitlement,
+  MyEntitlement,
   NotificationItem,
   NotificationUnreadCount,
   NotificationsResponse,
@@ -84,7 +84,7 @@ const passwordSchema = z
 type ProfileValues = z.infer<typeof profileSchema>;
 type PasswordValues = z.infer<typeof passwordSchema>;
 
-function isEffectiveEntitlement(item: HydratedEntitlement) {
+function isEffectiveEntitlement(item: MyEntitlement) {
   if (item.status !== 'active') {
     return false;
   }
@@ -173,9 +173,9 @@ function AccountProfileTab() {
 
   if (currentUserQuery.isLoading) {
     return (
-      <Card className="border-border bg-card rounded-xl">
-        <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-          <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+      <Card className="rounded-xl border-border bg-card">
+        <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+          <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
           正在加载个人资料...
         </CardContent>
       </Card>
@@ -200,7 +200,7 @@ function AccountProfileTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-border bg-card overflow-hidden rounded-xl">
+      <Card className="overflow-hidden rounded-xl border-border bg-card">
         <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6">
           <Avatar className="h-16 w-16 shrink-0">
             <AvatarFallback className="text-lg font-semibold">
@@ -209,7 +209,7 @@ function AccountProfileTab() {
           </Avatar>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-foreground truncate text-xl font-semibold tracking-tight">
+              <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">
                 {currentUser.displayName || currentUser.email.split('@')[0]}
               </h2>
               <StatusPill
@@ -221,12 +221,12 @@ function AccountProfileTab() {
                 label={currentUser.emailVerified ? '邮箱已验证' : '邮箱待验证'}
               />
             </div>
-            <p className="text-muted-foreground inline-flex items-center gap-2 font-mono text-[13px]">
+            <p className="inline-flex items-center gap-2 font-mono text-[13px] text-muted-foreground">
               <span className="truncate">{currentUser.email}</span>
             </p>
-            <p className="text-muted-foreground/80 text-[12px]">
+            <p className="text-[12px] text-muted-foreground/80">
               用户 ID
-              <span className="text-muted-foreground ml-2 font-mono">{currentUser.id}</span>
+              <span className="ml-2 font-mono text-muted-foreground">{currentUser.id}</span>
             </p>
           </div>
         </CardContent>
@@ -325,10 +325,10 @@ function AccountProfileTab() {
               </form>
             </Form>
 
-            <div className="border-border flex items-center justify-between gap-3 border-t pt-4">
+            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
               <div className="min-w-0">
-                <p className="text-foreground text-[13px] font-medium">忘记当前密码？</p>
-                <p className="text-muted-foreground mt-0.5 text-[12px]">
+                <p className="text-[13px] font-medium text-foreground">忘记当前密码？</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   我们会向 {currentUser.email} 发送重置链接。
                 </p>
               </div>
@@ -370,17 +370,17 @@ function AccountOrdersTab() {
 
   return (
     <div className="space-y-6">
-      <div className="border-border bg-card grid grid-cols-3 divide-x rounded-xl border">
+      <div className="grid grid-cols-3 divide-x rounded-xl border border-border bg-card">
         {[
           { label: '全部订单', value: String(orders.length) },
           { label: '已支付', value: String(paidOrders.length) },
           { label: '处理中', value: String(processingOrders.length) },
         ].map((item) => (
           <div key={item.label} className="px-5 py-4">
-            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               {item.label}
             </p>
-            <p className="text-foreground mt-1.5 text-[24px] font-semibold tabular-nums leading-none">
+            <p className="mt-1.5 text-[24px] leading-none font-semibold text-foreground tabular-nums">
               {item.value}
             </p>
           </div>
@@ -389,9 +389,9 @@ function AccountOrdersTab() {
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-foreground text-base font-semibold">订单记录</h2>
+          <h2 className="text-base font-semibold text-foreground">订单记录</h2>
           {paidOrders.length > 0 && (
-            <p className="text-muted-foreground text-[12px] tabular-nums">
+            <p className="text-[12px] text-muted-foreground tabular-nums">
               已支付 {paidOrders.length} 笔 · 累计{' '}
               {formatAmount(
                 paidOrders.reduce((sum, order) => sum + order.amount, 0),
@@ -404,8 +404,8 @@ function AccountOrdersTab() {
         <div className="grid gap-3">
           {ordersQuery.isLoading ? (
             <Card>
-              <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-                <LoaderCircle className="text-muted-foreground h-5 w-5 animate-spin" />
+              <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+                <LoaderCircle className="h-5 w-5 animate-spin text-muted-foreground" />
                 正在加载订单记录...
               </CardContent>
             </Card>
@@ -627,10 +627,10 @@ function AccountNotificationsTab() {
         ].map((item) => (
           <div
             key={item.label}
-            className="border-border bg-card rounded-xl border px-4 py-3.5 shadow-sm"
+            className="rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm"
           >
-            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-            <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+            <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+            <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
               {item.value}
             </p>
           </div>
@@ -640,8 +640,8 @@ function AccountNotificationsTab() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-foreground text-2xl font-semibold tracking-tight">消息通知</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">消息通知</h2>
+            <p className="text-sm text-muted-foreground">
               集中查看与你的账户、订单、授权和部署相关的系统通知。
             </p>
           </div>
@@ -655,9 +655,9 @@ function AccountNotificationsTab() {
         </div>
 
         {notificationsQuery.isLoading ? (
-          <Card className="border-border bg-card rounded-xl">
-            <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-              <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+          <Card className="rounded-xl border-border bg-card">
+            <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+              <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
               正在加载通知...
             </CardContent>
           </Card>
@@ -669,7 +669,7 @@ function AccountNotificationsTab() {
               <Card
                 key={item.id}
                 className={cn(
-                  'border-border bg-card rounded-xl transition-colors',
+                  'rounded-xl border-border bg-card transition-colors',
                   item.status === 'unread' && 'border-foreground/30 bg-muted/30',
                 )}
               >
@@ -678,7 +678,7 @@ function AccountNotificationsTab() {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {item.status === 'unread' ? (
-                          <span className="bg-foreground text-background inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[11px] font-semibold text-background">
                             <BellRing className="h-3 w-3" />
                             未读
                           </span>
@@ -689,11 +689,11 @@ function AccountNotificationsTab() {
                         />
                       </div>
                       <div>
-                        <p className="text-foreground text-base font-semibold">{item.title}</p>
-                        <p className="text-muted-foreground mt-1 text-sm leading-6">{item.body}</p>
+                        <p className="text-base font-semibold text-foreground">{item.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
                       </div>
                     </div>
-                    <p className="text-muted-foreground text-xs">{formatTime(item.createdAt)}</p>
+                    <p className="text-xs text-muted-foreground">{formatTime(item.createdAt)}</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -782,7 +782,7 @@ function AccountAppsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="border-border bg-card grid grid-cols-2 divide-x rounded-xl border xl:grid-cols-4">
+      <div className="grid grid-cols-2 divide-x rounded-xl border border-border bg-card xl:grid-cols-4">
         {[
           { label: '已购应用', value: String(summary.length) },
           { label: '激活授权', value: String(activeItems.length) },
@@ -790,10 +790,10 @@ function AccountAppsTab() {
           { label: '失效/撤销', value: String(inactiveItems.length) },
         ].map((item) => (
           <div key={item.label} className="px-5 py-4">
-            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               {item.label}
             </p>
-            <p className="text-foreground mt-1.5 text-[24px] font-semibold tabular-nums leading-none">
+            <p className="mt-1.5 text-[24px] leading-none font-semibold text-foreground tabular-nums">
               {item.value}
             </p>
           </div>
@@ -802,8 +802,8 @@ function AccountAppsTab() {
 
       {entitlementsQuery.isLoading ? (
         <Card>
-          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-            <LoaderCircle className="text-muted-foreground h-5 w-5 animate-spin" />
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+            <LoaderCircle className="h-5 w-5 animate-spin text-muted-foreground" />
             正在加载已购应用...
           </CardContent>
         </Card>
@@ -822,7 +822,7 @@ function AccountAppsTab() {
         />
       ) : (
         <section className="space-y-4">
-          <h2 className="text-foreground text-base font-semibold">已购产品</h2>
+          <h2 className="text-base font-semibold text-foreground">已购产品</h2>
           <div className="grid gap-4 lg:grid-cols-2">
             {appCodes.map((appCode) => {
               const entry = activeSummaryMap.get(appCode) ?? null;
@@ -877,11 +877,11 @@ export function AccountCenterPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-3 pt-2">
-        <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           <UserCircle2 className="h-3.5 w-3.5" />
           个人中心
         </div>
-        <h1 className="text-foreground text-3xl font-semibold tracking-tight">账户与订单</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">账户与订单</h1>
       </header>
 
       <Tabs
@@ -889,7 +889,7 @@ export function AccountCenterPage() {
         onValueChange={(nextValue) => setSearchParams({ tab: normalizeAccountTab(nextValue) })}
         className="space-y-6"
       >
-        <div className="border-border bg-background/80 sticky top-12 z-10 -mx-1 border-b px-1 py-2 backdrop-blur-md">
+        <div className="sticky top-12 z-10 -mx-1 border-b border-border bg-background/80 px-1 py-2 backdrop-blur-md">
           <TabsList className="h-auto w-full justify-start gap-1 bg-transparent p-0">
             <TabsTrigger value="profile" className="text-[13px]">
               个人资料

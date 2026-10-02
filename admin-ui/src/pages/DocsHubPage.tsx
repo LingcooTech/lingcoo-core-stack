@@ -25,16 +25,16 @@ export function DocsHubPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-3 pt-2">
-        <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+        <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           <BookOpen className="h-3.5 w-3.5" />
           {hub.eyebrow}
         </div>
-        <h1 className="text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
           {hub.title}
         </h1>
-        <p className="text-muted-foreground max-w-2xl text-[15px] leading-7">{hub.description}</p>
+        <p className="max-w-2xl text-[15px] leading-7 text-muted-foreground">{hub.description}</p>
         {items.length > 0 && (
-          <p className="text-muted-foreground text-[12px] tabular-nums">
+          <p className="text-[12px] text-muted-foreground tabular-nums">
             共 {items.length} 个文档空间
           </p>
         )}
@@ -42,7 +42,7 @@ export function DocsHubPage() {
 
       {docsQuery.isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
-          <LoaderCircle className="text-muted-foreground h-7 w-7 animate-spin" />
+          <LoaderCircle className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
         <EmptyState
@@ -56,30 +56,30 @@ export function DocsHubPage() {
             <Link
               key={space.id}
               to={`/docs/${space.slug}`}
-              className="border-border bg-card hover:border-foreground/20 group flex flex-col gap-3 rounded-xl border p-5 no-underline transition-colors"
+              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 no-underline transition-colors hover:border-foreground/20"
             >
               <div className="flex items-start gap-3">
                 {space.iconUrl ? (
                   <img
                     src={space.iconUrl}
                     alt={space.title}
-                    className="border-border bg-card h-10 w-10 shrink-0 rounded-lg border object-contain p-1.5"
+                    className="h-10 w-10 shrink-0 rounded-lg border border-border bg-card object-contain p-1.5"
                   />
                 ) : (
-                  <div className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-semibold">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-foreground">
                     {space.title.slice(0, 1)}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-foreground truncate text-[15px] font-semibold tracking-tight">
+                  <p className="truncate text-[15px] font-semibold tracking-tight text-foreground">
                     {space.title}
                   </p>
-                  <p className="text-muted-foreground mt-0.5 text-[11px] tabular-nums">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                     {space.pageCount} 页文档
                   </p>
                 </div>
               </div>
-              <p className="text-muted-foreground line-clamp-3 text-[13px] leading-6">
+              <p className="line-clamp-3 text-[13px] leading-6 text-muted-foreground">
                 {space.description || '该文档空间暂未补充说明。'}
               </p>
             </Link>

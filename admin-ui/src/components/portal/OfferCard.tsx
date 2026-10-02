@@ -39,7 +39,7 @@ export function OfferCard({
       onClick={onSelect}
       className={`rounded-xl border p-6 text-left transition-colors ${
         selected
-          ? 'border-foreground bg-muted/30 ring-foreground/5 ring-1'
+          ? 'border-foreground bg-muted/30 ring-1 ring-foreground/5'
           : interactive
             ? 'border-border bg-card hover:border-foreground/20'
             : 'border-border bg-card'
@@ -48,19 +48,19 @@ export function OfferCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-foreground text-xl font-semibold tracking-tight">{offer.title}</p>
+            <p className="text-xl font-semibold tracking-tight text-foreground">{offer.title}</p>
             {offer.badge ? <Badge>{offer.badge}</Badge> : null}
             {offer.isDefault ? <Badge variant="secondary">推荐</Badge> : null}
           </div>
           {offer.description ? (
-            <p className="text-muted-foreground max-w-2xl text-sm leading-7">{offer.description}</p>
+            <p className="max-w-2xl text-sm leading-7 text-muted-foreground">{offer.description}</p>
           ) : null}
         </div>
         <div className="text-right">
-          <p className="text-foreground text-3xl font-semibold tracking-tight">
+          <p className="text-3xl font-semibold tracking-tight text-foreground">
             {formatAmount(offer.priceAmount, offer.currency)}
           </p>
-          <p className="text-muted-foreground text-xs font-bold uppercase tracking-[0.08em]">
+          <p className="text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
             {formatInterval(offer.interval)}
           </p>
         </div>
@@ -70,9 +70,9 @@ export function OfferCard({
           {features.map((feature) => (
             <span
               key={feature}
-              className="border-border bg-muted text-foreground inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
             >
-              <Check className="text-muted-foreground h-3.5 w-3.5" />
+              <Check className="h-3.5 w-3.5 text-muted-foreground" />
               {feature}
             </span>
           ))}

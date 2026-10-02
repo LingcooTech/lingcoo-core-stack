@@ -71,6 +71,7 @@ export class TicketRepository {
         updatedAt: now,
       })
       .returning();
+    if (!ticket) throw new Error('Missing required write result: ticket ticket');
 
     return ticket;
   }
@@ -166,6 +167,7 @@ export class TicketRepository {
         createdAt: new Date(),
       })
       .returning();
+    if (!message) throw new Error('Missing required write result: ticket message');
 
     return message;
   }

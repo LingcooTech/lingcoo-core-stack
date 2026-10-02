@@ -85,7 +85,7 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
               onChange={(event) => setField('platformsText', event.target.value)}
               placeholder="例如：iOS, Android, Web"
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               用逗号分隔多个平台，详情页会显示为标签。
             </p>
           </div>
@@ -146,11 +146,11 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
         </div>
 
         {value.purchaseType === 'onsite_subscription' ? (
-          <div className="border-border bg-muted/80 space-y-4 rounded-xl border p-4">
+          <div className="space-y-4 rounded-xl border border-border bg-muted/80 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-foreground text-sm font-semibold">订阅套餐</p>
-                <p className="text-muted-foreground text-xs">用于详情页右侧边栏展示套餐信息。</p>
+                <p className="text-sm font-semibold text-foreground">订阅套餐</p>
+                <p className="text-xs text-muted-foreground">用于详情页右侧边栏展示套餐信息。</p>
               </div>
               <Button
                 type="button"
@@ -174,13 +174,13 @@ export function AppEditAppDetailCard({ value, onChange }: AppEditAppDetailCardPr
             </div>
 
             {value.subscriptionPlans.length === 0 ? (
-              <p className="text-muted-foreground text-xs">暂无订阅套餐，点击右上角添加。</p>
+              <p className="text-xs text-muted-foreground">暂无订阅套餐，点击右上角添加。</p>
             ) : null}
 
             {value.subscriptionPlans.map((plan) => (
               <div
                 key={plan.id}
-                className="border-border bg-card grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr,1fr,2fr,auto]"
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[1fr,1fr,2fr,auto]"
               >
                 <Input
                   value={plan.period}

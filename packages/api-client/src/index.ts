@@ -38,10 +38,12 @@ export function createApiClient(
     onUnauthorized?: (path: string, credentialContext: string) => void;
   } = {},
 ) {
-  return async function request<T = unknown>(
+  function request<S extends z.ZodType>(
     path: string,
-    options: ApiRequestOptions = {},
-  ): Promise<T> {
+    options: ApiRequestOptions & { schema: S },
+  ): Promise<z.output<S>>;
+  function request<T = unknown>(path: string, options?: ApiRequestOptions): Promise<T>;
+  async function request<T = unknown>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     const { schema, idempotencyKey, ...init } = options;
     const headers = new Headers(init.headers);
     const token = config.getToken?.();
@@ -66,7 +68,11 @@ export function createApiClient(
     }
     const requestId = response.headers.get('x-request-id') ?? undefined;
     if (response.status === 401) config.onUnauthorized?.(path, csrf ?? token ?? '');
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) {
+      const contract = schema ?? responseSchemaFor((init.method ?? 'GET').toUpperCase(), path);
+      if (!contract?.safeParse(undefined).success) throw new ProtocolError(path, requestId);
+      return undefined as T;
+    }
     let data: unknown;
     try {
       data = await response.json();
@@ -85,7 +91,9 @@ export function createApiClient(
       );
     }
     const contract = schema ?? responseSchemaFor((init.method ?? 'GET').toUpperCase(), path);
-    if (contract && !contract.safeParse(data).success) throw new ProtocolError(path, requestId);
-    return data as T;
-  };
+    const parsed = contract?.safeParse(data);
+    if (!parsed?.success) throw new ProtocolError(path, requestId);
+    return parsed.data as T;
+  }
+  return request;
 }

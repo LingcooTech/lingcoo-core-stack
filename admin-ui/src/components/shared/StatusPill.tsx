@@ -34,7 +34,7 @@ export function StatusPill({ tone, label, className, noDot }: StatusPillProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none',
+        'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] leading-none font-medium',
         toneStyles[tone],
         className,
       )}

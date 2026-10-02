@@ -53,7 +53,7 @@ export function syncDocumentFavicon(faviconUrl?: string | null) {
  */
 function hexToHslString(hex: string): string | null {
   const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!match) return null;
+  if (!match?.[1]) return null;
   const intVal = Number.parseInt(match[1], 16);
   const r = ((intVal >> 16) & 0xff) / 255;
   const g = ((intVal >> 8) & 0xff) / 255;

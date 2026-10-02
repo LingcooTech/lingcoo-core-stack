@@ -19,7 +19,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
   const filingInfo = siteSettings?.filingInfo?.trim() || '';
 
   return (
-    <footer className="border-border bg-muted/40 border-t">
+    <footer className="border-t border-border bg-muted/40">
       <Container className="py-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
           <div className="space-y-3">
@@ -28,21 +28,21 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
                 <img
                   src={siteSettings.logoUrl}
                   alt={siteName}
-                  className="border-border bg-card h-10 w-10 rounded-xl border object-contain p-1.5 shadow-sm"
+                  className="h-10 w-10 rounded-xl border border-border bg-card object-contain p-1.5 shadow-sm"
                 />
               ) : (
-                <div className="bg-foreground text-background flex h-10 w-10 items-center justify-center rounded-xl text-sm font-semibold tracking-wide">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-sm font-semibold tracking-wide text-background">
                   {getInitials(siteName)}
                 </div>
               )}
               <div>
-                <p className="text-foreground text-sm font-semibold tracking-tight">{siteName}</p>
+                <p className="text-sm font-semibold tracking-tight text-foreground">{siteName}</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <p className="text-foreground text-sm font-semibold tracking-tight">页脚菜单</p>
+            <p className="text-sm font-semibold tracking-tight text-foreground">页脚菜单</p>
             <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               {footerLinks.length ? (
                 footerLinks.map((item) => {
@@ -59,7 +59,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
                     return (
                       <Link
                         key={`${item.label}:${item.url}`}
-                        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition"
+                        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
                         to={item.url}
                       >
                         {content}
@@ -70,7 +70,7 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
                   return (
                     <a
                       key={`${item.label}:${item.url}`}
-                      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition"
+                      className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
                       href={item.url}
                       target={item.openInNewTab ? '_blank' : undefined}
                       rel={item.openInNewTab ? 'noopener noreferrer' : undefined}
@@ -80,13 +80,13 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
                   );
                 })
               ) : (
-                <p className="text-muted-foreground text-sm">当前未配置页脚菜单。</p>
+                <p className="text-sm text-muted-foreground">当前未配置页脚菜单。</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="border-border text-muted-foreground mt-6 flex flex-col gap-2 border-t pt-5 text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-border pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>{copyrightText}</p>
           {filingInfo ? <p className="sm:text-right">{filingInfo}</p> : null}
         </div>

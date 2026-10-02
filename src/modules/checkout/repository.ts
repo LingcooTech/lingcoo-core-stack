@@ -44,6 +44,7 @@ export class CheckoutRepository {
         updatedAt: now,
       })
       .returning();
+    if (!session) throw new Error('Missing required write result: checkout session');
 
     return session;
   }
@@ -76,6 +77,7 @@ export class CheckoutRepository {
         updatedAt: now,
       })
       .returning();
+    if (!attempt) throw new Error('Missing required write result: checkout attempt');
 
     return attempt;
   }

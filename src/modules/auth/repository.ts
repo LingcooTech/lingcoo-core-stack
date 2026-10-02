@@ -102,6 +102,7 @@ export class AuthRepository {
         role: input.role ?? 'user',
       })
       .returning();
+    if (!user) throw new Error('Missing required write result: auth user');
 
     return user;
   }
@@ -127,6 +128,7 @@ export class AuthRepository {
         passwordHash: input.passwordHash,
       })
       .returning();
+    if (!credential) throw new Error('Missing required write result: auth credential');
 
     return credential;
   }
@@ -143,6 +145,7 @@ export class AuthRepository {
 
   async createAuthIdentity(input: { userId: string; provider: string; providerUserId: string }) {
     const [identity] = await this.db.insert(authIdentities).values(input).returning();
+    if (!identity) throw new Error('Missing required write result: auth identity');
 
     return identity;
   }
@@ -156,6 +159,7 @@ export class AuthRepository {
       .insert(emailVerificationCodes)
       .values({ userId, code, expiresAt })
       .returning();
+    if (!record) throw new Error('Missing required write result: auth record');
 
     return record;
   }
@@ -200,6 +204,7 @@ export class AuthRepository {
       .insert(passwordResetCodes)
       .values({ userId, code, expiresAt })
       .returning();
+    if (!record) throw new Error('Missing required write result: auth record');
 
     return record;
   }
@@ -295,6 +300,7 @@ export class AuthRepository {
           set: { passwordHash, updatedAt: now },
         })
         .returning();
+      if (!credential) throw new Error('Missing required write result: auth credential');
       await repository.invalidateCredentials(userId);
       return credential;
     });

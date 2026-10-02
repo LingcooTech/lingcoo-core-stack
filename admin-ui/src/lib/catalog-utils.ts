@@ -5,7 +5,7 @@ export const appSchema = z.object({
   name: z.string().min(1, '应用名称不能为空'),
   description: z.string().optional(),
   type: z.string().trim().min(1).max(64),
-  status: z.enum(['active', 'inactive', 'cancelled', 'expired'])
+  status: z.enum(['active', 'inactive', 'cancelled', 'expired']),
 });
 export type AppFormValues = z.infer<typeof appSchema>;
 
@@ -57,7 +57,7 @@ export function createEmptyOffer(plan?: PlanSummary): EditableOffer {
     priceYuan: formatPriceYuan(plan?.priceAmount),
     currency: plan?.currency || 'CNY',
     status: (plan?.status as EditableOffer['status']) || 'active',
-    isDefault: false
+    isDefault: false,
   };
 }
 
@@ -72,6 +72,6 @@ export function offersFromApp(app: AppWithDetails | null): EditableOffer[] {
     priceYuan: formatPriceYuan(offer.priceAmount),
     currency: offer.currency,
     status: offer.status as EditableOffer['status'],
-    isDefault: offer.isDefault
+    isDefault: offer.isDefault,
   }));
 }

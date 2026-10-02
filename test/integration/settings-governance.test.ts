@@ -24,6 +24,7 @@ before(async () => {
     .insert(users)
     .values({ email: `${randomUUID()}@example.test`, role: 'admin' })
     .returning();
+  if (!user) throw new Error('Missing test fixture: user');
   token = app.jwt.sign({ sub: user.id, kind: 'user' });
 });
 after(async () => {
@@ -92,6 +93,7 @@ test('key rotation is repeatable and encrypted settings remain readable without 
   await rotateSettingKeys(db, rotatedEnv, false);
   assert.equal((await rotateSettingKeys(db, rotatedEnv, false)).rotated, 0);
   const [row] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+  if (!row) throw new Error('Missing test fixture: row');
   assert.deepEqual(
     decryptJson(
       row.value,
@@ -112,6 +114,7 @@ test('events persist projection tasks and notification replay is idempotent', as
     .insert(users)
     .values({ email: `${randomUUID()}@example.test` })
     .returning();
+  if (!user) throw new Error('Missing test fixture: user');
   const factories = createServiceFactories();
   const event = await factories
     .createEventService(db)
@@ -135,6 +138,7 @@ test('administrative user changes roll back when success auditing fails', async 
     .insert(users)
     .values({ email: `${randomUUID()}@example.test`, displayName: 'before' })
     .returning();
+  if (!target) throw new Error('Missing test fixture: target');
   t.mock.method(AuditLogService.prototype, 'record', async () => {
     throw new Error('fixture-private-secret');
   });
@@ -147,5 +151,42 @@ test('administrative user changes roll back when success auditing fails', async 
   assert.equal(response.statusCode, 500);
   assert(!response.body.includes('fixture-private-secret'));
   const [stored] = await db.select().from(users).where(eq(users.id, target.id));
+  if (!stored) throw new Error('Missing test fixture: stored');
   assert.equal(stored.displayName, 'before');
+});
+
+test('Wechat setting writes use the same optimistic version as the payment overview', async () => {
+  const key = 'billing.provider.wechat_pay';
+  const [previous] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+  const headers = { authorization: `Bearer ${token}` };
+  const read = await app.inject({ method: 'GET', url: '/v1/admin/payment-settings', headers });
+  assert.equal(read.statusCode, 200, read.body);
+  const version = String(read.headers.etag);
+  try {
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/payment-settings/wechat',
+      headers: { ...headers, 'if-match': version },
+      payload: {
+        appId: 'fixture-app',
+        mchId: 'fixture-merchant',
+        appSecret: 'fixture-private-app-secret',
+        apiKey: 'fixture-private-api-key',
+      },
+    });
+    assert.equal(saved.statusCode, 200, saved.body);
+    assert.equal(saved.json().configured, true);
+    assert.equal(saved.body.includes('fixture-private'), false);
+    const stale = await app.inject({
+      method: 'PUT',
+      url: '/v1/admin/payment-settings/wechat',
+      headers: { ...headers, 'if-match': version },
+      payload: { appId: 'stale-overwrite' },
+    });
+    assert.equal(stale.statusCode, 409, stale.body);
+    assert.notEqual(saved.headers.etag, read.headers.etag);
+  } finally {
+    if (previous) await db.update(systemSettings).set(previous).where(eq(systemSettings.key, key));
+    else await db.delete(systemSettings).where(eq(systemSettings.key, key));
+  }
 });

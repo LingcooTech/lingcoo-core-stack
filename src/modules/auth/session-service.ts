@@ -65,6 +65,7 @@ export class AuthSessionService {
           expiresAt,
         })
         .returning();
+      if (!created) throw new Error('Missing required write result: auth created');
       if (!created) throw httpError(500, 'Session creation failed');
       return created;
     });

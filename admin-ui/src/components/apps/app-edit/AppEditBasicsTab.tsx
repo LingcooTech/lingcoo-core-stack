@@ -1,7 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
 import { QiniuImageField } from '@/components/shared/QiniuImageField';
 
@@ -101,7 +107,9 @@ export function AppEditBasicsTab({
               <Label>交付方式</Label>
               <Select
                 value={form.deliveryMode}
-                onValueChange={(value) => setField('deliveryMode', value as FormState['deliveryMode'])}
+                onValueChange={(value) =>
+                  setField('deliveryMode', value as FormState['deliveryMode'])
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -117,7 +125,10 @@ export function AppEditBasicsTab({
             </div>
             <div>
               <Label>状态</Label>
-              <Select value={form.status} onValueChange={(value) => setField('status', value as FormState['status'])}>
+              <Select
+                value={form.status}
+                onValueChange={(value) => setField('status', value as FormState['status'])}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

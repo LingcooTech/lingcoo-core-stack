@@ -8,11 +8,16 @@ export const supportTicketCategorySchema = z.enum([
   'deployment',
   'bug',
   'feature',
-  'other'
+  'other',
 ]);
 
 export const supportTicketPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
-export const supportTicketStatusSchema = z.enum(['waiting_staff', 'waiting_user', 'resolved', 'closed']);
+export const supportTicketStatusSchema = z.enum([
+  'waiting_staff',
+  'waiting_user',
+  'resolved',
+  'closed',
+]);
 
 export const supportTicketListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -20,11 +25,11 @@ export const supportTicketListQuerySchema = z.object({
   search: z.string().trim().max(255).optional(),
   status: supportTicketStatusSchema.optional(),
   category: supportTicketCategorySchema.optional(),
-  priority: supportTicketPrioritySchema.optional()
+  priority: supportTicketPrioritySchema.optional(),
 });
 
 export const supportTicketNoParamsSchema = z.object({
-  ticketNo: z.string().trim().min(6).max(64)
+  ticketNo: z.string().trim().min(6).max(64),
 });
 
 export const createSupportTicketSchema = z.object({
@@ -35,21 +40,21 @@ export const createSupportTicketSchema = z.object({
   category: supportTicketCategorySchema.default('other'),
   priority: supportTicketPrioritySchema.default('normal'),
   subject: z.string().trim().min(1).max(200),
-  body: z.string().trim().min(1).max(5000)
+  body: z.string().trim().min(1).max(5000),
 });
 
 export const supportTicketReplySchema = z.object({
-  body: z.string().trim().min(1).max(5000)
+  body: z.string().trim().min(1).max(5000),
 });
 
 export const adminSupportTicketReplySchema = supportTicketReplySchema.extend({
-  isInternal: z.boolean().optional().default(false)
+  isInternal: z.boolean().optional().default(false),
 });
 
 export const adminAssignSupportTicketSchema = z.object({
-  assignedAdminUserId: z.string().uuid().nullable()
+  assignedAdminUserId: z.string().uuid().nullable(),
 });
 
 export const adminUpdateSupportTicketStatusSchema = z.object({
-  status: supportTicketStatusSchema
+  status: supportTicketStatusSchema,
 });

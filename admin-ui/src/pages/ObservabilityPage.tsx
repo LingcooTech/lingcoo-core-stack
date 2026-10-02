@@ -272,9 +272,9 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.eventName}</p>
-          {row.app && <p className="text-muted-foreground text-[10px]">{row.app.code}</p>}
+          {row.app && <p className="text-[10px] text-muted-foreground">{row.app.code}</p>}
           {row.install && (
-            <p className="text-muted-foreground font-mono text-[10px]">
+            <p className="font-mono text-[10px] text-muted-foreground">
               {row.install.extensionInstallId}
             </p>
           )}
@@ -287,7 +287,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="text-xs">{formatTime(row.eventTime)}</p>
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -297,9 +297,9 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="text-xs font-bold">{row.user?.email ?? '—'}</p>
-          {row.app && <p className="text-muted-foreground font-mono text-[10px]">{row.app.code}</p>}
+          {row.app && <p className="font-mono text-[10px] text-muted-foreground">{row.app.code}</p>}
           {row.user?.displayName && (
-            <p className="text-muted-foreground text-[10px]">{row.user.displayName}</p>
+            <p className="text-[10px] text-muted-foreground">{row.user.displayName}</p>
           )}
         </div>
       ),
@@ -308,7 +308,7 @@ export function ObservabilityPage() {
       key: 'context',
       header: 'Context',
       cell: (row) => (
-        <div className="text-muted-foreground space-y-0.5 font-mono text-[10px]">
+        <div className="space-y-0.5 font-mono text-[10px] text-muted-foreground">
           {row.installId && <p className="max-w-[100px] truncate">install: {row.installId}</p>}
           {row.appId && <p className="max-w-[100px] truncate">app: {row.appId}</p>}
         </div>
@@ -340,7 +340,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div className="flex flex-col gap-1">
           <StatusPill tone={statusToTone(row.status)} label={operationStatusLabel(row.status)} />
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -350,7 +350,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="max-w-[140px] truncate font-mono text-xs">{row.providerEventId}</p>
-          <p className="text-muted-foreground font-mono text-[10px]">{row.id}</p>
+          <p className="font-mono text-[10px] text-muted-foreground">{row.id}</p>
         </div>
       ),
     },
@@ -360,7 +360,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="text-xs">{row.processedAt ? formatTime(row.processedAt) : '未处理'}</p>
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.updatedAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.updatedAt)}</p>
         </div>
       ),
     },
@@ -378,9 +378,9 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.kind}</p>
-          <p className="text-muted-foreground text-[10px]">队列：{row.queue}</p>
+          <p className="text-[10px] text-muted-foreground">队列：{row.queue}</p>
           {row.relatedEntityType && row.relatedEntityId ? (
-            <p className="text-muted-foreground text-[10px]">
+            <p className="text-[10px] text-muted-foreground">
               {row.relatedEntityType}: {row.relatedEntityId}
             </p>
           ) : null}
@@ -393,7 +393,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div className="space-y-1">
           <StatusPill tone={jobStatusTone(row.status)} label={operationStatusLabel(row.status)} />
-          <p className="text-muted-foreground text-[10px]">
+          <p className="text-[10px] text-muted-foreground">
             尝试 {row.attempts} / {row.maxAttempts}
           </p>
         </div>
@@ -438,7 +438,7 @@ export function ObservabilityPage() {
             {retryMutation.isPending && retryMutation.variables === row.id ? '重试中' : '重试'}
           </Button>
         ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+          <span className="text-xs text-muted-foreground">—</span>
         ),
     },
   ];
@@ -450,11 +450,11 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.action}</p>
-          <p className="text-muted-foreground text-[10px]">
+          <p className="text-[10px] text-muted-foreground">
             {row.resourceType}
             {row.resourceId ? ` / ${row.resourceId}` : ''}
           </p>
-          {row.summary ? <p className="text-muted-foreground text-[10px]">{row.summary}</p> : null}
+          {row.summary ? <p className="text-[10px] text-muted-foreground">{row.summary}</p> : null}
         </div>
       ),
     },
@@ -476,7 +476,7 @@ export function ObservabilityPage() {
       cell: (row) => (
         <div className="space-y-1">
           <StatusPill tone={auditOutcomeTone(row.outcome)} label={row.outcome} />
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -507,7 +507,7 @@ export function ObservabilityPage() {
             <StatusPill tone={alertTone(row.level)} label={row.level} />
             <p className="text-sm font-semibold">{row.title}</p>
           </div>
-          <p className="text-muted-foreground mt-1 text-[12px] leading-6">{row.description}</p>
+          <p className="mt-1 text-[12px] leading-6 text-muted-foreground">{row.description}</p>
         </div>
       ),
     },
@@ -570,11 +570,11 @@ export function ObservabilityPage() {
 
           <TabsContent value="alerts">
             {canManageSettings ? (
-              <div className="border-border bg-card mb-4 rounded-lg border p-4">
+              <div className="mb-4 rounded-lg border border-border bg-card p-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-foreground text-sm font-semibold">告警外发</h3>
-                    <p className="text-muted-foreground mt-1 text-xs">
+                    <h3 className="text-sm font-semibold text-foreground">告警外发</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Worker 会按冷却窗口将活跃告警投递到邮件或 webhook。
                     </p>
                   </div>
@@ -696,11 +696,11 @@ export function ObservabilityPage() {
               </div>
             ) : null}
 
-            <div className="border-border bg-card overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               {summaryQuery.isLoading ? (
                 <div className="space-y-3 p-4">
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <div key={index} className="bg-muted h-12 animate-pulse rounded-md" />
+                    <div key={index} className="h-12 animate-pulse rounded-md bg-muted" />
                   ))}
                 </div>
               ) : summary && summary.alerts.length > 0 ? (
@@ -730,7 +730,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索事件名、用户、安装 ID、应用..."
               />
             </div>
-            <div className="border-border bg-card overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <DataTable
                 columns={eventColumns}
                 data={events}
@@ -759,7 +759,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索回调类型、渠道、事件号..."
               />
             </div>
-            <div className="border-border bg-card overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <DataTable
                 columns={webhookColumns}
                 data={webhooks}
@@ -788,7 +788,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索任务类型、状态、实体 ID、worker..."
               />
             </div>
-            <div className="border-border bg-card overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <DataTable
                 columns={jobColumns}
                 data={jobs}
@@ -817,7 +817,7 @@ export function ObservabilityPage() {
                 searchPlaceholder="搜索动作、资源、摘要、操作人..."
               />
             </div>
-            <div className="border-border bg-card overflow-hidden rounded-lg border">
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
               <DataTable
                 columns={auditColumns}
                 data={audits}
@@ -856,17 +856,17 @@ function MetricCard({
 }) {
   const Icon = tone === 'danger' ? ShieldAlert : tone === 'warn' ? AlertTriangle : BellRing;
   return (
-    <div className="border-border bg-card rounded-lg border px-4 py-4 shadow-sm">
+    <div className="rounded-lg border border-border bg-card px-4 py-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-[0.08em]">
+          <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             {title}
           </p>
-          <p className="text-foreground mt-2 font-mono text-2xl font-semibold">{value}</p>
-          <p className="text-muted-foreground mt-2 text-xs">{note}</p>
+          <p className="mt-2 font-mono text-2xl font-semibold text-foreground">{value}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{note}</p>
         </div>
-        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
-          <Icon className="text-muted-foreground h-5 w-5" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+          <Icon className="h-5 w-5 text-muted-foreground" />
         </div>
       </div>
       <div className="mt-3">

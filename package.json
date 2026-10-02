@@ -13,7 +13,7 @@
     "start:worker": "node dist/worker.js",
     "test": "node --import tsx --test test/*.test.ts test/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --max-warnings 18",
+    "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -29,7 +29,7 @@
     "lint:admin": "npm run lint --prefix admin-ui",
     "typecheck:admin": "npm run typecheck --prefix admin-ui",
     "smoke:admin-static": "node scripts/verify-admin-static.mjs",
-    "check": "npm run build:packages && npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
+    "check": "npm run build:packages && npm run format:check && npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
     "inspect:architecture": "node scripts/inspect-architecture.mjs",
     "db:bootstrap": "node dist/scripts/bootstrap-admin.js",
     "check:boundaries": "node scripts/check-module-boundaries.mjs",
@@ -38,7 +38,8 @@
     "test:e2e": "node scripts/run-e2e-tests.mjs",
     "smoke:production": "node scripts/verify-production-image.mjs",
     "predev": "npm run build:packages",
-    "predev:worker": "npm run build:packages"
+    "predev:worker": "npm run build:packages",
+    "test:admin": "npm run test --prefix admin-ui"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",
@@ -89,5 +90,13 @@
   "workspaces": [
     "admin-ui",
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.28.2"
+    },
+    "tsx": {
+      "esbuild": "0.28.2"
+    }
+  }
 }

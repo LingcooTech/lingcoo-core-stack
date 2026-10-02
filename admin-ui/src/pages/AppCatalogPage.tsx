@@ -17,7 +17,7 @@ import remarkGfm from 'remark-gfm';
 
 import { getAppCatalog } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
-import type { HydratedEntitlement } from '@/api/types';
+import type { MyEntitlement } from '@/api/types';
 import { AppPurchaseDialog } from '@/components/portal/AppPurchaseDialog';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { OfferCard } from '@/components/portal/OfferCard';
@@ -41,7 +41,7 @@ import { formatTime, getInitials } from '@/lib/utils';
 
 type DetailTabKey = 'intro' | 'features' | 'screenshots' | 'pricing' | 'support';
 
-function isEffectiveEntitlement(item: HydratedEntitlement) {
+function isEffectiveEntitlement(item: MyEntitlement) {
   if (item.status !== 'active') {
     return false;
   }
@@ -92,7 +92,10 @@ export function AppCatalogPage() {
     setSelectedPurchaseOfferCode(null);
   }, [params.appCode]);
 
-  const offers = data?.offers.filter((offer) => offer.status === 'active') ?? [];
+  const offers = useMemo(
+    () => data?.offers.filter((offer) => offer.status === 'active') ?? [],
+    [data?.offers],
+  );
   const preferredOffer = useMemo(() => getPreferredOffer(offers), [offers]);
   const planById = useMemo(
     () => new Map((data?.plans ?? []).map((plan) => [plan.id, plan])),
@@ -149,7 +152,7 @@ export function AppCatalogPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="text-primary h-8 w-8 animate-spin" />
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -157,14 +160,14 @@ export function AppCatalogPage() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="text-muted-foreground px-0">
+        <Button variant="ghost" asChild className="px-0 text-muted-foreground">
           <Link to="/">
             <ArrowLeft className="mr-1 h-4 w-4" />
             返回应用中心
           </Link>
         </Button>
-        <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
-          <p className="text-muted-foreground text-center text-sm">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <p className="text-center text-sm text-muted-foreground">
             应用不存在或暂未上架，请返回应用中心浏览其他应用。
           </p>
         </div>
@@ -273,14 +276,14 @@ export function AppCatalogPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" asChild className="text-muted-foreground px-0">
+      <Button variant="ghost" asChild className="px-0 text-muted-foreground">
         <Link to="/">
           <ArrowLeft className="mr-1 h-4 w-4" />
           返回应用中心
         </Link>
       </Button>
 
-      <section className="border-border bg-card relative overflow-hidden rounded-xl border">
+      <section className="relative overflow-hidden rounded-xl border border-border bg-card">
         {app.coverUrl ? (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-cover bg-center opacity-[0.08]"
@@ -296,10 +299,10 @@ export function AppCatalogPage() {
                   <img
                     src={app.iconUrl}
                     alt={app.name}
-                    className="border-border bg-card h-28 w-28 rounded-xl border object-contain p-1"
+                    className="h-28 w-28 rounded-xl border border-border bg-card object-contain p-1"
                   />
                 ) : (
-                  <div className="border-border bg-card text-muted-foreground flex h-28 w-28 items-center justify-center rounded-xl border text-3xl font-semibold">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-xl border border-border bg-card text-3xl font-semibold text-muted-foreground">
                     {getInitials(app.name)}
                   </div>
                 )}
@@ -308,32 +311,32 @@ export function AppCatalogPage() {
               <div className="min-w-0 text-center md:text-left">
                 <div className="mb-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
                   {app.category ? (
-                    <Badge variant="outline" className="text-muted-foreground font-medium">
+                    <Badge variant="outline" className="font-medium text-muted-foreground">
                       {app.category}
                     </Badge>
                   ) : null}
-                  <Badge variant="outline" className="text-muted-foreground font-medium">
+                  <Badge variant="outline" className="font-medium text-muted-foreground">
                     {getAppTypeLabel(app.type)}
                   </Badge>
-                  <Badge variant="outline" className="text-muted-foreground font-medium">
+                  <Badge variant="outline" className="font-medium text-muted-foreground">
                     {getAppStatusLabel(app.status)}
                   </Badge>
                   {preferredOffer?.badge ? (
-                    <Badge variant="outline" className="text-foreground font-medium">
+                    <Badge variant="outline" className="font-medium text-foreground">
                       {preferredOffer.badge}
                     </Badge>
                   ) : null}
                 </div>
 
-                <h1 className="text-foreground text-2xl font-semibold tracking-tight md:text-[2rem]">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-[2rem]">
                   {app.name}
                 </h1>
-                <p className="text-muted-foreground mt-3 max-w-3xl text-[15px] leading-7 md:text-base">
+                <p className="mt-3 max-w-3xl text-[15px] leading-7 text-muted-foreground md:text-base">
                   {app.tagline || app.description || '该应用暂未提供简介。'}
                 </p>
 
                 {appDetail.developer || appDetail.updateDate ? (
-                  <div className="text-muted-foreground mt-3 flex flex-wrap items-center justify-center gap-3 text-sm md:justify-start">
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground md:justify-start">
                     {appDetail.developer ? <span>{appDetail.developer}</span> : null}
                     {appDetail.developer && appDetail.updateDate ? (
                       <span className="text-gray-300">•</span>
@@ -356,24 +359,24 @@ export function AppCatalogPage() {
           </div>
 
           <aside className="w-full lg:justify-self-end">
-            <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
               <div className="text-center">
-                <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   价格
                 </p>
-                <p className="text-foreground mt-2 text-3xl font-bold">{heroPriceLabel}</p>
-                <p className="text-muted-foreground mt-2 text-sm leading-6">
+                <p className="mt-2 text-3xl font-bold text-foreground">{heroPriceLabel}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {heroPriceDescription}
                 </p>
                 {hasActiveEntitlement ? (
-                  <p className="text-foreground mt-2 text-xs font-medium">当前账户已拥有有效授权</p>
+                  <p className="mt-2 text-xs font-medium text-foreground">当前账户已拥有有效授权</p>
                 ) : hasHistoricalEntitlement ? (
-                  <p className="text-muted-foreground mt-2 text-xs font-medium">
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">
                     当前暂无有效授权，可重新购买或联系支持恢复使用
                   </p>
                 ) : null}
                 {appDetail.trialDays > 0 && offers.length === 0 ? (
-                  <p className="text-muted-foreground mt-2 text-xs">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     支持 {appDetail.trialDays} 天免费试用
                   </p>
                 ) : null}
@@ -474,13 +477,13 @@ export function AppCatalogPage() {
               {offers.length > 0 &&
               !hasActiveEntitlement &&
               (websiteLink || primaryDownloadLink) ? (
-                <p className="text-muted-foreground mt-3 text-center text-xs">
+                <p className="mt-3 text-center text-xs text-muted-foreground">
                   购买后可在「我的应用」中查看授权入口、下载或部署。
                 </p>
               ) : null}
 
               {!offers.length && downloadLinks.length > 1 ? (
-                <p className="text-muted-foreground mt-3 text-center text-xs">
+                <p className="mt-3 text-center text-xs text-muted-foreground">
                   另有 {downloadLinks.length - 1} 个下载渠道，可在下方资源区查看。
                 </p>
               ) : null}
@@ -492,7 +495,7 @@ export function AppCatalogPage() {
       <section className="py-1">
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1 lg:max-w-[calc(100%-300px-1.5rem)]">
-            <div className="border-border bg-card rounded-xl border p-2 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-2 shadow-sm">
               <nav className="flex gap-2 overflow-x-auto" aria-label="Tabs">
                 {visibleTabs.map((tab) => (
                   <button
@@ -520,8 +523,8 @@ export function AppCatalogPage() {
                     </ReactMarkdown>
                   </div>
                 ) : (
-                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
-                    <p className="text-muted-foreground text-sm leading-7">
+                  <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <p className="text-sm leading-7 text-muted-foreground">
                       {app.description || app.tagline || '该应用暂未提供详细介绍。'}
                     </p>
                   </div>
@@ -534,15 +537,15 @@ export function AppCatalogPage() {
                     {app.highlights.map((highlight, index) => (
                       <div
                         key={index}
-                        className="border-border bg-card rounded-xl border p-5 shadow-sm"
+                        className="rounded-xl border border-border bg-card p-5 shadow-sm"
                       >
-                        <div className="bg-card flex h-11 w-11 items-center justify-center rounded-xl text-xl shadow-sm">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-card text-xl shadow-sm">
                           {highlight.icon || '✦'}
                         </div>
-                        <h3 className="text-foreground mt-3 text-base font-semibold">
+                        <h3 className="mt-3 text-base font-semibold text-foreground">
                           {highlight.title}
                         </h3>
-                        <p className="text-muted-foreground mt-2 text-sm leading-6">
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
                           {highlight.description}
                         </p>
                       </div>
@@ -566,9 +569,9 @@ export function AppCatalogPage() {
                         href={screenshot.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="border-border bg-card hover:border-foreground/20 group overflow-hidden rounded-xl border transition-colors"
+                        className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20"
                       >
-                        <div className="bg-muted aspect-[16/10] overflow-hidden">
+                        <div className="aspect-[16/10] overflow-hidden bg-muted">
                           <img
                             src={screenshot.url}
                             alt={screenshot.caption || `截图 ${index + 1}`}
@@ -576,7 +579,7 @@ export function AppCatalogPage() {
                           />
                         </div>
                         {screenshot.caption ? (
-                          <div className="border-border text-muted-foreground border-t px-4 py-3 text-sm">
+                          <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
                             {screenshot.caption}
                           </div>
                         ) : null}
@@ -612,18 +615,18 @@ export function AppCatalogPage() {
                     {appDetail.subscriptionPlans.map((plan, index) => (
                       <div
                         key={`${plan.period}-${plan.price}-${index}`}
-                        className="border-border bg-card rounded-xl border p-5 shadow-sm"
+                        className="rounded-xl border border-border bg-card p-5 shadow-sm"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <h3 className="text-foreground text-base font-semibold">
+                          <h3 className="text-base font-semibold text-foreground">
                             {plan.period || '未命名周期'}
                           </h3>
-                          <p className="text-foreground text-base font-semibold">
+                          <p className="text-base font-semibold text-foreground">
                             {plan.price || '价格待定'}
                           </p>
                         </div>
                         {plan.description ? (
-                          <p className="text-muted-foreground mt-2 text-sm leading-6">
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">
                             {plan.description}
                           </p>
                         ) : null}
@@ -631,8 +634,8 @@ export function AppCatalogPage() {
                     ))}
                   </div>
                 ) : appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl ? (
-                  <div className="border-border bg-card rounded-xl border p-6 shadow-sm">
-                    <p className="text-muted-foreground text-sm leading-7">
+                  <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                    <p className="text-sm leading-7 text-muted-foreground">
                       当前应用采用站外购买方式
                       {appDetail.price ? `，参考价格为 ${appDetail.price}` : ''}
                       。你可以通过下方按钮跳转到外部购买页面。
@@ -663,24 +666,24 @@ export function AppCatalogPage() {
                         return (
                           <div
                             key={index}
-                            className="border-border bg-card overflow-hidden rounded-xl border"
+                            className="overflow-hidden rounded-xl border border-border bg-card"
                           >
                             <button
                               type="button"
                               onClick={() => toggleFaq(index)}
                               className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
                             >
-                              <span className="text-foreground text-base font-semibold">
+                              <span className="text-base font-semibold text-foreground">
                                 {item.question}
                               </span>
                               <ChevronDown
-                                className={`text-muted-foreground h-4 w-4 shrink-0 transition-transform ${
+                                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
                                   open ? 'rotate-180' : ''
                                 }`}
                               />
                             </button>
                             {open ? (
-                              <div className="border-border text-muted-foreground border-t px-6 py-5 text-sm leading-7">
+                              <div className="border-t border-border px-6 py-5 text-sm leading-7 text-muted-foreground">
                                 {item.answer}
                               </div>
                             ) : null}
@@ -695,19 +698,19 @@ export function AppCatalogPage() {
                       {resourceCards.map((resource) => {
                         const isInternal = resource.url.startsWith('/');
                         const card = (
-                          <div className="border-border bg-card hover:border-foreground/20 rounded-xl border p-5 transition-colors">
+                          <div className="rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/20">
                             <div className="flex items-center gap-2">
                               <Badge
                                 variant="outline"
-                                className="text-muted-foreground font-medium"
+                                className="font-medium text-muted-foreground"
                               >
                                 {resource.typeLabel}
                               </Badge>
-                              <p className="text-foreground text-sm font-semibold">
+                              <p className="text-sm font-semibold text-foreground">
                                 {resource.label}
                               </p>
                             </div>
-                            <p className="text-muted-foreground mt-3 text-sm leading-6">
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
                               {resource.note}
                             </p>
                           </div>
@@ -750,8 +753,8 @@ export function AppCatalogPage() {
 
           <aside className="w-full shrink-0 lg:w-[300px]">
             <div className="space-y-4 lg:sticky lg:top-20">
-              <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                   应用信息
                 </h3>
                 <dl className="mt-4 space-y-3 text-sm">
@@ -768,21 +771,21 @@ export function AppCatalogPage() {
                   ].map((item) => (
                     <div key={item.label} className="flex items-start justify-between gap-4">
                       <dt className="text-muted-foreground">{item.label}</dt>
-                      <dd className="text-foreground text-right font-medium">{item.value}</dd>
+                      <dd className="text-right font-medium text-foreground">{item.value}</dd>
                     </div>
                   ))}
                 </dl>
               </div>
 
               {systemRequirements.length > 0 ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                  <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                     系统要求
                   </h3>
-                  <ul className="text-muted-foreground mt-3 space-y-2 text-sm">
+                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {systemRequirements.map((requirement) => (
                       <li key={requirement} className="flex items-start gap-2">
-                        <CheckCircle2 className="text-muted-foreground mt-0.5 h-4 w-4" />
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
                         <span>{requirement}</span>
                       </li>
                     ))}
@@ -791,8 +794,8 @@ export function AppCatalogPage() {
               ) : null}
 
               {technicalNotes ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                  <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                     技术说明
                   </h3>
                   <div className="content-body content-body-sm mt-3 max-w-none">
@@ -805,26 +808,26 @@ export function AppCatalogPage() {
 
               {appDetail.purchaseType === 'onsite_subscription' &&
               appDetail.subscriptionPlans.length > 0 ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                  <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                     订阅套餐
                   </h3>
                   <div className="mt-3 space-y-3">
                     {appDetail.subscriptionPlans.map((plan, index) => (
                       <div
                         key={`${plan.period}-${plan.price}-${index}`}
-                        className="border-border bg-muted/80 rounded-xl border px-3 py-3"
+                        className="rounded-xl border border-border bg-muted/80 px-3 py-3"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-foreground text-sm font-semibold">
+                          <p className="text-sm font-semibold text-foreground">
                             {plan.period || '未命名周期'}
                           </p>
-                          <p className="text-foreground text-sm font-semibold">
+                          <p className="text-sm font-semibold text-foreground">
                             {plan.price || '价格待定'}
                           </p>
                         </div>
                         {plan.description ? (
-                          <p className="text-muted-foreground mt-1 text-xs leading-5">
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
                             {plan.description}
                           </p>
                         ) : null}
@@ -835,8 +838,8 @@ export function AppCatalogPage() {
               ) : null}
 
               {usageInstructions ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                  <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                     使用说明
                   </h3>
                   <div className="content-body content-body-sm mt-3 max-w-none">
@@ -848,8 +851,8 @@ export function AppCatalogPage() {
               ) : null}
 
               {notes ? (
-                <div className="border-border bg-card rounded-xl border p-4 shadow-sm">
-                  <h3 className="text-foreground text-sm font-semibold uppercase tracking-wide">
+                <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">
                     注意事项
                   </h3>
                   <div className="content-body content-body-sm mt-3 max-w-none">

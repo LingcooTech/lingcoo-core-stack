@@ -19,7 +19,7 @@ export function JsonViewer({
   const json = JSON.stringify(data, null, 2);
 
   if (!data || json === 'null' || json === '{}' || json === '[]') {
-    return <span className="text-muted-foreground text-xs italic">空</span>;
+    return <span className="text-xs text-muted-foreground italic">空</span>;
   }
 
   return (
@@ -27,13 +27,13 @@ export function JsonViewer({
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono transition-colors"
+        className="inline-flex items-center gap-1 font-mono text-muted-foreground transition-colors hover:text-foreground"
       >
         {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         <span className="font-bold">{label}</span>
       </button>
       {expanded && (
-        <pre className="bg-muted border-border mt-1.5 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border p-2 font-mono text-[11px] leading-relaxed">
+        <pre className="mt-1.5 max-h-48 overflow-auto rounded-lg border border-border bg-muted p-2 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap">
           {json}
         </pre>
       )}

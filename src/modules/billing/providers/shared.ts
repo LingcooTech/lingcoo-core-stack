@@ -29,11 +29,7 @@ export function readSecretFile(filePath: string | undefined, label: string) {
   }
 }
 
-export function readSecretValue(input: {
-  inlineValue?: string;
-  filePath?: string;
-  label: string;
-}) {
+export function readSecretValue(input: { inlineValue?: string; filePath?: string; label: string }) {
   if (input.inlineValue?.trim()) {
     return input.inlineValue.trim();
   }
@@ -41,7 +37,11 @@ export function readSecretValue(input: {
   return readSecretFile(input.filePath, input.label);
 }
 
-export function resolveCallbackUrl(explicitUrl: string | undefined, publicBaseUrl: string, pathname: string) {
+export function resolveCallbackUrl(
+  explicitUrl: string | undefined,
+  publicBaseUrl: string,
+  pathname: string,
+) {
   if (explicitUrl?.trim()) {
     return explicitUrl.trim();
   }

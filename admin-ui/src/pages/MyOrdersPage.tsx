@@ -34,7 +34,7 @@ export function MyOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-foreground text-4xl font-semibold tracking-tight">订单记录</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">订单记录</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -43,9 +43,9 @@ export function MyOrdersPage() {
           { label: '已支付', value: String(paidOrders.length) },
           { label: '处理中', value: String(processingOrders.length) },
         ].map((item) => (
-          <div key={item.label} className="border-border bg-card rounded-xl border p-4 shadow-sm">
-            <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-            <p className="text-foreground mt-2 text-3xl font-semibold tracking-tight">
+          <div key={item.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
               {item.value}
             </p>
           </div>
@@ -54,8 +54,8 @@ export function MyOrdersPage() {
 
       <section className="space-y-5">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">全部订单</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">全部订单</h2>
+          <p className="text-sm text-muted-foreground">
             已支付 {paidOrders.length} 笔，累计{' '}
             {formatAmount(paidTotal, paidOrders[0]?.currency ?? 'CNY')}
           </p>
@@ -63,9 +63,9 @@ export function MyOrdersPage() {
 
         <div className="grid gap-4">
           {ordersQuery.isLoading ? (
-            <Card className="border-border bg-card rounded-xl">
-              <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-                <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+            <Card className="rounded-xl border-border bg-card">
+              <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+                <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
                 正在加载订单记录...
               </CardContent>
             </Card>

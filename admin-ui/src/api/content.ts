@@ -11,11 +11,13 @@ function buildQueryString<T extends object>(params: T | undefined) {
   return qs.toString();
 }
 
-export async function listPublishedContent(params: {
-  limit?: number;
-  offset?: number;
-  search?: string;
-} = {}): Promise<ContentListResponse> {
+export async function listPublishedContent(
+  params: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+  } = {},
+): Promise<ContentListResponse> {
   const qs = buildQueryString(params);
   return apiClient<ContentListResponse>(`/v1/content${qs ? `?${qs}` : ''}`);
 }

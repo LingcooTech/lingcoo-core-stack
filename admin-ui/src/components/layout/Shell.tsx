@@ -34,7 +34,7 @@ export function Shell() {
         </SheetContent>
       </Sheet>
 
-      <div className="bg-background flex min-h-screen flex-col overflow-hidden">
+      <div className="flex min-h-screen flex-col overflow-hidden bg-background">
         <Topbar onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-auto">
           <RouteSlot />

@@ -7,6 +7,8 @@ test('CommonJS and ESM consume real shared package exports', async () => {
   const esm = await import('@lingcoo/contracts');
   assert(cjs.loginSchema);
   assert(esm.loginSchema);
+  assert(require('@lingcoo/contracts/models').ContentItemSchema);
+  assert((await import('@lingcoo/contracts/models')).ContentItemSchema);
   assert.equal(typeof require('@lingcoo/api-client').createApiClient, 'function');
   assert.equal(typeof (await import('@lingcoo/api-client')).createApiClient, 'function');
 });

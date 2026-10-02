@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 export function HomePage() {
   const { data, isLoading } = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
-  const apps = data?.items ?? [];
+  const apps = useMemo(() => data?.items ?? [], [data?.items]);
 
   const [activeCategory, setActiveCategory] = useState<string>('');
 
@@ -58,7 +58,7 @@ export function HomePage() {
                 <button
                   type="button"
                   onClick={() => setActiveCategory('')}
-                  className="text-foreground border-border hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
                 >
                   显示全部应用
                 </button>
@@ -81,16 +81,16 @@ function HeroSection({ appCount }: { appCount: number }) {
   return (
     <section className="pt-2">
       <div className="max-w-3xl">
-        <div className="text-muted-foreground inline-flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.14em]">
+        <div className="inline-flex items-center gap-1.5 text-[12px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
           <Sparkles className="h-3.5 w-3.5" />
           FutureDecade 应用工坊
         </div>
-        <h1 className="text-foreground mt-3 text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
+        <h1 className="mt-3 text-4xl leading-tight font-semibold tracking-tight text-foreground md:text-5xl">
           挑一款应用，
           <br className="hidden md:inline" />
           立刻开始你的工作流。
         </h1>
-        <p className="text-muted-foreground mt-4 text-[15px] leading-7 md:text-base">
+        <p className="mt-4 text-[15px] leading-7 text-muted-foreground md:text-base">
           {appCount > 0
             ? `精选 ${appCount} 款经过实战打磨的工具，统一支付、统一授权、统一体验。`
             : '统一支付、统一授权、统一体验。'}
@@ -98,14 +98,14 @@ function HeroSection({ appCount }: { appCount: number }) {
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             to="#apps"
-            className="bg-foreground text-background hover:bg-foreground/90 inline-flex h-10 items-center gap-1.5 rounded-md px-4 text-[13px] font-medium no-underline transition-colors"
+            className="inline-flex h-10 items-center gap-1.5 rounded-md bg-foreground px-4 text-[13px] font-medium text-background no-underline transition-colors hover:bg-foreground/90"
           >
             浏览应用
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
           <Link
             to="/access"
-            className="border-border text-foreground hover:bg-muted inline-flex h-10 items-center gap-1.5 rounded-md border px-4 text-[13px] font-medium no-underline transition-colors"
+            className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-4 text-[13px] font-medium text-foreground no-underline transition-colors hover:bg-muted"
           >
             查看已开通
           </Link>
@@ -132,7 +132,7 @@ function CategoryNav({
     <nav
       id="apps"
       aria-label="应用分类"
-      className="border-border bg-background/80 sticky top-12 z-10 -mx-1 flex gap-1 overflow-x-auto border-b px-1 py-2 backdrop-blur-md"
+      className="sticky top-12 z-10 -mx-1 flex gap-1 overflow-x-auto border-b border-border bg-background/80 px-1 py-2 backdrop-blur-md"
     >
       <CategoryChip
         label="全部"
@@ -172,7 +172,7 @@ function CategoryChip({
         'shrink-0 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
         active
           ? 'bg-muted text-foreground'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
       )}
     >
       {label}

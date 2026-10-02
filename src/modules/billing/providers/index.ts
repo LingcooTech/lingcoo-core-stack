@@ -11,7 +11,7 @@ function buildProviders(): BillingProviderAdapter[] {
 export function listBillingProviders(env: AppEnv) {
   return buildProviders().map((provider) => ({
     code: provider.code,
-    configured: provider.isConfigured(env)
+    configured: provider.isConfigured(env),
   }));
 }
 

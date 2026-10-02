@@ -187,10 +187,10 @@ export function OrdersPage() {
       header: '订单号',
       cell: (row) => (
         <div className="min-w-0">
-          <p className="text-foreground truncate font-mono text-[12px] font-semibold">
+          <p className="truncate font-mono text-[12px] font-semibold text-foreground">
             {row.orderNo}
           </p>
-          <p className="text-muted-foreground truncate text-[10px]">{row.app?.name ?? row.appId}</p>
+          <p className="truncate text-[10px] text-muted-foreground">{row.app?.name ?? row.appId}</p>
         </div>
       ),
     },
@@ -201,7 +201,7 @@ export function OrdersPage() {
         <div className="inline-flex items-center gap-1.5">
           <StatusPill tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
           {row.provider ? (
-            <span className="text-muted-foreground text-[10px]">
+            <span className="text-[10px] text-muted-foreground">
               {paymentProviderLabel(row.provider)}
             </span>
           ) : null}
@@ -218,10 +218,10 @@ export function OrdersPage() {
       header: '金额',
       cell: (row) => (
         <div className="tabular-nums">
-          <p className="text-foreground text-[12px] font-semibold">
+          <p className="text-[12px] font-semibold text-foreground">
             {formatAmount(row.amount, row.currency)}
           </p>
-          <p className="text-muted-foreground text-[10px]">{formatTime(row.createdAt)}</p>
+          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -246,7 +246,7 @@ export function OrdersPage() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-muted-foreground h-7 px-2 text-xs"
+            className="h-7 px-2 text-xs text-muted-foreground"
             disabled={reconcileMutation.isPending && reconcileMutation.variables === row.orderNo}
             onClick={(e) => {
               e.stopPropagation();
@@ -284,7 +284,7 @@ export function OrdersPage() {
         </BulkActionButton>
       </BulkActionBar>
 
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <DataTable
           columns={orderColumns}
           data={orders}
@@ -314,13 +314,13 @@ export function OrdersPage() {
           }}
         >
           <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-            <SheetHeader className="border-border border-b px-6 py-4">
+            <SheetHeader className="border-b border-border px-6 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <SheetDescription className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+                  <SheetDescription className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                     订单详情
                   </SheetDescription>
-                  <SheetTitle className="text-foreground mt-1 truncate font-mono text-[15px] font-semibold">
+                  <SheetTitle className="mt-1 truncate font-mono text-[15px] font-semibold text-foreground">
                     {selectedOrderNo}
                   </SheetTitle>
                 </div>
@@ -380,7 +380,7 @@ export function OrdersPage() {
               {orderDetailQuery.isLoading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="bg-muted h-8 animate-pulse rounded" />
+                    <div key={i} className="h-8 animate-pulse rounded bg-muted" />
                   ))}
                 </div>
               ) : detail ? (
@@ -424,7 +424,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 
   return (
     <div className="space-y-5 text-sm">
-      <section className="border-border bg-card grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border p-4 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
         <InfoBlock
           label="状态"
           render={
@@ -445,10 +445,10 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
       </section>
 
-      <section className="border-border bg-card rounded-xl border p-4">
+      <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-3">
-          <h3 className="text-foreground text-sm font-semibold">关联处理</h3>
-          <p className="text-muted-foreground mt-1 text-xs">
+          <h3 className="text-sm font-semibold text-foreground">关联处理</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
             从当前订单继续定位用户、授权与工单上下文，避免在异常处理时重复检索。
           </p>
         </div>
@@ -487,19 +487,19 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <DetailSection title={`支付尝试 (${paymentAttempts.length})`}>
           <div className="space-y-2">
             {paymentAttempts.map((attempt) => (
-              <div key={attempt.id} className="border-border rounded-md border p-3">
+              <div key={attempt.id} className="rounded-md border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[12px] font-semibold">{attempt.attemptNo}</span>
                   <StatusPill
                     tone={statusToTone(attempt.status)}
                     label={checkoutSessionStatusLabel(attempt.status)}
                   />
-                  <span className="text-muted-foreground ml-auto text-[10px] tabular-nums">
+                  <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
                     {formatTime(attempt.createdAt)}
                   </span>
                 </div>
                 {attempt.providerReference && (
-                  <p className="text-muted-foreground mt-1.5 font-mono text-[10px]">
+                  <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
                     {attempt.providerReference}
                   </p>
                 )}
@@ -520,15 +520,15 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
               <Link
                 key={e.id}
                 to={`/admin/licenses?search=${encodeURIComponent(e.id)}`}
-                className="border-border bg-card hover:border-foreground/20 hover:bg-muted/40 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs no-underline transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs no-underline transition-colors hover:border-foreground/20 hover:bg-muted/40"
                 title="在授权管理中查看"
               >
-                <span className="text-foreground font-mono">{e.plan?.code ?? e.id}</span>
+                <span className="font-mono text-foreground">{e.plan?.code ?? e.id}</span>
                 <StatusPill
                   tone={statusToTone(e.status)}
                   label={entitlementStatusLabel(e.status)}
                 />
-                <ArrowUpRight className="text-muted-foreground/60 h-3 w-3" />
+                <ArrowUpRight className="h-3 w-3 text-muted-foreground/60" />
               </Link>
             ))}
           </div>
@@ -537,13 +537,13 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 
       {events.length > 0 && (
         <DetailSection title={`关联事件 (${events.length})`}>
-          <div className="border-border divide-border divide-y overflow-hidden rounded-md border">
+          <div className="divide-y divide-border overflow-hidden rounded-md border border-border">
             {events.map((ev, idx) => (
               <div key={idx} className="flex items-start gap-3 px-3 py-2 text-xs">
-                <span className="text-muted-foreground w-28 shrink-0 text-[10px] tabular-nums">
+                <span className="w-28 shrink-0 text-[10px] text-muted-foreground tabular-nums">
                   {formatTime(ev.eventTime)}
                 </span>
-                <span className="text-foreground font-mono text-[11px] font-semibold">
+                <span className="font-mono text-[11px] font-semibold text-foreground">
                   {ev.eventName}
                 </span>
                 <div className="ml-auto">
@@ -572,7 +572,7 @@ function ActionLink({ to, label }: { to: string; label: string }) {
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="text-muted-foreground mb-2 text-[11px] font-semibold uppercase tracking-wider">
+      <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
         {title}
       </h3>
       {children}
@@ -595,7 +595,7 @@ function InfoBlock({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wider">
+      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
       <div className="mt-1">
@@ -603,7 +603,7 @@ function InfoBlock({
           <p
             className={
               valueClassName ??
-              `text-foreground truncate text-xs ${mono ? 'font-mono' : 'font-medium'}`
+              `truncate text-xs text-foreground ${mono ? 'font-mono' : 'font-medium'}`
             }
           >
             {value}

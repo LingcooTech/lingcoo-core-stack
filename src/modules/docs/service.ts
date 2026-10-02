@@ -301,12 +301,14 @@ export class DocsService {
   async listPublicSpaces() {
     const spaces = await this.repository.listPublicSpaces();
     const result = await Promise.all(
-      spaces.map(async (space) => ({
-        ...space,
-        pageCount: (await this.repository.listPagesBySpace(space.id)).filter(
-          (page) => page.status === 'published',
-        ).length,
-      })),
+      spaces
+        .filter((space) => space.type !== 'internal')
+        .map(async (space) => ({
+          ...space,
+          pageCount: (await this.repository.listPagesBySpace(space.id)).filter(
+            (page) => page.status === 'published',
+          ).length,
+        })),
     );
 
     return { items: result };
@@ -314,7 +316,7 @@ export class DocsService {
 
   async getPublicSpace(spaceSlug: string) {
     const space = await this.repository.findSpaceBySlug(spaceSlug);
-    if (!space || space.status !== 'active') {
+    if (!space || space.status !== 'active' || space.type === 'internal') {
       throw httpError(404, 'Doc space not found');
     }
 
@@ -369,7 +371,7 @@ export class DocsService {
 
   async listSearchIndex() {
     const spaces = (await this.repository.listPublicSpaces()).filter(
-      (space) => space.status === 'active',
+      (space) => space.status === 'active' && space.type !== 'internal',
     );
     const items: Array<{
       spaceSlug: string;
@@ -406,7 +408,7 @@ export class DocsService {
     userAgent?: string | null;
   }) {
     const space = await this.repository.findSpaceBySlug(input.spaceSlug);
-    if (!space || space.status !== 'active') {
+    if (!space || space.status !== 'active' || space.type === 'internal') {
       throw httpError(404, 'Doc space not found');
     }
 

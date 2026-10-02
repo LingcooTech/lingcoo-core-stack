@@ -85,13 +85,13 @@ export function ContentEditPage() {
 
   return (
     <div className="space-y-4">
-      <div className="border-border border-b px-6 py-5">
+      <div className="border-b border-border px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-foreground text-lg font-semibold tracking-tight">
+            <h1 className="text-lg font-semibold tracking-tight text-foreground">
               {isCreateMode ? '新建内容' : '编辑内容'}
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="mt-1 text-sm text-muted-foreground">
               支持手动创建内容，也支持对导入内容做二次编辑。
             </p>
           </div>

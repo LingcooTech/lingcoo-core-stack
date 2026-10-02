@@ -1,3 +1,4 @@
+import { requireResult } from '../../src/db/required-result';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
@@ -66,7 +67,10 @@ test('concurrent same-key orders share one provider operation and reject differe
     results.map((r) => r.statusCode),
     [201, 201],
   );
-  assert.deepEqual(results[0].json(), results[1].json());
+  assert.deepEqual(
+    requireResult(results[0], 'fixture array element').json(),
+    requireResult(results[1], 'fixture array element').json(),
+  );
   assert.equal(calls, 1);
   const mismatch = await app.inject({
     method: 'POST',
@@ -127,6 +131,7 @@ test('deployment replay keeps the original resource and command correlation', as
     .select()
     .from(entitlements)
     .where(eq(entitlements.sourceId, fixture.order.id));
+  if (!entitlement) throw new Error('Missing test fixture: entitlement');
   const headers = {
     authorization: `Bearer ${app.jwt.sign({ sub: fixture.user.id, kind: 'user' })}`,
     'idempotency-key': randomUUID(),
@@ -144,13 +149,20 @@ test('deployment replay keeps the original resource and command correlation', as
     results.map((result) => result.statusCode),
     [201, 201],
   );
-  assert.equal(results[0].json().id, results[1].json().id);
+  assert.equal(
+    requireResult(results[0], 'fixture array element').json().id,
+    requireResult(results[1], 'fixture array element').json().id,
+  );
   const records = await db
     .select()
     .from(deployments)
     .where(eq(deployments.entitlementId, entitlement.id));
   assert.equal(records.length, 1);
-  assert.equal(typeof (records[0].meta as { commandId?: string }).commandId, 'string');
+  assert.equal(
+    typeof (requireResult(records[0], 'fixture array element').meta as { commandId?: string })
+      .commandId,
+    'string',
+  );
 });
 
 test('checkout creation replays the shared response and retains one session', async (t) => {
@@ -194,14 +206,21 @@ test('checkout creation replays the shared response and retains one session', as
     responses.map((r) => r.statusCode),
     [201, 201],
   );
-  assert.deepEqual(responses[0].json(), responses[1].json());
+  assert.deepEqual(
+    requireResult(responses[0], 'fixture array element').json(),
+    requireResult(responses[1], 'fixture array element').json(),
+  );
   assert.equal(calls, 1);
   const rows = await db
     .select()
     .from(checkoutSessions)
     .where(eq(checkoutSessions.userId, fixture.user.id));
   assert.equal(rows.length, 1);
-  assert.equal(typeof (rows[0].meta as { commandId?: string }).commandId, 'string');
+  assert.equal(
+    typeof (requireResult(rows[0], 'fixture array element').meta as { commandId?: string })
+      .commandId,
+    'string',
+  );
 });
 test('admin refund replay invokes the provider once with its stable refund identifier', async (t) => {
   const fixture = await seedPurchase(db);
@@ -250,7 +269,10 @@ test('admin refund replay invokes the provider once with its stable refund ident
     responses.map((r) => r.statusCode),
     [200, 200],
   );
-  assert.deepEqual(responses[0].json(), responses[1].json());
+  assert.deepEqual(
+    requireResult(responses[0], 'fixture array element').json(),
+    requireResult(responses[1], 'fixture array element').json(),
+  );
   assert.equal(calls, 1);
   assert(responses.some((r) => r.headers['idempotency-replayed'] === 'true'));
 });

@@ -1,6 +1,8 @@
+import { requireResult } from '../src/db/required-result';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient, ApiError, ProtocolError, NetworkError } from '@lingcoo/api-client';
+import { z } from 'zod';
 import { meResponseSchema } from '@lingcoo/contracts';
 test('browser client includes cookies and supplies CSRF only for unsafe requests', async () => {
   const calls: RequestInit[] = [];
@@ -12,12 +14,21 @@ test('browser client includes cookies and supplies CSRF only for unsafe requests
       return Response.json({ ok: true });
     },
   });
-  await request('/fixture');
-  await request('/fixture', { method: 'POST', body: '{}' });
-  assert.equal(calls[0].credentials, 'include');
-  assert.equal(new Headers(calls[0].headers).has('x-csrf-token'), false);
-  assert.equal(new Headers(calls[1].headers).get('x-csrf-token'), 'session-bound-csrf');
-  assert.equal(new Headers(calls[1].headers).has('authorization'), false);
+  await request('/fixture', { schema: z.object({ ok: z.boolean() }) });
+  await request('/fixture', { method: 'POST', body: '{}', schema: z.object({ ok: z.boolean() }) });
+  assert.equal(requireResult(calls[0], 'fixture array element').credentials, 'include');
+  assert.equal(
+    new Headers(requireResult(calls[0], 'fixture array element').headers).has('x-csrf-token'),
+    false,
+  );
+  assert.equal(
+    new Headers(requireResult(calls[1], 'fixture array element').headers).get('x-csrf-token'),
+    'session-bound-csrf',
+  );
+  assert.equal(
+    new Headers(requireResult(calls[1], 'fixture array element').headers).has('authorization'),
+    false,
+  );
 });
 test('API client rejects invalid JSON and unexpected successful responses with a request identifier', async () => {
   for (const response of [
@@ -62,4 +73,15 @@ test('API client preserves legacy errors and separates network failure from canc
     })('/fixture', { signal: controller.signal }),
     (error) => error === aborted,
   );
+});
+
+test('explicit schemas infer and return validated output, including transformations', async () => {
+  const request = createApiClient({
+    fetch: async () => Response.json({ count: '2', untrustedExtra: 'ignored' }),
+  });
+  const result = await request('/fixture', {
+    schema: z.object({ count: z.coerce.number().int().positive() }),
+  });
+  assert.equal(result.count, 2);
+  assert.deepEqual(result, { count: 2 });
 });

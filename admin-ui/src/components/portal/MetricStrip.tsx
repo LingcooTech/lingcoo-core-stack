@@ -12,13 +12,13 @@ export function MetricStrip({ items }: { items: PortalMetricItem[] }) {
       {items.map((item) => (
         <Card key={item.label} className="border-border/80 bg-card/90">
           <CardContent className="space-y-1.5 p-4">
-            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               {item.label}
             </p>
-            <p className="text-foreground text-[1.7rem] font-semibold tracking-tight">
+            <p className="text-[1.7rem] font-semibold tracking-tight text-foreground">
               {item.value}
             </p>
-            <p className="text-muted-foreground text-xs leading-5">{item.note}</p>
+            <p className="text-xs leading-5 text-muted-foreground">{item.note}</p>
           </CardContent>
         </Card>
       ))}

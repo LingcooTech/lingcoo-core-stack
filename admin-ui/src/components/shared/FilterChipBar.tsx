@@ -82,7 +82,7 @@ function FilterChip({ chip }: { chip: FilterChipConfig }) {
             <button
               type="button"
               aria-label={`清除 ${label} 筛选`}
-              className="hover:bg-primary/15 ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
+              className="ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full hover:bg-primary/15"
               onClick={(e) => {
                 e.stopPropagation();
                 onChange([]);
@@ -97,9 +97,9 @@ function FilterChip({ chip }: { chip: FilterChipConfig }) {
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         {searchable && (
-          <div className="border-border border-b px-2 py-2">
+          <div className="border-b border-border px-2 py-2">
             <div className="relative">
-              <Search className="text-muted-foreground absolute left-2 top-1/2 size-3.5 -translate-y-1/2" />
+              <Search className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -111,7 +111,7 @@ function FilterChip({ chip }: { chip: FilterChipConfig }) {
         )}
         <div className="max-h-64 overflow-auto py-1">
           {filteredOptions.length === 0 ? (
-            <div className="text-muted-foreground px-3 py-6 text-center text-xs">
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">
               没有匹配的选项
             </div>
           ) : (
@@ -121,7 +121,7 @@ function FilterChip({ chip }: { chip: FilterChipConfig }) {
                 <label
                   key={opt.value}
                   htmlFor={`${id}-${opt.value}`}
-                  className="hover:bg-muted flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
                 >
                   <Checkbox
                     id={`${id}-${opt.value}`}
@@ -135,7 +135,7 @@ function FilterChip({ chip }: { chip: FilterChipConfig }) {
           )}
         </div>
         {values.length > 0 && (
-          <div className="border-border border-t px-2 py-1.5">
+          <div className="border-t border-border px-2 py-1.5">
             <Button
               type="button"
               variant="ghost"
@@ -176,7 +176,7 @@ export function FilterChipBar({
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
       {onSearchChange && (
         <div className="relative min-w-[200px] flex-1">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 size-3.5 -translate-y-1/2" />
+          <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchValue ?? ''}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -193,7 +193,7 @@ export function FilterChipBar({
           type="button"
           variant="ghost"
           size="sm"
-          className="text-muted-foreground h-8 px-2 text-xs"
+          className="h-8 px-2 text-xs text-muted-foreground"
           onClick={onClearAll}
         >
           <X className="size-3" />

@@ -81,12 +81,13 @@ export const settingDefinitions = {
   },
 } as const;
 export function settingsKeyForPath(path: string): string | null {
-  const clean = path.split('?')[0];
+  const clean = path.split('?')[0] ?? '';
   const delivery = clean.match(/^\/v1\/admin\/delivery-settings\/([^/]+)$/);
-  if (delivery) return `delivery:${decodeURIComponent(delivery[1])}`;
-  if (/^\/v1\/admin\/payment-settings(?:\/(wechat_pay|alipay))?$/.test(clean)) return 'payment';
+  if (delivery?.[1]) return `delivery:${decodeURIComponent(delivery[1])}`;
+  if (/^\/v1\/admin\/payment-settings(?:\/(wechat|wechat_pay|alipay))?$/.test(clean))
+    return 'payment';
   const system = clean.match(/^\/v1\/admin\/system-settings\/([^/]+)$/);
-  if (system && system[1] in settingDefinitions) return system[1];
+  if (system?.[1] && system[1] in settingDefinitions) return system[1];
   if (clean === '/v1/admin/system-settings/ai/providers/openrouter') return 'openrouter';
   return null;
 }

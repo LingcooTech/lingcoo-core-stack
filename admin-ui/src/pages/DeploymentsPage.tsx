@@ -87,11 +87,22 @@ export function DeploymentsPage() {
   });
   const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
 
-  const apps = appsQuery.data?.items ?? [];
-  const entitlements = entitlementsQuery.data?.items ?? [];
-  const deployments = deploymentsQuery.data?.items ?? [];
-  const summaries = entitlementsQuery.data?.summary ?? [];
-  const summaryMap = new Map(summaries.map((entry) => [entry.appCode, entry.featureCodes]));
+  const apps = useMemo(() => appsQuery.data?.items ?? [], [appsQuery.data?.items]);
+  const entitlements = useMemo(
+    () => entitlementsQuery.data?.items ?? [],
+    [entitlementsQuery.data?.items],
+  );
+  const deployments = useMemo(
+    () => deploymentsQuery.data?.items ?? [],
+    [deploymentsQuery.data?.items],
+  );
+  const summaryMap = useMemo(
+    () =>
+      new Map(
+        (entitlementsQuery.data?.summary ?? []).map((entry) => [entry.appCode, entry.featureCodes]),
+      ),
+    [entitlementsQuery.data?.summary],
+  );
   const oneClickAppMap = useMemo(
     () =>
       new Map(
@@ -405,10 +416,10 @@ export function DeploymentsPage() {
     <div className="space-y-5">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-foreground text-3xl font-semibold tracking-tight">部署管理</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">部署管理</h1>
           {initialDeployApp ? <Badge variant="secondary">{initialDeployApp.appName}</Badge> : null}
         </div>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           {initialDeployApp
             ? `正在为 ${initialDeployApp.appName} 创建部署记录。`
             : '选择支持一键部署的应用并完成部署配置。'}
@@ -425,9 +436,9 @@ export function DeploymentsPage() {
       </div>
 
       {appsQuery.isLoading || entitlementsQuery.isLoading || deploymentsQuery.isLoading ? (
-        <Card className="border-border bg-card rounded-xl">
-          <CardContent className="text-muted-foreground flex items-center justify-center gap-3 p-10">
-            <LoaderCircle className="text-primary h-6 w-6 animate-spin" />
+        <Card className="rounded-xl border-border bg-card">
+          <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
+            <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
             正在加载部署数据...
           </CardContent>
         </Card>
@@ -455,7 +466,7 @@ export function DeploymentsPage() {
         />
       ) : (
         <>
-          <Card className="border-border bg-card rounded-xl shadow-sm">
+          <Card className="rounded-xl border-border bg-card shadow-sm">
             <CardHeader className="space-y-2">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -478,9 +489,9 @@ export function DeploymentsPage() {
                   { label: '运行中部署', value: String(activeDeployments.length) },
                   { label: '已签发令牌', value: String(tokenReadyDeployments.length) },
                 ].map((item) => (
-                  <div key={item.label} className="bg-muted/60 rounded-lg border px-4 py-3">
-                    <p className="text-muted-foreground text-xs font-medium">{item.label}</p>
-                    <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight">
+                  <div key={item.label} className="rounded-lg border bg-muted/60 px-4 py-3">
+                    <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                    <p className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
                       {item.value}
                     </p>
                   </div>
@@ -492,10 +503,10 @@ export function DeploymentsPage() {
           <Tabs defaultValue={initialDeployApp ? 'create' : 'active'} className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-foreground text-2xl font-semibold tracking-tight">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                   部署工作台
                 </h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   默认只展示当前运行中的部署；新建和历史记录放到独立标签页。
                 </p>
               </div>
@@ -520,8 +531,8 @@ export function DeploymentsPage() {
 
             <TabsContent value="create" className="mt-0 space-y-4">
               <div>
-                <h3 className="text-foreground text-lg font-semibold tracking-tight">新建部署</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">新建部署</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {initialDeployApp
                     ? `正在为 ${initialDeployApp.appName} 创建新实例。`
                     : '选择一个可部署应用，填写部署信息后签发安装令牌。'}

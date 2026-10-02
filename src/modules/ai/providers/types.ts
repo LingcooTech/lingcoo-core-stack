@@ -59,5 +59,8 @@ export interface AiProviderAdapter {
   label: string;
   getStatus(context: AiProviderContext): Promise<AiProviderStatus>;
   listModels(context: AiProviderContext): Promise<AiModelSummary[]>;
-  createChatCompletion(context: AiProviderContext, input: AiChatCompletionInput): Promise<AiChatCompletionResult>;
+  createChatCompletion(
+    context: AiProviderContext,
+    input: AiChatCompletionInput,
+  ): Promise<AiChatCompletionResult>;
 }

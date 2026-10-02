@@ -126,7 +126,7 @@ export function DocsPage() {
       return;
     }
 
-    setSelectedPageId(selectedSpaceQuery.data.pages[0].id);
+    setSelectedPageId(selectedSpaceQuery.data.pages[0]?.id ?? null);
   }, [selectedPageId, selectedSpaceQuery.data?.pages]);
 
   useEffect(() => {
@@ -180,7 +180,7 @@ export function DocsPage() {
 
       return selectedSpaceId ? updateDocSpace(selectedSpaceId, payload) : createDocSpace(payload);
     },
-    onSuccess: async (space: any) => {
+    onSuccess: async (space) => {
       toast.success(selectedSpaceId ? '文档空间已保存' : '文档空间已创建');
       await qc.invalidateQueries({ queryKey: ['admin-doc-spaces'] });
       setSelectedSpaceId(space.id);
@@ -210,7 +210,7 @@ export function DocsPage() {
 
       return selectedPageId ? updateDocPage(selectedPageId, payload) : createDocPage(payload);
     },
-    onSuccess: async (page: any) => {
+    onSuccess: async (page) => {
       toast.success(selectedPageId ? '文档页面已保存' : '文档页面已创建');
       await qc.invalidateQueries({ queryKey: ['admin-doc-space', selectedSpaceId] });
       setSelectedPageId(page.id);
@@ -240,10 +240,10 @@ export function DocsPage() {
           ].map((item) => (
             <div
               key={item.label}
-              className="border-border bg-card rounded-xl border px-4 py-4 shadow-sm"
+              className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm"
             >
-              <p className="text-muted-foreground text-sm font-medium">{item.label}</p>
-              <p className="text-foreground mt-1.5 text-[1.75rem] font-semibold tracking-tight">
+              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
                 {item.value}
               </p>
             </div>
@@ -450,9 +450,9 @@ export function DocsPage() {
                       setSpaceForm((prev) => ({ ...prev, editBaseUrl: event.target.value }))
                     }
                   />
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     填写后，前台文档页底部会出现「在 GitHub 编辑此页」链接；URL 会拼接为
-                    <code className="bg-muted/60 mx-1 rounded px-1 py-0.5">{`{base}/{页面 path}.md`}</code>
+                    <code className="mx-1 rounded bg-muted/60 px-1 py-0.5">{`{base}/{页面 path}.md`}</code>
                     。留空则不显示。
                   </p>
                 </div>
@@ -511,7 +511,7 @@ export function DocsPage() {
                     </button>
                   ))}
                   {flatTree.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">当前空间还没有文档页面。</p>
+                    <p className="text-sm text-muted-foreground">当前空间还没有文档页面。</p>
                   ) : null}
                 </CardContent>
               </Card>

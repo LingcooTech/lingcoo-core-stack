@@ -21,7 +21,7 @@ export function createCheckoutSessionCode(date = new Date()) {
 export function normalizePreparedPaymentToCheckoutAction(payment: PreparedPayment): CheckoutAction {
   if (payment.mode === 'native_qr') {
     const qrCodeText = String(
-      payment.payload.qrCodeText ?? payment.payload.codeUrl ?? payment.payload.qrCode ?? ''
+      payment.payload.qrCodeText ?? payment.payload.codeUrl ?? payment.payload.qrCode ?? '',
     ).trim();
 
     if (!qrCodeText) {
@@ -31,7 +31,7 @@ export function normalizePreparedPaymentToCheckoutAction(payment: PreparedPaymen
     return {
       type: 'qr_code',
       qrCodeText,
-      codeUrl: String(payment.payload.codeUrl ?? qrCodeText)
+      codeUrl: String(payment.payload.codeUrl ?? qrCodeText),
     };
   }
 
@@ -42,6 +42,6 @@ export function normalizePreparedPaymentToCheckoutAction(payment: PreparedPaymen
 
   return {
     type: 'redirect_url',
-    url
+    url,
   };
 }

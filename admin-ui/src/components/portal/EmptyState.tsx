@@ -23,10 +23,10 @@ export function EmptyState({
         className,
       )}
     >
-      <Icon className="text-muted-foreground/50 h-7 w-7" strokeWidth={1.5} />
+      <Icon className="h-7 w-7 text-muted-foreground/50" strokeWidth={1.5} />
       <div className="space-y-1.5">
-        <p className="text-foreground text-[14px] font-semibold">{title}</p>
-        <p className="text-muted-foreground mx-auto max-w-sm text-[13px] leading-6">
+        <p className="text-[14px] font-semibold text-foreground">{title}</p>
+        <p className="mx-auto max-w-sm text-[13px] leading-6 text-muted-foreground">
           {description}
         </p>
       </div>

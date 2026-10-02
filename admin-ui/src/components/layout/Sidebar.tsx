@@ -73,14 +73,14 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
   return (
     <aside
       className={cn(
-        'bg-muted/40 border-border sticky top-0 flex h-screen flex-col overflow-hidden border-r transition-all duration-200',
+        'sticky top-0 flex h-screen flex-col overflow-hidden border-r border-border bg-muted/40 transition-all duration-200',
         collapsed ? 'w-[72px]' : 'w-[240px]',
       )}
     >
       {/* Brand */}
       <div
         className={cn(
-          'group/brand relative shrink-0 px-3 pb-3 pt-4',
+          'group/brand relative shrink-0 px-3 pt-4 pb-3',
           collapsed ? 'space-y-0' : 'flex items-center gap-2.5',
         )}
       >
@@ -97,20 +97,20 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
               <img
                 src={siteSettings.logoUrl}
                 alt={siteName}
-                className="border-border bg-card h-8 w-8 rounded-lg border object-contain p-1"
+                className="h-8 w-8 rounded-lg border border-border bg-card object-contain p-1"
               />
             ) : (
-              <div className="from-primary flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br to-blue-500 text-[11px] font-semibold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-blue-500 text-[11px] font-semibold text-white">
                 {getInitials(siteName)}
               </div>
             )}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-foreground truncate text-[13px] font-semibold leading-tight tracking-tight">
+              <p className="truncate text-[13px] leading-tight font-semibold tracking-tight text-foreground">
                 {siteName}
               </p>
-              <p className="text-muted-foreground/80 mt-0.5 text-[10px]">Admin Console</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/80">Admin Console</p>
             </div>
           )}
         </Link>
@@ -122,9 +122,9 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'text-muted-foreground hover:bg-muted hover:text-foreground rounded-md',
+                  'rounded-md text-muted-foreground hover:bg-muted hover:text-foreground',
                   collapsed
-                    ? 'bg-background absolute inset-x-3 top-4 z-10 h-8 w-auto opacity-0 shadow-sm group-hover/brand:opacity-100'
+                    ? 'absolute inset-x-3 top-4 z-10 h-8 w-auto bg-background opacity-0 shadow-sm group-hover/brand:opacity-100'
                     : 'ml-auto h-7 w-7 shrink-0',
                 )}
                 onClick={onToggle}
@@ -145,7 +145,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
         {visibleNavigationGroups.map((group) => (
           <div key={group.label} className={cn(collapsed ? 'mb-2 space-y-2' : 'mb-3')}>
             {!collapsed && (
-              <p className="text-muted-foreground/60 px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
+              <p className="px-2 pt-2 pb-1 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground/60 uppercase">
                 {group.label}
               </p>
             )}
@@ -168,7 +168,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   )}
                 >
                   {isActive && !collapsed ? (
-                    <span className="bg-primary absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r" />
+                    <span className="absolute top-1/2 left-0 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />
                   ) : null}
                   <Icon
                     className={cn(
@@ -198,13 +198,13 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
       </ScrollArea>
 
       {/* User */}
-      <div className="border-border shrink-0 border-t p-2">
+      <div className="shrink-0 border-t border-border p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={cn(
-                'hover:bg-card/80 w-full rounded-md text-left transition-colors',
+                'w-full rounded-md text-left transition-colors hover:bg-card/80',
                 collapsed
                   ? 'flex items-center justify-center p-1.5'
                   : 'flex items-center gap-2.5 px-2 py-1.5',
@@ -217,16 +217,16 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
               {!collapsed ? (
                 <>
                   <div className="min-w-0 flex-1">
-                    <p className="text-foreground truncate text-[13px] font-medium leading-tight">
+                    <p className="truncate text-[13px] leading-tight font-medium text-foreground">
                       {accountName}
                     </p>
                     {accountEmail ? (
-                      <p className="text-muted-foreground mt-0.5 truncate text-[10px]">
+                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
                         {accountEmail}
                       </p>
                     ) : null}
                   </div>
-                  <ChevronRight className="text-muted-foreground/60 h-3.5 w-3.5 shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 </>
               ) : null}
             </button>
@@ -234,21 +234,21 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
           <DropdownMenuContent
             align={collapsed ? 'start' : 'end'}
             side="top"
-            className="border-border bg-card w-[260px] rounded-lg border p-1 shadow-lg"
+            className="w-[260px] rounded-lg border border-border bg-card p-1 shadow-lg"
           >
-            <DropdownMenuLabel className="px-2 pb-2 pt-2">
+            <DropdownMenuLabel className="px-2 pt-2 pb-2">
               <div className="flex items-center gap-2.5">
                 <Avatar className="h-9 w-9 shrink-0">
                   <AvatarFallback className="text-xs">{getInitials(accountName)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="text-foreground truncate text-sm font-semibold leading-tight">
+                  <p className="truncate text-sm leading-tight font-semibold text-foreground">
                     {accountName}
                   </p>
                   {accountEmail ? (
-                    <p className="text-muted-foreground mt-0.5 truncate text-xs">{accountEmail}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{accountEmail}</p>
                   ) : null}
-                  <p className="text-muted-foreground/70 mt-0.5 text-[10px] font-medium uppercase tracking-wider">
+                  <p className="mt-0.5 text-[10px] font-medium tracking-wider text-muted-foreground/70 uppercase">
                     {roleLabels[normalizeRole(user?.role)]}
                   </p>
                 </div>
@@ -264,7 +264,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/account?tab=profile');
                   }}
                 >
-                  <UserCircle2 className="text-muted-foreground h-4 w-4" />
+                  <UserCircle2 className="h-4 w-4 text-muted-foreground" />
                   个人资料
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -274,7 +274,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/account?tab=orders');
                   }}
                 >
-                  <ShoppingBag className="text-muted-foreground h-4 w-4" />
+                  <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                   我的订单
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -284,7 +284,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/account?tab=apps');
                   }}
                 >
-                  <Package2 className="text-muted-foreground h-4 w-4" />
+                  <Package2 className="h-4 w-4 text-muted-foreground" />
                   我的应用
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -294,7 +294,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/tickets');
                   }}
                 >
-                  <CircleHelp className="text-muted-foreground h-4 w-4" />
+                  <CircleHelp className="h-4 w-4 text-muted-foreground" />
                   我的工单
                 </DropdownMenuItem>
               </div>
@@ -309,7 +309,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/admin');
                   }}
                 >
-                  <LayoutDashboard className="text-muted-foreground h-4 w-4" />
+                  <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                   后台首页
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -319,7 +319,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     navigate('/admin/settings');
                   }}
                 >
-                  <Settings className="text-muted-foreground h-4 w-4" />
+                  <Settings className="h-4 w-4 text-muted-foreground" />
                   设置
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -329,7 +329,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                     window.open('/api-docs', '_blank', 'noopener,noreferrer');
                   }}
                 >
-                  <CircleHelp className="text-muted-foreground h-4 w-4" />
+                  <CircleHelp className="h-4 w-4 text-muted-foreground" />
                   帮助
                 </DropdownMenuItem>
               </div>

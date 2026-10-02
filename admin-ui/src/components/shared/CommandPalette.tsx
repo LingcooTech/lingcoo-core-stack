@@ -98,8 +98,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   const grouped = useMemo(() => {
     return visibleItems.reduce<Record<string, CommandItemModel[]>>((acc, item) => {
-      if (!acc[item.group]) acc[item.group] = [];
-      acc[item.group].push(item);
+      const group = (acc[item.group] ??= []);
+      group.push(item);
       return acc;
     }, {});
   }, [visibleItems]);
@@ -146,7 +146,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         ))}
       </CommandList>
 
-      <div className="border-border text-muted-foreground flex items-center justify-between gap-3 border-t px-3 py-2 text-[11px]">
+      <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
         <div className="flex items-center gap-3">
           <KeyHint label="移动" keys={['↑', '↓']} />
           <KeyHint label="打开" keys={['↵']} />
@@ -174,7 +174,7 @@ function PaletteItem({
       onSelect={() => onSelect(item)}
       className="flex items-center gap-3"
     >
-      <span className="border-border bg-muted text-muted-foreground flex h-7 w-7 shrink-0 items-center justify-center rounded-md border">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
         {recent ? (
           <Clock className="h-3.5 w-3.5" strokeWidth={1.75} />
         ) : (
@@ -182,16 +182,16 @@ function PaletteItem({
         )}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block text-[13px] font-medium leading-tight">
+        <span className="block text-[13px] leading-tight font-medium text-foreground">
           {item.label}
         </span>
         {item.note && (
-          <span className="text-muted-foreground mt-0.5 block truncate text-[11px] leading-tight">
+          <span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground">
             {item.note}
           </span>
         )}
       </span>
-      <ArrowRight className="text-muted-foreground/40 h-3.5 w-3.5 shrink-0" />
+      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
     </CommandItem>
   );
 }
@@ -202,7 +202,7 @@ function KeyHint({ label, keys }: { label: string; keys: string[] }) {
       {keys.map((k) => (
         <kbd
           key={k}
-          className="border-border bg-card text-muted-foreground inline-flex h-4 min-w-[16px] items-center justify-center rounded border px-1 font-mono text-[10px]"
+          className="inline-flex h-4 min-w-[16px] items-center justify-center rounded border border-border bg-card px-1 font-mono text-[10px] text-muted-foreground"
         >
           {k}
         </kbd>

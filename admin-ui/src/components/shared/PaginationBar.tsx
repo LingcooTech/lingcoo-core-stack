@@ -25,12 +25,12 @@ export function PaginationBar({
   const end = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
 
   return (
-    <div className="border-border bg-card flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-muted-foreground text-xs">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-xs text-muted-foreground">
         {total === 0 ? `暂无${itemLabel}` : `显示 ${start}-${end} / ${total} ${itemLabel}`}
       </div>
       <div className="flex items-center justify-end gap-2">
-        <span className="text-foreground text-xs font-bold">
+        <span className="text-xs font-bold text-foreground">
           第 {currentPage} / {totalPages} 页
         </span>
         <Button
