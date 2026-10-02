@@ -9,11 +9,11 @@ function fixture(extra = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'stack-release-'));
   const bin = path.join(dir, 'bin');
   mkdirSync(bin);
-  for (const file of ['docker-compose.prod.yml', 'Caddyfile'])
+  for (const file of ['docker-compose.prod.yml', 'Caddyfile', '.env'])
     writeFileSync(path.join(dir, file), 'fixture');
   const commands = {
     git: `echo "git $*" >> "$COMMAND_LOG"; case "$1" in status) ;; rev-parse) echo "$IMAGE_TAG";; esac`,
-    docker: `echo "docker $*" >> "$COMMAND_LOG"; case "$1 $2" in 'image inspect') echo "$IMAGE_TAG";; esac; case "$*" in *scripts/run-migrations.mjs*) [ "\${FAIL_MIGRATION:-0}" != 1 ] || exit 9;; esac`,
+    docker: `echo "docker $*" >> "$COMMAND_LOG"; case "$1 $2" in 'image inspect') echo "$IMAGE_TAG";; esac; case "$*" in *pg_dump*) [ "\${FAIL_BACKUP:-0}" != 1 ] || exit 8; echo fixture-dump;; *pg_restore*) cat >/dev/null;; *information_schema.tables*) echo 1;; *scripts/run-migrations.mjs*) [ "\${FAIL_MIGRATION:-0}" != 1 ] || exit 9;; esac`,
     curl: `printf '{"status":"ready","version":"%s"}' "\${HEALTH_VERSION:-$IMAGE_TAG}"`,
     sleep: 'exit 0',
     flock: 'exit 0',
@@ -45,6 +45,8 @@ test('release uses its exact SHA, drains workers before migration and retains ve
     assert(!log.includes('reset --hard'));
     assert(!log.includes('prune'));
     assert(log.indexOf('stop -t 45 worker') < log.indexOf('scripts/run-migrations.mjs'));
+    assert(log.indexOf('pg_restore') < log.indexOf('git checkout --detach'));
+    assert(log.indexOf('prepare-production-env.mjs') < log.indexOf('stop -t 45 worker'));
     assert(existsSync(path.join(f.dir, '.deploy-releases', sha, 'verified')));
     assert.equal(readFileSync(path.join(f.dir, '.deploy-releases/current'), 'utf8').trim(), sha);
   } finally {
@@ -59,6 +61,19 @@ test('migration failure prevents runtime replacement and release verification', 
     const log = readFileSync(f.env.COMMAND_LOG, 'utf8');
     assert(!log.includes('--wait-timeout 120 api worker caddy'));
     assert(!existsSync(path.join(f.dir, '.deploy-releases', sha, 'verified')));
+  } finally {
+    f.close();
+  }
+});
+test('backup failure keeps the checkout and existing workers untouched', () => {
+  const f = fixture({ FAIL_BACKUP: '1' });
+  try {
+    const result = spawnSync('sh', ['scripts/deploy/deploy.sh'], { env: f.env, encoding: 'utf8' });
+    assert.notEqual(result.status, 0);
+    const log = readFileSync(f.env.COMMAND_LOG, 'utf8');
+    assert(!log.includes('git checkout --detach'));
+    assert(!log.includes('stop -t 45 worker'));
+    assert(!log.includes('scripts/run-migrations.mjs'));
   } finally {
     f.close();
   }

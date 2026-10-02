@@ -26,6 +26,35 @@ if [ "${DEPLOY_ROLLBACK:-0}" = 1 ]; then
 fi
 : "${FD_CORE_RELEASE_IMAGE:?An immutable published image digest is required}"
 case "$FD_CORE_RELEASE_IMAGE" in "${FD_CORE_IMAGE_NAME}@sha256:"*) ;; *) echo 'Release image must use the expected repository digest'; exit 1;; esac
+# Keep the original runtime configuration and verify a real backup before checkout or migration.
+export FD_CORE_RUNTIME_IMAGE="$FD_CORE_RELEASE_IMAGE"
+backup_database() {
+  umask 077
+  backup_dir=".deploy-backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  mkdir -p "$backup_dir"
+  chmod 700 .deploy-backups "$backup_dir"
+  cp .env "$backup_dir/env"
+  cp "$DEPLOY_COMPOSE_FILE" Caddyfile "$backup_dir/"
+  docker compose -f "$DEPLOY_COMPOSE_FILE" ps -q api | while read -r id; do
+    [ -z "$id" ] || docker inspect "$id" --format '{{.Config.Image}}' > "$backup_dir/previous-image"
+  done
+  docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup_dir/database.dump"
+  [ -s "$backup_dir/database.dump" ] || { echo 'Database backup is empty'; exit 1; }
+  restore_db="stack_restore_$(date +%s)_$$"
+  cleanup() {
+    docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres sh -c 'dropdb --if-exists -U "$POSTGRES_USER" "$1"' sh "$restore_db" >/dev/null
+  }
+  trap cleanup EXIT HUP INT TERM
+  docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres sh -c 'createdb -U "$POSTGRES_USER" "$1"' sh "$restore_db"
+  docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres sh -c 'pg_restore --exit-on-error --single-transaction --no-owner --no-privileges -U "$POSTGRES_USER" -d "$1"' sh "$restore_db" < "$backup_dir/database.dump"
+  tables=$(docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T postgres sh -c 'psql -XAt -U "$POSTGRES_USER" -d "$1" -c "select count(*) from information_schema.tables where table_schema='\''public'\'' and table_type='\''BASE TABLE'\''"' sh "$restore_db")
+  [ "$tables" -gt 0 ] || { echo 'Restored database has no application tables'; exit 1; }
+  printf '%s\n' "restored-public-tables=$tables" > "$backup_dir/restore-verified"
+  cleanup
+  trap - EXIT HUP INT TERM
+  echo "Database backup and isolated restore verified: $backup_dir"
+}
+backup_database
 git checkout --detach "$IMAGE_TAG"
 export FD_CORE_RUNTIME_IMAGE="$FD_CORE_RELEASE_IMAGE"
 export APP_VERSION="$IMAGE_TAG"
@@ -34,6 +63,7 @@ docker compose -f "$DEPLOY_COMPOSE_FILE" config >/dev/null
 docker compose -f "$DEPLOY_COMPOSE_FILE" pull api worker
 actual_version=$(docker image inspect "$FD_CORE_RUNTIME_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')
 [ "$actual_version" = "$IMAGE_TAG" ] || { echo 'Image version does not match release SHA'; exit 1; }
+docker compose -f "$DEPLOY_COMPOSE_FILE" run --rm --no-deps --user 0 --cap-add DAC_OVERRIDE --cap-add CHOWN -v "$DEPLOY_PATH:/release" api node scripts/deploy/prepare-production-env.mjs
 release_dir=".deploy-releases/$IMAGE_TAG"
 candidate_dir=".deploy-releases/candidates/$IMAGE_TAG-$$"
 mkdir -p "$candidate_dir"

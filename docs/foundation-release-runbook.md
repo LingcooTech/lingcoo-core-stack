@@ -1,6 +1,6 @@
 # 底座升级的验证、切换与回退
 
-适用于 `codex/stack-foundation-upgrade` 的 A–F 改造。实施记录见 [foundation-upgrade-progress.md](foundation-upgrade-progress.md)。本轮仅提交与推送升级分支，不执行生产切换。
+适用于 `codex/stack-foundation-upgrade` 的 A–F 改造。实施记录见 [foundation-upgrade-progress.md](foundation-upgrade-progress.md)。A–F 已完成；2026-10-02 按用户授权合并 main 并执行生产发布。
 
 ## 工程命令
 
@@ -25,8 +25,8 @@ npm run smoke:production
 
 ## 生产切换
 
-1. 对目标数据库完成备份与恢复验证，保留当前镜像 SHA、Compose、Caddyfile 和可读取旧密文的 key。检查迁移 0024–0026 及原有 migration 记录；脚本不修改历史 SQL。
-2. 配置强 JWT 和独立至少 32 字符的 Settings key。旧 JWT 密文需要保留 legacy 读取，已使用 Keyring 的环境保留旧 key。生产禁止通配 CORS，默认关闭 API 文档。
+1. 发布脚本在检出目标 SHA 前，将当前环境、镜像和发布配置备份到权限受限的 `.deploy-backups/`，执行 PostgreSQL custom dump，并恢复到独立临时数据库验证。失败时保持旧运行时不变；临时数据库结束后删除，备份保留。此备份是发布前时间点的快照，不自动覆盖在线数据库。检查迁移 0024–0026 及原有 migration 记录；脚本不修改历史 SQL。
+2. 配置强 JWT 和独立至少 32 字符的 Settings key。首次缺少 Settings key 时，脚本先验证其他生产配置，再生成独立随机 key 原子写入 `.env` 并保留 legacy 读取；不替换已有 key、Keyring 或 JWT。配置无效会在排空前停止。旧 JWT 密文需要保留 legacy 读取，已使用 Keyring 的环境保留旧 key。生产禁止通配 CORS，默认关闭 API 文档。
 3. 缺少管理员时，通过受控环境变量 `INITIAL_ADMIN_EMAIL`、`INITIAL_ADMIN_PASSWORD` 执行 `npm run db:bootstrap`。公开注册、登录不会创建管理员。
 4. CI 通过后构建完整 40 位 SHA 镜像，镜像 smoke 通过后才推送。发布流程记录 registry digest，并以 `FD_CORE_RELEASE_IMAGE=<repository>@sha256:<digest>` 传给服务器。脚本按同一 SHA 检出，不追踪最新 main；GitHub concurrency 和服务器 flock 串行化发布。运行 Compose 使用已验证 digest，标签只用于发布与查询。
 5. 脚本停止并排空旧 Worker，再迁移并启动新 API / Worker。禁止混用旧的无领取凭据 Worker 与新任务状态。迁移持有同一数据库连接的 advisory lock；修复 legacy 记录需要实际 Schema 证明，失败即停止发布。
