@@ -1,8 +1,5 @@
 import fp from 'fastify-plugin';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-
-import * as schema from '../db/schema';
+import { createDatabase } from '../composition/connections';
 import type { AppEnv } from '../lib/env';
 
 type DbPluginOptions = {
@@ -10,11 +7,7 @@ type DbPluginOptions = {
 };
 
 export const dbPlugin = fp<DbPluginOptions>(async (app, options) => {
-  const pool = new Pool({
-    connectionString: options.env.DATABASE_URL
-  });
-
-  const db = drizzle(pool, { schema });
+  const { pool, db } = createDatabase(options.env);
 
   app.decorate('pg', pool);
   app.decorate('db', db);

@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 import { auditLogs, users } from '../db/schema';
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 
 export interface AuditLogRecordInput {
   actorType?: 'user' | 'system' | 'job';
@@ -23,7 +23,7 @@ function normalizeString(value: unknown) {
 }
 
 export class AuditLogService {
-  constructor(private readonly db: DbClient) {}
+  constructor(private readonly db: DbExecutor) {}
 
   async record(input: AuditLogRecordInput) {
     const now = new Date();

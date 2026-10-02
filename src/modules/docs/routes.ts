@@ -10,15 +10,14 @@ import {
   upsertDocPageSchema,
   upsertDocSpaceSchema,
 } from './schemas';
-import { DocsService } from './service';
 
 export const docsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/docs/spaces', async () => {
-    return new DocsService(app.db).listPublicSpaces();
+    return app.services.DocsService.listPublicSpaces();
   });
 
   app.get('/v1/docs/search-index', async () => {
-    return new DocsService(app.db).listSearchIndex();
+    return app.services.DocsService.listSearchIndex();
   });
 
   app.post('/v1/docs/feedback', async (request) => {
@@ -31,7 +30,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
       // 匿名反馈允许，留空 userId
     }
     const userAgent = request.headers['user-agent'];
-    return new DocsService(app.db).submitFeedback({
+    return app.services.DocsService.submitFeedback({
       ...payload,
       userId,
       userAgent: typeof userAgent === 'string' ? userAgent : null,
@@ -40,13 +39,13 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/docs/spaces/:spaceSlug', async (request) => {
     const params = publicDocSpaceSlugParamsSchema.parse(request.params);
-    return new DocsService(app.db).getPublicSpace(params.spaceSlug);
+    return app.services.DocsService.getPublicSpace(params.spaceSlug);
   });
 
   app.get('/v1/docs/spaces/:spaceSlug/page', async (request) => {
     const params = publicDocSpaceSlugParamsSchema.parse(request.params);
     const query = publicDocPageQuerySchema.parse(request.query);
-    return new DocsService(app.db).getPublicPage(params.spaceSlug, query.path);
+    return app.services.DocsService.getPublicPage(params.spaceSlug, query.path);
   });
 
   app.get(
@@ -54,7 +53,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('docs.manage') },
     async (request) => {
       const query = adminDocSpaceListQuerySchema.parse(request.query);
-      return new DocsService(app.db).listAdminSpaces(query);
+      return app.services.DocsService.listAdminSpaces(query);
     },
   );
 
@@ -63,7 +62,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('docs.manage') },
     async (request) => {
       const params = docSpaceIdParamsSchema.parse(request.params);
-      return new DocsService(app.db).getAdminSpace(params.spaceId);
+      return app.services.DocsService.getAdminSpace(params.spaceId);
     },
   );
 
@@ -72,7 +71,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('docs.manage') },
     async (request, reply) => {
       const payload = upsertDocSpaceSchema.parse(request.body);
-      const item = await new DocsService(app.db).upsertSpace(null, payload);
+      const item = await app.services.DocsService.upsertSpace(null, payload);
       return reply.status(201).send(item);
     },
   );
@@ -83,7 +82,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = docSpaceIdParamsSchema.parse(request.params);
       const payload = upsertDocSpaceSchema.parse(request.body);
-      return new DocsService(app.db).upsertSpace(params.spaceId, payload);
+      return app.services.DocsService.upsertSpace(params.spaceId, payload);
     },
   );
 
@@ -92,7 +91,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('docs.manage') },
     async (request) => {
       const params = docPageIdParamsSchema.parse(request.params);
-      return new DocsService(app.db).getPageById(params.pageId);
+      return app.services.DocsService.getPageById(params.pageId);
     },
   );
 
@@ -101,7 +100,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('docs.manage') },
     async (request, reply) => {
       const payload = upsertDocPageSchema.parse(request.body);
-      const item = await new DocsService(app.db).upsertPage(null, payload);
+      const item = await app.services.DocsService.upsertPage(null, payload);
       return reply.status(201).send(item);
     },
   );
@@ -112,7 +111,7 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = docPageIdParamsSchema.parse(request.params);
       const payload = upsertDocPageSchema.parse(request.body);
-      return new DocsService(app.db).upsertPage(params.pageId, payload);
+      return app.services.DocsService.upsertPage(params.pageId, payload);
     },
   );
 };

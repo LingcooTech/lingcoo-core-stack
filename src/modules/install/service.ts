@@ -1,26 +1,28 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomUUID } from 'node:crypto';
 
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
-import { AppService } from '../app/service';
-import { EventService } from '../event/service';
-import { LicenseService } from '../license/service';
+
 import { InstallRepository } from './repository';
 
 type InstallRecord = NonNullable<Awaited<ReturnType<InstallRepository['findInstallById']>>>;
 
 export class InstallService {
-  constructor(private readonly db: DbClient) {}
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+  ) {}
 
   private async resolveApp(appCode: string) {
-    const app = await new AppService(this.db).getPublicApp(appCode);
+    const app = await this.capabilities.createAppService(this.db).getPublicApp(appCode);
     return { app };
   }
 
   private async loadInstallForApp(appCode: string, installId: string) {
     const [appResult, install] = await Promise.all([
       this.resolveApp(appCode),
-      new InstallRepository(this.db).findInstallById(installId)
+      new InstallRepository(this.db).findInstallById(installId),
     ]);
 
     if (!install) {
@@ -33,7 +35,7 @@ export class InstallService {
 
     return {
       app: appResult.app,
-      install
+      install,
     };
   }
 
@@ -51,7 +53,7 @@ export class InstallService {
         id: input.app.id,
         code: input.app.code,
         name: input.app.name,
-        type: input.app.type
+        type: input.app.type,
       },
       install: {
         id: input.install.id,
@@ -62,8 +64,8 @@ export class InstallService {
         createdAt: input.install.createdAt,
         updatedAt: input.install.updatedAt,
         appVersion: input.install.appVersion,
-        chromeProfileHint: input.install.chromeProfileHint
-      }
+        chromeProfileHint: input.install.chromeProfileHint,
+      },
     };
   }
 
@@ -89,8 +91,8 @@ export class InstallService {
         deviceFingerprint: input.deviceFingerprint ?? existing.deviceFingerprint,
         chromeProfileHint: input.chromeProfileHint ?? existing.chromeProfileHint,
         appVersion: input.appVersion ?? existing.appVersion,
-        lastSeenAt: new Date(),
-        status: 'active'
+        lastSeenAt: this.capabilities.now(),
+        status: 'active',
       });
 
       if (!updated) {
@@ -105,28 +107,24 @@ export class InstallService {
       extensionInstallId,
       deviceFingerprint: input.deviceFingerprint,
       chromeProfileHint: input.chromeProfileHint,
-      appVersion: input.appVersion
+      appVersion: input.appVersion,
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       appId: app.id,
       installId: install.id,
       eventName: 'install.registered',
       properties: {
         appCode: app.code,
         installId: install.id,
-        extensionInstallId: install.extensionInstallId
-      }
+        extensionInstallId: install.extensionInstallId,
+      },
     });
 
     return this.toInstallPublicPayload({ app, install });
   }
 
-  async bindInstall(input: {
-    appCode: string;
-    installId: string;
-    userId: string;
-  }) {
+  async bindInstall(input: { appCode: string; installId: string; userId: string }) {
     const detail = await this.loadInstallForApp(input.appCode, input.installId);
 
     if (detail.install.userId && detail.install.userId !== input.userId) {
@@ -139,31 +137,31 @@ export class InstallService {
         : await new InstallRepository(this.db).updateInstall(detail.install.id, {
             userId: input.userId,
             appId: detail.app.id,
-            lastSeenAt: new Date(),
-            status: 'active'
+            lastSeenAt: this.capabilities.now(),
+            status: 'active',
           });
 
     if (!install) {
       throw httpError(500, 'Failed to bind install');
     }
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
       appId: detail.app.id,
       installId: install.id,
       eventName: 'install.bound',
       properties: {
         appCode: detail.app.code,
-        installId: install.id
-      }
+        installId: install.id,
+      },
     });
 
     return {
       ...this.toInstallPublicPayload({ app: detail.app, install }),
       binding: {
         userId: input.userId,
-        bound: true
-      }
+        bound: true,
+      },
     };
   }
 
@@ -180,8 +178,8 @@ export class InstallService {
       deviceFingerprint: input.deviceFingerprint ?? detail.install.deviceFingerprint,
       chromeProfileHint: input.chromeProfileHint ?? detail.install.chromeProfileHint,
       appVersion: input.appVersion ?? detail.install.appVersion,
-      lastSeenAt: new Date(),
-      status: 'active'
+      lastSeenAt: this.capabilities.now(),
+      status: 'active',
     });
 
     if (!install) {
@@ -191,11 +189,7 @@ export class InstallService {
     return this.toInstallPublicPayload({ app: detail.app, install });
   }
 
-  async getInstallLicense(input: {
-    appCode: string;
-    installId: string;
-    userId: string;
-  }) {
+  async getInstallLicense(input: { appCode: string; installId: string; userId: string }) {
     const detail = await this.loadInstallForApp(input.appCode, input.installId);
 
     if (!detail.install.userId) {
@@ -206,9 +200,11 @@ export class InstallService {
       throw httpError(403, 'Install belongs to another user');
     }
 
-    const entitlements = await new LicenseService(this.db).listUserEntitlementsByAppId(detail.app.id, input.userId);
+    const entitlements = await this.capabilities
+      .createLicenseService(this.db)
+      .listUserEntitlementsByAppId(detail.app.id, input.userId);
     const install = await new InstallRepository(this.db).updateInstall(detail.install.id, {
-      lastSeenAt: new Date()
+      lastSeenAt: this.capabilities.now(),
     });
 
     if (!install) {
@@ -220,8 +216,8 @@ export class InstallService {
       license: {
         active: entitlements.summary.length > 0,
         items: entitlements.items,
-        summary: entitlements.summary
-      }
+        summary: entitlements.summary,
+      },
     };
   }
 }

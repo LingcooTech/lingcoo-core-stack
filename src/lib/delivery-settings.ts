@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 
 import { appDeliverySettings, systemSettings } from '../db/schema';
-import type { DbClient } from '../db/types';
-import { AppRepository } from '../modules/app/repository';
+import type { DbExecutor } from '../db/types';
+import { createAppAccess } from '../modules/app/public';
 import { hasPublicTable } from './db-compat';
 import {
   listDeliveryManifestAssetRequiredSecretKeys,
@@ -267,7 +267,7 @@ export class DeliverySettingsService {
   private appDeliverySettingsTableAvailable: Promise<boolean> | null = null;
 
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 
@@ -353,7 +353,7 @@ export class DeliverySettingsService {
     value: StoredDeliverySettings,
     updatedByUserId: string,
   ) {
-    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    const app = await createAppAccess(this.db).findAppByCode(appCode);
     if (!app) {
       throw httpError(404, 'App not found');
     }
@@ -390,7 +390,7 @@ export class DeliverySettingsService {
   }
 
   async deleteSettings(appCode: string) {
-    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    const app = await createAppAccess(this.db).findAppByCode(appCode);
     if (app && (await this.hasCurrentSettingsStore())) {
       await this.db.delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
     }
@@ -399,7 +399,7 @@ export class DeliverySettingsService {
   }
 
   async getStoredSettings(appCode: string) {
-    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    const app = await createAppAccess(this.db).findAppByCode(appCode);
     if (app) {
       const currentRow = await this.findCurrentSettingRow(app.id);
       if (currentRow) {
@@ -416,7 +416,7 @@ export class DeliverySettingsService {
   }
 
   async getOverview(appCode: string): Promise<DeliverySettingsOverview> {
-    const app = await new AppRepository(this.db).findAppByCode(appCode);
+    const app = await createAppAccess(this.db).findAppByCode(appCode);
     const stored = (await this.getStoredSettings(appCode)) ?? createEmptyStoredSettings();
     const appMeta =
       app?.meta && typeof app.meta === 'object' && !Array.isArray(app.meta)

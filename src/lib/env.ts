@@ -35,6 +35,9 @@ const envSchema = z.object({
   TRUST_PROXY: booleanishEnv,
   RATE_LIMIT_GLOBAL_MAX: z.coerce.number().int().positive().default(200),
   RATE_LIMIT_GLOBAL_WINDOW: z.string().default('1 minute'),
+  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+  WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(100).max(120000).default(30000),
+  JOB_RETENTION_DAYS: z.coerce.number().int().min(7).default(90),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(3000),
   WORKER_STALE_JOB_TIMEOUT_MS: z.coerce
     .number()

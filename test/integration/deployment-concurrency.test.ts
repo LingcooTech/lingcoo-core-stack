@@ -1,3 +1,4 @@
+import { createServiceFactories } from '../../src/composition/service-factories';
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { eq } from 'drizzle-orm';
@@ -11,7 +12,7 @@ const { db, pool, env } = testDatabase();
 after(() => pool.end());
 async function fixture() {
   const seeded = await seedPurchase(db);
-  await new BillingService(db, env).handlePaymentNotification({
+  await new BillingService(createServiceFactories(), db, env).handlePaymentNotification({
     kind: 'paid',
     provider: 'wechat_pay',
     providerEventId: seeded.order.orderNo,
@@ -33,7 +34,7 @@ async function fixture() {
     label: 'Fixture',
     environment: 'production',
   };
-  return { ...seeded, input, service: new DeploymentService(db, env) };
+  return { ...seeded, input, service: new DeploymentService(createServiceFactories(), db, env) };
 }
 test('concurrent deployment creation cannot exceed an entitlement quota', async () => {
   const { service, input } = await fixture();

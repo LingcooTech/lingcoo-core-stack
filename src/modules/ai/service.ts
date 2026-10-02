@@ -1,16 +1,16 @@
-import type { DbClient } from '../../db/types';
+import type { ServiceFactories } from '../../composition/service-factories';
+import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
-import { AppService } from '../app/service';
-import { AuthRepository } from '../auth/repository';
-import { EventService } from '../event/service';
-import { LicenseService } from '../license/service';
+
+import { createAuthAccess } from '../auth/public';
+
 import { getAiProviderAdapter, listAiProviders } from './providers';
 import type {
   AiChatCompletionInput,
   AiChatCompletionResult,
   AiProviderCode,
-  AiProviderStatus
+  AiProviderStatus,
 } from './providers/types';
 import { AiRepository, type AiUsageSummary } from './repository';
 
@@ -65,7 +65,7 @@ const AI_PROXY_QUOTAS: Record<AiAccessScope, AiQuotaSpec> = {
     maxMessagesPerRequest: 24,
     maxInputCharsPerRequest: 16_000,
     maxTokensPerRequest: 2_500,
-    defaultMaxTokens: 1_800
+    defaultMaxTokens: 1_800,
   },
   entitled: {
     windowHours: 24,
@@ -75,8 +75,8 @@ const AI_PROXY_QUOTAS: Record<AiAccessScope, AiQuotaSpec> = {
     maxMessagesPerRequest: 64,
     maxInputCharsPerRequest: 100_000,
     maxTokensPerRequest: 8_000,
-    defaultMaxTokens: 4_000
-  }
+    defaultMaxTokens: 4_000,
+  },
 };
 
 function normalizeCount(value: number | null | undefined) {
@@ -89,14 +89,15 @@ function normalizeCount(value: number | null | undefined) {
 
 export class AiService {
   constructor(
-    private readonly db: DbClient,
-    private readonly env: AppEnv
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+    private readonly env: AppEnv,
   ) {}
 
   private getContext() {
     return {
       db: this.db,
-      env: this.env
+      env: this.env,
     };
   }
 
@@ -134,56 +135,62 @@ export class AiService {
       requests: {
         limit: quotaSpec.requestLimit,
         used: usage.requestCount,
-        remaining: Math.max(quotaSpec.requestLimit - usage.requestCount, 0)
+        remaining: Math.max(quotaSpec.requestLimit - usage.requestCount, 0),
       },
       requestChars: {
         limit: quotaSpec.requestCharsLimit,
         used: usage.requestChars,
-        remaining: Math.max(quotaSpec.requestCharsLimit - usage.requestChars, 0)
+        remaining: Math.max(quotaSpec.requestCharsLimit - usage.requestChars, 0),
       },
       totalTokens: {
         limit: quotaSpec.totalTokensLimit,
         used: usage.totalTokens,
-        remaining: Math.max(quotaSpec.totalTokensLimit - usage.totalTokens, 0)
+        remaining: Math.max(quotaSpec.totalTokensLimit - usage.totalTokens, 0),
       },
       maxMessagesPerRequest: quotaSpec.maxMessagesPerRequest,
       maxInputCharsPerRequest: quotaSpec.maxInputCharsPerRequest,
       maxTokensPerRequest: quotaSpec.maxTokensPerRequest,
-      defaultMaxTokens: quotaSpec.defaultMaxTokens
+      defaultMaxTokens: quotaSpec.defaultMaxTokens,
     };
   }
 
   private async resolveUserAccessState(appCode: string, userId: string): Promise<UserAccessState> {
     const [app, user, providers] = await Promise.all([
-      new AppService(this.db).requireActiveApp(appCode),
-      new AuthRepository(this.db).findUserById(userId),
-      listAiProviders(this.getContext())
+      this.capabilities.createAppService(this.db).requireActiveApp(appCode),
+      createAuthAccess(this.db).findUserById(userId),
+      listAiProviders(this.getContext()),
     ]);
 
     if (!user) {
       throw httpError(401, 'User not found');
     }
 
-    const entitlements = await new LicenseService(this.db).listUserEntitlementsByAppId(app.id, userId);
+    const entitlements = await this.capabilities
+      .createLicenseService(this.db)
+      .listUserEntitlementsByAppId(app.id, userId);
     const featureCodes = Array.from(
       new Set(
         (entitlements.summary ?? []).flatMap((entry) =>
-          Array.isArray(entry.featureCodes) ? entry.featureCodes : []
-        )
-      )
+          Array.isArray(entry.featureCodes) ? entry.featureCodes : [],
+        ),
+      ),
     ).sort();
     const planCodes = Array.from(
       new Set(
         (entitlements.items ?? [])
           .map((item) => item.plan?.code ?? '')
-          .filter((value) => typeof value === 'string' && value.trim().length > 0)
-      )
+          .filter((value) => typeof value === 'string' && value.trim().length > 0),
+      ),
     ).sort();
 
     const accessScope: AiAccessScope = entitlements.items.length > 0 ? 'entitled' : 'trial';
     const quotaSpec = this.getQuotaSpec(accessScope);
     const usageWindowStartedAt = this.getUsageWindowStartedAt(quotaSpec.windowHours);
-    const usage = await new AiRepository(this.db).summarizeUsageWindow(userId, app.id, usageWindowStartedAt);
+    const usage = await new AiRepository(this.db).summarizeUsageWindow(
+      userId,
+      app.id,
+      usageWindowStartedAt,
+    );
     const configuredProviders = this.getConfiguredProviders(providers);
     const defaultProvider = this.getDefaultProvider(configuredProviders);
     const ready =
@@ -197,11 +204,11 @@ export class AiService {
         code: app.code,
         name: app.name,
         type: app.type,
-        status: app.status
+        status: app.status,
       },
       user: {
         id: user.id,
-        emailVerified: user.emailVerified
+        emailVerified: user.emailVerified,
       },
       providers,
       configuredProviders,
@@ -221,8 +228,8 @@ export class AiService {
             ? 'provider_not_configured'
             : this.hasQuotaRemaining(quotaSpec, usage)
               ? 'ready'
-              : 'quota_exhausted'
-      }
+              : 'quota_exhausted',
+      },
     };
   }
 
@@ -239,10 +246,7 @@ export class AiService {
     return matched;
   }
 
-  private validateUserChatInput(
-    state: UserAccessState,
-    input: AiChatCompletionInput
-  ) {
+  private validateUserChatInput(state: UserAccessState, input: AiChatCompletionInput) {
     if (input.messages.length > state.quotaSpec.maxMessagesPerRequest) {
       throw httpError(422, `单次 AI 请求最多允许 ${state.quotaSpec.maxMessagesPerRequest} 条消息`);
     }
@@ -253,7 +257,10 @@ export class AiService {
     }
 
     if (requestChars > state.quotaSpec.maxInputCharsPerRequest) {
-      throw httpError(422, `单次 AI 请求内容不能超过 ${state.quotaSpec.maxInputCharsPerRequest} 个字符`);
+      throw httpError(
+        422,
+        `单次 AI 请求内容不能超过 ${state.quotaSpec.maxInputCharsPerRequest} 个字符`,
+      );
     }
 
     if (state.usage.requestCount >= state.quotaSpec.requestLimit) {
@@ -264,7 +271,10 @@ export class AiService {
       throw httpError(429, 'AI 文本额度已用完，请稍后再试或升级套餐');
     }
 
-    if (typeof input.maxTokens === 'number' && input.maxTokens > state.quotaSpec.maxTokensPerRequest) {
+    if (
+      typeof input.maxTokens === 'number' &&
+      input.maxTokens > state.quotaSpec.maxTokensPerRequest
+    ) {
       throw httpError(422, `maxTokens 不能超过 ${state.quotaSpec.maxTokensPerRequest}`);
     }
 
@@ -277,7 +287,7 @@ export class AiService {
 
     return {
       requestChars,
-      effectiveMaxTokens
+      effectiveMaxTokens,
     };
   }
 
@@ -286,17 +296,17 @@ export class AiService {
       app: {
         code: state.app.code,
         name: state.app.name,
-        type: state.app.type
+        type: state.app.type,
       },
       access: {
         scope: state.accessScope,
         entitled: state.hasAnyEntitlement,
         featureCodes: state.featureCodes,
-        planCodes: state.planCodes
+        planCodes: state.planCodes,
       },
       providers: {
         defaultProvider: state.defaultProvider,
-        items: state.providers
+        items: state.providers,
       },
       quota: this.buildQuotaView(state.quotaSpec, state.usage),
       usage: {
@@ -306,25 +316,25 @@ export class AiService {
         responseChars: state.usage.responseChars,
         promptTokens: state.usage.promptTokens,
         completionTokens: state.usage.completionTokens,
-        totalTokens: state.usage.totalTokens
+        totalTokens: state.usage.totalTokens,
       },
       status: state.status,
       user: {
-        emailVerified: state.user.emailVerified
-      }
+        emailVerified: state.user.emailVerified,
+      },
     };
   }
 
   async listProviders() {
     return {
-      items: await listAiProviders(this.getContext())
+      items: await listAiProviders(this.getContext()),
     };
   }
 
   async listProviderModels(provider: AiProviderCode) {
     return {
       provider,
-      items: await getAiProviderAdapter(provider).listModels(this.getContext())
+      items: await getAiProviderAdapter(provider).listModels(this.getContext()),
     };
   }
 
@@ -342,14 +352,14 @@ export class AiService {
     return {
       app: {
         code: state.app.code,
-        name: state.app.name
+        name: state.app.name,
       },
       defaultProvider: state.defaultProvider,
       items: state.providers,
       access: {
         scope: state.accessScope,
-        entitled: state.hasAnyEntitlement
-      }
+        entitled: state.hasAnyEntitlement,
+      },
     };
   }
 
@@ -360,14 +370,14 @@ export class AiService {
     return {
       app: {
         code: state.app.code,
-        name: state.app.name
+        name: state.app.name,
       },
       provider,
       items: await getAiProviderAdapter(provider).listModels(this.getContext()),
       access: {
         scope: state.accessScope,
-        entitled: state.hasAnyEntitlement
-      }
+        entitled: state.hasAnyEntitlement,
+      },
     };
   }
 
@@ -375,7 +385,7 @@ export class AiService {
     appCode: string,
     userId: string,
     provider: AiProviderCode,
-    input: AiChatCompletionInput & { operation?: AiProxyOperation }
+    input: AiChatCompletionInput & { operation?: AiProxyOperation },
   ): Promise<
     AiChatCompletionResult & {
       access: ReturnType<AiService['buildUserAccessResponse']>;
@@ -395,7 +405,7 @@ export class AiService {
     try {
       const result = await getAiProviderAdapter(provider).createChatCompletion(this.getContext(), {
         ...input,
-        maxTokens: effectiveMaxTokens
+        maxTokens: effectiveMaxTokens,
       });
 
       const promptTokens = normalizeCount(result.usage.promptTokens);
@@ -422,11 +432,11 @@ export class AiService {
           finishReason: result.finishReason,
           requestedModel: requestedModel || null,
           messageCount: input.messages.length,
-          responseId: result.meta.id
-        }
+          responseId: result.meta.id,
+        },
       });
 
-      await new EventService(this.db).capture({
+      await this.capabilities.createEventService(this.db).capture({
         userId,
         appId: state.app.id,
         eventName: 'ai.proxy.chat_completed',
@@ -438,8 +448,8 @@ export class AiService {
           accessScope: state.accessScope,
           requestChars,
           responseChars,
-          totalTokens
-        }
+          totalTokens,
+        },
       });
 
       const nextState: UserAccessState = {
@@ -450,12 +460,12 @@ export class AiService {
           responseChars: state.usage.responseChars + responseChars,
           promptTokens: state.usage.promptTokens + promptTokens,
           completionTokens: state.usage.completionTokens + completionTokens,
-          totalTokens: state.usage.totalTokens + totalTokens
+          totalTokens: state.usage.totalTokens + totalTokens,
         },
         status: {
           ready: true,
-          reason: 'ready'
-        }
+          reason: 'ready',
+        },
       };
 
       nextState.status.ready =
@@ -466,7 +476,7 @@ export class AiService {
 
       return {
         ...result,
-        access: this.buildUserAccessResponse(nextState)
+        access: this.buildUserAccessResponse(nextState),
       };
     } catch (error) {
       await new AiRepository(this.db).createUsageEvent({
@@ -486,11 +496,11 @@ export class AiService {
           appCode: state.app.code,
           message: error instanceof Error ? error.message : 'Unknown AI proxy error',
           requestedModel: requestedModel || null,
-          messageCount: input.messages.length
-        }
+          messageCount: input.messages.length,
+        },
       });
 
-      await new EventService(this.db).capture({
+      await this.capabilities.createEventService(this.db).capture({
         userId,
         appId: state.app.id,
         eventName: 'ai.proxy.chat_failed',
@@ -501,8 +511,8 @@ export class AiService {
           operation,
           accessScope: state.accessScope,
           requestChars,
-          error: error instanceof Error ? error.message : 'Unknown AI proxy error'
-        }
+          error: error instanceof Error ? error.message : 'Unknown AI proxy error',
+        },
       });
 
       throw error;

@@ -1,54 +1,61 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { createInstallSchema, installHeartbeatSchema, installParamsSchema } from './schemas';
-import { InstallService } from './service';
 
 export const installRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/v1/apps/:appCode/installs', { preHandler: app.authenticateApp }, async (request, reply) => {
-    const params = installParamsSchema.pick({ appCode: true }).parse(request.params);
-    const payload = createInstallSchema.parse(request.body);
-    const result = await new InstallService(app.db).registerInstall({
-      appCode: params.appCode,
-      ...payload
-    });
+  app.post(
+    '/v1/apps/:appCode/installs',
+    { preHandler: app.authenticateApp },
+    async (request, reply) => {
+      const params = installParamsSchema.pick({ appCode: true }).parse(request.params);
+      const payload = createInstallSchema.parse(request.body);
+      const result = await app.services.InstallService.registerInstall({
+        appCode: params.appCode,
+        ...payload,
+      });
 
-    return reply.status(201).send(result);
-  });
+      return reply.status(201).send(result);
+    },
+  );
 
   app.post(
     '/v1/apps/:appCode/installs/:installId/bind',
     { preHandler: [app.authenticateApp, app.authenticate] },
     async (request) => {
-    const params = installParamsSchema.parse(request.params);
-    return new InstallService(app.db).bindInstall({
-      appCode: params.appCode,
-      installId: params.installId,
-      userId: request.user.sub
-    });
-    }
+      const params = installParamsSchema.parse(request.params);
+      return app.services.InstallService.bindInstall({
+        appCode: params.appCode,
+        installId: params.installId,
+        userId: request.user.sub,
+      });
+    },
   );
 
-  app.post('/v1/apps/:appCode/installs/:installId/heartbeat', { preHandler: app.authenticateApp }, async (request) => {
-    const params = installParamsSchema.parse(request.params);
-    const payload = installHeartbeatSchema.parse(request.body);
+  app.post(
+    '/v1/apps/:appCode/installs/:installId/heartbeat',
+    { preHandler: app.authenticateApp },
+    async (request) => {
+      const params = installParamsSchema.parse(request.params);
+      const payload = installHeartbeatSchema.parse(request.body);
 
-    return new InstallService(app.db).heartbeat({
-      appCode: params.appCode,
-      installId: params.installId,
-      ...payload
-    });
-  });
+      return app.services.InstallService.heartbeat({
+        appCode: params.appCode,
+        installId: params.installId,
+        ...payload,
+      });
+    },
+  );
 
   app.get(
     '/v1/apps/:appCode/installs/:installId/license',
     { preHandler: [app.authenticateApp, app.authenticate] },
     async (request) => {
       const params = installParamsSchema.parse(request.params);
-      return new InstallService(app.db).getInstallLicense({
+      return app.services.InstallService.getInstallLicense({
         appCode: params.appCode,
         installId: params.installId,
-        userId: request.user.sub
+        userId: request.user.sub,
       });
-    }
+    },
   );
 };

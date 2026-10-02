@@ -9,12 +9,11 @@ import {
   supportTicketNoParamsSchema,
   supportTicketReplySchema,
 } from './schemas';
-import { TicketService } from './service';
 
 export const ticketRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/tickets/me', { preHandler: app.authenticate }, async (request) => {
     const query = supportTicketListQuerySchema.parse(request.query);
-    return new TicketService(app.db).listMyTickets({
+    return app.services.TicketService.listMyTickets({
       userId: request.user.sub,
       ...query,
     });
@@ -22,7 +21,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/tickets', { preHandler: app.authenticate }, async (request, reply) => {
     const payload = createSupportTicketSchema.parse(request.body);
-    const result = await new TicketService(app.db).createTicket({
+    const result = await app.services.TicketService.createTicket({
       userId: request.user.sub,
       ...payload,
     });
@@ -31,13 +30,13 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/tickets/:ticketNo', { preHandler: app.authenticate }, async (request) => {
     const params = supportTicketNoParamsSchema.parse(request.params);
-    return new TicketService(app.db).getMyTicket(params.ticketNo, request.user.sub);
+    return app.services.TicketService.getMyTicket(params.ticketNo, request.user.sub);
   });
 
   app.post('/v1/tickets/:ticketNo/messages', { preHandler: app.authenticate }, async (request) => {
     const params = supportTicketNoParamsSchema.parse(request.params);
     const payload = supportTicketReplySchema.parse(request.body);
-    return new TicketService(app.db).replyMyTicket({
+    return app.services.TicketService.replyMyTicket({
       ticketNo: params.ticketNo,
       userId: request.user.sub,
       body: payload.body,
@@ -46,7 +45,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/tickets/:ticketNo/close', { preHandler: app.authenticate }, async (request) => {
     const params = supportTicketNoParamsSchema.parse(request.params);
-    return new TicketService(app.db).closeMyTicket({
+    return app.services.TicketService.closeMyTicket({
       ticketNo: params.ticketNo,
       userId: request.user.sub,
     });
@@ -57,7 +56,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('tickets.manage') },
     async (request) => {
       const query = supportTicketListQuerySchema.parse(request.query);
-      return new TicketService(app.db).listAdminTickets(query);
+      return app.services.TicketService.listAdminTickets(query);
     },
   );
 
@@ -66,7 +65,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('tickets.manage') },
     async (request) => {
       const params = supportTicketNoParamsSchema.parse(request.params);
-      return new TicketService(app.db).getAdminTicket(params.ticketNo);
+      return app.services.TicketService.getAdminTicket(params.ticketNo);
     },
   );
 
@@ -76,7 +75,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = supportTicketNoParamsSchema.parse(request.params);
       const payload = adminSupportTicketReplySchema.parse(request.body);
-      return new TicketService(app.db).replyAdminTicket({
+      return app.services.TicketService.replyAdminTicket({
         ticketNo: params.ticketNo,
         actorUserId: request.user.sub,
         body: payload.body,
@@ -91,7 +90,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = supportTicketNoParamsSchema.parse(request.params);
       const payload = adminAssignSupportTicketSchema.parse(request.body);
-      return new TicketService(app.db).assignTicket({
+      return app.services.TicketService.assignTicket({
         ticketNo: params.ticketNo,
         actorUserId: request.user.sub,
         assignedAdminUserId: payload.assignedAdminUserId,
@@ -105,7 +104,7 @@ export const ticketRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = supportTicketNoParamsSchema.parse(request.params);
       const payload = adminUpdateSupportTicketStatusSchema.parse(request.body);
-      return new TicketService(app.db).updateAdminTicketStatus({
+      return app.services.TicketService.updateAdminTicketStatus({
         ticketNo: params.ticketNo,
         actorUserId: request.user.sub,
         status: payload.status,

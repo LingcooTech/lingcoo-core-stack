@@ -1,22 +1,12 @@
-import type { AppEnv } from '../../lib/env';
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
 import { PaymentSettingsService } from '../../lib/payment-settings';
 import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
-import type { DbClient } from '../../db/types';
-import { JobRunService } from '../../lib/job-runs';
-import { CheckoutRepository } from '../checkout/repository';
-import { AppService } from '../app/service';
-import { EventService } from '../event/service';
-import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
-import { getBillingProviderAdapter, listBillingProviders } from './providers';
-import type {
-  PaymentNotificationResult,
-  PaymentRefundQueryResult,
-  PaymentRefundResult,
-} from './providers/types';
+import type { DbExecutor } from '../../db/types';
+
+import { listBillingProviders } from './providers';
+import type { PaymentNotificationResult } from './providers/types';
 import { BillingRepository } from './repository';
 
 type BillingOrder = NonNullable<Awaited<ReturnType<BillingRepository['findOrderByOrderNo']>>>;
@@ -27,16 +17,9 @@ function normalizeMeta(value: unknown) {
     : {};
 }
 
-function normalizeString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
-}
+import { BillingRefundUseCases } from './refund-usecases';
 
-export class BillingService {
-  constructor(
-    private readonly db: DbClient,
-    private readonly env: AppEnv,
-  ) {}
-
+export class BillingService extends BillingRefundUseCases {
   async listProviders() {
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     return listBillingProviders(runtimeEnv);
@@ -51,23 +34,23 @@ export class BillingService {
     clientIp?: string;
   }) {
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
-    const providerAdapter = getBillingProviderAdapter(input.provider);
+    const providerAdapter = this.capabilities.getBillingProviderAdapter(input.provider);
     if (!providerAdapter.isConfigured(runtimeEnv)) {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
-    const { app, plan, offer } = await new AppService(this.db).resolveCheckoutOffer(input.appCode, {
-      planCode: input.planCode,
-      offerCode: input.offerCode,
-    });
+    const { app, plan, offer } = await this.capabilities
+      .createAppService(this.db)
+      .resolveCheckoutOffer(input.appCode, {
+        planCode: input.planCode,
+        offerCode: input.offerCode,
+      });
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
     if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
-      const ownership = await new LicenseService(this.db).findActiveOneTimeOwnership(
-        input.userId,
-        app.id,
-        plan.id,
-      );
+      const ownership = await this.capabilities
+        .createLicenseService(this.db)
+        .findActiveOneTimeOwnership(input.userId, app.id, plan.id);
       if (ownership) {
         throw httpError(409, 'You already own this one-time product');
       }
@@ -95,7 +78,7 @@ export class BillingService {
       },
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
       appId: app.id,
       eventName: 'billing.order_created',
@@ -171,7 +154,7 @@ export class BillingService {
     }
 
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
-    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const providerAdapter = this.capabilities.getBillingProviderAdapter(order.provider);
     const closeResult = await providerAdapter.closePayment({
       env: runtimeEnv,
       order: {
@@ -191,7 +174,7 @@ export class BillingService {
     }
 
     const updatedOrder = await this.db.transaction(async (tx) => {
-      const txDb = tx as DbClient;
+      const txDb = tx;
       const orderRepository = new BillingRepository(txDb);
       const cancelledOrder = await orderRepository.markOrderCancelledIfPending({
         orderId: order.id,
@@ -202,13 +185,15 @@ export class BillingService {
             providerOrderId: closeResult.providerOrderId ?? null,
             reason: closeResult.reason,
             payload: closeResult.payload,
-            cancelledAt: new Date().toISOString(),
+            cancelledAt: this.capabilities.now().toISOString(),
           },
         },
       });
-      await new CheckoutRepository(txDb).markSessionCancelledByOrderId(order.id);
-      await new CheckoutRepository(txDb).markPaymentAttemptsCancelledByOrderId(order.id);
-      await new EventService(txDb).capture({
+      await this.capabilities.createCheckoutAccess(txDb).markSessionCancelledByOrderId(order.id);
+      await this.capabilities
+        .createCheckoutAccess(txDb)
+        .markPaymentAttemptsCancelledByOrderId(order.id);
+      await this.capabilities.createEventService(txDb).capture({
         userId: order.userId,
         appId: order.appId,
         eventName: 'billing.order_cancelled',
@@ -232,315 +217,6 @@ export class BillingService {
     };
   }
 
-  async refundOrderByOrderNo(orderNo: string) {
-    const repository = new BillingRepository(this.db);
-    const order = await repository.findOrderByOrderNo(orderNo);
-
-    if (!order) {
-      throw httpError(404, 'Order not found');
-    }
-
-    if (order.status === 'refunding') {
-      return this.reconcileRefundRecord(order);
-    }
-
-    if (order.status !== 'paid') {
-      throw httpError(409, `Only paid orders can be refunded (current: ${order.status})`);
-    }
-
-    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
-    const providerAdapter = getBillingProviderAdapter(order.provider);
-    const refundResult = await providerAdapter.refundPayment({
-      env: runtimeEnv,
-      order: {
-        orderNo: order.orderNo,
-        providerOrderId: order.providerOrderId,
-        amount: order.amount,
-        currency: order.currency,
-      },
-    });
-
-    if (refundResult.kind === 'not_found') {
-      throw httpError(404, refundResult.reason);
-    }
-
-    if (refundResult.kind === 'not_refundable') {
-      throw httpError(409, refundResult.reason);
-    }
-
-    if (refundResult.kind !== 'refunded' && refundResult.kind !== 'processing') {
-      throw httpError(500, 'Unexpected refund result');
-    }
-
-    return this.applyRefundResult(order, refundResult);
-  }
-
-  async reconcileRefundByOrderNo(orderNo: string, options: { forJob?: boolean } = {}) {
-    const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
-
-    if (!order) {
-      throw httpError(404, 'Order not found');
-    }
-
-    if (order.status === 'refunded') {
-      return {
-        changed: false,
-        order,
-        action: {
-          status: 'refunded' as const,
-          reason: 'Order already marked as refunded',
-          refundId: this.getRefundMeta(order.meta).refundId ?? null,
-        },
-      };
-    }
-
-    if (order.status !== 'refunding') {
-      throw httpError(409, `Only refunding orders can be reconciled (current: ${order.status})`);
-    }
-
-    const result = await this.reconcileRefundRecord(order);
-    if (options.forJob && result.action.status === 'refunding') {
-      throw httpError(409, result.action.reason);
-    }
-    return result;
-  }
-
-  private async applyRefundResult(order: BillingOrder, refundResult: PaymentRefundResult) {
-    if (refundResult.kind === 'processing') {
-      const updatedOrder = await this.db.transaction(async (tx) => {
-        const txDb = tx as DbClient;
-        const orderRepository = new BillingRepository(txDb);
-        const refundingOrder = await orderRepository.markOrderRefundingIfPaid({
-          orderId: order.id,
-          meta: {
-            ...this.getOrderMeta(order.meta),
-            lastRefund: this.buildRefundMeta(refundResult, 'processing'),
-          },
-        });
-        await new EventService(txDb).capture({
-          userId: order.userId,
-          appId: order.appId,
-          eventName: 'billing.order_refund_processing',
-          properties: {
-            orderNo: order.orderNo,
-            provider: order.provider,
-            refundId: refundResult.refundId ?? null,
-            refundRequestNo: refundResult.refundRequestNo ?? null,
-            amount: refundResult.amount,
-            currency: refundResult.currency,
-            reason: refundResult.reason,
-          },
-        });
-
-        return refundingOrder;
-      });
-
-      await this.enqueueRefundReconciliation(order.orderNo, refundResult.refundId ?? null);
-
-      return {
-        changed: Boolean(updatedOrder),
-        order: updatedOrder ?? order,
-        action: {
-          status: 'refunding' as const,
-          reason: refundResult.reason,
-          refundId: refundResult.refundId ?? null,
-        },
-      };
-    }
-
-    if (refundResult.kind !== 'refunded') {
-      throw httpError(500, 'Unexpected refund result');
-    }
-
-    const updatedOrder = await this.db.transaction(async (tx) => {
-      const txDb = tx as DbClient;
-      const orderRepository = new BillingRepository(txDb);
-      const refundedOrder = await orderRepository.markOrderRefundedIfRefundingOrPaid({
-        orderId: order.id,
-        meta: {
-          ...this.getOrderMeta(order.meta),
-          lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
-        },
-      });
-      await new LicenseRepository(txDb).cancelEntitlementsBySource('order', order.id);
-      await new EventService(txDb).capture({
-        userId: order.userId,
-        appId: order.appId,
-        eventName: 'billing.order_refunded',
-        properties: {
-          orderNo: order.orderNo,
-          provider: order.provider,
-          refundId: refundResult.refundId ?? null,
-          amount: refundResult.amount,
-          currency: refundResult.currency,
-          reason: refundResult.reason,
-        },
-      });
-
-      return refundedOrder;
-    });
-
-    return {
-      changed: Boolean(updatedOrder),
-      order: updatedOrder ?? order,
-      action: {
-        status: 'refunded' as const,
-        reason: refundResult.reason,
-        refundId: refundResult.refundId ?? null,
-      },
-    };
-  }
-
-  private async reconcileRefundRecord(order: BillingOrder) {
-    const refundMeta = this.getRefundMeta(order.meta);
-    const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
-    const providerAdapter = getBillingProviderAdapter(order.provider);
-    const refundQuery = await providerAdapter.queryRefundPayment({
-      env: runtimeEnv,
-      order: {
-        orderNo: order.orderNo,
-        providerOrderId: order.providerOrderId,
-        amount: order.amount,
-        currency: order.currency,
-      },
-      refund: {
-        refundId: refundMeta.refundId,
-        refundRequestNo: refundMeta.refundRequestNo,
-      },
-    });
-
-    if (refundQuery.kind === 'refunded') {
-      return this.applyRefundQueryResult(order, refundQuery);
-    }
-
-    if (refundQuery.kind === 'processing') {
-      const latestOrder = await new BillingRepository(this.db).markOrderRefundingIfPaid({
-        orderId: order.id,
-        meta: {
-          ...this.getOrderMeta(order.meta),
-          lastRefund: this.buildRefundMeta(refundQuery, 'processing'),
-        },
-      });
-      return {
-        changed: false,
-        order: latestOrder ?? order,
-        action: {
-          status: 'refunding' as const,
-          reason: refundQuery.reason,
-          refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
-        },
-        reconciliation: {
-          status: 'refunding' as const,
-          source: 'provider_query' as const,
-          providerOrderId: refundQuery.providerOrderId ?? order.providerOrderId ?? null,
-          paidAt: order.paidAt ?? null,
-          reason: refundQuery.reason,
-        },
-      };
-    }
-
-    const updatedOrder = await new BillingRepository(this.db).markOrderPaidIfRefunding({
-      orderId: order.id,
-      meta: {
-        ...this.getOrderMeta(order.meta),
-        lastRefund: this.buildRefundMeta(refundQuery, 'failed'),
-      },
-    });
-
-    await new EventService(this.db).capture({
-      userId: order.userId,
-      appId: order.appId,
-      eventName: 'billing.order_refund_failed',
-      properties: {
-        orderNo: order.orderNo,
-        provider: order.provider,
-        refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
-        refundRequestNo: refundQuery.refundRequestNo ?? refundMeta.refundRequestNo ?? null,
-        reason: refundQuery.reason,
-      },
-    });
-
-    return {
-      changed: Boolean(updatedOrder),
-      order: updatedOrder ?? order,
-      action: {
-        status: 'paid' as const,
-        reason: refundQuery.reason,
-        refundId: refundQuery.refundId ?? refundMeta.refundId ?? null,
-      },
-      reconciliation: {
-        status: 'paid' as const,
-        source: 'provider_query' as const,
-        providerOrderId: refundQuery.providerOrderId ?? order.providerOrderId ?? null,
-        paidAt: order.paidAt ?? null,
-        reason: refundQuery.reason,
-      },
-    };
-  }
-
-  private async applyRefundQueryResult(
-    order: BillingOrder,
-    refundResult: Extract<PaymentRefundQueryResult, { kind: 'refunded' }>,
-  ) {
-    const updatedOrder = await this.db.transaction(async (tx) => {
-      const txDb = tx as DbClient;
-      const orderRepository = new BillingRepository(txDb);
-      const refundedOrder = await orderRepository.markOrderRefundedIfRefundingOrPaid({
-        orderId: order.id,
-        meta: {
-          ...this.getOrderMeta(order.meta),
-          lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
-        },
-      });
-      await new LicenseRepository(txDb).cancelEntitlementsBySource('order', order.id);
-      await new EventService(txDb).capture({
-        userId: order.userId,
-        appId: order.appId,
-        eventName: 'billing.order_refunded',
-        properties: {
-          orderNo: order.orderNo,
-          provider: order.provider,
-          refundId: refundResult.refundId ?? null,
-          amount: refundResult.amount,
-          currency: refundResult.currency,
-          reason: refundResult.reason,
-        },
-      });
-
-      return refundedOrder;
-    });
-
-    return {
-      changed: Boolean(updatedOrder),
-      order: updatedOrder ?? order,
-      action: {
-        status: 'refunded' as const,
-        reason: refundResult.reason,
-        refundId: refundResult.refundId ?? null,
-      },
-      reconciliation: {
-        status: 'refunded' as const,
-        source: 'provider_query' as const,
-        providerOrderId: refundResult.providerOrderId ?? order.providerOrderId ?? null,
-        paidAt: order.paidAt ?? null,
-        reason: refundResult.reason,
-      },
-    };
-  }
-
-  private async enqueueRefundReconciliation(orderNo: string, refundId?: string | null) {
-    await new JobRunService(this.db, this.env).enqueue({
-      kind: 'billing.refund.reconcile',
-      payload: {
-        orderNo,
-      },
-      maxAttempts: 20,
-      dedupeKey: ['billing', 'refund', 'reconcile', orderNo, refundId ?? 'default'].join(':'),
-      relatedEntityType: 'order',
-      relatedEntityId: orderNo,
-    });
-  }
-
   async mockPayOrder(input: { userId: string; orderNo: string }) {
     if (this.env.NODE_ENV === 'production') {
       throw httpError(404, 'Mock payment is disabled in production');
@@ -560,15 +236,17 @@ export class BillingService {
     if (order.status === 'paid') {
       return {
         order,
-        entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
+        entitlements: await this.capabilities
+          .createLicenseService(this.db)
+          .listUserEntitlements(input.userId),
       };
     }
 
     const result = await this.db.transaction(async (tx) => {
-      return this.completeOrderPayment(tx as DbClient, {
+      return this.completeOrderPayment(tx, {
         order,
         providerOrderId: `mock_${order.orderNo}`,
-        paidAt: new Date(),
+        paidAt: this.capabilities.now(),
         meta: {
           ...this.getOrderMeta(order.meta),
           mockPaid: true,
@@ -579,7 +257,9 @@ export class BillingService {
 
     return {
       order: result.order,
-      entitlements: await new LicenseService(this.db).listUserEntitlements(input.userId),
+      entitlements: await this.capabilities
+        .createLicenseService(this.db)
+        .listUserEntitlements(input.userId),
       granted: result.granted,
     };
   }
@@ -627,7 +307,7 @@ export class BillingService {
         throw httpError(409, `Order currency mismatch for ${notification.orderNo}`);
       }
 
-      const result = await this.completeOrderPayment(tx as DbClient, {
+      const result = await this.completeOrderPayment(tx, {
         order,
         providerOrderId: notification.providerOrderId,
         paidAt: notification.paidAt,
@@ -636,7 +316,7 @@ export class BillingService {
           lastPaymentNotification: {
             provider: notification.provider,
             providerEventId: notification.providerEventId,
-            receivedAt: new Date().toISOString(),
+            receivedAt: this.capabilities.now().toISOString(),
           },
           lastPaidPayload: notification.payload,
         },
@@ -682,7 +362,7 @@ export class BillingService {
     }
 
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
-    const providerAdapter = getBillingProviderAdapter(order.provider);
+    const providerAdapter = this.capabilities.getBillingProviderAdapter(order.provider);
     const query = await providerAdapter.queryPayment({
       env: runtimeEnv,
       order: {
@@ -734,42 +414,8 @@ export class BillingService {
     };
   }
 
-  private getOrderMeta(value: unknown) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return value as Record<string, unknown>;
-    }
-
-    return {};
-  }
-
-  private getRefundMeta(value: unknown) {
-    const meta = this.getOrderMeta(value);
-    const raw = this.getOrderMeta(meta.lastRefund);
-    return {
-      refundId: normalizeString(raw.refundId) || null,
-      refundRequestNo: normalizeString(raw.refundRequestNo) || null,
-    };
-  }
-
-  private buildRefundMeta(
-    result: PaymentRefundResult | PaymentRefundQueryResult,
-    status: 'processing' | 'refunded' | 'failed',
-  ) {
-    return {
-      provider: result.provider,
-      providerOrderId: result.providerOrderId ?? null,
-      refundId: result.refundId ?? null,
-      refundRequestNo: result.refundRequestNo ?? null,
-      status,
-      reason: result.reason,
-      payload: result.payload,
-      updatedAt: new Date().toISOString(),
-      ...(result.kind === 'refunded' ? { refundedAt: result.refundedAt.toISOString() } : {}),
-    };
-  }
-
   private async completeOrderPayment(
-    tx: DbClient,
+    tx: DbExecutor,
     input: {
       order: BillingOrder;
       providerOrderId?: string | null;
@@ -799,25 +445,25 @@ export class BillingService {
       };
     }
 
-    const granted = await new LicenseService(tx).grantEntitlementsForPlan({
+    const granted = await this.capabilities.createLicenseService(tx).grantEntitlementsForPlan({
       userId: input.order.userId,
       planId: input.order.planId,
       sourceType: 'order',
       sourceId: input.order.id,
-      startsAt: updatedOrder.paidAt ?? new Date(),
+      startsAt: updatedOrder.paidAt ?? this.capabilities.now(),
     });
 
-    const checkoutRepository = new CheckoutRepository(tx);
+    const checkoutRepository = this.capabilities.createCheckoutAccess(tx);
     await checkoutRepository.markSessionPaidByOrderId(
       input.order.id,
-      updatedOrder.paidAt ?? new Date(),
+      updatedOrder.paidAt ?? this.capabilities.now(),
     );
     await checkoutRepository.markPaymentAttemptsPaidByOrderId(
       input.order.id,
       input.providerOrderId,
     );
 
-    await new EventService(tx).capture({
+    await this.capabilities.createEventService(tx).capture({
       userId: input.order.userId,
       appId: input.order.appId,
       eventName: 'billing.order_paid',

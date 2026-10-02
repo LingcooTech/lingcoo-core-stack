@@ -1,8 +1,9 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomUUID } from 'node:crypto';
 
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
-import { AuthRepository } from '../auth/repository';
+import { createAuthAccess } from '../auth/public';
 import { NotificationsRepository } from './repository';
 
 type NotificationCategory =
@@ -428,7 +429,10 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
 export class NotificationsService {
   private readonly repository: NotificationsRepository;
 
-  constructor(private readonly db: DbClient) {
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+  ) {
     this.repository = new NotificationsRepository(db);
   }
 
@@ -457,8 +461,8 @@ export class NotificationsService {
         sourceEventName: notification.sourceEventName,
         dedupeKey: notification.dedupeKey,
         meta: notification.meta ?? {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: this.capabilities.now(),
+        updatedAt: this.capabilities.now(),
       });
     }
   }
@@ -531,12 +535,12 @@ export class NotificationsService {
     },
     actorUserId: string,
   ) {
-    const recipients = await new AuthRepository(this.db).listActiveUsers();
+    const recipients = await createAuthAccess(this.db).listActiveUsers();
     if (recipients.length === 0) {
       throw httpError(400, 'No active users available for announcement delivery');
     }
 
-    const now = new Date();
+    const now = this.capabilities.now();
     const broadcastId = randomUUID();
 
     await this.repository.insertMany(

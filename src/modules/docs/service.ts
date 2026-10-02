@@ -1,3 +1,4 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { DocsRepository } from './repository';
@@ -49,7 +50,10 @@ type DocPageNode = {
 export class DocsService {
   private readonly repository: DocsRepository;
 
-  constructor(private readonly db: DbExecutor) {
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+  ) {
     this.repository = new DocsRepository(db);
   }
 
@@ -217,7 +221,11 @@ export class DocsService {
 
     return existing
       ? this.repository.updateSpace(existing.id, payload)
-      : this.repository.createSpace({ ...payload, createdAt: new Date(), updatedAt: new Date() });
+      : this.repository.createSpace({
+          ...payload,
+          createdAt: this.capabilities.now(),
+          updatedAt: this.capabilities.now(),
+        });
   }
 
   async getPageById(pageId: string) {
@@ -274,14 +282,18 @@ export class DocsService {
         input.status === 'published'
           ? input.publishedAt
             ? new Date(input.publishedAt)
-            : (existing?.publishedAt ?? new Date())
+            : (existing?.publishedAt ?? this.capabilities.now())
           : null,
       meta: input.meta ?? existing?.meta ?? {},
     };
 
     return existing
       ? this.repository.updatePage(existing.id, payload)
-      : this.repository.createPage({ ...payload, createdAt: new Date(), updatedAt: new Date() });
+      : this.repository.createPage({
+          ...payload,
+          createdAt: this.capabilities.now(),
+          updatedAt: this.capabilities.now(),
+        });
   }
 
   async listPublicSpaces() {

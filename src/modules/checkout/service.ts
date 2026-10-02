@@ -1,6 +1,7 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import QRCode from 'qrcode';
 
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import {
   createCheckoutSessionCode,
   normalizePreparedPaymentToCheckoutAction,
@@ -9,13 +10,8 @@ import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { type AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
-import { AppService } from '../app/service';
-import { BillingRepository } from '../billing/repository';
-import { BillingService } from '../billing/service';
-import { EventService } from '../event/service';
-import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
-import { AppRepository } from '../app/repository';
+
+import { createAppAccess } from '../app/public';
 import { CheckoutRepository } from './repository';
 
 type SessionRecord = NonNullable<Awaited<ReturnType<CheckoutRepository['findSessionByCode']>>>;
@@ -29,7 +25,8 @@ function normalizeMeta(value: unknown) {
 
 export class CheckoutService {
   constructor(
-    private readonly db: DbClient,
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 
@@ -69,7 +66,9 @@ export class CheckoutService {
       return preferred;
     }
 
-    const providers = await new BillingService(this.db, this.env).listProviders();
+    const providers = await this.capabilities
+      .createBillingService(this.db, this.env)
+      .listProviders();
     const selected =
       providers.find((item) => item.code === 'alipay' && item.configured) ??
       providers.find((item) => item.code === 'wechat_pay' && item.configured);
@@ -88,9 +87,9 @@ export class CheckoutService {
     }
 
     const [order, app, plan] = await Promise.all([
-      new BillingRepository(this.db).findOrderById(session.orderId),
-      new AppRepository(this.db).findAppById(session.appId),
-      new LicenseRepository(this.db).getPlanById(session.planId),
+      this.capabilities.createBillingAccess(this.db).findOrderById(session.orderId),
+      createAppAccess(this.db).findAppById(session.appId),
+      this.capabilities.createLicenseAccess(this.db).getPlanById(session.planId),
     ]);
 
     if (!order || !app || !plan) {
@@ -138,7 +137,7 @@ export class CheckoutService {
     }
 
     const sessionMeta = this.getSessionMeta(detail.session.meta);
-    const attemptedAt = new Date().toISOString();
+    const attemptedAt = this.capabilities.now().toISOString();
 
     await new CheckoutRepository(this.db).updateSessionMeta(detail.session.id, {
       ...sessionMeta,
@@ -146,7 +145,9 @@ export class CheckoutService {
     });
 
     try {
-      await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(detail.order.orderNo);
+      await this.capabilities
+        .createBillingService(this.db, this.env)
+        .syncOrderStatusByOrderNo(detail.order.orderNo);
       return this.loadSessionDetail(detail.session.sessionCode);
     } catch (error) {
       return detail;
@@ -216,8 +217,8 @@ export class CheckoutService {
     cancelUrl?: string;
     clientIp?: string;
   }) {
-    const appService = new AppService(this.db);
-    const licenseService = new LicenseService(this.db);
+    const appService = this.capabilities.createAppService(this.db);
+    const licenseService = this.capabilities.createLicenseService(this.db);
     const selection = await appService.resolveCheckoutOffer(input.appCode, {
       planCode: input.planCode,
       offerCode: input.offerCode,
@@ -252,11 +253,11 @@ export class CheckoutService {
           });
 
     if (reusableSession) {
-      const existingOrder = await new BillingRepository(this.db).findOrderById(
-        reusableSession.orderId,
-      );
+      const existingOrder = await this.capabilities
+        .createBillingAccess(this.db)
+        .findOrderById(reusableSession.orderId);
       if (existingOrder?.status === 'pending') {
-        await new EventService(this.db).capture({
+        await this.capabilities.createEventService(this.db).capture({
           userId: input.userId,
           appId: app.id,
           eventName: 'checkout.session_reused',
@@ -277,20 +278,22 @@ export class CheckoutService {
       }
     }
 
-    const billingResult = await new BillingService(this.db, this.env).createOrder({
-      userId: input.userId,
-      appCode: input.appCode,
-      planCode: input.planCode,
-      offerCode: input.offerCode,
-      provider,
-      clientIp: input.clientIp,
-    });
+    const billingResult = await this.capabilities
+      .createBillingService(this.db, this.env)
+      .createOrder({
+        userId: input.userId,
+        appCode: input.appCode,
+        planCode: input.planCode,
+        offerCode: input.offerCode,
+        provider,
+        clientIp: input.clientIp,
+      });
     const action = normalizePreparedPaymentToCheckoutAction(billingResult.payment);
     const sessionCode = createCheckoutSessionCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const session = await this.db.transaction(async (tx) => {
-      const repository = new CheckoutRepository(tx as DbClient);
+      const repository = new CheckoutRepository(tx);
       const created = await repository.createSession({
         sessionCode,
         userId: input.userId,
@@ -332,7 +335,7 @@ export class CheckoutService {
         },
       });
 
-      await new EventService(tx as DbClient).capture({
+      await this.capabilities.createEventService(tx).capture({
         userId: input.userId,
         appId: app.id,
         eventName: 'checkout.session_created',
@@ -499,9 +502,9 @@ export class CheckoutService {
               reason: 'Order already marked as paid',
             },
           }
-        : await new BillingService(this.db, this.env).syncOrderStatusByOrderNo(
-            detail.order.orderNo,
-          );
+        : await this.capabilities
+            .createBillingService(this.db, this.env)
+            .syncOrderStatusByOrderNo(detail.order.orderNo);
     const status = await this.getSessionStatus(sessionCode);
 
     return {

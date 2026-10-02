@@ -1,5 +1,5 @@
 import fp from 'fastify-plugin';
-import Redis from 'ioredis';
+import { createRedis } from '../composition/connections';
 
 import type { AppEnv } from '../lib/env';
 
@@ -8,10 +8,7 @@ type RedisPluginOptions = {
 };
 
 export const redisPlugin = fp<RedisPluginOptions>(async (app, options) => {
-  const redis = new Redis(options.env.REDIS_URL, {
-    lazyConnect: false,
-    maxRetriesPerRequest: 2
-  });
+  const redis = createRedis(options.env);
 
   app.decorate('redis', redis);
 

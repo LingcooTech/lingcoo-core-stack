@@ -1,21 +1,16 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomBytes } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
-
-import { appDeliverySettings, systemSettings } from '../../db/schema';
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
-import {
-  listDeliveryManifestFields,
-  normalizeDeliveryManifest
-} from '../../lib/delivery-manifest';
+import { listDeliveryManifestFields, normalizeDeliveryManifest } from '../../lib/delivery-manifest';
 import { DeliverySettingsService } from '../../lib/delivery-settings';
-import { loadEnv } from '../../lib/env';
+import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
-import { EventService } from '../event/service';
-import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
+
+import { type LicenseRepositoryPort as LicenseRepository } from '../license/public';
+
 import { AppRepository } from './repository';
 
 type AppRecord = NonNullable<Awaited<ReturnType<AppRepository['findAppByCode']>>>;
@@ -42,14 +37,23 @@ export type CheckoutOffer = {
 };
 
 export class AppService {
-  constructor(private readonly db: DbClient) {}
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+    private readonly env?: AppEnv,
+  ) {}
+
+  private requireEnv() {
+    if (!this.env) throw httpError(503, 'Application runtime settings are unavailable');
+    return this.env;
+  }
 
   private isDeletedApp(app: { meta: unknown }) {
     const meta = this.normalizeMeta(app.meta);
     return typeof meta.deletedAt === 'string' && meta.deletedAt.trim().length > 0;
   }
 
-  private isSecretUsable(secret: AppSecretRecord, now = new Date()) {
+  private isSecretUsable(secret: AppSecretRecord, now = this.capabilities.now()) {
     return (
       secret.status === 'active' &&
       (!secret.expiresAt || secret.expiresAt.getTime() >= now.getTime())
@@ -57,13 +61,17 @@ export class AppService {
   }
 
   private createDefaultSecretName(appCode: string) {
-    return `${appCode}-secret-${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)}`;
+    return `${appCode}-secret-${this.capabilities
+      .now()
+      .toISOString()
+      .replace(/[-:TZ.]/g, '')
+      .slice(0, 14)}`;
   }
 
   private buildCheckoutOffersFromDb(
     app: { id: string; code: string; name: string },
     offers: OfferRecord[],
-    plans: PlanRecord[]
+    plans: PlanRecord[],
   ): CheckoutOffer[] {
     const planMap = new Map(plans.map((p) => [p.id, p]));
 
@@ -87,7 +95,7 @@ export class AppService {
             currency: o.currency,
             status: plan.status === 'active' ? o.status : 'inactive',
             isDefault: o.isDefault,
-            sortOrder: o.sortOrder
+            sortOrder: o.sortOrder,
           } satisfies CheckoutOffer;
         })
         .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -121,19 +129,19 @@ export class AppService {
         currency: plan.currency,
         status: plan.status,
         isDefault: index === 0,
-        sortOrder: index
+        sortOrder: index,
       }));
   }
 
   private async hydrateApps(appRecords: AppRecord[], includeSecrets = false) {
     const repository = new AppRepository(this.db);
-    const licenseRepository = new LicenseRepository(this.db);
+    const licenseRepository = this.capabilities.createLicenseAccess(this.db);
     const appIds = appRecords.map((app) => app.id);
 
     const [plans, features, offers] = await Promise.all([
       licenseRepository.listPlansByAppIds(appIds),
       licenseRepository.listFeatures(),
-      repository.listOffersByAppIds(appIds)
+      repository.listOffersByAppIds(appIds),
     ]);
 
     const plansByAppId = new Map<string, PlanRecord[]>();
@@ -205,7 +213,7 @@ export class AppService {
           priceAmount: plan.priceAmount,
           currency: plan.currency,
           status: plan.status,
-          meta: plan.meta
+          meta: plan.meta,
         })),
         features: appFeatures.map((f) => ({
           id: f.id,
@@ -213,7 +221,7 @@ export class AppService {
           code: f.code,
           name: f.name,
           kind: f.kind,
-          status: f.status
+          status: f.status,
         })),
         checkoutOffers: this.buildCheckoutOffersFromDb(app, appOffers, appPlans),
         secrets: includeSecrets
@@ -224,9 +232,9 @@ export class AppService {
               status: secret.status,
               lastUsedAt: secret.lastUsedAt,
               expiresAt: secret.expiresAt,
-              createdAt: secret.createdAt
+              createdAt: secret.createdAt,
             }))
-          : undefined
+          : undefined,
       };
     });
   }
@@ -238,7 +246,10 @@ export class AppService {
 
   async listManagedApps() {
     const apps = await new AppRepository(this.db).listApps();
-    return this.hydrateApps(apps.filter((app) => !this.isDeletedApp(app)), true);
+    return this.hydrateApps(
+      apps.filter((app) => !this.isDeletedApp(app)),
+      true,
+    );
   }
 
   async getPublicApp(appCode: string) {
@@ -274,7 +285,7 @@ export class AppService {
     const app = await this.requireActiveApp(appCode);
     const secrets = await new AppRepository(this.db).listAppSecretsByAppIds([app.id]);
     const matched = secrets.find(
-      (secret) => this.isSecretUsable(secret) && verifyPassword(plainSecret, secret.secretHash)
+      (secret) => this.isSecretUsable(secret) && verifyPassword(plainSecret, secret.secretHash),
     );
 
     if (!matched) {
@@ -284,13 +295,13 @@ export class AppService {
     const touched = await new AppRepository(this.db).markAppSecretUsed(matched.id);
     const secret = touched ?? matched;
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       eventName: 'app.session_authenticated',
       properties: {
         appCode: app.code,
         secretId: secret.id,
-        hint: secret.hint
-      }
+        hint: secret.hint,
+      },
     });
 
     return { app, secret };
@@ -309,14 +320,14 @@ export class AppService {
 
   async getAppCatalog(appCode: string) {
     const app = await this.getPublicApp(appCode);
-    const licenseRepository = new LicenseRepository(this.db);
+    const licenseRepository = this.capabilities.createLicenseAccess(this.db);
     const appRepository = new AppRepository(this.db);
 
     const [plans, appFeatures, offers, planFeatures] = await Promise.all([
       licenseRepository.listPlansByAppId(app.id),
       licenseRepository.listFeaturesByAppId(app.id),
       appRepository.listOffersByAppId(app.id),
-      licenseRepository.listPlanFeatureMappings()
+      licenseRepository.listPlanFeatureMappings(),
     ]);
 
     const planIds = new Set(plans.map((p) => p.id));
@@ -329,15 +340,12 @@ export class AppService {
       offers: checkoutOffers,
       features: appFeatures,
       planFeatures: planFeatures.filter(
-        (m) => planIds.has(m.planId) && featureIds.has(m.featureId)
-      )
+        (m) => planIds.has(m.planId) && featureIds.has(m.featureId),
+      ),
     };
   }
 
-  async resolveCheckoutOffer(
-    appCode: string,
-    input: { planCode?: string; offerCode?: string }
-  ) {
+  async resolveCheckoutOffer(appCode: string, input: { planCode?: string; offerCode?: string }) {
     const catalog = await this.getAppCatalog(appCode);
     const activeOffers = catalog.offers.filter((o) => o.status === 'active');
 
@@ -383,18 +391,20 @@ export class AppService {
     return {
       app: catalog.app,
       plan,
-      offer
+      offer,
     };
   }
 
   async listUserEntitlementsForApp(appCode: string, userId: string) {
     const app = await this.getPublicApp(appCode);
-    const entitlements = await new LicenseService(this.db).listUserEntitlementsByAppId(app.id, userId);
+    const entitlements = await this.capabilities
+      .createLicenseService(this.db)
+      .listUserEntitlementsByAppId(app.id, userId);
 
     return {
       app,
       items: entitlements.items,
-      summary: entitlements.summary
+      summary: entitlements.summary,
     };
   }
 
@@ -447,11 +457,11 @@ export class AppService {
       }>;
       meta?: Record<string, unknown>;
     },
-    actorUserId: string
+    actorUserId: string,
   ) {
     await this.db.transaction(async (tx) => {
-      const repository = new AppRepository(tx as DbClient);
-      const licenseRepository = new LicenseRepository(tx as DbClient);
+      const repository = new AppRepository(tx);
+      const licenseRepository = this.capabilities.createLicenseAccess(tx);
 
       const app = await repository.upsertApp({
         code: appCode,
@@ -469,7 +479,7 @@ export class AppService {
         sortOrder: input.sortOrder,
         type: input.type,
         status: input.status,
-        meta: this.buildEditableMeta(input.meta, input.status)
+        meta: this.buildEditableMeta(input.meta, input.status),
       });
 
       const featureMap = new Map<string, { id: string; code: string }>();
@@ -481,14 +491,14 @@ export class AppService {
             code: f.code.trim(),
             name: f.name.trim(),
             kind: f.kind.trim() || 'boolean',
-            status: f.status
+            status: f.status,
           });
           featureMap.set(feature.code, feature);
         }
 
         await licenseRepository.deactivateFeaturesByAppExceptCodes(
           app.id,
-          input.features.map((f) => f.code.trim()).filter(Boolean)
+          input.features.map((f) => f.code.trim()).filter(Boolean),
         );
       } else if (input.plans !== undefined) {
         const existingFeatures = await licenseRepository.listFeaturesByAppId(app.id);
@@ -509,7 +519,7 @@ export class AppService {
             currency: p.currency.trim().toUpperCase() || 'CNY',
             interval: p.interval,
             meta: p.meta ?? {},
-            status: p.status
+            status: p.status,
           });
 
           const featureIds = p.featureCodes
@@ -521,7 +531,7 @@ export class AppService {
 
         await licenseRepository.deactivatePlansByAppExceptCodes(
           app.id,
-          input.plans.map((p) => p.code.trim()).filter(Boolean)
+          input.plans.map((p) => p.code.trim()).filter(Boolean),
         );
       }
 
@@ -542,21 +552,21 @@ export class AppService {
             currency: o.currency.trim().toUpperCase() || 'CNY',
             isDefault: o.isDefault ?? false,
             sortOrder: o.sortOrder ?? index,
-            status: o.status
+            status: o.status,
           }));
 
         await repository.replaceAppOffers(app.id, validOffers);
       }
 
-      await new EventService(tx as DbClient).capture({
+      await this.capabilities.createEventService(tx).capture({
         userId: actorUserId,
         appId: app.id,
         eventName: 'app.upserted',
         properties: {
           appCode,
           status: input.status,
-          type: input.type
-        }
+          type: input.type,
+        },
       });
     });
 
@@ -572,17 +582,17 @@ export class AppService {
 
     await repository.updateAppById(app.id, {
       status: 'inactive',
-      meta: this.buildArchivedMeta(app.meta)
+      meta: this.buildArchivedMeta(app.meta),
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       appId: app.id,
       eventName: 'app.archived',
       properties: {
         appCode: app.code,
-        previousStatus: app.status
-      }
+        previousStatus: app.status,
+      },
     });
 
     return this.getManagedApp(appCode);
@@ -596,8 +606,8 @@ export class AppService {
     const hasAppDeliverySettingsTable = await hasPublicTable(this.db, 'app_delivery_settings');
 
     await this.db.transaction(async (tx) => {
-      const repository = new AppRepository(tx as DbClient);
-      const licenseRepository = new LicenseRepository(tx as DbClient);
+      const repository = new AppRepository(tx);
+      const licenseRepository = this.capabilities.createLicenseAccess(tx);
       const app = await repository.findAppByCode(appCode);
 
       if (!app) {
@@ -609,9 +619,9 @@ export class AppService {
       await licenseRepository.deleteFeaturesByAppId(app.id);
       await licenseRepository.deactivatePlansByAppId(app.id);
       if (hasAppDeliverySettingsTable) {
-        await (tx as DbClient).delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
+        await this.capabilities.deleteAppDeliverySettings(tx, app.id);
       }
-      await (tx as DbClient).delete(systemSettings).where(eq(systemSettings.key, `deployment.delivery.${app.code}`));
+      await this.capabilities.deleteLegacyDeliverySettings(tx, app.code);
       await repository.updateAppById(app.id, {
         tagline: null,
         description: null,
@@ -625,17 +635,17 @@ export class AppService {
         category: null,
         sortOrder: 0,
         status: 'inactive',
-        meta: this.buildPurgedMeta(app.meta)
+        meta: this.buildPurgedMeta(app.meta),
       });
 
-      await new EventService(tx as DbClient).capture({
+      await this.capabilities.createEventService(tx).capture({
         userId: actorUserId,
         appId: app.id,
         eventName: 'app.configuration_purged',
         properties: {
           appCode: app.code,
-          previousStatus: app.status
-        }
+          previousStatus: app.status,
+        },
       });
     });
 
@@ -645,7 +655,7 @@ export class AppService {
   async issueSecret(
     appCode: string,
     input: { name?: string; expiresAt?: string },
-    actorUserId: string
+    actorUserId: string,
   ) {
     const app = await new AppRepository(this.db).findAppByCode(appCode);
     if (!app) {
@@ -658,13 +668,13 @@ export class AppService {
       name: input.name?.trim() || this.createDefaultSecretName(app.code),
       secretHash: hashPassword(plainSecret),
       hint: plainSecret.slice(-6),
-      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null
+      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: 'app.secret_issued',
-      properties: { appCode: app.code, secretId: secret.id, hint: secret.hint }
+      properties: { appCode: app.code, secretId: secret.id, hint: secret.hint },
     });
 
     return {
@@ -674,7 +684,7 @@ export class AppService {
       secret: plainSecret,
       hint: secret.hint,
       expiresAt: secret.expiresAt,
-      createdAt: secret.createdAt
+      createdAt: secret.createdAt,
     };
   }
 
@@ -691,21 +701,24 @@ export class AppService {
       throw httpError(404, 'App secret not found');
     }
 
-    const updated = secret.status === 'cancelled' ? secret : await repository.updateAppSecretStatus(secret.id, 'cancelled');
+    const updated =
+      secret.status === 'cancelled'
+        ? secret
+        : await repository.updateAppSecretStatus(secret.id, 'cancelled');
 
     if (!updated) {
       throw httpError(500, 'Failed to revoke app secret');
     }
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: 'app.secret_revoked',
       properties: {
         appCode: app.code,
         secretId: updated.id,
         hint: updated.hint,
-        previousStatus: secret.status
-      }
+        previousStatus: secret.status,
+      },
     });
 
     return {
@@ -715,15 +728,17 @@ export class AppService {
       hint: updated.hint,
       status: updated.status,
       expiresAt: updated.expiresAt,
-      lastUsedAt: updated.lastUsedAt
+      lastUsedAt: updated.lastUsedAt,
     };
   }
 
   private normalizeMeta(meta: unknown) {
-    return meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...(meta as Record<string, unknown>) } : {};
+    return meta && typeof meta === 'object' && !Array.isArray(meta)
+      ? { ...(meta as Record<string, unknown>) }
+      : {};
   }
 
-  private buildArchivedMeta(meta: unknown, archivedAt = new Date().toISOString()) {
+  private buildArchivedMeta(meta: unknown, archivedAt = this.capabilities.now().toISOString()) {
     const nextMeta = this.normalizeMeta(meta);
 
     if (typeof nextMeta.archivedAt !== 'string' || !nextMeta.archivedAt.trim()) {
@@ -733,7 +748,7 @@ export class AppService {
     return nextMeta;
   }
 
-  private buildPurgedMeta(meta: unknown, deletedAt = new Date().toISOString()) {
+  private buildPurgedMeta(meta: unknown, deletedAt = this.capabilities.now().toISOString()) {
     const nextMeta = this.buildArchivedMeta(meta, deletedAt);
 
     delete nextMeta.deliveryManifest;
@@ -747,7 +762,7 @@ export class AppService {
 
   private buildEditableMeta(
     meta: unknown,
-    status: 'active' | 'inactive' | 'cancelled' | 'expired'
+    status: 'active' | 'inactive' | 'cancelled' | 'expired',
   ) {
     const nextMeta = this.normalizeMeta(meta);
 
@@ -766,7 +781,7 @@ export class AppService {
       repoUrl: typeof raw.repoUrl === 'string' ? raw.repoUrl.trim() : '',
       repoBranch: typeof raw.repoBranch === 'string' ? raw.repoBranch.trim() : '',
       manifestPath: typeof raw.manifestPath === 'string' ? raw.manifestPath.trim() : '',
-      manifestUrl: typeof raw.manifestUrl === 'string' ? raw.manifestUrl.trim() : ''
+      manifestUrl: typeof raw.manifestUrl === 'string' ? raw.manifestUrl.trim() : '',
     };
   }
 
@@ -808,7 +823,7 @@ export class AppService {
       manifestPath?: string;
       manifestUrl?: string;
     },
-    actorUserId: string
+    actorUserId: string,
   ) {
     const app = await new AppRepository(this.db).findAppByCode(appCode);
     if (!app) {
@@ -821,10 +836,19 @@ export class AppService {
     const currentInstaller = this.normalizeMeta(currentManifest.installer);
 
     const nextSource = {
-      repoUrl: input.repoUrl?.trim() || currentSource.repoUrl || (typeof currentInstaller.repoUrl === 'string' ? currentInstaller.repoUrl.trim() : ''),
-      repoBranch: input.repoBranch?.trim() || currentSource.repoBranch || (typeof currentInstaller.repoBranch === 'string' ? currentInstaller.repoBranch.trim() : 'main'),
-      manifestPath: input.manifestPath?.trim() || currentSource.manifestPath || 'fd-delivery.manifest.json',
-      manifestUrl: input.manifestUrl?.trim() || currentSource.manifestUrl || ''
+      repoUrl:
+        input.repoUrl?.trim() ||
+        currentSource.repoUrl ||
+        (typeof currentInstaller.repoUrl === 'string' ? currentInstaller.repoUrl.trim() : ''),
+      repoBranch:
+        input.repoBranch?.trim() ||
+        currentSource.repoBranch ||
+        (typeof currentInstaller.repoBranch === 'string'
+          ? currentInstaller.repoBranch.trim()
+          : 'main'),
+      manifestPath:
+        input.manifestPath?.trim() || currentSource.manifestPath || 'fd-delivery.manifest.json',
+      manifestUrl: input.manifestUrl?.trim() || currentSource.manifestUrl || '',
     };
 
     const manifestUrl = this.resolveDeliveryManifestUrl(nextSource);
@@ -835,7 +859,7 @@ export class AppService {
     } catch (error) {
       throw httpError(
         502,
-        `Failed to fetch delivery manifest: ${error instanceof Error ? error.message : 'unknown error'}`
+        `Failed to fetch delivery manifest: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
     }
 
@@ -849,7 +873,7 @@ export class AppService {
     } catch (error) {
       throw httpError(
         502,
-        `Failed to parse delivery manifest JSON: ${error instanceof Error ? error.message : 'unknown error'}`
+        `Failed to parse delivery manifest JSON: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
     }
 
@@ -862,7 +886,7 @@ export class AppService {
     const nextMeta = {
       ...meta,
       deliveryManifest: remoteManifest,
-      deliveryManifestSource: nextSource
+      deliveryManifestSource: nextSource,
     };
 
     await new AppRepository(this.db).updateAppMetaByCode(appCode, nextMeta);
@@ -870,24 +894,24 @@ export class AppService {
     const presetDefaults = Object.fromEntries(
       listDeliveryManifestFields(manifest, { scope: 'preset', includeSecrets: false })
         .filter((field) => typeof field.defaultValue !== 'undefined')
-        .map((field) => [field.key, field.defaultValue!])
+        .map((field) => [field.key, field.defaultValue!]),
     );
 
     const installerPatch = {
       repoUrl: manifest.installer.repoUrl || nextSource.repoUrl || undefined,
-      repoBranch: manifest.installer.repoBranch || nextSource.repoBranch || undefined
+      repoBranch: manifest.installer.repoBranch || nextSource.repoBranch || undefined,
     };
 
-    await new DeliverySettingsService(this.db, loadEnv()).upsertSettings(
+    await new DeliverySettingsService(this.db, this.requireEnv()).upsertSettings(
       appCode,
       {
         values: presetDefaults,
-        installer: installerPatch
+        installer: installerPatch,
       },
-      actorUserId
+      actorUserId,
     );
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       appId: app.id,
       eventName: 'app.delivery_manifest_synced',
@@ -897,8 +921,8 @@ export class AppService {
         repoUrl: nextSource.repoUrl,
         repoBranch: nextSource.repoBranch,
         manifestPath: nextSource.manifestPath || null,
-        appliedPresetDefaults: Object.keys(presetDefaults)
-      }
+        appliedPresetDefaults: Object.keys(presetDefaults),
+      },
     });
 
     return this.getManagedApp(appCode);

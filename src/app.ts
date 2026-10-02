@@ -1,3 +1,5 @@
+import type { ServiceFactories } from './composition/service-factories';
+import { createApiServices } from './composition/api-runtime';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
@@ -11,8 +13,8 @@ import Fastify from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
 import { safeErrorResponse } from './http/safe-errors';
 
-import { AuthRepository } from './modules/auth/repository';
-import { AppService } from './modules/app/service';
+import { createAuthAccess } from './modules/auth/public';
+
 import { appModules } from './modules';
 import { dbPlugin } from './plugins/db';
 import { redisPlugin } from './plugins/redis';
@@ -36,7 +38,7 @@ function normalizeCorsOrigin(value: string): true | string[] {
     .filter(Boolean);
 }
 
-export async function buildApp(env: AppEnv) {
+export async function buildApp(env: AppEnv, options: { factories?: ServiceFactories } = {}) {
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
@@ -86,7 +88,7 @@ export async function buildApp(env: AppEnv) {
       ) {
         return reply.unauthorized('A user access token is required');
       }
-      const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+      const user = await createAuthAccess(app.db).findUserById(request.user.sub);
       if (!user || user.status !== 'active') return reply.unauthorized('User is unavailable');
       request.user.role = user.role;
       request.user.emailVerified = user.emailVerified;
@@ -123,7 +125,7 @@ export async function buildApp(env: AppEnv) {
         throw httpError(403, 'App token does not match requested app');
       }
 
-      await new AppService(app.db).requireActiveSecretById(payload.appCode, payload.secretId);
+      await app.services.AppService.requireActiveSecretById(payload.appCode, payload.secretId);
       request.appClient = {
         appId: payload.appId,
         appCode: payload.appCode,
@@ -155,7 +157,7 @@ export async function buildApp(env: AppEnv) {
       return authResult;
     }
 
-    const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+    const user = await createAuthAccess(app.db).findUserById(request.user.sub);
 
     if (!user || !canAccessAdminConsole(normalizeRole(user.role))) {
       return reply.forbidden('Admin access is required');
@@ -170,7 +172,7 @@ export async function buildApp(env: AppEnv) {
         return authResult;
       }
 
-      const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+      const user = await createAuthAccess(app.db).findUserById(request.user.sub);
 
       if (!user || !canAccessAdminConsole(normalizeRole(user.role))) {
         return reply.forbidden('Admin access is required');
@@ -188,7 +190,7 @@ export async function buildApp(env: AppEnv) {
       return authResult;
     }
 
-    const user = await new AuthRepository(app.db).findUserById(request.user.sub);
+    const user = await createAuthAccess(app.db).findUserById(request.user.sub);
 
     if (!user) {
       return reply.unauthorized('User not found');
@@ -202,6 +204,7 @@ export async function buildApp(env: AppEnv) {
     }
   });
   await app.register(dbPlugin, { env });
+  app.decorate('services', createApiServices(app.db, env, options.factories));
   await app.register(redisPlugin, { env });
   await app.register(rateLimit, {
     redis: app.redis,

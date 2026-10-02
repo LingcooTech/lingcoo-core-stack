@@ -1,3 +1,4 @@
+import { createServiceFactories } from '../../src/composition/service-factories';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
@@ -20,7 +21,7 @@ after(async () => {
 });
 test('public registration and login never bootstrap an administrator', async () => {
   const email = `${randomUUID()}@example.test`;
-  const auth = new AuthService(db, { ...env, NODE_ENV: 'production' });
+  const auth = new AuthService(createServiceFactories(), db, { ...env, NODE_ENV: 'production' });
   const user = await auth.register({ email, password: 'fixture-strong-password' });
   assert.equal(user.role, 'user');
   assert.equal(user.emailVerified, false, 'Missing SMTP must not verify production users');

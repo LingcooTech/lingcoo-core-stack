@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { JobRunService } from '../../src/modules/jobs/public';
+import { createServiceFactories } from '../../src/composition/service-factories';
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { eq } from 'drizzle-orm';
@@ -27,7 +30,7 @@ async function paymentFixture() {
 }
 test('duplicate and concurrent payment callbacks grant one entitlement', async () => {
   const fixture = await paymentFixture();
-  const service = new BillingService(db, env);
+  const service = new BillingService(createServiceFactories(), db, env);
   const results = await Promise.all([
     service.handlePaymentNotification(fixture.notification),
     service.handlePaymentNotification(fixture.notification),
@@ -49,7 +52,7 @@ for (const field of ['amount', 'currency'] as const) {
       ...(field === 'amount' ? { amount: 101 } : { currency: 'USD' }),
     };
     await assert.rejects(
-      new BillingService(db, env).handlePaymentNotification(invalid),
+      new BillingService(createServiceFactories(), db, env).handlePaymentNotification(invalid),
       /mismatch/,
     );
     assert.equal(
@@ -71,7 +74,9 @@ test('entitlement failure rolls back the paid order and webhook record', async (
   const fixture = await paymentFixture();
   await db.delete(planFeatures).where(eq(planFeatures.planId, fixture.plan.id));
   await assert.rejects(
-    new BillingService(db, env).handlePaymentNotification(fixture.notification),
+    new BillingService(createServiceFactories(), db, env).handlePaymentNotification(
+      fixture.notification,
+    ),
     /feature mappings/,
   );
   assert.equal(
@@ -90,7 +95,7 @@ test('entitlement failure rolls back the paid order and webhook record', async (
 });
 test('refund reconciliation replay preserves revoked entitlement and skips the provider', async (t) => {
   const fixture = await paymentFixture();
-  const service = new BillingService(db, env);
+  const service = new BillingService(createServiceFactories(), db, env);
   await service.handlePaymentNotification(fixture.notification);
   await db.update(orders).set({ status: 'refunding' }).where(eq(orders.id, fixture.order.id));
   const provider = t.mock.method(WechatPayProvider.prototype, 'queryRefundPayment', async () => ({
@@ -111,4 +116,40 @@ test('refund reconciliation replay preserves revoked entitlement and skips the p
       .status,
     'cancelled',
   );
+});
+
+test('refund reconciliation enqueue failure rolls back order and event changes', async (t) => {
+  const purchase = await seedPurchase(db);
+  await new BillingService(createServiceFactories(), db, env).handlePaymentNotification({
+    kind: 'paid',
+    provider: 'wechat_pay',
+    providerEventId: `fixture_${randomUUID()}`,
+    orderNo: purchase.order.orderNo,
+    providerOrderId: 'fixture_paid',
+    amount: 100,
+    currency: 'CNY',
+    paidAt: new Date(),
+    payload: {},
+  });
+  t.mock.method(WechatPayProvider.prototype, 'refundPayment', async () => ({
+    kind: 'processing',
+    provider: 'wechat_pay',
+    orderNo: purchase.order.orderNo,
+    refundId: 'fixture_refund',
+    refundRequestNo: `${purchase.order.orderNo}_refund`,
+    amount: 100,
+    currency: 'CNY',
+    payload: {},
+    reason: 'Processing',
+  }));
+  t.mock.method(JobRunService.prototype, 'enqueue', async () => {
+    throw new Error('fixture enqueue failure');
+  });
+  await assert.rejects(
+    new BillingService(createServiceFactories(), db, env).refundOrderByOrderNo(
+      purchase.order.orderNo,
+    ),
+  );
+  const [order] = await db.select().from(orders).where(eq(orders.id, purchase.order.id));
+  assert.equal(order.status, 'paid');
 });

@@ -14,8 +14,8 @@ import { QiniuSettingsService } from '../../lib/qiniu-settings';
 import { hasPermission, normalizeRole } from '../../lib/rbac';
 import { SiteSettingsService } from '../../lib/site-settings';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
-import { AuthRepository } from '../auth/repository';
-import { AdminService } from './service';
+import { createAuthAccess } from '../auth/public';
+
 import {
   adminAppCodeParamsSchema,
   adminEntitlementParamsSchema,
@@ -175,7 +175,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/bootstrap-status', async () => {
     return {
-      hasAdmin: (await new AuthRepository(app.db).countAdmins()) > 0,
+      hasAdmin: (await createAuthAccess(app.db).countAdmins()) > 0,
     };
   });
 
@@ -255,7 +255,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/orders', { preHandler: requireOrdersView }, async (request) => {
     const query = adminListOrdersQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listOrders(query);
+    return app.services.AdminService.listOrders(query);
   });
 
   app.post(
@@ -263,7 +263,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireOrdersReconcile },
     async (request) => {
       const params = adminOrderParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).reconcileOrder(params.orderNo);
+      const result = await app.services.AdminService.reconcileOrder(params.orderNo);
       await recordAudit(request, {
         action: 'admin.order.reconciled',
         resourceType: 'order',
@@ -282,7 +282,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireOrdersCancel },
     async (request) => {
       const params = adminOrderParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).cancelOrder(params.orderNo);
+      const result = await app.services.AdminService.cancelOrder(params.orderNo);
       await recordAudit(request, {
         action: 'admin.order.cancelled',
         resourceType: 'order',
@@ -302,7 +302,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireOrdersRefund },
     async (request) => {
       const params = adminOrderParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).refundOrder(params.orderNo);
+      const result = await app.services.AdminService.refundOrder(params.orderNo);
       await recordAudit(request, {
         action:
           result.action.status === 'refunding'
@@ -326,17 +326,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/orders/:orderNo', { preHandler: requireOrdersView }, async (request) => {
     const params = adminOrderParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).getOrderDetail(params.orderNo);
+    return app.services.AdminService.getOrderDetail(params.orderNo);
   });
 
   app.get('/v1/admin/installs', { preHandler: requireInstallsView }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listInstalls(query);
+    return app.services.AdminService.listInstalls(query);
   });
 
   app.get('/v1/admin/entitlements', { preHandler: requireLicensesManage }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listEntitlements(query);
+    return app.services.AdminService.listEntitlements(query);
   });
 
   app.post(
@@ -344,10 +344,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireLicensesManage },
     async (request) => {
       const payload = adminGrantEntitlementSchema.parse(request.body);
-      const result = await new AdminService(app.db, app.appEnv).grantEntitlement(
-        payload,
-        request.user.sub,
-      );
+      const result = await app.services.AdminService.grantEntitlement(payload, request.user.sub);
       await recordAudit(request, {
         action: 'admin.entitlement.granted',
         resourceType: 'entitlement_grant',
@@ -367,7 +364,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireLicensesManage },
     async (request) => {
       const params = adminEntitlementParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).revokeEntitlement(
+      const result = await app.services.AdminService.revokeEntitlement(
         params.entitlementId,
         request.user.sub,
       );
@@ -388,7 +385,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/events', { preHandler: requireObservabilityView }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listEvents(query);
+    return app.services.AdminService.listEvents(query);
   });
 
   app.get(
@@ -396,17 +393,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireObservabilityView },
     async (request) => {
       const query = adminListQuerySchema.parse(request.query);
-      return new AdminService(app.db, app.appEnv).listBillingWebhookEvents(query);
+      return app.services.AdminService.listBillingWebhookEvents(query);
     },
   );
 
   app.get('/v1/admin/observability/summary', { preHandler: requireObservabilityView }, async () => {
-    return new AdminService(app.db, app.appEnv).getObservabilitySummary();
+    return app.services.AdminService.getObservabilitySummary();
   });
 
   app.get('/v1/admin/jobs', { preHandler: requireObservabilityView }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listJobRuns(query);
+    return app.services.AdminService.listJobRuns(query);
   });
 
   app.post(
@@ -414,7 +411,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('jobs.manage') },
     async (request) => {
       const params = adminJobRunParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).retryJobRun(params.jobId);
+      const result = await app.services.AdminService.retryJobRun(params.jobId);
       await recordAudit(request, {
         action: 'admin.job.retried',
         resourceType: 'job_run',
@@ -430,7 +427,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/audit-logs', { preHandler: requireObservabilityView }, async (request) => {
     const query = adminListQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listAuditLogs(query);
+    return app.services.AdminService.listAuditLogs(query);
   });
 
   app.put(
@@ -763,20 +760,20 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/v1/admin/users', { preHandler: requireUsersView }, async (request) => {
     const query = adminListUsersQuerySchema.parse(request.query);
-    return new AdminService(app.db, app.appEnv).listUsers(query);
+    return app.services.AdminService.listUsers(query);
   });
 
   app.get('/v1/admin/users/:userId', { preHandler: requireUsersView }, async (request) => {
     const params = adminUserIdParamsSchema.parse(request.params);
-    return new AdminService(app.db, app.appEnv).getUser(params.userId);
+    return app.services.AdminService.getUser(params.userId);
   });
 
   app.put('/v1/admin/users/:userId', { preHandler: requireUsersEdit }, async (request, reply) => {
     const params = adminUserIdParamsSchema.parse(request.params);
     const payload = adminUpdateUserSchema.parse(request.body);
     const [existing, actor] = await Promise.all([
-      new AuthRepository(app.db).findUserById(params.userId),
-      new AuthRepository(app.db).findUserById(request.user.sub),
+      createAuthAccess(app.db).findUserById(params.userId),
+      createAuthAccess(app.db).findUserById(request.user.sub),
     ]);
     const actorRole = normalizeRole(actor?.role);
 
@@ -796,7 +793,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.forbidden('Insufficient permission to change user status');
     }
 
-    const result = await new AdminService(app.db, app.appEnv).updateUser(
+    const result = await app.services.AdminService.updateUser(
       params.userId,
       payload,
       request.user.sub,
@@ -827,11 +824,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersSuspend },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const existing = await new AuthRepository(app.db).findUserById(params.userId);
-      const result = await new AdminService(app.db, app.appEnv).suspendUser(
-        params.userId,
-        request.user.sub,
-      );
+      const existing = await createAuthAccess(app.db).findUserById(params.userId);
+      const result = await app.services.AdminService.suspendUser(params.userId, request.user.sub);
       await recordAudit(request, {
         action: 'admin.user.suspended',
         resourceType: 'user',
@@ -851,11 +845,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersSuspend },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const existing = await new AuthRepository(app.db).findUserById(params.userId);
-      const result = await new AdminService(app.db, app.appEnv).activateUser(
-        params.userId,
-        request.user.sub,
-      );
+      const existing = await createAuthAccess(app.db).findUserById(params.userId);
+      const result = await app.services.AdminService.activateUser(params.userId, request.user.sub);
       await recordAudit(request, {
         action: 'admin.user.activated',
         resourceType: 'user',
@@ -875,7 +866,7 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersResetPassword },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const result = await new AdminService(app.db, app.appEnv).resetUserPassword(
+      const result = await app.services.AdminService.resetUserPassword(
         params.userId,
         request.user.sub,
       );

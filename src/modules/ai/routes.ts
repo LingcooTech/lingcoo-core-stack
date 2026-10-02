@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
 import { OpenRouterSettingsService } from '../../lib/openrouter-settings';
-import { AiService } from './service';
+
 import {
   aiAppCodeParamsSchema,
   aiAppProviderParamsSchema,
@@ -31,7 +31,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const { appCode } = aiAppCodeParamsSchema.parse(request.params);
 
-      return new AiService(app.db, app.appEnv).getUserAccessOverview(appCode, request.user.sub);
+      return app.services.AiService.getUserAccessOverview(appCode, request.user.sub);
     },
   );
 
@@ -52,7 +52,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const { appCode } = aiAppCodeParamsSchema.parse(request.params);
 
-      return new AiService(app.db, app.appEnv).listUserProviders(appCode, request.user.sub);
+      return app.services.AiService.listUserProviders(appCode, request.user.sub);
     },
   );
 
@@ -72,7 +72,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const params = aiAppProviderParamsSchema.parse(request.params);
-      return new AiService(app.db, app.appEnv).listUserProviderModels(
+      return app.services.AiService.listUserProviderModels(
         params.appCode,
         request.user.sub,
         params.provider,
@@ -98,7 +98,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       const params = aiAppProviderParamsSchema.parse(request.params);
       const payload = aiProxyChatCompletionSchema.parse(request.body);
 
-      return new AiService(app.db, app.appEnv).createUserChatCompletion(
+      return app.services.AiService.createUserChatCompletion(
         params.appCode,
         request.user.sub,
         params.provider,
@@ -111,7 +111,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/ai/providers',
     { preHandler: app.requirePermission('ai.manage') },
     async () => {
-      return new AiService(app.db, app.appEnv).listProviders();
+      return app.services.AiService.listProviders();
     },
   );
 
@@ -120,7 +120,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('ai.manage') },
     async (request) => {
       const params = aiProviderParamsSchema.parse(request.params);
-      return new AiService(app.db, app.appEnv).listProviderModels(params.provider);
+      return app.services.AiService.listProviderModels(params.provider);
     },
   );
 
@@ -130,7 +130,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = aiProviderParamsSchema.parse(request.params);
       const payload = aiChatCompletionSchema.parse(request.body);
-      return new AiService(app.db, app.appEnv).createChatCompletion(params.provider, payload);
+      return app.services.AiService.createChatCompletion(params.provider, payload);
     },
   );
 

@@ -10,29 +10,28 @@ import {
   syncDeliveryManifestSchema,
   upsertAppSchema,
 } from './schemas';
-import { AppService } from './service';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/apps', async () => {
     return {
-      items: await new AppService(app.db).listActiveApps(),
+      items: await app.services.AppService.listActiveApps(),
     };
   });
 
   app.get('/v1/apps/:appCode', async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).getPublicApp(params.appCode);
+    return app.services.AppService.getPublicApp(params.appCode);
   });
 
   app.get('/v1/apps/:appCode/catalog', async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
-    return new AppService(app.db).getAppCatalog(params.appCode);
+    return app.services.AppService.getAppCatalog(params.appCode);
   });
 
   app.post('/v1/apps/:appCode/session', async (request) => {
     const params = appCodeParamsSchema.parse(request.params);
     const payload = createAppSessionSchema.parse(request.body);
-    const auth = await new AppService(app.db).authenticateAppSecret(
+    const auth = await app.services.AppService.authenticateAppSecret(
       params.appCode,
       payload.appSecret,
     );
@@ -76,13 +75,13 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const params = appCodeParamsSchema.parse(request.params);
-      return new AppService(app.db).listUserEntitlementsForApp(params.appCode, request.user.sub);
+      return app.services.AppService.listUserEntitlementsForApp(params.appCode, request.user.sub);
     },
   );
 
   app.get('/v1/admin/apps', { preHandler: app.requirePermission('apps.manage') }, async () => {
     return {
-      items: await new AppService(app.db).listManagedApps(),
+      items: await app.services.AppService.listManagedApps(),
     };
   });
 
@@ -93,7 +92,7 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
       const params = appCodeParamsSchema.parse(request.params);
       const payload = upsertAppSchema.parse(request.body);
 
-      return new AppService(app.db).upsertApp(params.appCode, payload, request.user.sub);
+      return app.services.AppService.upsertApp(params.appCode, payload, request.user.sub);
     },
   );
 
@@ -102,7 +101,7 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('apps.manage') },
     async (request) => {
       const params = appCodeParamsSchema.parse(request.params);
-      return new AppService(app.db).archiveApp(params.appCode, request.user.sub);
+      return app.services.AppService.archiveApp(params.appCode, request.user.sub);
     },
   );
 
@@ -113,7 +112,7 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
       const params = appCodeParamsSchema.parse(request.params);
       const payload = purgeAppConfigurationSchema.parse(request.body);
 
-      return new AppService(app.db).purgeAppConfiguration(
+      return app.services.AppService.purgeAppConfiguration(
         params.appCode,
         payload.confirmAppCode,
         request.user.sub,
@@ -128,7 +127,11 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
       const params = appCodeParamsSchema.parse(request.params);
       const payload = syncDeliveryManifestSchema.parse(request.body ?? {});
 
-      return new AppService(app.db).syncDeliveryManifest(params.appCode, payload, request.user.sub);
+      return app.services.AppService.syncDeliveryManifest(
+        params.appCode,
+        payload,
+        request.user.sub,
+      );
     },
   );
 
@@ -138,7 +141,7 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     async (request, reply) => {
       const params = appCodeParamsSchema.parse(request.params);
       const payload = createAppSecretSchema.parse(request.body);
-      const result = await new AppService(app.db).issueSecret(
+      const result = await app.services.AppService.issueSecret(
         params.appCode,
         payload,
         request.user.sub,
@@ -153,7 +156,11 @@ export const appRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('apps.manage') },
     async (request) => {
       const params = appSecretParamsSchema.parse(request.params);
-      return new AppService(app.db).revokeSecret(params.appCode, params.secretId, request.user.sub);
+      return app.services.AppService.revokeSecret(
+        params.appCode,
+        params.secretId,
+        request.user.sub,
+      );
     },
   );
 };

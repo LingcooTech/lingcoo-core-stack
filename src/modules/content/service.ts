@@ -1,8 +1,9 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import * as cheerio from 'cheerio';
 
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
-import { EventService } from '../event/service';
+
 import { ContentRepository } from './repository';
 
 type ContentSourceType = 'manual' | 'wordpress' | 'notion' | 'wechat';
@@ -155,7 +156,11 @@ type NotionRichText = {
   };
 };
 
-type NotionBlock = Record<string, any> & { type: string; has_children?: boolean; children?: NotionBlock[] };
+type NotionBlock = Record<string, any> & {
+  type: string;
+  has_children?: boolean;
+  children?: NotionBlock[];
+};
 
 function renderNotionRichText(items: NotionRichText[] | undefined) {
   if (!Array.isArray(items) || items.length === 0) {
@@ -171,7 +176,8 @@ function renderNotionRichText(items: NotionRichText[] | undefined) {
       if (item.annotations?.italic) output = `<em>${output}</em>`;
       if (item.annotations?.underline) output = `<u>${output}</u>`;
       if (item.annotations?.strikethrough) output = `<s>${output}</s>`;
-      if (item.href) output = `<a href="${htmlEscape(item.href)}" target="_blank" rel="noopener noreferrer">${output}</a>`;
+      if (item.href)
+        output = `<a href="${htmlEscape(item.href)}" target="_blank" rel="noopener noreferrer">${output}</a>`;
 
       return output;
     })
@@ -186,7 +192,10 @@ function wrapTag(tag: string, inner: string, className?: string) {
 function renderNotionBlock(block: NotionBlock): string {
   const node = block[block.type] ?? {};
   const richText = renderNotionRichText(node.rich_text);
-  const nested = Array.isArray(block.children) && block.children.length > 0 ? renderNotionBlocks(block.children) : '';
+  const nested =
+    Array.isArray(block.children) && block.children.length > 0
+      ? renderNotionBlocks(block.children)
+      : '';
 
   switch (block.type) {
     case 'paragraph':
@@ -217,7 +226,9 @@ function renderNotionBlock(block: NotionBlock): string {
     }
     case 'bookmark': {
       const url = normalizeOptionalUrl(node.url);
-      return url ? `<p><a href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer">${htmlEscape(url)}</a></p>` : '';
+      return url
+        ? `<p><a href="${htmlEscape(url)}" target="_blank" rel="noopener noreferrer">${htmlEscape(url)}</a></p>`
+        : '';
     }
     case 'bulleted_list_item':
     case 'numbered_list_item':
@@ -260,7 +271,10 @@ function renderNotionBlocks(blocks: NotionBlock[]) {
 export class ContentService {
   private readonly repository: ContentRepository;
 
-  constructor(private readonly db: DbExecutor) {
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+  ) {
     this.repository = new ContentRepository(db);
   }
 
@@ -284,11 +298,7 @@ export class ContentService {
     };
   }
 
-  async listPublishedContent(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listPublishedContent(query: { limit: number; offset: number; search?: string }) {
     const result = await this.repository.listPublishedContent(query);
     return {
       items: result.items.map((item) => ({
@@ -356,8 +366,9 @@ export class ContentService {
       sourceId: draft.sourceId ?? null,
       sourceUrl: draft.sourceUrl ?? null,
       status: existing?.status ?? inputStatus,
-      publishedAt: draft.publishedAt ?? (inputStatus === 'published' ? new Date() : null),
-      importedAt: new Date(),
+      publishedAt:
+        draft.publishedAt ?? (inputStatus === 'published' ? this.capabilities.now() : null),
+      importedAt: this.capabilities.now(),
       meta: draft.meta ?? {},
     };
 
@@ -365,11 +376,11 @@ export class ContentService {
       ? await this.repository.update(existing.id, payload)
       : await this.repository.create({
           ...payload,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: this.capabilities.now(),
+          updatedAt: this.capabilities.now(),
         });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: existing ? 'content.updated' : 'content.created',
       properties: {
@@ -407,7 +418,7 @@ export class ContentService {
       input.status === 'published'
         ? input.publishedAt
           ? new Date(input.publishedAt)
-          : existing?.publishedAt ?? new Date()
+          : (existing?.publishedAt ?? this.capabilities.now())
         : null;
     const excerpt = normalizeString(input.excerpt) || buildExcerpt(input.content, input.title);
 
@@ -431,11 +442,11 @@ export class ContentService {
       ? await this.repository.update(existing.id, payload)
       : await this.repository.create({
           ...payload,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: this.capabilities.now(),
+          updatedAt: this.capabilities.now(),
         });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: existing ? 'content.updated' : 'content.created',
       properties: {
@@ -575,8 +586,13 @@ export class ContentService {
     const blocks: NotionBlock[] = [];
 
     while (hasMore) {
-      const query = cursor ? `?page_size=100&start_cursor=${encodeURIComponent(cursor)}` : '?page_size=100';
-      const { response, data } = await this.requestNotion(`/blocks/${blockId}/children${query}`, apiToken);
+      const query = cursor
+        ? `?page_size=100&start_cursor=${encodeURIComponent(cursor)}`
+        : '?page_size=100';
+      const { response, data } = await this.requestNotion(
+        `/blocks/${blockId}/children${query}`,
+        apiToken,
+      );
       if (!response.ok) {
         throw new Error(`读取 Notion 内容失败：${response.status} ${response.statusText}`);
       }
@@ -615,7 +631,9 @@ export class ContentService {
       throw new Error(`Notion 导入失败：${response.status} ${response.statusText}`);
     }
 
-    const titleProperty = Object.values(data.properties ?? {}).find((property: any) => property?.type === 'title') as any;
+    const titleProperty = Object.values(data.properties ?? {}).find(
+      (property: any) => property?.type === 'title',
+    ) as any;
     const title = stripHtml(renderNotionRichText(titleProperty?.title)) || 'Untitled';
     const blocks = await this.fetchNotionBlockTree(pageId, input.apiToken);
     const contentHtml = renderNotionBlocks(blocks);
@@ -679,7 +697,8 @@ export class ContentService {
       $('meta[property="og:description"]').attr('content')?.trim() ||
       $('#meta_content').text().trim() ||
       '';
-    const authorName = $('#js_name').text().trim() || $('meta[name="author"]').attr('content')?.trim() || '';
+    const authorName =
+      $('#js_name').text().trim() || $('meta[name="author"]').attr('content')?.trim() || '';
     const coverUrl = normalizeOptionalUrl($('meta[property="og:image"]').attr('content'));
     const contentElement = $('#js_content');
 
@@ -705,7 +724,7 @@ export class ContentService {
         sourceType: 'wechat',
         sourceId: input.url,
         sourceUrl: input.url,
-        publishedAt: new Date(),
+        publishedAt: this.capabilities.now(),
         meta: {
           wechat: {
             importedFrom: input.url,

@@ -10,17 +10,16 @@ import {
   publicContentSlugParamsSchema,
   upsertContentSchema,
 } from './schemas';
-import { ContentService } from './service';
 
 export const contentRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/content', async (request) => {
     const query = contentListQuerySchema.parse(request.query);
-    return new ContentService(app.db).listPublishedContent(query);
+    return app.services.ContentService.listPublishedContent(query);
   });
 
   app.get('/v1/content/:slug', async (request) => {
     const params = publicContentSlugParamsSchema.parse(request.params);
-    return new ContentService(app.db).getPublicContentBySlug(params.slug);
+    return app.services.ContentService.getPublicContentBySlug(params.slug);
   });
 
   app.get(
@@ -28,7 +27,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('content.manage') },
     async (request) => {
       const query = contentListQuerySchema.parse(request.query);
-      return new ContentService(app.db).listContent(query);
+      return app.services.ContentService.listContent(query);
     },
   );
 
@@ -37,7 +36,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('content.manage') },
     async (request) => {
       const params = contentIdParamsSchema.parse(request.params);
-      return new ContentService(app.db).getContentById(params.contentId);
+      return app.services.ContentService.getContentById(params.contentId);
     },
   );
 
@@ -46,7 +45,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('content.manage') },
     async (request, reply) => {
       const payload = upsertContentSchema.parse(request.body);
-      const item = await new ContentService(app.db).upsertContent(null, payload, request.user.sub);
+      const item = await app.services.ContentService.upsertContent(null, payload, request.user.sub);
       return reply.status(201).send(item);
     },
   );
@@ -57,7 +56,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = contentIdParamsSchema.parse(request.params);
       const payload = upsertContentSchema.parse(request.body);
-      return new ContentService(app.db).upsertContent(params.contentId, payload, request.user.sub);
+      return app.services.ContentService.upsertContent(params.contentId, payload, request.user.sub);
     },
   );
 
@@ -70,7 +69,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
         app.db,
         app.appEnv,
       ).getRuntimeSettings();
-      const item = await new ContentService(app.db).importFromWordPress(
+      const item = await app.services.ContentService.importFromWordPress(
         {
           siteUrl: settings?.wordpress.siteUrl || '',
           postUrl: payload.postUrl,
@@ -93,7 +92,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
         app.db,
         app.appEnv,
       ).getRuntimeSettings();
-      const item = await new ContentService(app.db).importFromNotion(
+      const item = await app.services.ContentService.importFromNotion(
         {
           apiToken: settings?.notion.apiToken || '',
           pageUrl: payload.pageUrl,
@@ -110,7 +109,7 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('content.manage') },
     async (request, reply) => {
       const payload = importWechatContentSchema.parse(request.body);
-      const item = await new ContentService(app.db).importFromWechat(payload, request.user.sub);
+      const item = await app.services.ContentService.importFromWechat(payload, request.user.sub);
       return reply.status(201).send(item);
     },
   );

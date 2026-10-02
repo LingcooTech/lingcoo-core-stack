@@ -25,3 +25,13 @@
 生产切换前必须配置独立 `SETTINGS_ENCRYPTION_KEY` 或 Keyring。已有使用 JWT 加密的密文暂通过 legacy 读取兼容，轮换后才能关闭此能力。无管理员的环境使用 `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` 执行 `npm run db:bootstrap`，不会在公开注册或登录时提升权限。已有管理员保留。
 
 Jobs migration 使用扩展字段，切换时必须先停止或排空旧 Worker，再运行 migration 并启动新 Worker，禁止混合旧的无凭据写回进程。Token 兑换仍保留现有交付状态语义，新的实例生命周期留待独立方案。
+
+## 阶段 C 模块接口与运行时组装
+
+已建立全部业务模块的 public 入口、显式能力工厂与 API 组装。公开 Service Port 只列出实际协作的方法，Repository 能力仅投影明确查询与命令；实例和连接均在调用方运行时创建。跨模块业务 Service 与事务绑定能力由 Composition Root 注入，Billing/Checkout 以及 App/License 不再互相导入内部实现。表清理回到所属模块。AST 门禁检查静态导入、别名、require、动态导入、模块循环、领域依赖与跨表写入，债务清单目前为空，并通过故意违规样例验证。
+
+从 Drizzle 推导真实事务类型，移除 `tx as DbClient`。支付成功的订单、权益、Checkout 投影仍共用事务；退款处理中必要的对账任务现在在事务内入队。新增入队失败回滚测试，20 个集成测试通过。
+
+Jobs 收敛为独立模块，载荷与版本经过 Registry 校验，Worker 统一组装邮件、Webhook 与退款 Handler。并发数、关闭等待和保留期显式配置，租约丢失中止支持取消的 Handler，终态任务与尝试记录默认保留 90 天。审计辅助失败不会重试已完成的外部任务。保留 lib 的兼容出口。
+
+Deployment Facade 拆出配置和 bootstrap 组装用例，Billing 拆出退款与对账用例，调用与响应保持兼容。API 与 Worker 接受可替换的能力工厂，业务时钟与 Job 时钟可以注入。15 个单元测试通过。生产信号与镜像恢复演练继续在阶段 F 验证。

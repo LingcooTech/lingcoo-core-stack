@@ -1,3 +1,4 @@
+import { createServiceFactories } from '../composition/service-factories';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -325,7 +326,7 @@ async function upsertProduct(db: DbClient, product: ProductConfig) {
       await appRepository.replaceAppOffers(app.id, offers);
     }
 
-    await new EventService(tx as DbClient).capture({
+    await new EventService(createServiceFactories(), tx as DbClient).capture({
       appId: app.id,
       eventName: 'app.product_config_imported',
       properties: {

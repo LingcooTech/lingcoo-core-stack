@@ -11,7 +11,6 @@ import {
   updateCurrentUserSchema,
   verifyEmailSchema,
 } from './schemas';
-import { AuthService } from './service';
 
 function toAuthResponse(
   app: FastifyInstance,
@@ -79,7 +78,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const payload = registerSchema.parse(request.body);
-      const user = await new AuthService(app.db, app.appEnv).register(payload);
+      const user = await app.services.AuthService.register(payload);
 
       return reply.status(201).send(toAuthResponse(app, user));
     },
@@ -100,14 +99,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const payload = loginSchema.parse(request.body);
-      const user = await new AuthService(app.db, app.appEnv).login(payload);
+      const user = await app.services.AuthService.login(payload);
 
       return toAuthResponse(app, user);
     },
   );
 
   app.get('/v1/me', { preHandler: app.authenticate }, async (request) => {
-    const user = await new AuthService(app.db, app.appEnv).getUserById(request.user.sub);
+    const user = await app.services.AuthService.getUserById(request.user.sub);
 
     return {
       authenticated: true,
@@ -123,10 +122,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.patch('/v1/me', { preHandler: app.authenticate }, async (request) => {
     const payload = updateCurrentUserSchema.parse(request.body);
-    const user = await new AuthService(app.db, app.appEnv).updateCurrentUser(
-      request.user.sub,
-      payload,
-    );
+    const user = await app.services.AuthService.updateCurrentUser(request.user.sub, payload);
 
     return {
       user: {
@@ -141,12 +137,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/v1/me/change-password', { preHandler: app.authenticate }, async (request) => {
     const payload = changePasswordSchema.parse(request.body);
-    return new AuthService(app.db, app.appEnv).changePassword(request.user.sub, payload);
+    return app.services.AuthService.changePassword(request.user.sub, payload);
   });
 
   app.post('/v1/auth/verify-email', { preHandler: app.authenticate }, async (request) => {
     const payload = verifyEmailSchema.parse(request.body);
-    return new AuthService(app.db, app.appEnv).verifyEmail(request.user.sub, payload.code);
+    return app.services.AuthService.verifyEmail(request.user.sub, payload.code);
   });
 
   app.post(
@@ -164,7 +160,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request) => {
-      const service = new AuthService(app.db, app.appEnv);
+      const service = app.services.AuthService;
       const user = await service.getUserById(request.user.sub);
 
       if (user.emailVerified) {
@@ -190,7 +186,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const payload = forgotPasswordSchema.parse(request.body);
-      return new AuthService(app.db, app.appEnv).requestPasswordReset(payload.email);
+      return app.services.AuthService.requestPasswordReset(payload.email);
     },
   );
 
@@ -209,7 +205,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const payload = resetPasswordSchema.parse(request.body);
-      return new AuthService(app.db, app.appEnv).resetPassword(payload);
+      return app.services.AuthService.resetPassword(payload);
     },
   );
 };

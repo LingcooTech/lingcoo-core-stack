@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 import type { AppEnv } from './env';
 import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
@@ -126,7 +126,7 @@ function hasSecret(value: string | undefined) {
 
 export class AlertingSettingsService {
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 

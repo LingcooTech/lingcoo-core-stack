@@ -1,14 +1,12 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomUUID } from 'node:crypto';
 
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
-import { AppRepository } from '../app/repository';
-import { AuthRepository } from '../auth/repository';
-import { BillingRepository } from '../billing/repository';
-import { DeploymentRepository } from '../deployment/repository';
-import { EventService } from '../event/service';
-import { InstallRepository } from '../install/repository';
+import { createAppAccess } from '../app/public';
+import { createAuthAccess } from '../auth/public';
+
 import { TicketRepository } from './repository';
 
 type SupportTicketStatus = 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
@@ -70,7 +68,10 @@ function formatSystemStatusMessage(status: SupportTicketStatus) {
 export class TicketService {
   private readonly repository: TicketRepository;
 
-  constructor(private readonly db: DbClient) {
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
+  ) {
     this.repository = new TicketRepository(db);
   }
 
@@ -125,11 +126,11 @@ export class TicketService {
     ];
 
     const [users, apps, orders, installs, deployments, messageCounts] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds([...new Set([...userIds, ...assigneeIds])]),
-      new AppRepository(this.db).listAppsByIds(appIds),
-      new BillingRepository(this.db).listOrdersByIds(orderIds),
-      new InstallRepository(this.db).listInstallsByIds(installIds),
-      new DeploymentRepository(this.db).listDeploymentsByIds(deploymentIds),
+      createAuthAccess(this.db).listUsersByIds([...new Set([...userIds, ...assigneeIds])]),
+      createAppAccess(this.db).listAppsByIds(appIds),
+      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
+      this.capabilities.createInstallAccess(this.db).listInstallsByIds(installIds),
+      this.capabilities.createDeploymentAccess(this.db).listDeploymentsByIds(deploymentIds),
       this.repository.listMessageCountsByTicketIds(tickets.map((ticket) => ticket.id)),
     ]);
 
@@ -205,7 +206,7 @@ export class TicketService {
           .filter((value): value is string => Boolean(value)),
       ),
     ];
-    const authors = await new AuthRepository(this.db).listUsersByIds(authorIds);
+    const authors = await createAuthAccess(this.db).listUsersByIds(authorIds);
     const authorMap = new Map(authors.map((item) => [item.id, item]));
 
     return {
@@ -235,13 +236,17 @@ export class TicketService {
     const deploymentId = normalizeString(input.deploymentId);
 
     const [app, order, install, deployment] = await Promise.all([
-      appCode ? new AppRepository(this.db).findAppByCode(appCode) : Promise.resolve(null),
-      orderNo ? new BillingRepository(this.db).findOrderByOrderNo(orderNo) : Promise.resolve(null),
+      appCode ? createAppAccess(this.db).findAppByCode(appCode) : Promise.resolve(null),
+      orderNo
+        ? this.capabilities.createBillingAccess(this.db).findOrderByOrderNo(orderNo)
+        : Promise.resolve(null),
       extensionInstallId
-        ? new InstallRepository(this.db).findInstallByExtensionInstallId(extensionInstallId)
+        ? this.capabilities
+            .createInstallAccess(this.db)
+            .findInstallByExtensionInstallId(extensionInstallId)
         : Promise.resolve(null),
       deploymentId
-        ? new DeploymentRepository(this.db).findDeploymentById(deploymentId)
+        ? this.capabilities.createDeploymentAccess(this.db).findDeploymentById(deploymentId)
         : Promise.resolve(null),
     ]);
 
@@ -280,7 +285,7 @@ export class TicketService {
 
     return {
       app:
-        app ?? (inferredAppId ? await new AppRepository(this.db).findAppById(inferredAppId) : null),
+        app ?? (inferredAppId ? await createAppAccess(this.db).findAppById(inferredAppId) : null),
       order,
       install,
       deployment,
@@ -322,7 +327,7 @@ export class TicketService {
     body: string;
   }) {
     const context = await this.resolveCreateContext(input);
-    const now = new Date();
+    const now = this.capabilities.now();
     const ticket = await this.repository.createTicket({
       ticketNo: createTicketNo(now),
       userId: input.userId,
@@ -345,7 +350,7 @@ export class TicketService {
       body: normalizeString(input.body),
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
       appId: ticket.appId ?? undefined,
       installId: ticket.installId ?? undefined,
@@ -370,7 +375,7 @@ export class TicketService {
       throw httpError(409, 'Closed tickets cannot be replied to');
     }
 
-    const now = new Date();
+    const now = this.capabilities.now();
     const updated = await this.repository.updateTicket(ticket.id, {
       status: 'waiting_staff',
       lastReplyAuthorType: 'user',
@@ -390,7 +395,7 @@ export class TicketService {
       body: normalizeString(input.body),
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
       appId: ticket.appId ?? undefined,
       installId: ticket.installId ?? undefined,
@@ -411,7 +416,7 @@ export class TicketService {
       return this.buildTicketDetail(ticket);
     }
 
-    const now = new Date();
+    const now = this.capabilities.now();
     const updated = await this.repository.updateTicket(ticket.id, {
       status: 'closed',
       closedAt: now,
@@ -429,7 +434,7 @@ export class TicketService {
       body: '工单已由用户关闭。',
     });
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
       appId: ticket.appId ?? undefined,
       installId: ticket.installId ?? undefined,
@@ -476,7 +481,7 @@ export class TicketService {
     isInternal?: boolean;
   }) {
     const ticket = await this.loadTicketOrThrow(input.ticketNo);
-    const now = new Date();
+    const now = this.capabilities.now();
     const isInternal = Boolean(input.isInternal);
 
     const updated = isInternal
@@ -504,7 +509,7 @@ export class TicketService {
     });
 
     if (!isInternal) {
-      await new EventService(this.db).capture({
+      await this.capabilities.createEventService(this.db).capture({
         userId: ticket.userId,
         appId: ticket.appId ?? undefined,
         installId: ticket.installId ?? undefined,
@@ -529,7 +534,7 @@ export class TicketService {
     let assigneeLabel = '未分配';
 
     if (input.assignedAdminUserId) {
-      const assignee = await new AuthRepository(this.db).findUserById(input.assignedAdminUserId);
+      const assignee = await createAuthAccess(this.db).findUserById(input.assignedAdminUserId);
       if (!assignee || !canAccessAdminConsole(normalizeRole(assignee.role))) {
         throw httpError(422, 'Assigned user must be a backoffice user');
       }
@@ -538,7 +543,7 @@ export class TicketService {
 
     const updated = await this.repository.updateTicket(ticket.id, {
       assignedAdminUserId: input.assignedAdminUserId,
-      updatedAt: new Date(),
+      updatedAt: this.capabilities.now(),
     });
 
     if (!updated) {
@@ -567,7 +572,7 @@ export class TicketService {
       return this.buildTicketDetail(ticket, { includeInternal: true });
     }
 
-    const now = new Date();
+    const now = this.capabilities.now();
     const changes: Parameters<TicketRepository['updateTicket']>[1] = {
       status: input.status,
       lastActivityAt: now,
@@ -610,7 +615,7 @@ export class TicketService {
 
     const eventName = eventNameByStatus[input.status];
     if (eventName) {
-      await new EventService(this.db).capture({
+      await this.capabilities.createEventService(this.db).capture({
         userId: ticket.userId,
         appId: ticket.appId ?? undefined,
         installId: ticket.installId ?? undefined,

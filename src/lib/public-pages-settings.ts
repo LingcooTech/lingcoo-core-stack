@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 import type { AppEnv } from './env';
 
 export type PublicPagesSettingsSource = 'database' | 'none';
@@ -66,7 +66,7 @@ function isSame(left: PublicPagesSettings, right: PublicPagesSettings) {
 
 export class PublicPagesSettingsService {
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 

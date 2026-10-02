@@ -3,7 +3,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 import type { AppEnv } from './env';
 import { httpError } from './errors';
 import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
@@ -160,7 +160,7 @@ function sanitizeFilename(filename: string) {
 
 export class QiniuSettingsService {
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 

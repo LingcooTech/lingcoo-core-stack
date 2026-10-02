@@ -4,7 +4,7 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 
 import { systemSettings } from '../db/schema';
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 import type { AppEnv } from './env';
 import { decryptJson, encryptJson, getEncryptionKeys } from './settings-crypto';
 
@@ -148,7 +148,7 @@ export function readSecretValue(input: { inlineValue?: string; fileValue?: strin
 
 export class PaymentSettingsService {
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 

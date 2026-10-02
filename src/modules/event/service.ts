@@ -1,13 +1,15 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import type { DbExecutor } from '../../db/types';
-import type { DbClient } from '../../db/types';
 import { EventRepository, type EventRecordInput } from './repository';
-import { NotificationsService } from '../notifications/service';
 
 export class EventService {
   private readonly repository: EventRepository;
   private readonly db: DbExecutor;
 
-  constructor(db: DbExecutor) {
+  constructor(
+    private readonly capabilities: ServiceFactories,
+    db: DbExecutor,
+  ) {
     this.db = db;
     this.repository = new EventRepository(db);
   }
@@ -15,7 +17,7 @@ export class EventService {
   async capture(item: EventRecordInput) {
     const [record] = await this.repository.insertMany([item]);
     if (record) {
-      await new NotificationsService(this.db as DbClient).projectFromEvents([
+      await this.capabilities.createNotificationsService(this.db).projectFromEvents([
         {
           id: record.id,
           userId: record.userId,
@@ -32,7 +34,7 @@ export class EventService {
   async captureMany(items: EventRecordInput[]) {
     const records = await this.repository.insertMany(items);
     if (records.length > 0) {
-      await new NotificationsService(this.db as DbClient).projectFromEvents(
+      await this.capabilities.createNotificationsService(this.db).projectFromEvents(
         records.map((record) => ({
           id: record.id,
           userId: record.userId,

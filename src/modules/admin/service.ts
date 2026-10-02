@@ -1,30 +1,28 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { and, count, eq, isNull, gte, lte, type SQL } from 'drizzle-orm';
 
 import { billingWebhookEvents, events, jobRuns, orders, supportTickets } from '../../db/schema';
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import { AuditLogService } from '../../lib/audit-logs';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { JobRunService } from '../../lib/job-runs';
 import type { AppRole } from '../../lib/rbac';
 import { hashPassword } from '../../lib/security';
-import { AppRepository } from '../app/repository';
-import { AuthRepository } from '../auth/repository';
-import { BillingRepository } from '../billing/repository';
-import { BillingService } from '../billing/service';
-import { CheckoutRepository } from '../checkout/repository';
-import { EventService } from '../event/service';
-import { EventRepository } from '../event/repository';
-import { InstallRepository } from '../install/repository';
-import { LicenseRepository } from '../license/repository';
-import { LicenseService } from '../license/service';
-import { TicketService } from '../ticket/service';
+import { createAppAccess } from '../app/public';
+import { createAuthAccess } from '../auth/public';
+import { type BillingRepositoryPort as BillingRepository } from '../billing/public';
+
+import { createEventAccess } from '../event/public';
+import { type InstallRepositoryPort as InstallRepository } from '../install/public';
+import { type LicenseRepositoryPort as LicenseRepository } from '../license/public';
 
 export class AdminService {
   constructor(
-    private readonly db: DbClient,
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 
@@ -34,14 +32,14 @@ export class AdminService {
     const userIds = [...new Set(orders.map((item) => item.userId))];
     const appIds = [...new Set(orders.map((item) => item.appId))];
     const planIds = [...new Set(orders.map((item) => item.planId))];
-    const sessions = await new CheckoutRepository(this.db).listSessionsByOrderIds(
-      orders.map((item) => item.id),
-    );
+    const sessions = await this.capabilities
+      .createCheckoutAccess(this.db)
+      .listSessionsByOrderIds(orders.map((item) => item.id));
 
     const [users, plans, apps] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new LicenseRepository(this.db).listPlansByIds(planIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -97,10 +95,10 @@ export class AdminService {
     ];
 
     const [users, apps, plans, orders] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
-      new LicenseRepository(this.db).listPlansByIds(planIds),
-      new BillingRepository(this.db).listOrdersByIds(orderIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
+      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -141,8 +139,8 @@ export class AdminService {
     const appIds = [...new Set(installs.map((item) => item.appId))];
 
     const [users, apps] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -166,7 +164,7 @@ export class AdminService {
     status?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunding' | 'refunded';
     provider?: 'wechat_pay' | 'alipay';
   }) {
-    const result = await new BillingRepository(this.db).listOrders(query);
+    const result = await this.capabilities.createBillingAccess(this.db).listOrders(query);
     return {
       items: await this.hydrateOrderRows(result.items),
       total: result.total,
@@ -176,21 +174,21 @@ export class AdminService {
   }
 
   async getOrderDetail(orderNo: string) {
-    const order = await new BillingRepository(this.db).findOrderByOrderNo(orderNo);
+    const order = await this.capabilities.createBillingAccess(this.db).findOrderByOrderNo(orderNo);
     if (!order) {
       throw httpError(404, 'Order not found');
     }
 
     const [hydratedOrder] = await this.hydrateOrderRows([order]);
     const [attempts, entitlements, events] = await Promise.all([
-      new CheckoutRepository(this.db).listPaymentAttemptsByOrderIds([order.id]),
-      new LicenseRepository(this.db).listEntitlementsBySource('order', order.id),
-      new EventRepository(this.db).listRecentEventsByOrderNo(orderNo, 20),
+      this.capabilities.createCheckoutAccess(this.db).listPaymentAttemptsByOrderIds([order.id]),
+      this.capabilities.createLicenseAccess(this.db).listEntitlementsBySource('order', order.id),
+      createEventAccess(this.db).listRecentEventsByOrderNo(orderNo, 20),
     ]);
 
     // Derive plan info for entitlements
     const planIds = [...new Set(entitlements.map((e) => e.planId))];
-    const plans = await new LicenseRepository(this.db).listPlansByIds(planIds);
+    const plans = await this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds);
     const planMap = new Map(plans.map((p) => [p.id, p]));
 
     return {
@@ -210,19 +208,21 @@ export class AdminService {
   }
 
   async reconcileOrder(orderNo: string) {
-    return new BillingService(this.db, this.env).syncOrderStatusByOrderNo(orderNo);
+    return this.capabilities
+      .createBillingService(this.db, this.env)
+      .syncOrderStatusByOrderNo(orderNo);
   }
 
   async cancelOrder(orderNo: string) {
-    return new BillingService(this.db, this.env).cancelOrderByOrderNo(orderNo);
+    return this.capabilities.createBillingService(this.db, this.env).cancelOrderByOrderNo(orderNo);
   }
 
   async refundOrder(orderNo: string) {
-    return new BillingService(this.db, this.env).refundOrderByOrderNo(orderNo);
+    return this.capabilities.createBillingService(this.db, this.env).refundOrderByOrderNo(orderNo);
   }
 
   async listInstalls(query: { limit: number; offset: number; search?: string }) {
-    const result = await new InstallRepository(this.db).listInstalls(query);
+    const result = await this.capabilities.createInstallAccess(this.db).listInstalls(query);
     const installs = result.items;
     const userIds = [
       ...new Set(
@@ -232,8 +232,8 @@ export class AdminService {
     const appIds = [...new Set(installs.map((item) => item.appId))];
 
     const [users, apps] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -256,7 +256,7 @@ export class AdminService {
   }
 
   async listEntitlements(query: { limit: number; offset: number; search?: string }) {
-    const result = await new LicenseRepository(this.db).listEntitlements(query);
+    const result = await this.capabilities.createLicenseAccess(this.db).listEntitlements(query);
     const entitlements = result.items;
     const userIds = [...new Set(entitlements.map((item) => item.userId))];
     const appIds = [...new Set(entitlements.map((item) => item.appId))];
@@ -270,10 +270,10 @@ export class AdminService {
     ];
 
     const [users, apps, plans, orders] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
-      new LicenseRepository(this.db).listPlansByIds(planIds),
-      new BillingRepository(this.db).listOrdersByIds(orderIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
+      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -309,7 +309,7 @@ export class AdminService {
   }
 
   async listEvents(query: { limit: number; offset: number; search?: string }) {
-    const result = await new EventRepository(this.db).listEvents(query);
+    const result = await createEventAccess(this.db).listEvents(query);
     const events = result.items;
     const userIds = [
       ...new Set(events.map((item) => item.userId).filter((item): item is string => Boolean(item))),
@@ -319,7 +319,9 @@ export class AdminService {
         events.map((item) => item.installId).filter((item): item is string => Boolean(item)),
       ),
     ];
-    const installs = await new InstallRepository(this.db).listInstallsByIds(installIds);
+    const installs = await this.capabilities
+      .createInstallAccess(this.db)
+      .listInstallsByIds(installIds);
     const appIds = [
       ...new Set(
         events
@@ -330,8 +332,8 @@ export class AdminService {
     ];
 
     const [users, apps] = await Promise.all([
-      new AuthRepository(this.db).listUsersByIds(userIds),
-      new AppRepository(this.db).listAppsByIds(appIds),
+      createAuthAccess(this.db).listUsersByIds(userIds),
+      createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -363,7 +365,7 @@ export class AdminService {
   }
 
   async listBillingWebhookEvents(query: { limit: number; offset: number; search?: string }) {
-    const result = await new BillingRepository(this.db).listWebhookEvents(query);
+    const result = await this.capabilities.createBillingAccess(this.db).listWebhookEvents(query);
     return {
       items: result.items,
       total: result.total,
@@ -557,23 +559,25 @@ export class AdminService {
     input: { userEmail: string; planCode: string; reason?: string },
     actorUserId: string,
   ) {
-    const user = await new AuthRepository(this.db).findUserByEmail(input.userEmail);
+    const user = await createAuthAccess(this.db).findUserByEmail(input.userEmail);
     if (!user) {
       throw httpError(404, 'User not found');
     }
 
-    const checkoutPlan = await new LicenseService(this.db).getPlanForCheckout(input.planCode);
+    const checkoutPlan = await this.capabilities
+      .createLicenseService(this.db)
+      .getPlanForCheckout(input.planCode);
     const sourceId = randomUUID();
     const result = await this.db.transaction(async (tx) => {
-      const txDb = tx as DbClient;
-      const grant = await new LicenseService(txDb).grantEntitlementsForPlan({
+      const txDb = tx;
+      const grant = await this.capabilities.createLicenseService(txDb).grantEntitlementsForPlan({
         userId: user.id,
         planId: checkoutPlan.plan.id,
         sourceType: 'grant',
         sourceId,
       });
 
-      await new EventService(txDb).capture({
+      await this.capabilities.createEventService(txDb).capture({
         userId: user.id,
         appId: grant.app.id,
         eventName: 'admin.entitlements_granted',
@@ -607,7 +611,7 @@ export class AdminService {
   }
 
   async revokeEntitlement(entitlementId: string, actorUserId: string) {
-    const repository = new LicenseRepository(this.db);
+    const repository = this.capabilities.createLicenseAccess(this.db);
     const entitlement = await repository.findEntitlementById(entitlementId);
     if (!entitlement) {
       throw httpError(404, 'Entitlement not found');
@@ -615,8 +619,8 @@ export class AdminService {
     const plan = await repository.getPlanById(entitlement.planId);
 
     const revoked = await this.db.transaction(async (tx) => {
-      const txDb = tx as DbClient;
-      const txRepository = new LicenseRepository(txDb);
+      const txDb = tx;
+      const txRepository = this.capabilities.createLicenseAccess(txDb);
       const changed =
         entitlement.sourceId && entitlement.sourceType
           ? await txRepository.cancelEntitlementsBySource(
@@ -629,7 +633,7 @@ export class AdminService {
             })();
       const items = await changed;
 
-      await new EventService(txDb).capture({
+      await this.capabilities.createEventService(txDb).capture({
         userId: entitlement.userId,
         appId: entitlement.appId,
         eventName: 'admin.entitlements_revoked',
@@ -665,23 +669,23 @@ export class AdminService {
     role?: AppRole;
     status?: 'active' | 'suspended';
   }) {
-    const result = await new AuthRepository(this.db).listUsers(query);
+    const result = await createAuthAccess(this.db).listUsers(query);
     return { items: result.items, total: result.total, limit: query.limit, offset: query.offset };
   }
 
   async getUser(userId: string) {
-    const user = await new AuthRepository(this.db).findUserById(userId);
+    const user = await createAuthAccess(this.db).findUserById(userId);
     if (!user) {
       throw httpError(404, 'User not found');
     }
 
     const [orders, entitlements, installs, auditLogs, recentEvents, tickets] = await Promise.all([
-      new BillingRepository(this.db).listRecentOrdersByUserId(userId, 10),
-      new LicenseRepository(this.db).listRecentEntitlementsByUserId(userId, 10),
-      new InstallRepository(this.db).listRecentInstallsByUserId(userId, 10),
+      this.capabilities.createBillingAccess(this.db).listRecentOrdersByUserId(userId, 10),
+      this.capabilities.createLicenseAccess(this.db).listRecentEntitlementsByUserId(userId, 10),
+      this.capabilities.createInstallAccess(this.db).listRecentInstallsByUserId(userId, 10),
       new AuditLogService(this.db).listRecentForUser(userId, 10),
-      new EventRepository(this.db).listRecentEventsByUserId(userId, 10),
-      new TicketService(this.db).listRecentTicketsByUserId(userId, 10),
+      createEventAccess(this.db).listRecentEventsByUserId(userId, 10),
+      this.capabilities.createTicketService(this.db).listRecentTicketsByUserId(userId, 10),
     ]);
     const [hydratedOrders, hydratedEntitlements, hydratedInstalls] = await Promise.all([
       this.hydrateOrderRows(orders),
@@ -731,14 +735,14 @@ export class AdminService {
       throw httpError(400, 'Cannot suspend your own account');
     }
 
-    const repository = new AuthRepository(this.db);
+    const repository = createAuthAccess(this.db);
     const existing = await repository.findUserById(userId);
     if (!existing) {
       throw httpError(404, 'User not found');
     }
 
     const updated = await repository.updateUser(userId, input);
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: 'admin.user_updated',
       properties: { targetUserId: userId, changes: input },
@@ -755,7 +759,7 @@ export class AdminService {
   }
 
   async resetUserPassword(userId: string, actorUserId: string) {
-    const repository = new AuthRepository(this.db);
+    const repository = createAuthAccess(this.db);
     const user = await repository.findUserById(userId);
     if (!user) {
       throw httpError(404, 'User not found');
@@ -764,7 +768,7 @@ export class AdminService {
     const temporaryPassword = randomBytes(9).toString('base64url').slice(0, 12);
     await repository.updatePasswordCredential(userId, hashPassword(temporaryPassword));
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,
       eventName: 'admin.user_password_reset',
       properties: { targetUserId: userId },

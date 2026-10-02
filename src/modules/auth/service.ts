@@ -1,13 +1,14 @@
+import type { ServiceFactories } from '../../composition/service-factories';
 import { randomInt } from 'node:crypto';
 
-import type { DbClient } from '../../db/types';
+import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { JobRunService } from '../../lib/job-runs';
 import { Mailer } from '../../lib/mailer';
 import { hashPassword, verifyPassword } from '../../lib/security';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
-import { EventService } from '../event/service';
+
 import { AuthRepository } from './repository';
 
 type RegisterInput = {
@@ -23,7 +24,8 @@ type LoginInput = {
 
 export class AuthService {
   constructor(
-    private readonly db: DbClient,
+    private readonly capabilities: ServiceFactories,
+    private readonly db: DbExecutor,
     private readonly env?: AppEnv,
   ) {}
 
@@ -110,7 +112,7 @@ export class AuthService {
     const user = await repository.markEmailVerified(userId);
     await repository.deleteVerificationCodes(userId);
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId,
       eventName: 'auth.email_verified',
       properties: {},
@@ -150,7 +152,7 @@ export class AuthService {
         providerUserId: input.email,
       });
 
-      await new EventService(tx).capture({
+      await this.capabilities.createEventService(tx).capture({
         userId: createdUser.id,
         eventName: 'auth.registered',
         properties: {
@@ -198,7 +200,7 @@ export class AuthService {
       throw httpError(401, 'Invalid email or password');
     }
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: user.id,
       eventName: 'auth.logged_in',
       properties: {
@@ -259,7 +261,7 @@ export class AuthService {
       );
     }
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: user.id,
       eventName: 'auth.password_reset_requested',
       properties: {},
@@ -284,7 +286,7 @@ export class AuthService {
     await repository.upsertPasswordCredential(user.id, hashPassword(input.newPassword));
     await repository.deletePasswordResetCodes(user.id);
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId: user.id,
       eventName: 'auth.password_reset_completed',
       properties: {},
@@ -309,7 +311,7 @@ export class AuthService {
       throw httpError(500, 'Failed to update user profile');
     }
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId,
       eventName: 'auth.profile_updated',
       properties: {
@@ -336,7 +338,7 @@ export class AuthService {
     await repository.updatePasswordCredential(userId, hashPassword(input.newPassword));
     await repository.deletePasswordResetCodes(userId);
 
-    await new EventService(this.db).capture({
+    await this.capabilities.createEventService(this.db).capture({
       userId,
       eventName: 'auth.password_changed',
       properties: {},

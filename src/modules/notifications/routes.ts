@@ -1,18 +1,16 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { EventService } from '../event/service';
 import {
   adminNotificationListQuerySchema,
   notificationIdParamsSchema,
   notificationListQuerySchema,
   publishAnnouncementSchema,
 } from './schemas';
-import { NotificationsService } from './service';
 
 export const notificationsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/notifications/me', { preHandler: app.authenticate }, async (request) => {
     const query = notificationListQuerySchema.parse(request.query);
-    return new NotificationsService(app.db).listUserNotifications({
+    return app.services.NotificationsService.listUserNotifications({
       userId: request.user.sub,
       ...query,
     });
@@ -22,7 +20,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     '/v1/notifications/me/unread-count',
     { preHandler: app.authenticate },
     async (request) => {
-      return new NotificationsService(app.db).getUnreadCount(request.user.sub);
+      return app.services.NotificationsService.getUnreadCount(request.user.sub);
     },
   );
 
@@ -31,12 +29,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.authenticate },
     async (request) => {
       const params = notificationIdParamsSchema.parse(request.params);
-      return new NotificationsService(app.db).markAsRead(params.notificationId, request.user.sub);
+      return app.services.NotificationsService.markAsRead(params.notificationId, request.user.sub);
     },
   );
 
   app.post('/v1/notifications/read-all', { preHandler: app.authenticate }, async (request) => {
-    return new NotificationsService(app.db).markAllAsRead(request.user.sub);
+    return app.services.NotificationsService.markAllAsRead(request.user.sub);
   });
 
   app.post(
@@ -44,7 +42,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.authenticate },
     async (request) => {
       const params = notificationIdParamsSchema.parse(request.params);
-      return new NotificationsService(app.db).archive(params.notificationId, request.user.sub);
+      return app.services.NotificationsService.archive(params.notificationId, request.user.sub);
     },
   );
 
@@ -53,7 +51,7 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('notifications.manage') },
     async (request) => {
       const query = adminNotificationListQuerySchema.parse(request.query);
-      return new NotificationsService(app.db).listAdminNotifications(query);
+      return app.services.NotificationsService.listAdminNotifications(query);
     },
   );
 
@@ -62,12 +60,12 @@ export const notificationsRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('notifications.manage') },
     async (request) => {
       const payload = publishAnnouncementSchema.parse(request.body);
-      const result = await new NotificationsService(app.db).publishAnnouncement(
+      const result = await app.services.NotificationsService.publishAnnouncement(
         payload,
         request.user.sub,
       );
 
-      await new EventService(app.db).capture({
+      await app.services.EventService.capture({
         userId: request.user.sub,
         eventName: 'admin.announcement_published',
         properties: {

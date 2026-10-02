@@ -1,3 +1,4 @@
+import type { ApiServices } from '../composition/api-runtime';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { FastifyJWT } from '@fastify/jwt';
 import type Redis from 'ioredis';
@@ -11,6 +12,7 @@ import type { AppPermission } from '../lib/rbac';
 declare module 'fastify' {
   interface FastifyInstance {
     appEnv: AppEnv;
+    services: ApiServices;
     db: NodePgDatabase<typeof schema>;
     pg: Pool;
     redis: Redis;

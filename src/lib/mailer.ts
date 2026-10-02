@@ -24,13 +24,16 @@ export class Mailer {
     this.from = config?.from ?? 'noreply@fd-core-stack.local';
     if (config?.host && config.user && config.password) {
       this.transport = nodemailer.createTransport({
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 15000,
         host: config.host,
         port: config.port,
         secure: config.secure,
         auth: {
           user: config.user,
-          pass: config.password
-        }
+          pass: config.password,
+        },
       });
     }
   }
@@ -48,7 +51,7 @@ export class Mailer {
       to: payload.to,
       subject: payload.subject,
       text: payload.text,
-      html: payload.html
+      html: payload.html,
     });
     return true;
   }

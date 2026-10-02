@@ -1,4 +1,5 @@
-import type { DbClient } from '../../db/types';
+import { createServiceFactories } from '../../composition/service-factories';
+import type { DbExecutor } from '../../db/types';
 import { AlertingSettingsService, type AlertLevel } from '../../lib/alerting-settings';
 import type { AppEnv } from '../../lib/env';
 import { buildMailDedupeKey, JobRunService } from '../../lib/job-runs';
@@ -68,7 +69,7 @@ function buildMailContent(input: {
 
 export class AlertDeliveryService {
   constructor(
-    private readonly db: DbClient,
+    private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
 
@@ -78,7 +79,11 @@ export class AlertDeliveryService {
       return { dispatched: 0, channels: [], alerts: 0 };
     }
 
-    const summary = await new AdminService(this.db, this.env).getObservabilitySummary();
+    const summary = await new AdminService(
+      createServiceFactories(),
+      this.db,
+      this.env,
+    ).getObservabilitySummary();
     const alerts = summary.alerts
       .filter((alert): alert is ObservabilityAlert => Boolean(alert))
       .filter((alert) => levelRank[alert.level] >= levelRank[settings.minimumLevel]);
