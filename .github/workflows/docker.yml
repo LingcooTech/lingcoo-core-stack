@@ -9,6 +9,8 @@ on:
       - 'drizzle/**'
       - 'package*.json'
       - 'src/**'
+      - 'admin-ui/**'
+      - 'scripts/**'
       - 'tsconfig.json'
   workflow_dispatch:
 

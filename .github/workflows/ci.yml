@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'codex/stack-foundation-upgrade'
   pull_request:
 
 permissions:
@@ -16,6 +17,27 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lingcoo_stack_test
+          POSTGRES_USER: stack_test
+          POSTGRES_PASSWORD: stack_test_only
+        ports: ['15438:5432']
+        options: >-
+          --health-cmd "pg_isready -U stack_test -d lingcoo_stack_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ['16379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      DATABASE_TEST_URL: postgres://stack_test:stack_test_only@127.0.0.1:15438/lingcoo_stack_test
+      REDIS_TEST_URL: redis://127.0.0.1:16379/15
 
     steps:
       - name: Checkout
@@ -26,18 +48,21 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            admin-ui/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Install Admin dependencies
+        run: npm ci --prefix admin-ui
 
-      - name: Test
-        run: npm test
+      - name: Validate backend and Admin
+        run: npm run check
 
-      - name: Build
-        run: npm run build
+      - name: Verify migrations and database behavior
+        run: npm run test:integration
 
       - name: Audit high severity dependencies
         run: npm audit --audit-level=high || true
