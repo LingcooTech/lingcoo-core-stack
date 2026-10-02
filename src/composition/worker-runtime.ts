@@ -17,6 +17,18 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
     .register('alert.webhook.deliver', (payload, { signal }) =>
       delivery.process({ kind: 'alert.webhook.deliver', payload }, signal),
     )
+    .register('notifications.project', async (payload) => {
+      const events = await factories
+        .createEventService(db)
+        .loadProjectionEvents(payload.eventIds as string[]);
+      await factories.createNotificationsService(db).projectFromEvents(
+        events.map((event) => ({
+          ...event,
+          properties: event.properties as Record<string, unknown>,
+        })),
+      );
+      return { projected: events.length };
+    })
     .register('billing.refund.reconcile', async (payload) => {
       const result = await factories
         .createBillingService(db, env)

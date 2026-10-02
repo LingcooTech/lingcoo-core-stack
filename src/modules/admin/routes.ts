@@ -179,31 +179,59 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get('/v1/admin/payment-settings', { preHandler: requirePaymentsManage }, async () => {
-    return new PaymentSettingsService(app.db, app.appEnv).getOverview();
+  app.get('/v1/admin/payment-settings', { preHandler: requirePaymentsManage }, async (request) => {
+    return app.settings.read(request, (executor) =>
+      new PaymentSettingsService(executor, app.appEnv).getOverview(),
+    );
   });
 
-  app.get('/v1/admin/system-settings/smtp', { preHandler: requireSettingsManage }, async () => {
-    return new SmtpSettingsService(app.db, app.appEnv).getOverview();
-  });
+  app.get(
+    '/v1/admin/system-settings/smtp',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new SmtpSettingsService(executor, app.appEnv).getOverview(),
+      );
+    },
+  );
 
-  app.get('/v1/admin/system-settings/alerting', { preHandler: requireSettingsManage }, async () => {
-    return new AlertingSettingsService(app.db, app.appEnv).getOverview();
-  });
+  app.get(
+    '/v1/admin/system-settings/alerting',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new AlertingSettingsService(executor, app.appEnv).getOverview(),
+      );
+    },
+  );
 
-  app.get('/v1/admin/system-settings/qiniu', { preHandler: requireSettingsManage }, async () => {
-    return new QiniuSettingsService(app.db, app.appEnv).getOverview();
-  });
+  app.get(
+    '/v1/admin/system-settings/qiniu',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new QiniuSettingsService(executor, app.appEnv).getOverview(),
+      );
+    },
+  );
 
-  app.get('/v1/admin/system-settings/site', { preHandler: requireSettingsManage }, async () => {
-    return new SiteSettingsService(app.db, app.appEnv).getOverview();
-  });
+  app.get(
+    '/v1/admin/system-settings/site',
+    { preHandler: requireSettingsManage },
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new SiteSettingsService(executor, app.appEnv).getOverview(),
+      );
+    },
+  );
 
   app.get(
     '/v1/admin/system-settings/content-import',
     { preHandler: requireSettingsManage },
-    async () => {
-      return new ContentImportSettingsService(app.db, app.appEnv).getOverview();
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new ContentImportSettingsService(executor, app.appEnv).getOverview(),
+      );
     },
   );
 
@@ -212,7 +240,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireAppsManage },
     async (request) => {
       const params = adminAppCodeParamsSchema.parse(request.params);
-      return new DeliverySettingsService(app.db, app.appEnv).getOverview(params.appCode);
+      return app.settings.read(request, (executor) =>
+        new DeliverySettingsService(executor, app.appEnv).getOverview(params.appCode),
+      );
     },
   );
 
@@ -222,17 +252,14 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = adminAppCodeParamsSchema.parse(request.params);
       const payload = adminUpsertDeliverySettingsSchema.parse(request.body);
-      const result = await new DeliverySettingsService(app.db, app.appEnv).upsertSettings(
-        params.appCode,
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new DeliverySettingsService(executor, app.appEnv).upsertSettings(
+          params.appCode,
+          payload,
+          request.user.sub,
+        ),
       );
-      await recordAudit(request, {
-        action: 'admin.delivery_settings.updated',
-        resourceType: 'delivery_settings',
-        resourceId: params.appCode,
-        summary: `Updated delivery settings for ${params.appCode}`,
-      });
+
       return result;
     },
   );
@@ -242,13 +269,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireAppsManage },
     async (request) => {
       const params = adminAppCodeParamsSchema.parse(request.params);
-      await new DeliverySettingsService(app.db, app.appEnv).deleteSettings(params.appCode);
-      await recordAudit(request, {
-        action: 'admin.delivery_settings.deleted',
-        resourceType: 'delivery_settings',
-        resourceId: params.appCode,
-        summary: `Deleted delivery settings for ${params.appCode}`,
-      });
+      await app.settings.mutate(request, (executor) =>
+        new DeliverySettingsService(executor, app.appEnv).deleteSettings(params.appCode),
+      );
+
       return { ok: true };
     },
   );
@@ -344,17 +368,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireLicensesManage },
     async (request) => {
       const payload = adminGrantEntitlementSchema.parse(request.body);
-      const result = await app.services.AdminService.grantEntitlement(payload, request.user.sub);
-      await recordAudit(request, {
-        action: 'admin.entitlement.granted',
-        resourceType: 'entitlement_grant',
-        resourceId: result.sourceId,
-        summary: `Granted ${payload.planCode} to ${payload.userEmail}`,
-        meta: {
-          userId: result.user.id,
-          planCode: payload.planCode,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.grantEntitlement',
+          resourceType: 'entitlement',
+          resourceId: payload.userEmail,
+          summary: 'Administrative command completed',
         },
-      });
+        (services) => services.AdminService.grantEntitlement(payload, request.user.sub),
+      );
+
       return result;
     },
   );
@@ -364,21 +388,18 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireLicensesManage },
     async (request) => {
       const params = adminEntitlementParamsSchema.parse(request.params);
-      const result = await app.services.AdminService.revokeEntitlement(
-        params.entitlementId,
-        request.user.sub,
-      );
-      await recordAudit(request, {
-        action: 'admin.entitlement.revoked',
-        resourceType: 'entitlement',
-        resourceId: params.entitlementId,
-        summary: `Revoked entitlement ${params.entitlementId}`,
-        meta: {
-          revokedCount: result.revokedCount,
-          sourceType: result.sourceType,
-          sourceId: result.sourceId,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.revokeEntitlement',
+          resourceType: 'entitlement',
+          resourceId: params.entitlementId,
+          summary: 'Administrative command completed',
         },
-      });
+        (services) =>
+          services.AdminService.revokeEntitlement(params.entitlementId, request.user.sub),
+      );
+
       return result;
     },
   );
@@ -411,16 +432,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('jobs.manage') },
     async (request) => {
       const params = adminJobRunParamsSchema.parse(request.params);
-      const result = await app.services.AdminService.retryJobRun(params.jobId);
-      await recordAudit(request, {
-        action: 'admin.job.retried',
-        resourceType: 'job_run',
-        resourceId: params.jobId,
-        summary: `Retried job ${params.jobId}`,
-        meta: {
-          kind: result.kind,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.retryJobRun',
+          resourceType: 'job_run',
+          resourceId: params.jobId,
+          summary: 'Administrative command completed',
         },
-      });
+        (services) => services.AdminService.retryJobRun(params.jobId),
+      );
+
       return result;
     },
   );
@@ -435,16 +457,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requirePaymentsManage },
     async (request) => {
       const payload = wechatPaymentSettingsSchema.parse(request.body);
-      const result = await new PaymentSettingsService(app.db, app.appEnv).upsertWechatSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new PaymentSettingsService(executor, app.appEnv).upsertWechatSettings(
+          payload,
+          request.user.sub,
+        ),
       );
-      await recordAudit(request, {
-        action: 'admin.payment_settings.updated',
-        resourceType: 'payment_provider',
-        resourceId: 'wechat_pay',
-        summary: 'Updated WeChat Pay settings',
-      });
+
       return result;
     },
   );
@@ -454,16 +473,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requirePaymentsManage },
     async (request) => {
       const payload = alipayPaymentSettingsSchema.parse(request.body);
-      const result = await new PaymentSettingsService(app.db, app.appEnv).upsertAlipaySettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new PaymentSettingsService(executor, app.appEnv).upsertAlipaySettings(
+          payload,
+          request.user.sub,
+        ),
       );
-      await recordAudit(request, {
-        action: 'admin.payment_settings.updated',
-        resourceType: 'payment_provider',
-        resourceId: 'alipay',
-        summary: 'Updated Alipay settings',
-      });
+
       return result;
     },
   );
@@ -473,13 +489,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requirePaymentsManage },
     async (request) => {
       const params = paymentProviderParamsSchema.parse(request.params);
-      await new PaymentSettingsService(app.db, app.appEnv).clearProviderSettings(params.provider);
-      await recordAudit(request, {
-        action: 'admin.payment_settings.cleared',
-        resourceType: 'payment_provider',
-        resourceId: params.provider,
-        summary: `Cleared ${params.provider} settings`,
-      });
+      await app.settings.mutate(request, (executor) =>
+        new PaymentSettingsService(executor, app.appEnv).clearProviderSettings(params.provider),
+      );
+
       return { ok: true };
     },
   );
@@ -489,16 +502,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = smtpSettingsSchema.parse(request.body);
-      const result = await new SmtpSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new SmtpSettingsService(executor, app.appEnv).upsertSettings(payload, request.user.sub),
       );
-      await recordAudit(request, {
-        action: 'admin.smtp_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'smtp',
-        summary: 'Updated SMTP settings',
-      });
+
       return result;
     },
   );
@@ -516,13 +523,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/smtp',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new SmtpSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.smtp_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'smtp',
-        summary: 'Cleared SMTP settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new SmtpSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { ok: true };
     },
   );
@@ -532,22 +536,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = alertingSettingsSchema.parse(request.body);
-      const result = await new AlertingSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new AlertingSettingsService(executor, app.appEnv).upsertSettings(payload, request.user.sub),
       );
-      await recordAudit(request, {
-        action: 'admin.alerting_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'alerting',
-        summary: 'Updated alerting settings',
-        meta: {
-          enabled: result.values.enabled,
-          emailEnabled: result.values.email.enabled,
-          webhookEnabled: result.values.webhook.enabled,
-          minimumLevel: result.values.minimumLevel,
-        },
-      });
+
       return result;
     },
   );
@@ -556,13 +548,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/alerting',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new AlertingSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.alerting_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'alerting',
-        summary: 'Cleared alerting settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new AlertingSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { cleared: true };
     },
   );
@@ -572,16 +561,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = qiniuSettingsSchema.parse(request.body);
-      const result = await new QiniuSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new QiniuSettingsService(executor, app.appEnv).upsertSettings(payload, request.user.sub),
       );
-      await recordAudit(request, {
-        action: 'admin.qiniu_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'qiniu',
-        summary: 'Updated Qiniu settings',
-      });
+
       return result;
     },
   );
@@ -599,13 +582,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/qiniu',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new QiniuSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.qiniu_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'qiniu',
-        summary: 'Cleared Qiniu settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new QiniuSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { ok: true };
     },
   );
@@ -615,16 +595,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = siteSettingsSchema.parse(request.body);
-      const result = await new SiteSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new SiteSettingsService(executor, app.appEnv).upsertSettings(payload, request.user.sub),
       );
-      await recordAudit(request, {
-        action: 'admin.site_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'site',
-        summary: 'Updated site settings',
-      });
+
       return result;
     },
   );
@@ -633,13 +607,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/site',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new SiteSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.site_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'site',
-        summary: 'Cleared site settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new SiteSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { ok: true };
     },
   );
@@ -647,8 +618,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/v1/admin/system-settings/public-pages',
     { preHandler: requireSettingsManage },
-    async () => {
-      return new PublicPagesSettingsService(app.db, app.appEnv).getOverview();
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new PublicPagesSettingsService(executor, app.appEnv).getOverview(),
+      );
     },
   );
 
@@ -657,16 +630,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = publicPagesSettingsSchema.parse(request.body);
-      const result = await new PublicPagesSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new PublicPagesSettingsService(executor, app.appEnv).upsertSettings(
+          payload,
+          request.user.sub,
+        ),
       );
-      await recordAudit(request, {
-        action: 'admin.public_pages_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'public_pages',
-        summary: 'Updated public pages settings',
-      });
+
       return result;
     },
   );
@@ -675,13 +645,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/public-pages',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new PublicPagesSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.public_pages_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'public_pages',
-        summary: 'Cleared public pages settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new PublicPagesSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { ok: true };
     },
   );
@@ -691,16 +658,13 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireSettingsManage },
     async (request) => {
       const payload = contentImportSettingsSchema.parse(request.body);
-      const result = await new ContentImportSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      const result = await app.settings.mutate(request, (executor) =>
+        new ContentImportSettingsService(executor, app.appEnv).upsertSettings(
+          payload,
+          request.user.sub,
+        ),
       );
-      await recordAudit(request, {
-        action: 'admin.content_import_settings.updated',
-        resourceType: 'system_setting',
-        resourceId: 'content_import',
-        summary: 'Updated content import settings',
-      });
+
       return result;
     },
   );
@@ -709,13 +673,10 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     '/v1/admin/system-settings/content-import',
     { preHandler: requireSettingsManage },
     async (request) => {
-      await new ContentImportSettingsService(app.db, app.appEnv).clearSettings();
-      await recordAudit(request, {
-        action: 'admin.content_import_settings.cleared',
-        resourceType: 'system_setting',
-        resourceId: 'content_import',
-        summary: 'Cleared content import settings',
-      });
+      await app.settings.mutate(request, (executor) =>
+        new ContentImportSettingsService(executor, app.appEnv).clearSettings(),
+      );
+
       return { ok: true };
     },
   );
@@ -793,29 +754,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
       return reply.forbidden('Insufficient permission to change user status');
     }
 
-    const result = await app.services.AdminService.updateUser(
-      params.userId,
-      payload,
-      request.user.sub,
-    );
-    await recordAudit(request, {
-      action: 'admin.user.updated',
-      resourceType: 'user',
-      resourceId: params.userId,
-      summary: `Updated user ${params.userId}`,
-      meta: {
-        before: {
-          displayName: existing.displayName,
-          role: existing.role,
-          status: existing.status,
-        },
-        after: {
-          displayName: result.displayName,
-          role: result.role,
-          status: result.status,
-        },
+    const result = await app.runAdminCommand(
+      request,
+      {
+        action: 'admin.updateUser',
+        resourceType: 'user',
+        resourceId: params.userId,
+        summary: 'Administrative command completed',
       },
-    });
+      (services) => services.AdminService.updateUser(params.userId, payload, request.user.sub),
+    );
+
     return result;
   });
 
@@ -824,18 +773,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersSuspend },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const existing = await createAuthAccess(app.db).findUserById(params.userId);
-      const result = await app.services.AdminService.suspendUser(params.userId, request.user.sub);
-      await recordAudit(request, {
-        action: 'admin.user.suspended',
-        resourceType: 'user',
-        resourceId: params.userId,
-        summary: `Suspended user ${params.userId}`,
-        meta: {
-          beforeStatus: existing?.status ?? null,
-          afterStatus: result.status,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.suspendUser',
+          resourceType: 'user',
+          resourceId: params.userId,
+          summary: 'Administrative command completed',
         },
-      });
+        (services) => services.AdminService.suspendUser(params.userId, request.user.sub),
+      );
+
       return result;
     },
   );
@@ -845,18 +793,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersSuspend },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const existing = await createAuthAccess(app.db).findUserById(params.userId);
-      const result = await app.services.AdminService.activateUser(params.userId, request.user.sub);
-      await recordAudit(request, {
-        action: 'admin.user.activated',
-        resourceType: 'user',
-        resourceId: params.userId,
-        summary: `Activated user ${params.userId}`,
-        meta: {
-          beforeStatus: existing?.status ?? null,
-          afterStatus: result.status,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.activateUser',
+          resourceType: 'user',
+          resourceId: params.userId,
+          summary: 'Administrative command completed',
         },
-      });
+        (services) => services.AdminService.activateUser(params.userId, request.user.sub),
+      );
+
       return result;
     },
   );
@@ -866,16 +813,17 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireUsersResetPassword },
     async (request) => {
       const params = adminUserIdParamsSchema.parse(request.params);
-      const result = await app.services.AdminService.resetUserPassword(
-        params.userId,
-        request.user.sub,
+      const result = await app.runAdminCommand(
+        request,
+        {
+          action: 'admin.user.password_reset',
+          resourceType: 'user',
+          resourceId: params.userId,
+          summary: `Reset password for user ${params.userId}`,
+        },
+        (services) => services.AdminService.resetUserPassword(params.userId, request.user.sub),
       );
-      await recordAudit(request, {
-        action: 'admin.user.password_reset',
-        resourceType: 'user',
-        resourceId: params.userId,
-        summary: `Reset password for user ${params.userId}`,
-      });
+
       return result;
     },
   );

@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm';
 
 import { apps, events, installs, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -14,6 +14,11 @@ export type EventRecordInput = {
 
 export class EventRepository {
   constructor(private readonly db: DbExecutor) {}
+
+  async findByIds(ids: string[]) {
+    if (!ids.length) return [];
+    return this.db.select().from(events).where(inArray(events.id, ids));
+  }
 
   async insertMany(items: EventRecordInput[]) {
     if (items.length === 0) {

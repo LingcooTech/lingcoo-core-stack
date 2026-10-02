@@ -1,3 +1,6 @@
+const settingVersions = new Map<string, string>();
+const settingVersionKey = (path: string) =>
+  path.replace(/^(\/v1\/admin\/payment-settings)\/(wechat_pay|alipay)$/, '$1');
 const TOKEN_KEY = 'fd_core_token';
 const LEGACY_TOKEN_KEY = 'fd_core_admin_token';
 
@@ -8,31 +11,30 @@ export function getToken(): string {
 export function setToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
+  settingVersions.clear();
 }
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY);
+  settingVersions.clear();
 }
 
 export class ApiError<TDetails = unknown> extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly details?: TDetails
+    public readonly details?: TDetails,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export async function apiClient<T = unknown>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+export async function apiClient<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string>)
+    ...(options.headers as Record<string, string>),
   };
 
   if (typeof options.body === 'string' && !headers['Content-Type']) {
@@ -43,11 +45,22 @@ export async function apiClient<T = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const version = settingVersions.get(settingVersionKey(path));
+  if (
+    version &&
+    options.method &&
+    ['PUT', 'POST', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())
+  )
+    headers['If-Match'] = version;
   const response = await fetch(path, { ...options, headers });
 
+  const etag = response.headers.get('etag');
+  if (etag && response.ok) settingVersions.set(settingVersionKey(path), etag);
   if (response.status === 401) {
     clearToken();
-    window.location.href = window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login';
+    window.location.href = window.location.pathname.startsWith('/admin')
+      ? '/admin/login'
+      : '/login';
     throw new ApiError('未授权，请重新登录', 401);
   }
 
@@ -55,7 +68,11 @@ export async function apiClient<T = unknown>(
     let message = `请求失败 (${response.status})`;
     let details: unknown;
     try {
-      const data = await response.json() as { message?: string; error?: string; details?: unknown };
+      const data = (await response.json()) as {
+        message?: string;
+        error?: string;
+        details?: unknown;
+      };
       message = data.message ?? data.error ?? message;
       details = data.details;
     } catch {

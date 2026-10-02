@@ -32,7 +32,8 @@
     "check": "npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:all && npm run smoke:admin-static",
     "inspect:architecture": "node scripts/inspect-architecture.mjs",
     "db:bootstrap": "node dist/scripts/bootstrap-admin.js",
-    "check:boundaries": "node scripts/check-module-boundaries.mjs"
+    "check:boundaries": "node scripts/check-module-boundaries.mjs",
+    "settings:rotate": "node dist/scripts/rotate-settings-keys.js"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

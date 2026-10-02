@@ -137,7 +137,10 @@ export function createServiceFactories(
     },
     createEventService: (db) => {
       const value = new EventService(factories, db);
-      return { capture: value.capture.bind(value) };
+      return {
+        capture: value.capture.bind(value),
+        loadProjectionEvents: value.loadProjectionEvents.bind(value),
+      };
     },
     createLicenseService: (db) => {
       const value = new LicenseService(factories, db);

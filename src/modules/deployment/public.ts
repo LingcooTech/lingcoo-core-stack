@@ -8,4 +8,4 @@ export type DeploymentRepositoryPort = Pick<
 >;
 export type DeploymentRepositoryFactory = (db: DbExecutor) => DeploymentRepositoryPort;
 
-export { deleteAppDeliverySettings } from './delivery-config';
+export { deleteAppDeliverySettings, rotateDeliveryKeyring } from './delivery-config';

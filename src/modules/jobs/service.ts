@@ -9,7 +9,11 @@ import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 
 export type JobRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'dead';
-export type JobRunKind = 'email.deliver' | 'alert.webhook.deliver' | 'billing.refund.reconcile';
+export type JobRunKind =
+  | 'email.deliver'
+  | 'alert.webhook.deliver'
+  | 'billing.refund.reconcile'
+  | 'notifications.project';
 
 export interface MailDeliveryJobPayload {
   to: string;

@@ -1,4 +1,4 @@
-import type { DbClient } from '../db/types';
+import type { DbExecutor } from '../db/types';
 import type { AppEnv } from '../lib/env';
 import { createServiceFactories } from './service-factories';
 import { AdminService } from '../modules/admin/service';
@@ -15,7 +15,11 @@ import { InstallService } from '../modules/install/service';
 import { LicenseService } from '../modules/license/service';
 import { NotificationsService } from '../modules/notifications/service';
 import { TicketService } from '../modules/ticket/service';
-export function createApiServices(db: DbClient, env: AppEnv, factories = createServiceFactories()) {
+export function createApiServices(
+  db: DbExecutor,
+  env: AppEnv,
+  factories = createServiceFactories(),
+) {
   return {
     AdminService: new AdminService(factories, db, env),
     AiService: new AiService(factories, db, env),

@@ -137,8 +137,10 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     '/v1/admin/system-settings/ai/providers/openrouter',
     { preHandler: app.requirePermission('ai.manage') },
-    async () => {
-      return new OpenRouterSettingsService(app.db, app.appEnv).getOverview();
+    async (request) => {
+      return app.settings.read(request, (executor) =>
+        new OpenRouterSettingsService(executor, app.appEnv).getOverview(),
+      );
     },
   );
 
@@ -147,9 +149,11 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('ai.manage') },
     async (request) => {
       const payload = openrouterSettingsSchema.parse(request.body);
-      return new OpenRouterSettingsService(app.db, app.appEnv).upsertSettings(
-        payload,
-        request.user.sub,
+      return app.settings.mutate(request, (executor) =>
+        new OpenRouterSettingsService(executor, app.appEnv).upsertSettings(
+          payload,
+          request.user.sub,
+        ),
       );
     },
   );
@@ -202,8 +206,10 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.delete(
     '/v1/admin/system-settings/ai/providers/openrouter',
     { preHandler: app.requirePermission('ai.manage') },
-    async () => {
-      await new OpenRouterSettingsService(app.db, app.appEnv).clearSettings();
+    async (request) => {
+      await app.settings.mutate(request, (executor) =>
+        new OpenRouterSettingsService(executor, app.appEnv).clearSettings(),
+      );
       return { ok: true };
     },
   );

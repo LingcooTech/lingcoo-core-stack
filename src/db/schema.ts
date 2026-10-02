@@ -136,6 +136,12 @@ export const systemSettings = pgTable('system_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const settingsRevisions = pgTable('settings_revisions', {
+  key: varchar('key', { length: 128 }).primaryKey(),
+  version: integer('version').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const apps = pgTable('apps', {
   id: uuid('id').defaultRandom().primaryKey(),
   code: varchar('code', { length: 64 }).notNull().unique(),

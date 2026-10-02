@@ -1,3 +1,10 @@
+import { createAdminCommandRunner } from './http/admin-commands';
+import {
+  SettingsRegistry,
+  settingsKeyForPath,
+  settingDefinitions,
+} from './modules/settings/public';
+import { requireUserPrincipal, requirePermissions } from './modules/access/public';
 import type { ServiceFactories } from './composition/service-factories';
 import { createApiServices } from './composition/api-runtime';
 import cookie from '@fastify/cookie';
@@ -20,12 +27,7 @@ import { dbPlugin } from './plugins/db';
 import { redisPlugin } from './plugins/redis';
 import { type AppEnv } from './lib/env';
 import { httpError } from './lib/errors';
-import {
-  canAccessAdminConsole,
-  hasAnyPermission,
-  normalizeRole,
-  type AppPermission,
-} from './lib/rbac';
+import { canAccessAdminConsole, normalizeRole, type AppPermission } from './lib/rbac';
 
 function normalizeCorsOrigin(value: string): true | string[] {
   if (value.trim() === '*') {
@@ -55,6 +57,15 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
   });
 
   app.decorate('appEnv', env);
+
+  app.setErrorHandler((error, request, reply) => {
+    const response = safeErrorResponse(error, request.id);
+    request.log.error(
+      { requestId: request.id, code: response.body.code, statusCode: response.status },
+      'request failed',
+    );
+    return reply.status(response.status).send(response.body);
+  });
 
   await app.register(sensible);
   await app.register(cors, {
@@ -89,7 +100,8 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
         return reply.unauthorized('A user access token is required');
       }
       const user = await createAuthAccess(app.db).findUserById(request.user.sub);
-      if (!user || user.status !== 'active') return reply.unauthorized('User is unavailable');
+      requireUserPrincipal(user, request.user);
+      if (!user) return reply.unauthorized('User is unavailable');
       request.user.role = user.role;
       request.user.emailVerified = user.emailVerified;
     } catch (error) {
@@ -141,6 +153,7 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
           typeof (error as { statusCode?: number }).statusCode === 'number'
             ? (error as { statusCode: number }).statusCode
             : 401;
+        if (statusCode >= 500) throw error;
         return reply.status(statusCode).send({
           error: error.name || 'UnauthorizedError',
           message: error.message,
@@ -178,9 +191,7 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
         return reply.forbidden('Admin access is required');
       }
 
-      if (!hasAnyPermission(normalizeRole(user.role), required)) {
-        return reply.forbidden('Insufficient permission');
-      }
+      requirePermissions(user.role, required);
     };
   });
   app.decorate('requireEmailVerified', async (request, reply) => {
@@ -205,6 +216,29 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
   });
   await app.register(dbPlugin, { env });
   app.decorate('services', createApiServices(app.db, env, options.factories));
+  app.decorate('runAdminCommand', createAdminCommandRunner(app.db, env, options.factories));
+  app.decorate('settings', new SettingsRegistry(app.db));
+  app.addHook('onSend', async (request, reply, payload) => {
+    const key = settingsKeyForPath(request.url);
+    if (key && reply.statusCode < 400) {
+      const version = await app.settings.responseVersion(request, key);
+      reply.header('etag', `"${version}"`);
+      const definition = settingDefinitions[key.split(':')[0] as keyof typeof settingDefinitions];
+      if (request.method === 'GET' && typeof payload === 'string') {
+        const parsed = JSON.parse(payload);
+        return JSON.stringify({
+          ...parsed,
+          configuration: {
+            version,
+            scope: definition.scope,
+            visibility: definition.visibility,
+            precedence: definition.precedence,
+          },
+        });
+      }
+    }
+    return payload;
+  });
   await app.register(redisPlugin, { env });
   await app.register(rateLimit, {
     redis: app.redis,
@@ -226,15 +260,6 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
   for (const module of appModules) {
     await app.register(module.register);
   }
-
-  app.setErrorHandler((error, request, reply) => {
-    const response = safeErrorResponse(error, request.id);
-    request.log.error(
-      { requestId: request.id, code: response.body.code, statusCode: response.status },
-      'request failed',
-    );
-    return reply.status(response.status).send(response.body);
-  });
 
   return app;
 }

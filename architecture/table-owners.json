@@ -33,5 +33,6 @@
   "notifications": "notifications",
   "jobRuns": "jobs",
   "auditLogs": "audit",
-  "jobAttempts": "jobs"
+  "jobAttempts": "jobs",
+  "settingsRevisions": "settings"
 }

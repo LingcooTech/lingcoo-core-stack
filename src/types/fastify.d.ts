@@ -1,3 +1,5 @@
+import type { createAdminCommandRunner } from '../http/admin-commands';
+import type { SettingsRegistry } from '../modules/settings/public';
 import type { ApiServices } from '../composition/api-runtime';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { FastifyJWT } from '@fastify/jwt';
@@ -13,6 +15,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     appEnv: AppEnv;
     services: ApiServices;
+    settings: SettingsRegistry;
+    runAdminCommand: ReturnType<typeof createAdminCommandRunner>;
     db: NodePgDatabase<typeof schema>;
     pg: Pool;
     redis: Redis;

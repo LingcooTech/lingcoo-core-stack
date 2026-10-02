@@ -134,9 +134,9 @@ export function validateEnv(input: Record<string, unknown>): AppEnv {
       typeof keys !== 'object' ||
       !env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID ||
       typeof keys[env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID] !== 'string' ||
-      Object.values(keys).some(
-        (key) => typeof key !== 'string' || key.length < 32 || key === env.JWT_SECRET,
-      )
+      String(keys[env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID]).length < 32 ||
+      keys[env.SETTINGS_ENCRYPTION_CURRENT_KEY_ID] === env.JWT_SECRET ||
+      Object.values(keys).some((key) => typeof key !== 'string' || key.length < 16)
     ) {
       throw new Error(
         'Settings keyring must contain an active, independent key of at least 32 characters',
