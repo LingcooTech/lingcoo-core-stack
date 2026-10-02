@@ -31,7 +31,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: smoke_fixture_signing_key_32_chars_only
       SETTINGS_ENCRYPTION_KEY: smoke_fixture_settings_key_32_chars_only
-      SETTINGS_ENCRYPTION_ALLOW_LEGACY_JWT: 'false'
+      ALLOW_LEGACY_SETTINGS_DECRYPTION: 'false'
       CORS_ORIGIN: http://127.0.0.1:15440
       PUBLIC_BASE_URL: http://127.0.0.1:15440
       PORT: '3000'
