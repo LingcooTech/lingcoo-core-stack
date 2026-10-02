@@ -10,7 +10,7 @@ import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { JobRunService } from '../../lib/job-runs';
 import type { AppRole } from '../../lib/rbac';
-import { hashPassword } from '../../lib/security';
+import { hashPasswordAsync } from '../../lib/security';
 import { createAppAccess } from '../app/public';
 import { createAuthAccess } from '../auth/public';
 import { type BillingRepositoryPort as BillingRepository } from '../billing/public';
@@ -766,7 +766,7 @@ export class AdminService {
     }
 
     const temporaryPassword = randomBytes(9).toString('base64url').slice(0, 12);
-    await repository.updatePasswordCredential(userId, hashPassword(temporaryPassword));
+    await repository.updatePasswordCredential(userId, await hashPasswordAsync(temporaryPassword));
 
     await this.capabilities.createEventService(this.db).capture({
       userId: actorUserId,

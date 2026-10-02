@@ -1,96 +1,89 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { clearToken, getToken, setToken } from '@/api/client';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { CurrentUser } from '@lingcoo/contracts';
+import { getCurrentUser, logoutSession } from '@/api/auth';
+import { clearToken } from '@/api/client';
+import { toast } from 'sonner';
+import { PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { canAccessAdminConsole, normalizeRole } from '@/lib/rbac';
 
-interface JwtPayload {
-  sub: string;
-  email?: string;
-  role?: string;
-  kind?: string;
-  exp?: number;
-  iat?: number;
-}
-
-interface AuthUser {
-  id: string;
-  email: string;
-  role: string;
-  emailVerified: boolean;
-}
-
 interface AuthContextValue {
-  token: string;
-  user: AuthUser | null;
+  user: CurrentUser | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isEmailVerified: boolean;
-  login: (token: string) => void;
-  logout: () => void;
+  login: (user: CurrentUser) => void;
+  logout: () => Promise<void>;
   setEmailVerified: () => void;
 }
-
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function parseJwt(token: string): JwtPayload | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload as JwtPayload;
-  } catch {
-    return null;
-  }
-}
-
-function tokenToUser(token: string): AuthUser | null {
-  if (!token) return null;
-  const payload = parseJwt(token);
-  if (!payload) return null;
-  if (payload.exp && payload.exp * 1000 < Date.now()) {
-    clearToken();
-    return null;
-  }
-  return {
-    id: payload.sub,
-    email: payload.email ?? payload.sub,
-    role: payload.role ?? 'user',
-    emailVerified: (payload as unknown as Record<string, unknown>).emailVerified === true,
-  };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setTokenState] = useState<string>(() => getToken());
-  const [user, setUser] = useState<AuthUser | null>(() => tokenToUser(getToken()));
-
-  const login = useCallback((newToken: string) => {
-    setToken(newToken);
-    setTokenState(newToken);
-    setUser(tokenToUser(newToken));
-  }, []);
-
-  const logout = useCallback(() => {
-    clearToken();
-    setTokenState('');
-    setUser(null);
-  }, []);
-
-  const setEmailVerified = useCallback(() => {
-    setUser((prev) => (prev ? { ...prev, emailVerified: true } : prev));
-  }, []);
-
-  useEffect(() => {
-    const stored = getToken();
-    if (stored !== token) {
-      setTokenState(stored);
-      setUser(tokenToUser(stored));
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const client = useQueryClient();
+  const generation = useRef(0);
+  const login = useCallback(
+    (current: CurrentUser) => {
+      generation.current++;
+      clearToken();
+      client.removeQueries({
+        predicate: (query) => query.queryKey[0] !== PUBLIC_SITE_SETTINGS_QUERY_KEY[0],
+      });
+      client.getMutationCache().clear();
+      setUser(current);
+      setLoading(false);
+    },
+    [client],
+  );
+  const logout = useCallback(async () => {
+    try {
+      await logoutSession();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '退出登录失败，请重试');
     }
-  }, [token]);
-
+  }, []);
+  const setEmailVerified = useCallback(
+    () => setUser((previous) => (previous ? { ...previous, emailVerified: true } : previous)),
+    [],
+  );
+  useEffect(() => {
+    clearToken();
+    let active = true;
+    const expired = () => {
+      generation.current++;
+      client.removeQueries({
+        predicate: (query) => query.queryKey[0] !== PUBLIC_SITE_SETTINGS_QUERY_KEY[0],
+      });
+      client.getMutationCache().clear();
+      setUser(null);
+      setLoading(false);
+    };
+    const refresh = async () => {
+      const current = ++generation.current;
+      try {
+        const response = await getCurrentUser();
+        if (active && current === generation.current) setUser(response.user);
+      } catch {
+        if (active && current === generation.current) setUser(null);
+      } finally {
+        if (active && current === generation.current) setLoading(false);
+      }
+    };
+    window.addEventListener('stack:session-expired', expired);
+    window.addEventListener('focus', refresh);
+    void refresh();
+    return () => {
+      active = false;
+      window.removeEventListener('stack:session-expired', expired);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [client]);
   return (
     <AuthContext.Provider
       value={{
-        token,
         user,
+        isLoading,
         isAuthenticated: !!user,
         isAdmin: canAccessAdminConsole(normalizeRole(user?.role)),
         isEmailVerified: user?.emailVerified ?? false,
@@ -103,9 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('useAuth must be used within AuthProvider');
+  return value;
 }

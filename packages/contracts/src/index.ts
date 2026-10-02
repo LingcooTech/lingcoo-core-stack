@@ -18,6 +18,12 @@ export const authResponseSchema = z
   .passthrough();
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type CurrentUser = z.infer<typeof userSchema>;
+export const browserAuthResponseSchema = z.object({
+  user: userSchema,
+  session: z.object({ id: z.uuid(), expiresAt: z.iso.datetime({ offset: true }) }),
+  csrfToken: z.string().min(32),
+});
+export type BrowserAuthResponse = z.infer<typeof browserAuthResponseSchema>;
 export const meResponseSchema = z
   .object({ authenticated: z.literal(true), user: userSchema })
   .passthrough();
@@ -96,6 +102,8 @@ export const checkoutResponseSchema = z
   .passthrough();
 export function responseSchemaFor(method: string, path: string): z.ZodType | undefined {
   const clean = path.split('?')[0];
+  if (method === 'POST' && ['/v1/auth/session/login', '/v1/auth/session/register'].includes(clean))
+    return browserAuthResponseSchema;
   if (method === 'POST' && ['/v1/auth/login', '/v1/auth/register'].includes(clean))
     return authResponseSchema;
   if (method === 'GET' && clean === '/v1/me') return meResponseSchema;

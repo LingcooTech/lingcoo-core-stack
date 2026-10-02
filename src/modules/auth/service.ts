@@ -6,7 +6,7 @@ import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { JobRunService } from '../../lib/job-runs';
 import { Mailer } from '../../lib/mailer';
-import { hashPassword, verifyPassword } from '../../lib/security';
+import { hashPasswordAsync, verifyPasswordAsync } from '../../lib/security';
 import { SmtpSettingsService } from '../../lib/smtp-settings';
 
 import { AuthRepository } from './repository';
@@ -102,27 +102,19 @@ export class AuthService {
   }
 
   async verifyEmail(userId: string, code: string) {
-    const repository = new AuthRepository(this.db);
-    const record = await repository.findActiveVerificationCode(userId, code);
-
-    if (!record) {
-      throw httpError(400, 'Invalid or expired verification code');
-    }
-
-    const user = await repository.markEmailVerified(userId);
-    await repository.deleteVerificationCodes(userId);
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId,
-      eventName: 'auth.email_verified',
-      properties: {},
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      await repository.lockUser(userId);
+      const consumed = await repository.consumeVerificationCode(userId, code);
+      if (!consumed.length) throw httpError(400, 'Invalid or expired verification code');
+      const user = await repository.markEmailVerified(userId);
+      if (!user) throw httpError(404, 'User not found');
+      await repository.deleteVerificationCodes(userId);
+      await this.capabilities
+        .createEventService(tx)
+        .capture({ userId, eventName: 'auth.email_verified', properties: {} });
+      return { verified: true, user };
     });
-
-    if (!user) {
-      throw httpError(404, 'User not found');
-    }
-
-    return { verified: true, user };
   }
 
   async register(input: RegisterInput) {
@@ -143,7 +135,7 @@ export class AuthService {
 
       await repository.createPasswordCredential({
         userId: createdUser.id,
-        passwordHash: hashPassword(input.password),
+        passwordHash: await hashPasswordAsync(input.password),
       });
 
       await repository.createAuthIdentity({
@@ -196,7 +188,7 @@ export class AuthService {
     }
 
     const credential = await repository.findPasswordCredentialByUserId(user.id);
-    if (!credential || !verifyPassword(input.password, credential.passwordHash)) {
+    if (!credential || !(await verifyPasswordAsync(input.password, credential.passwordHash))) {
       throw httpError(401, 'Invalid email or password');
     }
 
@@ -271,28 +263,21 @@ export class AuthService {
   }
 
   async resetPassword(input: { email: string; code: string; newPassword: string }) {
-    const repository = new AuthRepository(this.db);
-    const user = await repository.findUserByEmail(input.email);
-
-    if (!user) {
-      throw httpError(400, 'Invalid or expired reset code');
-    }
-
-    const record = await repository.findActivePasswordResetCode(user.id, input.code);
-    if (!record) {
-      throw httpError(400, 'Invalid or expired reset code');
-    }
-
-    await repository.upsertPasswordCredential(user.id, hashPassword(input.newPassword));
-    await repository.deletePasswordResetCodes(user.id);
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId: user.id,
-      eventName: 'auth.password_reset_completed',
-      properties: {},
+    const passwordHash = await hashPasswordAsync(input.newPassword);
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      const user = await repository.findUserByEmail(input.email);
+      if (!user) throw httpError(400, 'Invalid or expired reset code');
+      await repository.lockUser(user.id);
+      if (!(await repository.consumePasswordResetCode(user.id, input.code)).length)
+        throw httpError(400, 'Invalid or expired reset code');
+      await repository.upsertPasswordCredential(user.id, passwordHash);
+      await repository.deletePasswordResetCodes(user.id);
+      await this.capabilities
+        .createEventService(tx)
+        .capture({ userId: user.id, eventName: 'auth.password_reset_completed', properties: {} });
+      return { reset: true };
     });
-
-    return { reset: true };
   }
 
   async updateCurrentUser(userId: string, input: { displayName?: string | null }) {
@@ -323,28 +308,24 @@ export class AuthService {
   }
 
   async changePassword(userId: string, input: { currentPassword: string; newPassword: string }) {
-    const repository = new AuthRepository(this.db);
-    const user = await repository.findUserById(userId);
-
-    if (!user) {
-      throw httpError(404, 'User not found');
-    }
-
-    const credential = await repository.findPasswordCredentialByUserId(userId);
-    if (!credential || !verifyPassword(input.currentPassword, credential.passwordHash)) {
-      throw httpError(400, 'Current password is incorrect');
-    }
-
-    await repository.updatePasswordCredential(userId, hashPassword(input.newPassword));
-    await repository.deletePasswordResetCodes(userId);
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId,
-      eventName: 'auth.password_changed',
-      properties: {},
+    const passwordHash = await hashPasswordAsync(input.newPassword);
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      const user = await repository.lockUser(userId);
+      if (!user || user.status !== 'active') throw httpError(401, 'User is unavailable');
+      const credential = await repository.findPasswordCredentialByUserId(userId);
+      if (
+        !credential ||
+        !(await verifyPasswordAsync(input.currentPassword, credential.passwordHash))
+      )
+        throw httpError(400, 'Current password is incorrect');
+      await repository.updatePasswordCredential(userId, passwordHash);
+      await repository.deletePasswordResetCodes(userId);
+      await this.capabilities
+        .createEventService(tx)
+        .capture({ userId, eventName: 'auth.password_changed', properties: {} });
+      return { changed: true };
     });
-
-    return { changed: true };
   }
 
   async getUserById(userId: string) {

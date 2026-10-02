@@ -21,7 +21,13 @@ import Fastify from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
 import { safeErrorResponse } from './http/safe-errors';
 
-import { createAuthAccess } from './modules/auth/public';
+import {
+  createAuthAccess,
+  AuthSessionService,
+  SESSION_COOKIE,
+  matchesSessionDigest,
+} from './modules/auth/public';
+import { requireBrowserOrigin } from './http/browser-security';
 
 import { appModules } from './modules';
 import { dbPlugin } from './plugins/db';
@@ -85,32 +91,47 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
       encoding: 'utf8',
       runFirst: true,
     });
-    await app.register(jwt, {
-      secret: env.JWT_SECRET,
-      cookie: {
-        cookieName: 'fd_core_token',
-        signed: false,
-      },
-    });
+    await app.register(jwt, { secret: env.JWT_SECRET });
     app.decorate('authenticate', async (request, reply) => {
+      const sessionToken = request.cookies[SESSION_COOKIE];
+      if (!request.headers.authorization && sessionToken) {
+        const record = await new AuthSessionService(app.db, env).resolve(sessionToken);
+        if (!record) return reply.unauthorized('Invalid or expired session');
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+          requireBrowserOrigin(request, env);
+          const csrf = request.headers['x-csrf-token'];
+          if (typeof csrf !== 'string' || !matchesSessionDigest(csrf, record.session.csrfDigest))
+            throw httpError(403, 'Invalid CSRF token');
+        }
+        request.browserSessionId = record.session.id;
+        request.user = {
+          sub: record.user.id,
+          kind: 'user',
+          email: record.user.email,
+          role: record.user.role,
+          emailVerified: record.user.emailVerified,
+          authVersion: record.user.authVersion,
+        };
+        return;
+      }
       try {
         await request.jwtVerify();
-        if (
-          request.user.kind === 'app' ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            request.user.sub ?? '',
-          )
-        ) {
-          return reply.unauthorized('A user access token is required');
-        }
-        const user = await createAuthAccess(app.db).findUserById(request.user.sub);
-        requireUserPrincipal(user, request.user);
-        if (!user) return reply.unauthorized('User is unavailable');
-        request.user.role = user.role;
-        request.user.emailVerified = user.emailVerified;
-      } catch (error) {
+      } catch {
         return reply.unauthorized('Invalid or expired access token');
       }
+      if (
+        request.user.kind === 'app' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          request.user.sub ?? '',
+        )
+      )
+        return reply.unauthorized('A user access token is required');
+      const user = await createAuthAccess(app.db).findUserById(request.user.sub);
+      requireUserPrincipal(user, request.user);
+      if (!user || (request.user.authVersion ?? 0) !== user.authVersion)
+        return reply.unauthorized('Credentials changed; sign in again');
+      request.user.role = user.role;
+      request.user.emailVerified = user.emailVerified;
     });
     app.decorate('authenticateApp', async (request, reply) => {
       const tokenHeader = request.headers['x-fd-app-token'];

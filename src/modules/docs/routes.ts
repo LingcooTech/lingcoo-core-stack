@@ -20,14 +20,13 @@ export const docsRoutes: FastifyPluginAsync = async (app) => {
     return app.services.DocsService.listSearchIndex();
   });
 
-  app.post('/v1/docs/feedback', async (request) => {
+  app.post('/v1/docs/feedback', async (request, reply) => {
     const payload = submitDocFeedbackSchema.parse(request.body);
     let userId: string | null = null;
-    try {
-      await request.jwtVerify();
-      userId = request.user?.sub ?? null;
-    } catch {
-      // 匿名反馈允许，留空 userId
+    if (request.headers.authorization || request.cookies.fd_core_session) {
+      await app.authenticate(request, reply);
+      if (reply.sent) return reply;
+      userId = request.user.sub;
     }
     const userAgent = request.headers['user-agent'];
     return app.services.DocsService.submitFeedback({

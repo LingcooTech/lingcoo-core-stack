@@ -58,6 +58,9 @@ test('user login, orders, entitlements and deployment survive deep-route refresh
 }) => {
   await login(page, '/login', userEmail);
   await expect(page).toHaveURL(/\/account/);
+  const cookies = await page.context().cookies();
+  expect(cookies.find((cookie) => cookie.name === 'fd_core_session')?.httpOnly).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('fd_core_token'))).toBeNull();
   const orders = page.waitForResponse(
     (response) => response.url().includes('/v1/billing/orders/me') && response.status() === 200,
   );
@@ -106,14 +109,28 @@ test('ordinary user cannot enter the admin console or invoke admin settings', as
   await login(page, '/login', userEmail);
   await expect(page).toHaveURL(/\/account/);
   const status = await page.evaluate(
-    async () =>
-      (
-        await fetch('/v1/admin/system-settings/smtp', {
-          headers: { authorization: 'Bearer ' + localStorage.getItem('fd_core_token') },
-        })
-      ).status,
+    async () => (await fetch('/v1/admin/system-settings/smtp', { credentials: 'include' })).status,
   );
   expect(status).toBe(403);
   await page.goto('/admin/settings');
   await expect(page).not.toHaveURL(/\/admin\/settings$/);
+});
+test('browser logout revokes the server session and a refreshed protected route requires login', async ({
+  page,
+}) => {
+  await login(page, '/login', userEmail);
+  await expect(page).toHaveURL(/\/account/);
+  const cookies = await page.context().cookies();
+  const session = cookies.find((cookie) => cookie.name === 'fd_core_session')!;
+  const csrf = cookies.find((cookie) => cookie.name === 'fd_core_csrf')!;
+  const result = await page.request.post('/v1/auth/session/logout', {
+    headers: { 'x-csrf-token': csrf.value },
+  });
+  expect(result.status()).toBe(200);
+  const replay = await page.request.get('/v1/me', {
+    headers: { cookie: `fd_core_session=${session.value}` },
+  });
+  expect(replay.status()).toBe(401);
+  await page.reload();
+  await expect(page).toHaveURL(/\/login/);
 });

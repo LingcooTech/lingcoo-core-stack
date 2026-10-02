@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'codex/stack-foundation-upgrade'
+      - 'codex/stack-foundation-convergence'
   pull_request:
 
 permissions:

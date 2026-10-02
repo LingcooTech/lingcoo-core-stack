@@ -33,7 +33,9 @@ export function createApiClient(
     baseUrl?: string;
     fetch?: typeof fetch;
     getToken?: () => string;
-    onUnauthorized?: () => void;
+    getCsrfToken?: () => string;
+    credentials?: RequestCredentials;
+    onUnauthorized?: (path: string, credentialContext: string) => void;
   } = {},
 ) {
   return async function request<T = unknown>(
@@ -44,6 +46,9 @@ export function createApiClient(
     const headers = new Headers(init.headers);
     const token = config.getToken?.();
     if (token) headers.set('authorization', `Bearer ${token}`);
+    const csrf = config.getCsrfToken?.();
+    if (csrf && !['GET', 'HEAD', 'OPTIONS'].includes((init.method ?? 'GET').toUpperCase()))
+      headers.set('x-csrf-token', csrf);
     if (typeof init.body === 'string' && !headers.has('content-type'))
       headers.set('content-type', 'application/json');
     if (idempotencyKey) headers.set('idempotency-key', idempotencyKey);
@@ -51,6 +56,7 @@ export function createApiClient(
     try {
       response = await (config.fetch ?? fetch)(`${config.baseUrl ?? ''}${path}`, {
         ...init,
+        credentials: init.credentials ?? config.credentials,
         headers,
       });
     } catch (error) {
@@ -59,7 +65,7 @@ export function createApiClient(
       throw new NetworkError();
     }
     const requestId = response.headers.get('x-request-id') ?? undefined;
-    if (response.status === 401) config.onUnauthorized?.();
+    if (response.status === 401) config.onUnauthorized?.(path, csrf ?? token ?? '');
     if (response.status === 204) return undefined as T;
     let data: unknown;
     try {

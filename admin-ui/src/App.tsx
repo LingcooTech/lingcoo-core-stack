@@ -160,7 +160,8 @@ function SiteSettingsBootstrap({ children }: { children: ReactNode }) {
 
 function ProtectedUserRoute() {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <div role="status">正在验证登录状态…</div>;
   if (!isAuthenticated) {
     return (
       <Navigate
@@ -173,7 +174,8 @@ function ProtectedUserRoute() {
 }
 
 function ProtectedAdminRoute() {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+  if (isLoading) return <div role="status">正在验证登录状态…</div>;
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
@@ -206,7 +208,7 @@ function ProtectedAdminSectionRoute({
 
   return (
     <div className="p-6">
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <EmptyState
           icon={ShieldAlert}
           title="无权限访问"

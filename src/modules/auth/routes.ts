@@ -1,6 +1,9 @@
-import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyReply } from 'fastify';
 
 import { buildEmailRateLimitKey, buildUserRateLimitKey } from '../../lib/rate-limit';
+import { AuthSessionService, SESSION_COOKIE, CSRF_COOKIE } from './session-service';
+import { requireBrowserOrigin } from '../../http/browser-security';
+import { z } from 'zod';
 import type { AppRole } from '../../lib/rbac';
 import {
   changePasswordSchema,
@@ -20,12 +23,14 @@ function toAuthResponse(
     displayName: string | null;
     role: AppRole;
     emailVerified: boolean;
+    authVersion: number;
   },
 ) {
   const token = app.jwt.sign(
     {
       sub: user.id,
       kind: 'user',
+      authVersion: user.authVersion,
       email: user.email,
       role: user.role,
       emailVerified: user.emailVerified,
@@ -48,6 +53,66 @@ function toAuthResponse(
 }
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
+  const sessions = new AuthSessionService(app.db, app.appEnv);
+  const cookieOptions = (httpOnly: boolean) => ({
+    httpOnly,
+    secure: app.appEnv.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: app.appEnv.AUTH_SESSION_TTL_SECONDS,
+  });
+  const clearSession = (reply: FastifyReply) => {
+    reply.clearCookie(SESSION_COOKIE, cookieOptions(true));
+    reply.clearCookie(CSRF_COOKIE, cookieOptions(false));
+  };
+  for (const action of ['login', 'register'] as const) {
+    app.post(
+      `/v1/auth/session/${action}`,
+      {
+        config: {
+          rateLimit: {
+            hook: 'preHandler',
+            max: action === 'login' ? 12 : 8,
+            timeWindow: '1 minute',
+            keyGenerator: (request: Parameters<typeof buildEmailRateLimitKey>[0]) =>
+              buildEmailRateLimitKey(request, `session-${action}`),
+          },
+        },
+        preHandler: async (request) => requireBrowserOrigin(request, app.appEnv),
+      },
+      async (request, reply) => {
+        const input = (action === 'login' ? loginSchema : registerSchema).parse(request.body);
+        const user =
+          action === 'login'
+            ? await app.services.AuthService.login(input)
+            : await app.services.AuthService.register(input);
+        const { token, ...response } = await sessions.create(user);
+        reply.setCookie(SESSION_COOKIE, token, cookieOptions(true));
+        reply.setCookie(CSRF_COOKIE, response.csrfToken, cookieOptions(false));
+        reply.clearCookie('fd_core_token', { path: '/' });
+        return reply.status(action === 'register' ? 201 : 200).send(response);
+      },
+    );
+  }
+  app.post('/v1/auth/session/logout', { preHandler: app.authenticate }, async (request, reply) => {
+    if (request.browserSessionId) await sessions.revoke(request.user.sub, request.browserSessionId);
+    clearSession(reply);
+    return { loggedOut: true };
+  });
+  app.get('/v1/auth/sessions', { preHandler: app.authenticate }, async (request) =>
+    sessions.list(request.user.sub, request.browserSessionId),
+  );
+  app.post(
+    '/v1/auth/sessions/:sessionId/revoke',
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const { sessionId } = z.object({ sessionId: z.uuid() }).parse(request.params);
+      const result = await sessions.revoke(request.user.sub, sessionId);
+      if (sessionId === request.browserSessionId) clearSession(reply);
+      return result;
+    },
+  );
+
   app.get('/v1/auth/providers', async () => {
     return {
       items: [
@@ -135,9 +200,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.post('/v1/me/change-password', { preHandler: app.authenticate }, async (request) => {
+  app.post('/v1/me/change-password', { preHandler: app.authenticate }, async (request, reply) => {
     const payload = changePasswordSchema.parse(request.body);
-    return app.services.AuthService.changePassword(request.user.sub, payload);
+    const result = await app.services.AuthService.changePassword(request.user.sub, payload);
+    clearSession(reply);
+    return result;
   });
 
   app.post('/v1/auth/verify-email', { preHandler: app.authenticate }, async (request) => {

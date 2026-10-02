@@ -51,7 +51,7 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
         mode === 'register'
           ? await register(values.email, values.password)
           : await login(values.email, values.password);
-      authLogin(result.token);
+      authLogin(result.user);
       if (result.user.emailVerified === false) {
         toast.success(mode === 'register' ? '注册成功，请验证邮箱' : '登录成功，请先验证邮箱');
         navigate(`/verify-email?next=${encodeURIComponent(next)}`, { replace: true });

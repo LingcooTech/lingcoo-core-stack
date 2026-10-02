@@ -1,6 +1,12 @@
 import type { DbExecutor } from '../../db/types';
 
 import { AuthRepository } from './repository';
+export {
+  AuthSessionService,
+  SESSION_COOKIE,
+  CSRF_COOKIE,
+  matchesSessionDigest,
+} from './session-service';
 
 export function createAuthAccess(db: DbExecutor) {
   const implementation = new AuthRepository(db);

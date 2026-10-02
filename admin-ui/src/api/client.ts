@@ -3,36 +3,26 @@ import { isIdempotentCommand } from '@lingcoo/contracts';
 const settingVersions = new Map<string, string>();
 const settingVersionKey = (path: string) =>
   path.replace(/^(\/v1\/admin\/payment-settings)\/(wechat_pay|alipay)$/, '$1');
-const TOKEN_KEY = 'fd_core_token';
-const LEGACY_TOKEN_KEY = 'fd_core_admin_token';
-
-export function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(LEGACY_TOKEN_KEY) ?? '';
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
-  settingVersions.clear();
-  pendingCommands.clear();
-}
-
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  localStorage.removeItem('fd_core_token');
+  localStorage.removeItem('fd_core_admin_token');
   settingVersions.clear();
   pendingCommands.clear();
 }
-
+export function getCsrfToken(): string {
+  const raw = document.cookie.split('; ').find((entry) => entry.startsWith('fd_core_csrf='));
+  return raw ? decodeURIComponent(raw.slice('fd_core_csrf='.length)) : '';
+}
 export { ApiError, ProtocolError, NetworkError } from '@lingcoo/api-client';
 const pendingCommands = new Map<string, string>();
 const client = createApiClient({
-  getToken,
-  onUnauthorized: () => {
+  credentials: 'include',
+  getCsrfToken,
+  onUnauthorized: (path, credentialContext) => {
+    if (getCsrfToken() !== credentialContext) return;
+    if (path === '/v1/auth/session/login' || path === '/v1/auth/session/register') return;
     clearToken();
-    window.location.href = window.location.pathname.startsWith('/admin')
-      ? '/admin/login'
-      : '/login';
+    window.dispatchEvent(new Event('stack:session-expired'));
   },
   fetch: async (input, init) => {
     const response = await fetch(input, init);
@@ -56,7 +46,7 @@ export async function apiClient<T = unknown>(
   let key = options.idempotencyKey;
   let fingerprint: string | undefined;
   if (!key && isIdempotentCommand(options.method ?? 'GET', path)) {
-    fingerprint = `${getToken()}:${path}:${String(options.body ?? '')}`;
+    fingerprint = `${getCsrfToken()}:${path}:${String(options.body ?? '')}`;
     key = pendingCommands.get(fingerprint) ?? crypto.randomUUID();
     pendingCommands.set(fingerprint, key);
   }

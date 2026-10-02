@@ -2,7 +2,7 @@ name: Docker Verify
 
 on:
   push:
-    branches: ['codex/stack-foundation-upgrade']
+    branches: ['codex/stack-foundation-upgrade', 'codex/stack-foundation-convergence']
   pull_request:
     paths:
       - '.dockerignore'

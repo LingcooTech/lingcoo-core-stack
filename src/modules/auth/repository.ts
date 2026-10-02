@@ -2,6 +2,7 @@ import { and, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
 
 import {
   authIdentities,
+  authSessions,
   emailVerificationCodes,
   passwordCredentials,
   passwordResetCodes,
@@ -12,6 +13,48 @@ import type { AppRole } from '../../lib/rbac';
 
 export class AuthRepository {
   constructor(private readonly db: DbExecutor) {}
+
+  async lockUser(userId: string) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).for('update');
+    return user ?? null;
+  }
+
+  async invalidateCredentials(userId: string) {
+    await this.db
+      .update(users)
+      .set({ authVersion: sql`${users.authVersion} + 1`, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(authSessions.userId, userId));
+  }
+
+  async consumePasswordResetCode(userId: string, code: string) {
+    return this.db
+      .delete(passwordResetCodes)
+      .where(
+        and(
+          eq(passwordResetCodes.userId, userId),
+          eq(passwordResetCodes.code, code),
+          gt(passwordResetCodes.expiresAt, new Date()),
+        ),
+      )
+      .returning({ id: passwordResetCodes.id });
+  }
+
+  async consumeVerificationCode(userId: string, code: string) {
+    return this.db
+      .delete(emailVerificationCodes)
+      .where(
+        and(
+          eq(emailVerificationCodes.userId, userId),
+          eq(emailVerificationCodes.code, code),
+          gt(emailVerificationCodes.expiresAt, new Date()),
+        ),
+      )
+      .returning({ id: emailVerificationCodes.id });
+  }
 
   async countAdmins() {
     const rows = await this.db.select({ id: users.id }).from(users).where(eq(users.role, 'admin'));
@@ -212,49 +255,48 @@ export class AuthRepository {
     userId: string,
     input: { displayName?: string | null; role?: AppRole; status?: 'active' | 'suspended' },
   ) {
-    const set: Record<string, unknown> = { updatedAt: new Date() };
-    if (input.displayName !== undefined) set.displayName = input.displayName;
-    if (input.role !== undefined) set.role = input.role;
-    if (input.status !== undefined) set.status = input.status;
-
-    const [user] = await this.db.update(users).set(set).where(eq(users.id, userId)).returning();
-
-    return user ?? null;
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      if (!(await repository.lockUser(userId))) return null;
+      await tx
+        .update(users)
+        .set({ ...input, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      if (input.status === 'suspended') await repository.invalidateCredentials(userId);
+      return repository.findUserById(userId);
+    });
   }
 
   async updatePasswordCredential(userId: string, passwordHash: string) {
-    const [credential] = await this.db
-      .update(passwordCredentials)
-      .set({
-        passwordHash,
-        updatedAt: new Date(),
-      })
-      .where(eq(passwordCredentials.userId, userId))
-      .returning();
-
-    return credential ?? null;
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      await repository.lockUser(userId);
+      const [credential] = await tx
+        .update(passwordCredentials)
+        .set({ passwordHash, updatedAt: new Date() })
+        .where(eq(passwordCredentials.userId, userId))
+        .returning();
+      if (credential) await repository.invalidateCredentials(userId);
+      return credential ?? null;
+    });
   }
 
   async upsertPasswordCredential(userId: string, passwordHash: string) {
-    const now = new Date();
-    const [credential] = await this.db
-      .insert(passwordCredentials)
-      .values({
-        userId,
-        passwordHash,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: passwordCredentials.userId,
-        set: {
-          passwordHash,
-          updatedAt: now,
-        },
-      })
-      .returning();
-
-    return credential;
+    return this.db.transaction(async (tx) => {
+      const repository = new AuthRepository(tx);
+      await repository.lockUser(userId);
+      const now = new Date();
+      const [credential] = await tx
+        .insert(passwordCredentials)
+        .values({ userId, passwordHash, createdAt: now, updatedAt: now })
+        .onConflictDoUpdate({
+          target: passwordCredentials.userId,
+          set: { passwordHash, updatedAt: now },
+        })
+        .returning();
+      await repository.invalidateCredentials(userId);
+      return credential;
+    });
   }
 
   async listUsers(query: {

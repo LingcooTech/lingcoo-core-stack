@@ -4,10 +4,9 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { bootstrapStatus, login } from '@/api/auth';
+import { bootstrapStatus, login, logoutSession } from '@/api/auth';
 import { loginSchema } from '@lingcoo/contracts';
 import { canAccessAdminConsole } from '@/lib/rbac';
-import { clearToken } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -53,10 +52,10 @@ export function LoginPage() {
     try {
       const result = await login(values.email, values.password);
       if (!canAccessAdminConsole(result.user.role)) {
-        clearToken();
+        await logoutSession();
         throw new Error('该账号没有管理后台访问权限');
       }
-      authLogin(result.token);
+      authLogin(result.user);
       toast.success('登录成功');
       navigate('/admin', { replace: true });
     } catch (err) {

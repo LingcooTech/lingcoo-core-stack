@@ -34,6 +34,7 @@ declare module 'fastify' {
   }
 
   interface FastifyRequest {
+    browserSessionId?: string;
     rawBody?: string | Buffer;
     idempotencyClaim?: { id: string; ownerToken: string };
     appClient?: {
@@ -47,6 +48,7 @@ declare module 'fastify' {
 declare module '@fastify/jwt' {
   interface FastifyJWT {
     payload: {
+      authVersion?: number;
       sub: string;
       email?: string;
       role?: string;
@@ -57,6 +59,7 @@ declare module '@fastify/jwt' {
       secretId?: string;
     };
     user: {
+      authVersion?: number;
       sub: string;
       email?: string;
       role?: string;

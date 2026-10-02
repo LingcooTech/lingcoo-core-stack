@@ -70,6 +70,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16),
+  AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(60).max(2592000).default(604800),
   POSTGRES_DB: z.string().default('fd_core'),
   POSTGRES_USER: z.string().default('fd_core'),
   POSTGRES_PASSWORD: z.string().default('fd_core_password'),
