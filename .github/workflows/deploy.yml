@@ -18,7 +18,7 @@ permissions:
 
 env:
   IMAGE_NAME: fd-core-stack
-  GHCR_IMAGE: ghcr.io/futuredecade/fd-core-stack
+  GHCR_IMAGE: ghcr.io/lingcootech/lingcoo-core-stack
 
 jobs:
   build-and-push-acr:
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
-      runtime_image: ${{ steps.publish.outputs.runtime_image }}
+      runtime_digest: ${{ steps.publish.outputs.runtime_digest }}
 
     steps:
       - name: Checkout
@@ -96,7 +96,10 @@ jobs:
           docker push "${RELEASE_IMAGE}:latest"
           RUNTIME_IMAGE=$(docker image inspect "${RELEASE_IMAGE}:${RELEASE_SHA}" --format '{{index .RepoDigests 0}}')
           case "$RUNTIME_IMAGE" in "${RELEASE_IMAGE}@sha256:"*) ;; *) exit 1;; esac
-          echo "runtime_image=${RUNTIME_IMAGE}" >> "$GITHUB_OUTPUT"
+          RUNTIME_DIGEST=${RUNTIME_IMAGE##*@}
+          [[ "$RUNTIME_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+          # Registry and namespace are Secrets; do not send them through job outputs.
+          echo "runtime_digest=${RUNTIME_DIGEST}" >> "$GITHUB_OUTPUT"
 
   publish-ghcr:
     needs:
@@ -132,10 +135,11 @@ jobs:
           docker buildx imagetools create \
             --tag "${GHCR_IMAGE}:latest" \
             --tag "${GHCR_IMAGE}:${IMAGE_TAG}" \
-            "${ACR_IMAGE}:${IMAGE_TAG}"
+            "${ACR_IMAGE}@${RUNTIME_DIGEST}"
         env:
           ACR_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ needs.build-and-push-acr.outputs.image_tag }}
+          RUNTIME_DIGEST: ${{ needs.build-and-push-acr.outputs.runtime_digest }}
 
   deploy:
     needs:
@@ -170,7 +174,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          FD_CORE_RELEASE_IMAGE: ${{ needs.build-and-push-acr.outputs.runtime_image }}
+          FD_CORE_RELEASE_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ needs.build-and-push-acr.outputs.runtime_digest }}
           FD_CORE_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ needs.build-and-push-acr.outputs.image_tag }}
         run: |

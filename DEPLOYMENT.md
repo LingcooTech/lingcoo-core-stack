@@ -10,11 +10,11 @@ The production server must not build images locally.
 
 ## Registries
 
-- GHCR: `ghcr.io/futuredecade/fd-core-stack`
+- GHCR: `ghcr.io/lingcootech/lingcoo-core-stack`
 - Aliyun ACR: configured by GitHub Secrets
 
 The deploy workflow pushes both `latest` and the immutable Git SHA tag.
-The server deploys the immutable SHA tag from ACR.
+The server deploys the verified registry digest from ACR.
 
 ## Required GitHub Secrets
 
