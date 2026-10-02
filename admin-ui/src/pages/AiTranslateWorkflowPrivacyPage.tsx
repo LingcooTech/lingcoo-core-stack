@@ -55,7 +55,7 @@ const sections = [
       'storage：保存你的翻译设置、本地导出配置、账号状态缓存和当前浏览器里的敏感配置。',
       'activeTab 与 scripting：用于把页面工具栏和翻译逻辑注入网页。',
       '当你保存工具栏默认状态设置并授权网页访问权限后，扩展会在普通网页打开时自动注入工具栏；如果你启用了白名单规则，白名单站点会在默认折叠模式下仍然自动展开工具栏。',
-      'openrouter.ai、api.notion.com 与 stack.futuredecade.com：分别用于 OpenRouter 模型请求、Notion API 调用，以及 FD Stack 的账号、支付、订单、授权接口。',
+      'openrouter.ai、api.notion.com 与 stack.lingcoo.com：分别用于 OpenRouter 模型请求、Notion API 调用，以及 Lingcoo Stack 的账号、支付、订单、授权接口。',
       '当你使用 WordPress 发布或公众号导出等高级能力时，扩展可能会在操作当下额外请求站点访问权限，用于连接目标站点和下载远程图片。',
     ],
   },
