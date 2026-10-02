@@ -1,9 +1,9 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { pickBillingDependencies, type BillingDependencies } from './dependencies';
 import type { AppEnv } from '../../lib/env';
 
 import { httpError } from '../../lib/errors';
 
-import { PaymentSettingsService } from '../../lib/payment-settings';
+import { PaymentSettingsService } from '../settings/public';
 
 import type { DbExecutor } from '../../db/types';
 import { JobRunService } from '../../lib/job-runs';
@@ -18,11 +18,14 @@ function normalizeString(value: unknown) {
 }
 
 export class BillingRefundUseCases {
+  protected readonly capabilities: BillingDependencies;
   constructor(
-    protected readonly capabilities: ServiceFactories,
+    capabilities: BillingDependencies,
     protected readonly db: DbExecutor,
     protected readonly env: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickBillingDependencies(capabilities);
+  }
   async refundOrderByOrderNo(orderNo: string) {
     const repository = new BillingRepository(this.db);
     const order = await repository.findOrderByOrderNo(orderNo);

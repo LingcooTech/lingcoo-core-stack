@@ -1,6 +1,7 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { assembleDeploymentBootstrap, buildExchangeCurl } from './bootstrap-payload';
+import { queryBatch } from '../../db/query-batch';
+import { pickDeploymentDependencies, type DeploymentDependencies } from './dependencies';
 import { randomBytes } from 'node:crypto';
-
 import type { DbExecutor } from '../../db/types';
 import {
   findDeliveryManifestField,
@@ -14,7 +15,7 @@ import {
   DeliverySettingsService,
   type DeliverySettingSecrets,
   type DeliverySettingValues,
-} from '../../lib/delivery-settings';
+} from './public';
 import {
   getDomainBindingValue,
   normalizeDeploymentPolicy,
@@ -22,263 +23,41 @@ import {
 } from '../../lib/deployment-policy';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
-
 import { decryptJson, encryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
 import { createAppAccess } from '../app/public';
-import { type AppServicePort as AppService } from '../app/public';
 import { createAuthAccess } from '../auth/public';
-
 import { type LicenseRepositoryPort as LicenseRepository } from '../license/public';
 import { DeploymentRepository } from './repository';
-
-type DeploymentAppRecord = Awaited<ReturnType<AppService['getPublicApp']>>;
-
-const DEFAULT_INSTALLER = {
-  repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-  repoBranch: 'main',
-  remoteInstallScriptUrl:
-    'https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh',
-  installPath: '/opt/fd-headless-wp-system',
-};
-
-const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<
-  string,
-  { envKey: string; kind: 'string' | 'boolean' }
-> = {
-  frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
-  websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
-  letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
-  acrUsername: { envKey: 'ACR_USERNAME', kind: 'string' },
-  wordpressFetchReleaseAssets: { envKey: 'WORDPRESS_FETCH_RELEASE_ASSETS', kind: 'boolean' },
-  wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
-  wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
-  fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
-  fdPageComposerReleaseTag: { envKey: 'FD_PAGE_COMPOSER_RELEASE_TAG', kind: 'string' },
-  fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
-  fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
-  fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
-  fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
-  fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
-  fdFormsReleaseTag: { envKey: 'FD_FORMS_RELEASE_TAG', kind: 'string' },
-  fdAiRouterReleaseTag: { envKey: 'FD_AI_ROUTER_RELEASE_TAG', kind: 'string' },
-  fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
-  wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' },
-};
-
-const WORDPRESS_ASSET_RELEASE_KEYS = [
-  'FD_THEME_RELEASE_TAG',
-  'FD_PAGE_COMPOSER_RELEASE_TAG',
-  'FD_ADMIN_UI_RELEASE_TAG',
-  'FD_MEMBER_RELEASE_TAG',
-  'FD_PAYMENT_RELEASE_TAG',
-  'FD_COMMERCE_RELEASE_TAG',
-  'FD_CONTENT_TYPES_RELEASE_TAG',
-  'FD_FORMS_RELEASE_TAG',
-  'FD_AI_ROUTER_RELEASE_TAG',
-  'FD_WEBSOCKET_PUSH_RELEASE_TAG',
-  'WPGRAPHQL_RELEASE_TAG',
-  'WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'WPGRAPHQL_TAX_QUERY_REF',
-] as const;
-
-const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
-  'AVAILABLE_FD_THEME_RELEASE_TAG',
-  'AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG',
-  'AVAILABLE_FD_ADMIN_UI_RELEASE_TAG',
-  'AVAILABLE_FD_MEMBER_RELEASE_TAG',
-  'AVAILABLE_FD_PAYMENT_RELEASE_TAG',
-  'AVAILABLE_FD_COMMERCE_RELEASE_TAG',
-  'AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG',
-  'AVAILABLE_FD_FORMS_RELEASE_TAG',
-  'AVAILABLE_FD_AI_ROUTER_RELEASE_TAG',
-  'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF',
-] as const;
-
-type DeploymentStatusReportPayload = {
-  deploymentId: string;
-  token: string;
-  runtimeAssets?: {
-    current?: Record<string, string | null>;
-    available?: Record<string, string | null>;
-    offeredAt?: string | null;
-    appliedAt?: string | null;
-  };
-  runtimeImages?: {
-    currentFrontendImage?: string | null;
-    currentWebsocketImage?: string | null;
-    availableFrontendImage?: string | null;
-    availableWebsocketImage?: string | null;
-    offeredAt?: string | null;
-    appliedAt?: string | null;
-  };
-  wordpressAssets?: {
-    current?: Record<string, string | null>;
-    available?: Record<string, string | null>;
-    offeredAt?: string | null;
-    appliedAt?: string | null;
-  };
-};
-
-type DeploymentActionKind =
-  | 'apply_runtime_images'
-  | 'apply_wordpress_assets'
-  | 'ignore_runtime_images'
-  | 'ignore_wordpress_assets';
-
-function normalizeObject(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function normalizeString(value: unknown) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function normalizeBoolean(value: unknown) {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
-      return true;
-    }
-    if (['0', 'false', 'no', 'off'].includes(normalized)) {
-      return false;
-    }
-  }
-
-  return undefined;
-}
-
-function normalizeValueRecord(value: unknown) {
-  const raw = normalizeObject(value);
-  const result: DeliverySettingValues = {};
-
-  for (const [key, entry] of Object.entries(raw)) {
-    if (typeof entry === 'boolean') {
-      result[key] = entry;
-      continue;
-    }
-
-    const booleanValue = normalizeBoolean(entry);
-    const stringValue = normalizeString(entry);
-    if (typeof booleanValue === 'boolean' && typeof entry === 'string' && stringValue.length > 0) {
-      result[key] = booleanValue;
-      continue;
-    }
-
-    if (stringValue.length > 0) {
-      result[key] = stringValue;
-    }
-  }
-
-  return result;
-}
-
-function normalizeSecretRecord(value: unknown) {
-  const raw = normalizeObject(value);
-  const result: DeliverySettingSecrets = {};
-
-  for (const [key, entry] of Object.entries(raw)) {
-    const normalized = normalizeString(entry);
-    if (normalized.length > 0) {
-      result[key] = normalized;
-    }
-  }
-
-  return result;
-}
-
-function normalizeDomainValueRecord(value: unknown) {
-  const raw = normalizeObject(value);
-  const result: Record<string, string> = {};
-
-  for (const [key, entry] of Object.entries(raw)) {
-    const normalizedKey = normalizeString(key);
-    const normalizedValue = normalizeHostname(entry);
-    if (normalizedKey && normalizedValue) {
-      result[normalizedKey] = normalizedValue;
-    }
-  }
-
-  return result;
-}
-
-type DeploymentDomainBindingSource = string;
-type DeploymentRuntimeUpdatePolicy = 'manual' | 'auto';
-
-type DeploymentBindingState = {
-  sourceField: DeploymentDomainBindingSource;
-  scope?: 'exact_host' | 'registrable_domain';
-  boundDomain: string | null;
-  boundAt: string | null;
-};
-
-type DeploymentConfigIssue = {
-  kind: 'domain_slot' | 'user_input';
-  key: string;
-  label: string;
-  fieldType?: 'text' | 'secret' | 'boolean';
-  sourceField?: DeliveryManifestDomainSourceField;
-};
-
-function normalizeHostname(value: unknown) {
-  const normalized = normalizeString(value)
-    .toLowerCase()
-    .replace(/^(https?|wss?):\/\//, '')
-    .replace(/\/.*$/, '')
-    .replace(/\.+$/, '');
-
-  return normalized;
-}
-
-function isDeploymentDomainBindingSource(
-  value: string,
-): value is DeliveryManifestDomainSourceField {
-  return value.length > 0 && value !== 'none';
-}
-
-function getDomainBindingSourceLabel(sourceField: DeploymentDomainBindingSource) {
-  if (sourceField === 'none') {
-    return '域名';
-  }
-
-  return sourceField;
-}
-
-function normalizeDeploymentRuntimeUpdatePolicy(value: unknown): DeploymentRuntimeUpdatePolicy {
-  return normalizeString(value) === 'auto' ? 'auto' : 'manual';
-}
-
-export {
-  DEFAULT_INSTALLER,
+import {
+  type DeploymentAppRecord,
+  LEGACY_APP_DEFAULT_VALUE_KEYS,
+  WORDPRESS_ASSET_RELEASE_KEYS,
   AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
-  DeploymentStatusReportPayload,
-  DeploymentActionKind,
+  type DeploymentActionKind,
   normalizeString,
+  normalizeBoolean,
   normalizeValueRecord,
   normalizeSecretRecord,
   normalizeDomainValueRecord,
-  DeploymentRuntimeUpdatePolicy,
+  type DeploymentRuntimeUpdatePolicy,
+  type DeploymentBindingState,
+  type DeploymentConfigIssue,
+  normalizeHostname,
+  isDeploymentDomainBindingSource,
+  getDomainBindingSourceLabel,
   normalizeDeploymentRuntimeUpdatePolicy,
-};
+} from './configuration-model';
+export * from './configuration-model';
 
 export class DeploymentConfigurationUseCases {
+  protected readonly capabilities: DeploymentDependencies;
   constructor(
-    protected readonly capabilities: ServiceFactories,
+    capabilities: DeploymentDependencies,
     protected readonly db: DbExecutor,
     protected readonly env: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickDeploymentDependencies(capabilities);
+  }
   protected getEncryptionSecret() {
     return getEncryptionKeys(this.env);
   }
@@ -383,11 +162,12 @@ export class DeploymentConfigurationUseCases {
         rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)),
       ),
     ];
-    const [apps, users, tokens, entitlements] = await Promise.all([
-      createAppAccess(this.db).listAppsByIds(appIds),
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
-      this.capabilities.createLicenseAccess(this.db).listEntitlementsByIds(entitlementIds),
+    const [apps, users, tokens, entitlements] = await queryBatch(this.db, [
+      () => createAppAccess(this.db).listAppsByIds(appIds),
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () =>
+        new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
+      () => this.capabilities.createLicenseAccess(this.db).listEntitlementsByIds(entitlementIds),
     ]);
 
     const appMap = new Map(apps.map((item) => [item.id, item]));
@@ -403,8 +183,9 @@ export class DeploymentConfigurationUseCases {
       }
     }
 
-    return Promise.all(
-      rows.map(async (row) => {
+    return queryBatch(
+      this.db,
+      rows.map((row) => async () => {
         const app = appMap.get(row.appId) ?? null;
         const user = userMap.get(row.userId) ?? null;
         const token = latestTokenMap.get(row.id) ?? null;
@@ -1048,38 +829,6 @@ export class DeploymentConfigurationUseCases {
     return input.deployment;
   }
 
-  protected buildRemoteInstallCommand(input: {
-    token: string;
-    exchangeUrl: string;
-    remoteInstallScriptUrl?: string;
-    installPath?: string | null;
-    repoUrl?: string;
-    repoBranch?: string;
-  }) {
-    const commandParts = [
-      `FD_STACK_DEPLOY_TOKEN='${input.token}'`,
-      `FD_STACK_EXCHANGE_URL='${input.exchangeUrl}'`,
-    ];
-
-    if (input.installPath) {
-      commandParts.push(`INSTALL_DIR='${input.installPath}'`);
-    }
-
-    if (input.repoUrl) {
-      commandParts.push(`REPO_URL='${input.repoUrl}'`);
-    }
-
-    if (input.repoBranch) {
-      commandParts.push(`REPO_BRANCH='${input.repoBranch}'`);
-    }
-
-    commandParts.push(
-      `bash <(curl -fsSL '${input.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl}')`,
-    );
-
-    return commandParts.join(' ');
-  }
-
   protected getSourceFieldValue(
     deployment: Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>,
     sourceField: DeliveryManifestDomainSourceField,
@@ -1222,148 +971,24 @@ export class DeploymentConfigurationUseCases {
     const deploymentValues = this.readDeploymentInputValues(input.deployment);
     const deploymentSecrets = this.readDeploymentInputSecrets(input.deployment);
 
-    const appValues: DeliverySettingValues = {
-      ...appDefaults.values,
-      ...(deliverySettings?.values ?? {}),
-    };
-    const appSecrets: DeliverySettingSecrets = {
-      ...(deliverySettings?.secrets ?? {}),
-    };
-    const installer = {
-      repoUrl:
-        manifest?.installer.repoUrl ||
-        appDefaults.installer.repoUrl ||
-        deliverySettings?.installer.repoUrl ||
-        DEFAULT_INSTALLER.repoUrl,
-      repoBranch:
-        manifest?.installer.repoBranch ||
-        appDefaults.installer.repoBranch ||
-        deliverySettings?.installer.repoBranch ||
-        DEFAULT_INSTALLER.repoBranch,
-      remoteInstallScriptUrl:
-        manifest?.installer.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl,
-      installPath:
-        input.deployment?.installPath ||
-        manifest?.installer.installPath ||
-        DEFAULT_INSTALLER.installPath,
-    };
-
-    const envDefaults: Record<string, string> = {};
-
-    if (manifest) {
-      for (const slot of manifest.domainSlots) {
-        const value = this.getSourceFieldValue(input.deployment, slot.sourceField);
-        if (value) {
-          envDefaults[slot.envKey] = value;
-        }
-      }
-
-      for (const field of [...manifest.envFields, ...manifest.secretFields]) {
-        const resolved = this.resolveManifestFieldValue({
-          field,
-          appValues,
-          deploymentValues,
-          appSecrets,
-          deploymentSecrets,
-        });
-
-        if (typeof resolved === 'boolean') {
-          envDefaults[field.key] = String(resolved);
-          continue;
-        }
-
-        if (typeof resolved === 'string' && resolved.length > 0) {
-          envDefaults[field.key] = resolved;
-          if (field.key === 'GH_TOKEN' && !envDefaults.GITHUB_TOKEN) {
-            envDefaults.GITHUB_TOKEN = resolved;
-          }
-        }
-      }
-    } else {
-      const fallbackEntries = Object.entries({
-        ...Object.fromEntries(
-          Object.entries(appValues).map(([key, value]) => [
-            key,
-            typeof value === 'boolean' ? String(value) : value,
-          ]),
-        ),
-        ...appSecrets,
-      }).filter(([, value]) => typeof value === 'string' && value.length > 0);
-
-      for (const [key, value] of fallbackEntries) {
-        if (typeof value === 'string') {
-          envDefaults[key] = value;
-        }
-      }
-
-      if (envDefaults.GH_TOKEN && !envDefaults.GITHUB_TOKEN) {
-        envDefaults.GITHUB_TOKEN = envDefaults.GH_TOKEN;
-      }
-    }
-
-    const activeBindingSource =
-      policy.domainBindingMode === 'lock_on_first_success' ? policy.domainBindingSource : 'none';
-    envDefaults.FD_RUNTIME_IMAGE_UPDATE_POLICY = updatePolicy;
-    envDefaults.FD_DOMAIN_BINDING_SOURCE = activeBindingSource;
-    envDefaults.FD_DOMAIN_BINDING_SCOPE = policy.domainBindingScope;
-
-    if (activeBindingSource !== 'none') {
-      // Runtime host checks must use the exact deployed host, not the license binding scope.
-      const boundHost = normalizeHostname(
-        this.getSourceFieldValue(input.deployment, activeBindingSource),
-      );
-
-      if (boundHost.length > 0) {
-        envDefaults.FD_BOUND_HOST = boundHost;
-      }
-    }
-
-    const exchangeUrl = new URL(
-      '/v1/deployments/bootstrap/exchange',
-      this.env.PUBLIC_BASE_URL,
-    ).toString();
-    envDefaults.FD_STACK_DEPLOYMENT_ID = input.deployment.id;
-    envDefaults.FD_STACK_STATUS_REPORT_URL = new URL(
-      '/v1/deployments/status/report',
-      this.env.PUBLIC_BASE_URL,
-    ).toString();
-    envDefaults.FD_STACK_STATUS_REPORT_TOKEN = statusReportAuth.token;
-    envDefaults.FD_STACK_ACTION_PULL_URL = new URL(
-      '/v1/deployments/actions/pull',
-      this.env.PUBLIC_BASE_URL,
-    ).toString();
-    envDefaults.FD_STACK_ACTION_COMPLETE_URL = new URL(
-      '/v1/deployments/actions/complete',
-      this.env.PUBLIC_BASE_URL,
-    ).toString();
-
-    return {
-      installPath: installer.installPath,
-      exchangeUrl,
-      repository: {
-        url: installer.repoUrl,
-        branch: installer.repoBranch,
-      },
-      assets: manifest?.assets ?? [],
-      envDefaults,
-      remoteInstallCommand: input.token
-        ? this.buildRemoteInstallCommand({
-            token: input.token,
-            exchangeUrl,
-            installPath: installer.installPath,
-            repoUrl: installer.repoUrl,
-            repoBranch: installer.repoBranch,
-            remoteInstallScriptUrl: installer.remoteInstallScriptUrl,
-          })
-        : null,
-      notes: [
-        'Installer bootstrap now follows the synced deliveryManifest and any saved app-level preset overrides.',
-        'User-input deployment values override app defaults for the current deployment.',
-      ],
-    };
+    return assembleDeploymentBootstrap({
+      deployment: statusReportAuth.deployment,
+      manifest,
+      appDefaults,
+      deliverySettings,
+      deploymentValues,
+      deploymentSecrets,
+      policy,
+      updatePolicy,
+      statusReportToken: statusReportAuth.token,
+      publicBaseUrl: this.env.PUBLIC_BASE_URL,
+      token: input.token,
+      sourceValue: (field) => this.getSourceFieldValue(input.deployment, field),
+      resolveField: (values) => this.resolveManifestFieldValue(values),
+    });
   }
 
   protected buildExchangeCurl(token: string) {
-    return `curl -fsSL -X POST '${new URL('/v1/deployments/bootstrap/exchange', this.env.PUBLIC_BASE_URL).toString()}' -H 'content-type: application/json' -d '${JSON.stringify({ token })}'`;
+    return buildExchangeCurl(token, this.env.PUBLIC_BASE_URL);
   }
 }

@@ -12,7 +12,7 @@ import {
   notifications,
 } from '../../src/db/schema';
 import { AuditLogService } from '../../src/modules/audit/public';
-import { rotateSettingKeys } from '../../src/modules/settings/public';
+import { rotateSettingKeys } from '../../src/composition/settings-key-rotation';
 import { encryptJson, decryptJson, getEncryptionKeys } from '../../src/lib/settings-crypto';
 import { createServiceFactories } from '../../src/composition/service-factories';
 import { testDatabase } from './helpers';

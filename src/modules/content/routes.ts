@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { ContentImportSettingsService } from '../../lib/content-import-settings';
+import { ContentImportSettingsService } from '../settings/public';
 import {
   contentListQuerySchema,
   contentIdParamsSchema,

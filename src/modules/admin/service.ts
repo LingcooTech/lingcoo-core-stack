@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickAdminDependencies, type AdminDependencies } from './dependencies';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { and, count, eq, isNull, gte, lte, type SQL } from 'drizzle-orm';
@@ -20,11 +21,14 @@ import { type InstallRepositoryPort as InstallRepository } from '../install/publ
 import { type LicenseRepositoryPort as LicenseRepository } from '../license/public';
 
 export class AdminService {
+  private readonly capabilities: AdminDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: AdminDependencies,
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickAdminDependencies(capabilities);
+  }
 
   private async hydrateOrderRows(
     orders: Array<Awaited<ReturnType<BillingRepository['listOrders']>>['items'][number]>,
@@ -36,10 +40,10 @@ export class AdminService {
       .createCheckoutAccess(this.db)
       .listSessionsByOrderIds(orders.map((item) => item.id));
 
-    const [users, plans, apps] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
+    const [users, plans, apps] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -94,11 +98,11 @@ export class AdminService {
       ),
     ];
 
-    const [users, apps, plans, orders] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
-      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
-      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
+    const [users, apps, plans, orders] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
+      () => this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      () => this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -138,9 +142,9 @@ export class AdminService {
     ];
     const appIds = [...new Set(installs.map((item) => item.appId))];
 
-    const [users, apps] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
+    const [users, apps] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -180,10 +184,12 @@ export class AdminService {
     }
 
     const [hydratedOrder] = await this.hydrateOrderRows([order]);
-    const [attempts, entitlements, events] = await Promise.all([
-      this.capabilities.createCheckoutAccess(this.db).listPaymentAttemptsByOrderIds([order.id]),
-      this.capabilities.createLicenseAccess(this.db).listEntitlementsBySource('order', order.id),
-      createEventAccess(this.db).listRecentEventsByOrderNo(orderNo, 20),
+    const [attempts, entitlements, events] = await queryBatch(this.db, [
+      () =>
+        this.capabilities.createCheckoutAccess(this.db).listPaymentAttemptsByOrderIds([order.id]),
+      () =>
+        this.capabilities.createLicenseAccess(this.db).listEntitlementsBySource('order', order.id),
+      () => createEventAccess(this.db).listRecentEventsByOrderNo(orderNo, 20),
     ]);
 
     // Derive plan info for entitlements
@@ -231,9 +237,9 @@ export class AdminService {
     ];
     const appIds = [...new Set(installs.map((item) => item.appId))];
 
-    const [users, apps] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
+    const [users, apps] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -269,11 +275,11 @@ export class AdminService {
       ),
     ];
 
-    const [users, apps, plans, orders] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
-      this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
-      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
+    const [users, apps, plans, orders] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
+      () => this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds),
+      () => this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -331,9 +337,9 @@ export class AdminService {
       ),
     ];
 
-    const [users, apps] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds(userIds),
-      createAppAccess(this.db).listAppsByIds(appIds),
+    const [users, apps] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds(userIds),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -395,37 +401,41 @@ export class AdminService {
       waitingStaffTickets,
       staleWaitingStaffTickets,
       events24h,
-    ] = await Promise.all([
-      this.countRows(jobRuns, eq(jobRuns.status, 'dead')),
-      this.countRows(jobRuns, eq(jobRuns.status, 'failed')),
-      this.countRows(jobRuns, eq(jobRuns.status, 'running')),
-      this.countRows(
-        jobRuns,
-        and(eq(jobRuns.status, 'running'), lte(jobRuns.lockedAt, staleJobBefore)),
-      ),
-      this.countRows(jobRuns, eq(jobRuns.status, 'pending')),
-      this.countRows(
-        orders,
-        and(eq(orders.status, 'pending'), lte(orders.createdAt, staleOrderBefore)),
-      ),
-      this.countRows(orders, eq(orders.status, 'pending')),
-      this.countRows(billingWebhookEvents, isNull(billingWebhookEvents.processedAt)),
-      this.countRows(
-        billingWebhookEvents,
-        and(
-          isNull(billingWebhookEvents.processedAt),
-          lte(billingWebhookEvents.createdAt, staleWebhookBefore),
+    ] = await queryBatch(this.db, [
+      () => this.countRows(jobRuns, eq(jobRuns.status, 'dead')),
+      () => this.countRows(jobRuns, eq(jobRuns.status, 'failed')),
+      () => this.countRows(jobRuns, eq(jobRuns.status, 'running')),
+      () =>
+        this.countRows(
+          jobRuns,
+          and(eq(jobRuns.status, 'running'), lte(jobRuns.lockedAt, staleJobBefore)),
         ),
-      ),
-      this.countRows(supportTickets, eq(supportTickets.status, 'waiting_staff')),
-      this.countRows(
-        supportTickets,
-        and(
-          eq(supportTickets.status, 'waiting_staff'),
-          lte(supportTickets.lastActivityAt, staleTicketBefore),
+      () => this.countRows(jobRuns, eq(jobRuns.status, 'pending')),
+      () =>
+        this.countRows(
+          orders,
+          and(eq(orders.status, 'pending'), lte(orders.createdAt, staleOrderBefore)),
         ),
-      ),
-      this.countRows(events, gte(events.eventTime, recentEventsAfter)),
+      () => this.countRows(orders, eq(orders.status, 'pending')),
+      () => this.countRows(billingWebhookEvents, isNull(billingWebhookEvents.processedAt)),
+      () =>
+        this.countRows(
+          billingWebhookEvents,
+          and(
+            isNull(billingWebhookEvents.processedAt),
+            lte(billingWebhookEvents.createdAt, staleWebhookBefore),
+          ),
+        ),
+      () => this.countRows(supportTickets, eq(supportTickets.status, 'waiting_staff')),
+      () =>
+        this.countRows(
+          supportTickets,
+          and(
+            eq(supportTickets.status, 'waiting_staff'),
+            lte(supportTickets.lastActivityAt, staleTicketBefore),
+          ),
+        ),
+      () => this.countRows(events, gte(events.eventTime, recentEventsAfter)),
     ]);
 
     const alerts = [
@@ -679,18 +689,22 @@ export class AdminService {
       throw httpError(404, 'User not found');
     }
 
-    const [orders, entitlements, installs, auditLogs, recentEvents, tickets] = await Promise.all([
-      this.capabilities.createBillingAccess(this.db).listRecentOrdersByUserId(userId, 10),
-      this.capabilities.createLicenseAccess(this.db).listRecentEntitlementsByUserId(userId, 10),
-      this.capabilities.createInstallAccess(this.db).listRecentInstallsByUserId(userId, 10),
-      new AuditLogService(this.db).listRecentForUser(userId, 10),
-      createEventAccess(this.db).listRecentEventsByUserId(userId, 10),
-      this.capabilities.createTicketService(this.db).listRecentTicketsByUserId(userId, 10),
-    ]);
-    const [hydratedOrders, hydratedEntitlements, hydratedInstalls] = await Promise.all([
-      this.hydrateOrderRows(orders),
-      this.hydrateEntitlementRows(entitlements),
-      this.hydrateInstallRows(installs),
+    const [orders, entitlements, installs, auditLogs, recentEvents, tickets] = await queryBatch(
+      this.db,
+      [
+        () => this.capabilities.createBillingAccess(this.db).listRecentOrdersByUserId(userId, 10),
+        () =>
+          this.capabilities.createLicenseAccess(this.db).listRecentEntitlementsByUserId(userId, 10),
+        () => this.capabilities.createInstallAccess(this.db).listRecentInstallsByUserId(userId, 10),
+        () => new AuditLogService(this.db).listRecentForUser(userId, 10),
+        () => createEventAccess(this.db).listRecentEventsByUserId(userId, 10),
+        () => this.capabilities.createTicketService(this.db).listRecentTicketsByUserId(userId, 10),
+      ],
+    );
+    const [hydratedOrders, hydratedEntitlements, hydratedInstalls] = await queryBatch(this.db, [
+      () => this.hydrateOrderRows(orders),
+      () => this.hydrateEntitlementRows(entitlements),
+      () => this.hydrateInstallRows(installs),
     ]);
 
     return {

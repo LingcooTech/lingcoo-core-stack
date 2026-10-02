@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 
 import { apps, billingWebhookEvents, orders, plans, users } from '../../db/schema';
@@ -95,24 +96,26 @@ export class BillingRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: orders })
-        .from(orders)
-        .leftJoin(users, eq(orders.userId, users.id))
-        .leftJoin(apps, eq(orders.appId, apps.id))
-        .leftJoin(plans, eq(orders.planId, plans.id))
-        .where(where)
-        .orderBy(desc(orders.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(orders)
-        .leftJoin(users, eq(orders.userId, users.id))
-        .leftJoin(apps, eq(orders.appId, apps.id))
-        .leftJoin(plans, eq(orders.planId, plans.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: orders })
+          .from(orders)
+          .leftJoin(users, eq(orders.userId, users.id))
+          .leftJoin(apps, eq(orders.appId, apps.id))
+          .leftJoin(plans, eq(orders.planId, plans.id))
+          .where(where)
+          .orderBy(desc(orders.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(orders)
+          .leftJoin(users, eq(orders.userId, users.id))
+          .leftJoin(apps, eq(orders.appId, apps.id))
+          .leftJoin(plans, eq(orders.planId, plans.id))
+          .where(where),
     ]);
 
     return {
@@ -154,18 +157,20 @@ export class BillingRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [items, countResult] = await Promise.all([
-      this.db
-        .select()
-        .from(billingWebhookEvents)
-        .where(where)
-        .orderBy(desc(billingWebhookEvents.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(billingWebhookEvents)
-        .where(where),
+    const [items, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select()
+          .from(billingWebhookEvents)
+          .where(where)
+          .orderBy(desc(billingWebhookEvents.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(billingWebhookEvents)
+          .where(where),
     ]);
 
     return {

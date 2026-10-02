@@ -9,3 +9,11 @@ export type DeploymentRepositoryPort = Pick<
 export type DeploymentRepositoryFactory = (db: DbExecutor) => DeploymentRepositoryPort;
 
 export { deleteAppDeliverySettings, rotateDeliveryKeyring } from './delivery-config';
+
+export * from './delivery-settings';
+import type { DeliverySettingsService } from './delivery-settings';
+import type { AppEnv } from '../../lib/env';
+export type DeliverySettingsFactory = (
+  db: DbExecutor,
+  env: AppEnv,
+) => Pick<DeliverySettingsService, 'upsertSettings'>;

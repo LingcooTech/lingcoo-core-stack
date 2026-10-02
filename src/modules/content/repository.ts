@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 import { contentItems } from '../../db/schema';
@@ -7,21 +8,38 @@ export class ContentRepository {
   constructor(private readonly db: DbExecutor) {}
 
   async findById(id: string) {
-    const [item] = await this.db.select().from(contentItems).where(eq(contentItems.id, id)).limit(1);
+    const [item] = await this.db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.id, id))
+      .limit(1);
     return item ?? null;
   }
 
   async findBySlug(slug: string) {
-    const [item] = await this.db.select().from(contentItems).where(eq(contentItems.slug, slug)).limit(1);
+    const [item] = await this.db
+      .select()
+      .from(contentItems)
+      .where(eq(contentItems.slug, slug))
+      .limit(1);
     return item ?? null;
   }
 
-  async findBySource(input: { sourceType: 'manual' | 'wordpress' | 'notion' | 'wechat'; sourceId?: string | null; sourceUrl?: string | null }) {
+  async findBySource(input: {
+    sourceType: 'manual' | 'wordpress' | 'notion' | 'wechat';
+    sourceId?: string | null;
+    sourceUrl?: string | null;
+  }) {
     if (input.sourceId?.trim()) {
       const [item] = await this.db
         .select()
         .from(contentItems)
-        .where(and(eq(contentItems.sourceType, input.sourceType), eq(contentItems.sourceId, input.sourceId.trim())))
+        .where(
+          and(
+            eq(contentItems.sourceType, input.sourceType),
+            eq(contentItems.sourceId, input.sourceId.trim()),
+          ),
+        )
         .limit(1);
       if (item) {
         return item;
@@ -32,7 +50,12 @@ export class ContentRepository {
       const [item] = await this.db
         .select()
         .from(contentItems)
-        .where(and(eq(contentItems.sourceType, input.sourceType), eq(contentItems.sourceUrl, input.sourceUrl.trim())))
+        .where(
+          and(
+            eq(contentItems.sourceType, input.sourceType),
+            eq(contentItems.sourceUrl, input.sourceUrl.trim()),
+          ),
+        )
         .limit(1);
       return item ?? null;
     }
@@ -57,8 +80,8 @@ export class ContentRepository {
           ilike(contentItems.slug, pattern),
           ilike(contentItems.excerpt, pattern),
           ilike(contentItems.authorName, pattern),
-          ilike(contentItems.sourceUrl, pattern)
-        )!
+          ilike(contentItems.sourceUrl, pattern),
+        )!,
       );
     }
 
@@ -72,18 +95,24 @@ export class ContentRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [items, countResult] = await Promise.all([
-      this.db
-        .select()
-        .from(contentItems)
-        .where(where)
-        .orderBy(desc(contentItems.publishedAt), desc(contentItems.importedAt), desc(contentItems.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(contentItems)
-        .where(where)
+    const [items, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select()
+          .from(contentItems)
+          .where(where)
+          .orderBy(
+            desc(contentItems.publishedAt),
+            desc(contentItems.importedAt),
+            desc(contentItems.createdAt),
+          )
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(contentItems)
+          .where(where),
     ]);
 
     return {
@@ -92,11 +121,7 @@ export class ContentRepository {
     };
   }
 
-  async listPublishedContent(query: {
-    limit: number;
-    offset: number;
-    search?: string;
-  }) {
+  async listPublishedContent(query: { limit: number; offset: number; search?: string }) {
     const conditions = [eq(contentItems.status, 'published')];
 
     if (query.search) {
@@ -106,25 +131,27 @@ export class ContentRepository {
           ilike(contentItems.title, pattern),
           ilike(contentItems.slug, pattern),
           ilike(contentItems.excerpt, pattern),
-          ilike(contentItems.authorName, pattern)
-        )!
+          ilike(contentItems.authorName, pattern),
+        )!,
       );
     }
 
     const where = and(...conditions);
 
-    const [items, countResult] = await Promise.all([
-      this.db
-        .select()
-        .from(contentItems)
-        .where(where)
-        .orderBy(desc(contentItems.publishedAt), desc(contentItems.updatedAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(contentItems)
-        .where(where)
+    const [items, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select()
+          .from(contentItems)
+          .where(where)
+          .orderBy(desc(contentItems.publishedAt), desc(contentItems.updatedAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(contentItems)
+          .where(where),
     ]);
 
     return {

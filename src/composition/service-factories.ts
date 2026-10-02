@@ -1,3 +1,7 @@
+import {
+  DeliverySettingsService,
+  type DeliverySettingsFactory,
+} from '../modules/deployment/public';
 import { getBillingProviderAdapter } from '../modules/billing/providers';
 import { deleteAppDeliverySettings } from '../modules/deployment/public';
 import { deleteLegacyDeliverySettings } from '../modules/settings/public';
@@ -24,6 +28,7 @@ import { NotificationsService } from '../modules/notifications/service';
 import type { TicketServiceFactory } from '../modules/ticket/public';
 import { TicketService } from '../modules/ticket/service';
 export interface ServiceFactories {
+  createDeliverySettings: DeliverySettingsFactory;
   now: () => Date;
   getBillingProviderAdapter: typeof getBillingProviderAdapter;
   deleteAppDeliverySettings: typeof deleteAppDeliverySettings;
@@ -44,6 +49,7 @@ export function createServiceFactories(
   overrides: Partial<ServiceFactories> = {},
 ): ServiceFactories {
   const factories: ServiceFactories = {
+    createDeliverySettings: (db, env) => new DeliverySettingsService(db, env),
     now: () => new Date(),
     getBillingProviderAdapter,
     deleteAppDeliverySettings,
@@ -136,7 +142,7 @@ export function createServiceFactories(
       };
     },
     createEventService: (db) => {
-      const value = new EventService(factories, db);
+      const value = new EventService(db);
       return {
         capture: value.capture.bind(value),
         loadProjectionEvents: value.loadProjectionEvents.bind(value),

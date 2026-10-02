@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickLicenseDependencies, type LicenseDependencies } from './dependencies';
 import type { DbExecutor } from '../../db/types';
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
@@ -28,10 +29,13 @@ function normalizeMeta(value: unknown) {
 }
 
 export class LicenseService {
+  private readonly capabilities: LicenseDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: LicenseDependencies,
     private readonly db: DbExecutor,
-  ) {}
+  ) {
+    this.capabilities = pickLicenseDependencies(capabilities);
+  }
 
   async findActiveOneTimeOwnership(userId: string, appId: string, planId?: string) {
     const repository = new LicenseRepository(this.db);
@@ -58,10 +62,10 @@ export class LicenseService {
 
   async getCatalogSnapshot() {
     const repository = new LicenseRepository(this.db);
-    const [plans, features, planFeatures] = await Promise.all([
-      repository.listPlans(),
-      repository.listFeatures(),
-      repository.listPlanFeatureMappings(),
+    const [plans, features, planFeatures] = await queryBatch(this.db, [
+      () => repository.listPlans(),
+      () => repository.listFeatures(),
+      () => repository.listPlanFeatureMappings(),
     ]);
 
     return { plans, features, planFeatures };

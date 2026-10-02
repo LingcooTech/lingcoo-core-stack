@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm';
 
 import { apps, events, installs, users } from '../../db/schema';
@@ -66,24 +67,26 @@ export class EventRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: events })
-        .from(events)
-        .leftJoin(users, eq(events.userId, users.id))
-        .leftJoin(installs, eq(events.installId, installs.id))
-        .leftJoin(apps, sql`coalesce(${events.appId}, ${installs.appId}) = ${apps.id}`)
-        .where(where)
-        .orderBy(desc(events.eventTime))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(events)
-        .leftJoin(users, eq(events.userId, users.id))
-        .leftJoin(installs, eq(events.installId, installs.id))
-        .leftJoin(apps, sql`coalesce(${events.appId}, ${installs.appId}) = ${apps.id}`)
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: events })
+          .from(events)
+          .leftJoin(users, eq(events.userId, users.id))
+          .leftJoin(installs, eq(events.installId, installs.id))
+          .leftJoin(apps, sql`coalesce(${events.appId}, ${installs.appId}) = ${apps.id}`)
+          .where(where)
+          .orderBy(desc(events.eventTime))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(events)
+          .leftJoin(users, eq(events.userId, users.id))
+          .leftJoin(installs, eq(events.installId, installs.id))
+          .leftJoin(apps, sql`coalesce(${events.appId}, ${installs.appId}) = ${apps.id}`)
+          .where(where),
     ]);
 
     return {

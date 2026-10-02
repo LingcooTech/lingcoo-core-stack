@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { redactAuditValue } from './redaction';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
@@ -72,20 +73,22 @@ export class AuditLogService {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: auditLogs })
-        .from(auditLogs)
-        .leftJoin(users, eq(auditLogs.actorUserId, users.id))
-        .where(where)
-        .orderBy(desc(auditLogs.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(auditLogs)
-        .leftJoin(users, eq(auditLogs.actorUserId, users.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: auditLogs })
+          .from(auditLogs)
+          .leftJoin(users, eq(auditLogs.actorUserId, users.id))
+          .where(where)
+          .orderBy(desc(auditLogs.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(auditLogs)
+          .leftJoin(users, eq(auditLogs.actorUserId, users.id))
+          .where(where),
     ]);
 
     return {

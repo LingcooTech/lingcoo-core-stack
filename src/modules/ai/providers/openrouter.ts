@@ -1,14 +1,11 @@
-import {
-  OpenRouterSettingsService,
-  type OpenRouterModelSummary
-} from '../../../lib/openrouter-settings';
+import { OpenRouterSettingsService, type OpenRouterModelSummary } from '../../settings/public';
 import type {
   AiChatCompletionInput,
   AiChatCompletionResult,
   AiModelSummary,
   AiProviderAdapter,
   AiProviderContext,
-  AiProviderStatus
+  AiProviderStatus,
 } from './types';
 
 function mapModel(item: OpenRouterModelSummary): AiModelSummary {
@@ -22,7 +19,7 @@ function mapModel(item: OpenRouterModelSummary): AiModelSummary {
     completionPricing: item.completionPricing,
     modality: item.modality,
     inputModalities: item.inputModalities,
-    outputModalities: item.outputModalities
+    outputModalities: item.outputModalities,
   };
 }
 
@@ -37,7 +34,7 @@ export class OpenRouterProvider implements AiProviderAdapter {
       code: this.code,
       label: this.label,
       configured: overview.configured,
-      source: overview.source
+      source: overview.source,
     };
   }
 
@@ -48,7 +45,7 @@ export class OpenRouterProvider implements AiProviderAdapter {
 
   async createChatCompletion(
     context: AiProviderContext,
-    input: AiChatCompletionInput
+    input: AiChatCompletionInput,
   ): Promise<AiChatCompletionResult> {
     return new OpenRouterSettingsService(context.db, context.env).createChatCompletion(input);
   }

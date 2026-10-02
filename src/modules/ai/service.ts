@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickAiDependencies, type AiDependencies } from './dependencies';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
@@ -88,11 +89,14 @@ function normalizeCount(value: number | null | undefined) {
 }
 
 export class AiService {
+  private readonly capabilities: AiDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: AiDependencies,
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickAiDependencies(capabilities);
+  }
 
   private getContext() {
     return {
@@ -155,10 +159,10 @@ export class AiService {
   }
 
   private async resolveUserAccessState(appCode: string, userId: string): Promise<UserAccessState> {
-    const [app, user, providers] = await Promise.all([
-      this.capabilities.createAppService(this.db).requireActiveApp(appCode),
-      createAuthAccess(this.db).findUserById(userId),
-      listAiProviders(this.getContext()),
+    const [app, user, providers] = await queryBatch(this.db, [
+      () => this.capabilities.createAppService(this.db).requireActiveApp(appCode),
+      () => createAuthAccess(this.db).findUserById(userId),
+      () => listAiProviders(this.getContext()),
     ]);
 
     if (!user) {

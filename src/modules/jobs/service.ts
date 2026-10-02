@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { validateJobPayload } from './registry';
 import { randomUUID } from 'node:crypto';
 
@@ -212,20 +213,22 @@ export class JobRunService {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: jobRuns })
-        .from(jobRuns)
-        .leftJoin(users, eq(jobRuns.createdByUserId, users.id))
-        .where(where)
-        .orderBy(desc(jobRuns.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(jobRuns)
-        .leftJoin(users, eq(jobRuns.createdByUserId, users.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: jobRuns })
+          .from(jobRuns)
+          .leftJoin(users, eq(jobRuns.createdByUserId, users.id))
+          .where(where)
+          .orderBy(desc(jobRuns.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(jobRuns)
+          .leftJoin(users, eq(jobRuns.createdByUserId, users.id))
+          .where(where),
     ]);
 
     return {

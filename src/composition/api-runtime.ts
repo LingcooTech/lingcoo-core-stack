@@ -30,7 +30,7 @@ export function createApiServices(
     ContentService: new ContentService(factories, db),
     DeploymentService: new DeploymentService(factories, db, env),
     DocsService: new DocsService(factories, db),
-    EventService: new EventService(factories, db),
+    EventService: new EventService(db),
     InstallService: new InstallService(factories, db),
     LicenseService: new LicenseService(factories, db),
     NotificationsService: new NotificationsService(factories, db),

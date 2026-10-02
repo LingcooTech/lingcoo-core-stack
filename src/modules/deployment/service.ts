@@ -1,10 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 
-import {
-  type DeliverySettingSecrets,
-  type DeliverySettingValues,
-} from '../../lib/delivery-settings';
+import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
 
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';

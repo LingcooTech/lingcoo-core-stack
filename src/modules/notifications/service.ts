@@ -1,4 +1,4 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { pickNotificationsDependencies, type NotificationsDependencies } from './dependencies';
 import { randomUUID } from 'node:crypto';
 
 import type { DbExecutor } from '../../db/types';
@@ -429,10 +429,12 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
 export class NotificationsService {
   private readonly repository: NotificationsRepository;
 
+  private readonly capabilities: NotificationsDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: NotificationsDependencies,
     private readonly db: DbExecutor,
   ) {
+    this.capabilities = pickNotificationsDependencies(capabilities);
     this.repository = new NotificationsRepository(db);
   }
 

@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickInstallDependencies, type InstallDependencies } from './dependencies';
 import { randomUUID } from 'node:crypto';
 
 import type { DbExecutor } from '../../db/types';
@@ -9,10 +10,13 @@ import { InstallRepository } from './repository';
 type InstallRecord = NonNullable<Awaited<ReturnType<InstallRepository['findInstallById']>>>;
 
 export class InstallService {
+  private readonly capabilities: InstallDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: InstallDependencies,
     private readonly db: DbExecutor,
-  ) {}
+  ) {
+    this.capabilities = pickInstallDependencies(capabilities);
+  }
 
   private async resolveApp(appCode: string) {
     const app = await this.capabilities.createAppService(this.db).getPublicApp(appCode);
@@ -20,9 +24,9 @@ export class InstallService {
   }
 
   private async loadInstallForApp(appCode: string, installId: string) {
-    const [appResult, install] = await Promise.all([
-      this.resolveApp(appCode),
-      new InstallRepository(this.db).findInstallById(installId),
+    const [appResult, install] = await queryBatch(this.db, [
+      () => this.resolveApp(appCode),
+      () => new InstallRepository(this.db).findInstallById(installId),
     ]);
 
     if (!install) {

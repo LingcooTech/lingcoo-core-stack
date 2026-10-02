@@ -14,6 +14,15 @@ export class AppRepository {
     const [app] = await this.db.select().from(apps).where(eq(apps.code, code)).limit(1);
     return app ?? null;
   }
+  async lockAppByCode(code: string) {
+    const [app] = await this.db
+      .select()
+      .from(apps)
+      .where(eq(apps.code, code))
+      .limit(1)
+      .for('update');
+    return app ?? null;
+  }
 
   async findAppById(id: string) {
     const [app] = await this.db.select().from(apps).where(eq(apps.id, id)).limit(1);
@@ -67,7 +76,7 @@ export class AppRepository {
         status: input.status,
         meta: input.meta ?? {},
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: apps.code,
@@ -87,8 +96,8 @@ export class AppRepository {
           type: input.type,
           status: input.status,
           meta: input.meta ?? {},
-          updatedAt: now
-        }
+          updatedAt: now,
+        },
       })
       .returning();
 
@@ -123,13 +132,13 @@ export class AppRepository {
       type: string;
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
       meta: Record<string, unknown>;
-    }>
+    }>,
   ) {
     const [app] = await this.db
       .update(apps)
       .set({
         ...input,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(apps.id, appId))
       .returning();
@@ -176,7 +185,7 @@ export class AppRepository {
       isDefault: boolean;
       sortOrder: number;
       status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    }>
+    }>,
   ) {
     await this.db.delete(appOffers).where(eq(appOffers.appId, appId));
 
@@ -201,8 +210,8 @@ export class AppRepository {
           sortOrder: offer.sortOrder,
           status: offer.status,
           createdAt: now,
-          updatedAt: now
-        }))
+          updatedAt: now,
+        })),
       )
       .returning();
   }
@@ -226,7 +235,7 @@ export class AppRepository {
         secretHash: input.secretHash,
         hint: input.hint,
         expiresAt: input.expiresAt ?? null,
-        createdAt: new Date()
+        createdAt: new Date(),
       })
       .returning();
 
@@ -250,7 +259,7 @@ export class AppRepository {
     const [secret] = await this.db
       .update(appSecrets)
       .set({
-        lastUsedAt: new Date()
+        lastUsedAt: new Date(),
       })
       .where(eq(appSecrets.id, id))
       .returning();
@@ -262,7 +271,7 @@ export class AppRepository {
     const [secret] = await this.db
       .update(appSecrets)
       .set({
-        status
+        status,
       })
       .where(eq(appSecrets.id, id))
       .returning();

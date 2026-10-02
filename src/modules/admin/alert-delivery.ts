@@ -1,9 +1,8 @@
-import { createServiceFactories } from '../../composition/service-factories';
 import type { DbExecutor } from '../../db/types';
-import { AlertingSettingsService, type AlertLevel } from '../../lib/alerting-settings';
+import { AlertingSettingsService, type AlertLevel } from '../settings/public';
 import type { AppEnv } from '../../lib/env';
 import { buildMailDedupeKey, JobRunService } from '../../lib/job-runs';
-import { AdminService } from './service';
+import type { AdminService } from './service';
 
 const levelRank: Record<AlertLevel, number> = {
   info: 0,
@@ -71,6 +70,7 @@ export class AlertDeliveryService {
   constructor(
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
+    private readonly loadSummary: () => ReturnType<AdminService['getObservabilitySummary']>,
   ) {}
 
   async dispatchActiveAlerts(options: { traceId?: string } = {}) {
@@ -79,11 +79,7 @@ export class AlertDeliveryService {
       return { dispatched: 0, channels: [], alerts: 0 };
     }
 
-    const summary = await new AdminService(
-      createServiceFactories(),
-      this.db,
-      this.env,
-    ).getObservabilitySummary();
+    const summary = await this.loadSummary();
     const alerts = summary.alerts
       .filter((alert): alert is ObservabilityAlert => Boolean(alert))
       .filter((alert) => levelRank[alert.level] >= levelRank[settings.minimumLevel]);

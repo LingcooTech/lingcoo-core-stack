@@ -4,16 +4,16 @@ import path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 
-import { AlertingSettingsService } from '../../lib/alerting-settings';
+import { AlertingSettingsService } from '../settings/public';
 import { AuditLogService } from '../../lib/audit-logs';
-import { ContentImportSettingsService } from '../../lib/content-import-settings';
-import { DeliverySettingsService } from '../../lib/delivery-settings';
-import { PaymentSettingsService } from '../../lib/payment-settings';
-import { PublicPagesSettingsService } from '../../lib/public-pages-settings';
-import { QiniuSettingsService } from '../../lib/qiniu-settings';
+import { ContentImportSettingsService } from '../settings/public';
+import { DeliverySettingsService } from '../deployment/public';
+import { PaymentSettingsService } from '../settings/public';
+import { PublicPagesSettingsService } from '../settings/public';
+import { QiniuSettingsService } from '../settings/public';
 import { hasPermission, normalizeRole } from '../../lib/rbac';
-import { SiteSettingsService } from '../../lib/site-settings';
-import { SmtpSettingsService } from '../../lib/smtp-settings';
+import { SiteSettingsService } from '../settings/public';
+import { SmtpSettingsService } from '../settings/public';
 import { createAuthAccess } from '../auth/public';
 
 import {

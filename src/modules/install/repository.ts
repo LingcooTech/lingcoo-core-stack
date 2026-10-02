@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
 import { apps, installs, users } from '../../db/schema';
@@ -83,22 +84,24 @@ export class InstallRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: installs })
-        .from(installs)
-        .leftJoin(users, eq(installs.userId, users.id))
-        .leftJoin(apps, eq(installs.appId, apps.id))
-        .where(where)
-        .orderBy(desc(installs.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(installs)
-        .leftJoin(users, eq(installs.userId, users.id))
-        .leftJoin(apps, eq(installs.appId, apps.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: installs })
+          .from(installs)
+          .leftJoin(users, eq(installs.userId, users.id))
+          .leftJoin(apps, eq(installs.appId, apps.id))
+          .where(where)
+          .orderBy(desc(installs.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(installs)
+          .leftJoin(users, eq(installs.userId, users.id))
+          .leftJoin(apps, eq(installs.appId, apps.id))
+          .where(where),
     ]);
 
     return {

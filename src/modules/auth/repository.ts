@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
 
 import {
@@ -323,18 +324,20 @@ export class AuthRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [items, countResult] = await Promise.all([
-      this.db
-        .select()
-        .from(users)
-        .where(where)
-        .orderBy(desc(users.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(users)
-        .where(where),
+    const [items, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select()
+          .from(users)
+          .where(where)
+          .orderBy(desc(users.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(where),
     ]);
 
     return {

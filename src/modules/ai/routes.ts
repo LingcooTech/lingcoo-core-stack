@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
-import { OpenRouterSettingsService } from '../../lib/openrouter-settings';
+import { OpenRouterSettingsService } from '../settings/public';
 
 import {
   aiAppCodeParamsSchema,

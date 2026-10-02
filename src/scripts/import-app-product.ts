@@ -1,4 +1,3 @@
-import { createServiceFactories } from '../composition/service-factories';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -9,7 +8,7 @@ import { z } from 'zod';
 import * as schema from '../db/schema';
 import type { DbClient } from '../db/types';
 import { loadEnv } from '../lib/env';
-import { DeliverySettingsService } from '../lib/delivery-settings';
+import { DeliverySettingsService } from '../modules/deployment/public';
 import { EventService } from '../modules/event/service';
 import { AppRepository } from '../modules/app/repository';
 import { LicenseRepository } from '../modules/license/repository';
@@ -326,7 +325,7 @@ async function upsertProduct(db: DbClient, product: ProductConfig) {
       await appRepository.replaceAppOffers(app.id, offers);
     }
 
-    await new EventService(createServiceFactories(), tx as DbClient).capture({
+    await new EventService(tx as DbClient).capture({
       appId: app.id,
       eventName: 'app.product_config_imported',
       properties: {

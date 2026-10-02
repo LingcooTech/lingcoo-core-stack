@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickTicketDependencies, type TicketDependencies } from './dependencies';
 import { randomUUID } from 'node:crypto';
 
 import type { DbExecutor } from '../../db/types';
@@ -68,10 +69,12 @@ function formatSystemStatusMessage(status: SupportTicketStatus) {
 export class TicketService {
   private readonly repository: TicketRepository;
 
+  private readonly capabilities: TicketDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: TicketDependencies,
     private readonly db: DbExecutor,
   ) {
+    this.capabilities = pickTicketDependencies(capabilities);
     this.repository = new TicketRepository(db);
   }
 
@@ -125,13 +128,13 @@ export class TicketService {
       ),
     ];
 
-    const [users, apps, orders, installs, deployments, messageCounts] = await Promise.all([
-      createAuthAccess(this.db).listUsersByIds([...new Set([...userIds, ...assigneeIds])]),
-      createAppAccess(this.db).listAppsByIds(appIds),
-      this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
-      this.capabilities.createInstallAccess(this.db).listInstallsByIds(installIds),
-      this.capabilities.createDeploymentAccess(this.db).listDeploymentsByIds(deploymentIds),
-      this.repository.listMessageCountsByTicketIds(tickets.map((ticket) => ticket.id)),
+    const [users, apps, orders, installs, deployments, messageCounts] = await queryBatch(this.db, [
+      () => createAuthAccess(this.db).listUsersByIds([...new Set([...userIds, ...assigneeIds])]),
+      () => createAppAccess(this.db).listAppsByIds(appIds),
+      () => this.capabilities.createBillingAccess(this.db).listOrdersByIds(orderIds),
+      () => this.capabilities.createInstallAccess(this.db).listInstallsByIds(installIds),
+      () => this.capabilities.createDeploymentAccess(this.db).listDeploymentsByIds(deploymentIds),
+      () => this.repository.listMessageCountsByTicketIds(tickets.map((ticket) => ticket.id)),
     ]);
 
     const userMap = new Map(users.map((item) => [item.id, item]));
@@ -235,19 +238,22 @@ export class TicketService {
     const extensionInstallId = normalizeString(input.extensionInstallId);
     const deploymentId = normalizeString(input.deploymentId);
 
-    const [app, order, install, deployment] = await Promise.all([
-      appCode ? createAppAccess(this.db).findAppByCode(appCode) : Promise.resolve(null),
-      orderNo
-        ? this.capabilities.createBillingAccess(this.db).findOrderByOrderNo(orderNo)
-        : Promise.resolve(null),
-      extensionInstallId
-        ? this.capabilities
-            .createInstallAccess(this.db)
-            .findInstallByExtensionInstallId(extensionInstallId)
-        : Promise.resolve(null),
-      deploymentId
-        ? this.capabilities.createDeploymentAccess(this.db).findDeploymentById(deploymentId)
-        : Promise.resolve(null),
+    const [app, order, install, deployment] = await queryBatch(this.db, [
+      () => (appCode ? createAppAccess(this.db).findAppByCode(appCode) : Promise.resolve(null)),
+      () =>
+        orderNo
+          ? this.capabilities.createBillingAccess(this.db).findOrderByOrderNo(orderNo)
+          : Promise.resolve(null),
+      () =>
+        extensionInstallId
+          ? this.capabilities
+              .createInstallAccess(this.db)
+              .findInstallByExtensionInstallId(extensionInstallId)
+          : Promise.resolve(null),
+      () =>
+        deploymentId
+          ? this.capabilities.createDeploymentAccess(this.db).findDeploymentById(deploymentId)
+          : Promise.resolve(null),
     ]);
 
     if (appCode && !app) {

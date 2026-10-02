@@ -2,6 +2,7 @@ import type { AppEnv } from '../lib/env';
 import { AuditLogService } from '../lib/audit-logs';
 import { JobRunService } from '../modules/jobs/service';
 import { JobHandlerRegistry } from '../modules/jobs/public';
+import { AdminService } from '../modules/admin/service';
 import { AlertDeliveryService } from '../modules/admin/alert-delivery';
 import { createDatabase, createRedis } from './connections';
 import { createServiceFactories } from './service-factories';
@@ -42,6 +43,8 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
     registry,
     jobs: new JobRunService(db, env),
     audits: new AuditLogService(db),
-    alertDelivery: new AlertDeliveryService(db, env),
+    alertDelivery: new AlertDeliveryService(db, env, () =>
+      new AdminService(factories, db, env).getObservabilitySummary(),
+    ),
   };
 }

@@ -1,10 +1,10 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickAppDependencies, type AppDependencies } from './dependencies';
 import { randomBytes } from 'node:crypto';
 
 import type { DbExecutor } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
-import { listDeliveryManifestFields, normalizeDeliveryManifest } from '../../lib/delivery-manifest';
-import { DeliverySettingsService } from '../../lib/delivery-settings';
+import { AppManifestService } from './manifest-service';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -37,15 +37,13 @@ export type CheckoutOffer = {
 };
 
 export class AppService {
+  private readonly capabilities: AppDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: AppDependencies,
     private readonly db: DbExecutor,
     private readonly env?: AppEnv,
-  ) {}
-
-  private requireEnv() {
-    if (!this.env) throw httpError(503, 'Application runtime settings are unavailable');
-    return this.env;
+  ) {
+    this.capabilities = pickAppDependencies(capabilities);
   }
 
   private isDeletedApp(app: { meta: unknown }) {
@@ -138,10 +136,10 @@ export class AppService {
     const licenseRepository = this.capabilities.createLicenseAccess(this.db);
     const appIds = appRecords.map((app) => app.id);
 
-    const [plans, features, offers] = await Promise.all([
-      licenseRepository.listPlansByAppIds(appIds),
-      licenseRepository.listFeatures(),
-      repository.listOffersByAppIds(appIds),
+    const [plans, features, offers] = await queryBatch(this.db, [
+      () => licenseRepository.listPlansByAppIds(appIds),
+      () => licenseRepository.listFeatures(),
+      () => repository.listOffersByAppIds(appIds),
     ]);
 
     const plansByAppId = new Map<string, PlanRecord[]>();
@@ -323,11 +321,11 @@ export class AppService {
     const licenseRepository = this.capabilities.createLicenseAccess(this.db);
     const appRepository = new AppRepository(this.db);
 
-    const [plans, appFeatures, offers, planFeatures] = await Promise.all([
-      licenseRepository.listPlansByAppId(app.id),
-      licenseRepository.listFeaturesByAppId(app.id),
-      appRepository.listOffersByAppId(app.id),
-      licenseRepository.listPlanFeatureMappings(),
+    const [plans, appFeatures, offers, planFeatures] = await queryBatch(this.db, [
+      () => licenseRepository.listPlansByAppId(app.id),
+      () => licenseRepository.listFeaturesByAppId(app.id),
+      () => appRepository.listOffersByAppId(app.id),
+      () => licenseRepository.listPlanFeatureMappings(),
     ]);
 
     const planIds = new Set(plans.map((p) => p.id));
@@ -775,156 +773,16 @@ export class AppService {
     return nextMeta;
   }
 
-  private normalizeDeliveryManifestSource(value: unknown) {
-    const raw = this.normalizeMeta(value);
-    return {
-      repoUrl: typeof raw.repoUrl === 'string' ? raw.repoUrl.trim() : '',
-      repoBranch: typeof raw.repoBranch === 'string' ? raw.repoBranch.trim() : '',
-      manifestPath: typeof raw.manifestPath === 'string' ? raw.manifestPath.trim() : '',
-      manifestUrl: typeof raw.manifestUrl === 'string' ? raw.manifestUrl.trim() : '',
-    };
-  }
-
-  private resolveDeliveryManifestUrl(input: {
-    repoUrl?: string;
-    repoBranch?: string;
-    manifestPath?: string;
-    manifestUrl?: string;
-  }) {
-    if (input.manifestUrl?.trim()) {
-      return input.manifestUrl.trim();
-    }
-
-    const repoUrl = input.repoUrl?.trim() ?? '';
-    const repoBranch = input.repoBranch?.trim() || 'main';
-    const manifestPath = input.manifestPath?.trim() || 'fd-delivery.manifest.json';
-
-    if (!repoUrl) {
-      throw httpError(422, 'Delivery manifest source repoUrl is not configured');
-    }
-
-    const httpsMatch = repoUrl.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/i);
-    const sshMatch = repoUrl.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i);
-    const match = httpsMatch ?? sshMatch;
-
-    if (!match) {
-      throw httpError(422, 'Only GitHub repository URLs are supported for manifest sync');
-    }
-
-    const [, owner, repo] = match;
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${repoBranch}/${manifestPath}`;
-  }
-
   async syncDeliveryManifest(
     appCode: string,
-    input: {
-      repoUrl?: string;
-      repoBranch?: string;
-      manifestPath?: string;
-      manifestUrl?: string;
-    },
+    input: { repoUrl?: string; repoBranch?: string; manifestPath?: string; manifestUrl?: string },
     actorUserId: string,
   ) {
-    const app = await new AppRepository(this.db).findAppByCode(appCode);
-    if (!app) {
-      throw httpError(404, 'App not found');
-    }
-
-    const meta = this.normalizeMeta(app.meta);
-    const currentSource = this.normalizeDeliveryManifestSource(meta.deliveryManifestSource);
-    const currentManifest = this.normalizeMeta(meta.deliveryManifest);
-    const currentInstaller = this.normalizeMeta(currentManifest.installer);
-
-    const nextSource = {
-      repoUrl:
-        input.repoUrl?.trim() ||
-        currentSource.repoUrl ||
-        (typeof currentInstaller.repoUrl === 'string' ? currentInstaller.repoUrl.trim() : ''),
-      repoBranch:
-        input.repoBranch?.trim() ||
-        currentSource.repoBranch ||
-        (typeof currentInstaller.repoBranch === 'string'
-          ? currentInstaller.repoBranch.trim()
-          : 'main'),
-      manifestPath:
-        input.manifestPath?.trim() || currentSource.manifestPath || 'fd-delivery.manifest.json',
-      manifestUrl: input.manifestUrl?.trim() || currentSource.manifestUrl || '',
-    };
-
-    const manifestUrl = this.resolveDeliveryManifestUrl(nextSource);
-    let response: Response;
-
-    try {
-      response = await fetch(manifestUrl, { signal: AbortSignal.timeout(10_000) });
-    } catch (error) {
-      throw httpError(
-        502,
-        `Failed to fetch delivery manifest: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
-    }
-
-    if (!response.ok) {
-      throw httpError(502, `Failed to fetch delivery manifest: ${response.status}`);
-    }
-
-    let remoteManifest: unknown;
-    try {
-      remoteManifest = (await response.json()) as unknown;
-    } catch (error) {
-      throw httpError(
-        502,
-        `Failed to parse delivery manifest JSON: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
-    }
-
-    const manifest = normalizeDeliveryManifest(remoteManifest);
-
-    if (!manifest) {
-      throw httpError(502, 'Delivery manifest is empty or invalid');
-    }
-
-    const nextMeta = {
-      ...meta,
-      deliveryManifest: remoteManifest,
-      deliveryManifestSource: nextSource,
-    };
-
-    await new AppRepository(this.db).updateAppMetaByCode(appCode, nextMeta);
-
-    const presetDefaults = Object.fromEntries(
-      listDeliveryManifestFields(manifest, { scope: 'preset', includeSecrets: false })
-        .filter((field) => typeof field.defaultValue !== 'undefined')
-        .map((field) => [field.key, field.defaultValue!]),
-    );
-
-    const installerPatch = {
-      repoUrl: manifest.installer.repoUrl || nextSource.repoUrl || undefined,
-      repoBranch: manifest.installer.repoBranch || nextSource.repoBranch || undefined,
-    };
-
-    await new DeliverySettingsService(this.db, this.requireEnv()).upsertSettings(
+    await new AppManifestService(this.capabilities, this.db, this.env).sync(
       appCode,
-      {
-        values: presetDefaults,
-        installer: installerPatch,
-      },
+      input,
       actorUserId,
     );
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId: actorUserId,
-      appId: app.id,
-      eventName: 'app.delivery_manifest_synced',
-      properties: {
-        appCode,
-        manifestUrl,
-        repoUrl: nextSource.repoUrl,
-        repoBranch: nextSource.repoBranch,
-        manifestPath: nextSource.manifestPath || null,
-        appliedPresetDefaults: Object.keys(presetDefaults),
-      },
-    });
-
     return this.getManagedApp(appCode);
   }
 }

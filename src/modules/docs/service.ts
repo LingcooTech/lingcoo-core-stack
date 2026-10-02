@@ -1,4 +1,4 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { pickDocsDependencies, type DocsDependencies } from './dependencies';
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { DocsRepository } from './repository';
@@ -50,10 +50,12 @@ type DocPageNode = {
 export class DocsService {
   private readonly repository: DocsRepository;
 
+  private readonly capabilities: DocsDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: DocsDependencies,
     private readonly db: DbExecutor,
   ) {
+    this.capabilities = pickDocsDependencies(capabilities);
     this.repository = new DocsRepository(db);
   }
 

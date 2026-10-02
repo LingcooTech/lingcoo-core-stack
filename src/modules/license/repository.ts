@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, gte, ilike, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 
 import { apps, entitlements, features, orders, planFeatures, plans, users } from '../../db/schema';
@@ -371,26 +372,28 @@ export class LicenseRepository {
       eq(entitlements.sourceId, orders.id),
     );
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: entitlements })
-        .from(entitlements)
-        .leftJoin(users, eq(entitlements.userId, users.id))
-        .leftJoin(apps, eq(entitlements.appId, apps.id))
-        .leftJoin(plans, eq(entitlements.planId, plans.id))
-        .leftJoin(orders, orderJoin)
-        .where(where)
-        .orderBy(desc(entitlements.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(entitlements)
-        .leftJoin(users, eq(entitlements.userId, users.id))
-        .leftJoin(apps, eq(entitlements.appId, apps.id))
-        .leftJoin(plans, eq(entitlements.planId, plans.id))
-        .leftJoin(orders, orderJoin)
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: entitlements })
+          .from(entitlements)
+          .leftJoin(users, eq(entitlements.userId, users.id))
+          .leftJoin(apps, eq(entitlements.appId, apps.id))
+          .leftJoin(plans, eq(entitlements.planId, plans.id))
+          .leftJoin(orders, orderJoin)
+          .where(where)
+          .orderBy(desc(entitlements.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(entitlements)
+          .leftJoin(users, eq(entitlements.userId, users.id))
+          .leftJoin(apps, eq(entitlements.appId, apps.id))
+          .leftJoin(plans, eq(entitlements.planId, plans.id))
+          .leftJoin(orders, orderJoin)
+          .where(where),
     ]);
 
     return {

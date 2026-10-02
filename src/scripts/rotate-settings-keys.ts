@@ -1,6 +1,6 @@
 import { createDatabase } from '../composition/connections';
 import { loadEnv } from '../lib/env';
-import { rotateSettingKeys } from '../modules/settings/key-rotation';
+import { rotateSettingKeys } from '../composition/settings-key-rotation';
 async function main() {
   const env = loadEnv();
   const { db, pool } = createDatabase(env);

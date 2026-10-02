@@ -1,4 +1,4 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { pickContentDependencies, type ContentDependencies } from './dependencies';
 import * as cheerio from 'cheerio';
 
 import type { DbExecutor } from '../../db/types';
@@ -271,10 +271,12 @@ function renderNotionBlocks(blocks: NotionBlock[]) {
 export class ContentService {
   private readonly repository: ContentRepository;
 
+  private readonly capabilities: ContentDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: ContentDependencies,
     private readonly db: DbExecutor,
   ) {
+    this.capabilities = pickContentDependencies(capabilities);
     this.repository = new ContentRepository(db);
   }
 

@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { withTimeout } from '../../runtime/lifecycle';
 import { httpError } from '../../lib/errors';
-import { PublicPagesSettingsService } from '../../lib/public-pages-settings';
-import { SiteSettingsService } from '../../lib/site-settings';
+import { PublicPagesSettingsService } from '../settings/public';
+import { SiteSettingsService } from '../settings/public';
 import { moduleNames } from '../names';
 
 export const systemRoutes: FastifyPluginAsync = async (app) => {

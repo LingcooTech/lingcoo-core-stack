@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import { PaymentSettingsService } from '../../lib/payment-settings';
+import { PaymentSettingsService } from '../settings/public';
 import { getBillingProviderAdapter } from './providers';
 import { createOrderSchema, orderNoParamsSchema } from './schemas';
 

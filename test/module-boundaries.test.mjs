@@ -22,6 +22,21 @@ function fixture(files) {
   }
   return { root, close: () => rmSync(root, { recursive: true, force: true }) };
 }
+test('modules cannot import runtime composition or legacy settings bridges', () => {
+  const f = fixture({
+    'src/composition/service-factories.ts': 'export interface ServiceFactories {}',
+    'src/lib/site-settings.ts': 'export const read = () => {};',
+    'src/modules/billing/service.ts':
+      "import type { ServiceFactories } from '../../composition/service-factories'; import { read } from '../../lib/site-settings';",
+  });
+  try {
+    const found = collectViolations(f.root);
+    assert(found.some((v) => v.rule === 'module-composition-dependency'));
+    assert(found.some((v) => v.rule === 'legacy-settings-import'));
+  } finally {
+    f.close();
+  }
+});
 test('boundary checker rejects static, aliased, require and dynamic private imports', () => {
   const f = fixture({
     'src/modules/billing/service.ts': `import {secret} from '../auth/repository'; import {secret as other} from '@modules/auth/repository'; require('../auth/repository'); import('../auth/repository'); import(getPath());`,

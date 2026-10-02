@@ -1,4 +1,5 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { queryBatch } from '../../db/query-batch';
+import { pickCheckoutDependencies, type CheckoutDependencies } from './dependencies';
 import QRCode from 'qrcode';
 
 import type { DbExecutor } from '../../db/types';
@@ -24,11 +25,14 @@ function normalizeMeta(value: unknown) {
 }
 
 export class CheckoutService {
+  private readonly capabilities: CheckoutDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: CheckoutDependencies,
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickCheckoutDependencies(capabilities);
+  }
 
   private resolveEffectiveStatus(
     session: SessionRecord,
@@ -86,10 +90,10 @@ export class CheckoutService {
       throw httpError(404, 'Checkout session not found');
     }
 
-    const [order, app, plan] = await Promise.all([
-      this.capabilities.createBillingAccess(this.db).findOrderById(session.orderId),
-      createAppAccess(this.db).findAppById(session.appId),
-      this.capabilities.createLicenseAccess(this.db).getPlanById(session.planId),
+    const [order, app, plan] = await queryBatch(this.db, [
+      () => this.capabilities.createBillingAccess(this.db).findOrderById(session.orderId),
+      () => createAppAccess(this.db).findAppById(session.appId),
+      () => this.capabilities.createLicenseAccess(this.db).getPlanById(session.planId),
     ]);
 
     if (!order || !app || !plan) {

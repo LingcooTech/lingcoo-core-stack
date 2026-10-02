@@ -1,4 +1,4 @@
-import type { ServiceFactories } from '../../composition/service-factories';
+import { pickAuthDependencies, type AuthDependencies } from './dependencies';
 import { randomInt } from 'node:crypto';
 
 import type { DbExecutor } from '../../db/types';
@@ -7,7 +7,7 @@ import { httpError } from '../../lib/errors';
 import { JobRunService } from '../../lib/job-runs';
 import { Mailer } from '../../lib/mailer';
 import { hashPasswordAsync, verifyPasswordAsync } from '../../lib/security';
-import { SmtpSettingsService } from '../../lib/smtp-settings';
+import { SmtpSettingsService } from '../settings/public';
 
 import { AuthRepository } from './repository';
 
@@ -23,11 +23,14 @@ type LoginInput = {
 };
 
 export class AuthService {
+  private readonly capabilities: AuthDependencies;
   constructor(
-    private readonly capabilities: ServiceFactories,
+    capabilities: AuthDependencies,
     private readonly db: DbExecutor,
     private readonly env?: AppEnv,
-  ) {}
+  ) {
+    this.capabilities = pickAuthDependencies(capabilities);
+  }
 
   private generateVerificationCode(): string {
     return String(randomInt(0, 1_000_000)).padStart(6, '0');

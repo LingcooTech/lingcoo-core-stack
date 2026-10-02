@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 
 import {
@@ -246,26 +247,28 @@ export class TicketRepository {
 
     const where = and(...conditions);
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: supportTickets })
-        .from(supportTickets)
-        .leftJoin(apps, eq(supportTickets.appId, apps.id))
-        .leftJoin(orders, eq(supportTickets.orderId, orders.id))
-        .leftJoin(installs, eq(supportTickets.installId, installs.id))
-        .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where)
-        .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(supportTickets)
-        .leftJoin(apps, eq(supportTickets.appId, apps.id))
-        .leftJoin(orders, eq(supportTickets.orderId, orders.id))
-        .leftJoin(installs, eq(supportTickets.installId, installs.id))
-        .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: supportTickets })
+          .from(supportTickets)
+          .leftJoin(apps, eq(supportTickets.appId, apps.id))
+          .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+          .leftJoin(installs, eq(supportTickets.installId, installs.id))
+          .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
+          .where(where)
+          .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(supportTickets)
+          .leftJoin(apps, eq(supportTickets.appId, apps.id))
+          .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+          .leftJoin(installs, eq(supportTickets.installId, installs.id))
+          .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
+          .where(where),
     ]);
 
     return {
@@ -332,28 +335,30 @@ export class TicketRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [rows, countResult] = await Promise.all([
-      this.db
-        .select({ item: supportTickets })
-        .from(supportTickets)
-        .leftJoin(users, eq(supportTickets.userId, users.id))
-        .leftJoin(apps, eq(supportTickets.appId, apps.id))
-        .leftJoin(orders, eq(supportTickets.orderId, orders.id))
-        .leftJoin(installs, eq(supportTickets.installId, installs.id))
-        .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where)
-        .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(supportTickets)
-        .leftJoin(users, eq(supportTickets.userId, users.id))
-        .leftJoin(apps, eq(supportTickets.appId, apps.id))
-        .leftJoin(orders, eq(supportTickets.orderId, orders.id))
-        .leftJoin(installs, eq(supportTickets.installId, installs.id))
-        .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
-        .where(where),
+    const [rows, countResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({ item: supportTickets })
+          .from(supportTickets)
+          .leftJoin(users, eq(supportTickets.userId, users.id))
+          .leftJoin(apps, eq(supportTickets.appId, apps.id))
+          .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+          .leftJoin(installs, eq(supportTickets.installId, installs.id))
+          .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
+          .where(where)
+          .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(supportTickets)
+          .leftJoin(users, eq(supportTickets.userId, users.id))
+          .leftJoin(apps, eq(supportTickets.appId, apps.id))
+          .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+          .leftJoin(installs, eq(supportTickets.installId, installs.id))
+          .leftJoin(deployments, eq(supportTickets.deploymentId, deployments.id))
+          .where(where),
     ]);
 
     return {

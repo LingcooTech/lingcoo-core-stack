@@ -1,11 +1,9 @@
-import { rotateIdempotencyKeyring } from '../idempotency/public';
-import { rotateDeliveryKeyring } from '../deployment/public';
 import { eq } from 'drizzle-orm';
 import { systemSettings } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { decryptJson, encryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
-export async function rotateSettingKeys(db: DbExecutor, env: AppEnv, dryRun = true) {
+export async function rotateGlobalSettingKeys(db: DbExecutor, env: AppEnv, dryRun = true) {
   const keyring = getEncryptionKeys(env);
   return db.transaction(async (tx) => {
     let checked = 0,
@@ -28,11 +26,9 @@ export async function rotateSettingKeys(db: DbExecutor, env: AppEnv, dryRun = tr
           .set({ value: encryptJson(plain, keyring), updatedAt: new Date() })
           .where(eq(systemSettings.key, row.key));
     }
-    const delivery = await rotateDeliveryKeyring(tx, keyring, dryRun);
-    const requests = await rotateIdempotencyKeyring(tx, env, dryRun);
     return {
-      checked: checked + delivery.checked + requests.checked,
-      rotated: rotated + delivery.rotated + requests.rotated,
+      checked,
+      rotated,
       dryRun,
       currentKeyId: keyring.currentKeyId,
     };

@@ -1,3 +1,4 @@
+import { queryBatch } from '../../db/query-batch';
 import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm';
 
 import { notifications, users } from '../../db/schema';
@@ -29,7 +30,11 @@ export class NotificationsRepository {
   }
 
   async findById(id: string) {
-    const [item] = await this.db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+    const [item] = await this.db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, id))
+      .limit(1);
     return item ?? null;
   }
 
@@ -52,18 +57,16 @@ export class NotificationsRepository {
 
     const where = and(...conditions);
 
-    const [items, totalResult] = await Promise.all([
-      this.db
-        .select()
-        .from(notifications)
-        .where(where)
-        .orderBy(desc(notifications.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: count() })
-        .from(notifications)
-        .where(where)
+    const [items, totalResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select()
+          .from(notifications)
+          .where(where)
+          .orderBy(desc(notifications.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () => this.db.select({ count: count() }).from(notifications).where(where),
     ]);
 
     return {
@@ -104,41 +107,43 @@ export class NotificationsRepository {
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const [items, totalResult] = await Promise.all([
-      this.db
-        .select({
-          id: notifications.id,
-          userId: notifications.userId,
-          category: notifications.category,
-          level: notifications.level,
-          title: notifications.title,
-          body: notifications.body,
-          ctaLabel: notifications.ctaLabel,
-          ctaUrl: notifications.ctaUrl,
-          status: notifications.status,
-          sourceEventId: notifications.sourceEventId,
-          sourceEventName: notifications.sourceEventName,
-          dedupeKey: notifications.dedupeKey,
-          meta: notifications.meta,
-          readAt: notifications.readAt,
-          archivedAt: notifications.archivedAt,
-          createdAt: notifications.createdAt,
-          updatedAt: notifications.updatedAt,
-          userEmail: users.email,
-          userDisplayName: users.displayName,
-          userStatus: users.status,
-        })
-        .from(notifications)
-        .leftJoin(users, eq(notifications.userId, users.id))
-        .where(where)
-        .orderBy(desc(notifications.createdAt))
-        .limit(query.limit)
-        .offset(query.offset),
-      this.db
-        .select({ count: count() })
-        .from(notifications)
-        .leftJoin(users, eq(notifications.userId, users.id))
-        .where(where),
+    const [items, totalResult] = await queryBatch(this.db, [
+      () =>
+        this.db
+          .select({
+            id: notifications.id,
+            userId: notifications.userId,
+            category: notifications.category,
+            level: notifications.level,
+            title: notifications.title,
+            body: notifications.body,
+            ctaLabel: notifications.ctaLabel,
+            ctaUrl: notifications.ctaUrl,
+            status: notifications.status,
+            sourceEventId: notifications.sourceEventId,
+            sourceEventName: notifications.sourceEventName,
+            dedupeKey: notifications.dedupeKey,
+            meta: notifications.meta,
+            readAt: notifications.readAt,
+            archivedAt: notifications.archivedAt,
+            createdAt: notifications.createdAt,
+            updatedAt: notifications.updatedAt,
+            userEmail: users.email,
+            userDisplayName: users.displayName,
+            userStatus: users.status,
+          })
+          .from(notifications)
+          .leftJoin(users, eq(notifications.userId, users.id))
+          .where(where)
+          .orderBy(desc(notifications.createdAt))
+          .limit(query.limit)
+          .offset(query.offset),
+      () =>
+        this.db
+          .select({ count: count() })
+          .from(notifications)
+          .leftJoin(users, eq(notifications.userId, users.id))
+          .where(where),
     ]);
 
     return {

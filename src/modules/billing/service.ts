@@ -1,7 +1,7 @@
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
-import { PaymentSettingsService } from '../../lib/payment-settings';
+import { PaymentSettingsService } from '../settings/public';
 import { canAccessAdminConsole, normalizeRole } from '../../lib/rbac';
 import type { DbExecutor } from '../../db/types';
 

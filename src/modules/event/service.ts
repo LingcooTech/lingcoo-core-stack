@@ -1,13 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { ServiceFactories } from '../../composition/service-factories';
 import type { DbExecutor } from '../../db/types';
 import { JobRunService } from '../jobs/public';
 import { EventRepository, type EventRecordInput } from './repository';
 export class EventService {
-  constructor(
-    private readonly capabilities: ServiceFactories,
-    private readonly db: DbExecutor,
-  ) {}
+  constructor(private readonly db: DbExecutor) {}
   async capture(item: EventRecordInput) {
     const records = await this.captureMany([item]);
     return records[0];

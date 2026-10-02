@@ -83,6 +83,10 @@ export function collectViolations(root = process.cwd()) {
       )
         add(file, 'shared-backend-dependency', specifier);
       const dest = moduleOf(target);
+      if (source && target.startsWith(resolve(src, 'composition') + sep))
+        add(file, 'module-composition-dependency', specifier);
+      if (source && /\/lib\/[^/]*settings\.ts$/.test(target))
+        add(file, 'legacy-settings-import', specifier);
       if (source && dest && source !== dest) {
         if (!target.endsWith('/public.ts')) add(file, 'internal-import', specifier);
         if (!typeOnly) {
