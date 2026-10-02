@@ -65,3 +65,27 @@ test('type-only public ports do not create runtime module cycles', () => {
     f.close();
   }
 });
+
+test('shared contracts and modules reject environment access and aliased runtime loaders', () => {
+  const f = fixture({
+    'src/db/schema.ts': `export const users={}; export const unregistered=pgTable('unregistered',{});`,
+    'packages/contracts/src/index.ts': `import {read} from '../../../src/modules/auth/public'; export const value=process['env'].PRIVATE_VALUE;`,
+    'src/modules/billing/service.ts': `import {loadEnv as arbitraryAlias} from '../../lib/env'; arbitraryAlias();`,
+  });
+  try {
+    const found = collectViolations(f.root);
+    assert(found.some((v) => v.rule === 'shared-backend-dependency'));
+    assert(found.some((v) => v.rule === 'table-owner-missing' && v.detail === 'unregistered'));
+    assert(
+      found.some((v) => v.file.startsWith('packages/contracts') && v.rule === 'module-environment'),
+    );
+    assert(
+      found.some(
+        (v) =>
+          v.file.endsWith('billing/service.ts') && v.detail.startsWith('environment-loader-import'),
+      ),
+    );
+  } finally {
+    f.close();
+  }
+});

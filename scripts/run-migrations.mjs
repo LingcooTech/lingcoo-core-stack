@@ -11,42 +11,46 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const migrationsFolder = path.join(projectRoot, 'drizzle');
-const journalPath = path.join(migrationsFolder, 'meta', '_journal.json');
-
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error('DATABASE_URL must explicitly identify the migration target');
 
 const legacyChecks = {
   '0007_app_content_fields': async (client) => {
-    const result = await client.query(`
+    const result = await client.query(
+      `
       select count(*)::int as count
       from information_schema.columns
       where table_schema = 'public'
         and table_name = 'apps'
         and column_name = any($1::text[])
-    `, [[
-      'tagline',
-      'content',
-      'icon_url',
-      'cover_url',
-      'screenshots',
-      'highlights',
-      'faq',
-      'links',
-      'category',
-      'sort_order'
-    ]]);
+    `,
+      [
+        [
+          'tagline',
+          'content',
+          'icon_url',
+          'cover_url',
+          'screenshots',
+          'highlights',
+          'faq',
+          'links',
+          'category',
+          'sort_order',
+        ],
+      ],
+    );
 
     return result.rows[0]?.count === 10;
   },
   '0008_email_verification': async (client) => {
-    const columns = await client.query(`
+    const columns = await client.query(
+      `
       select count(*)::int as count
       from information_schema.columns
       where table_schema = 'public'
         and table_name = 'users'
         and column_name = any($1::text[])
-    `, [['email_verified', 'email_verified_at']]);
+    `,
+      [['email_verified', 'email_verified_at']],
+    );
     const tables = await client.query(`
       select to_regclass('public.email_verification_codes') is not null as present
     `);
@@ -99,14 +103,14 @@ const legacyChecks = {
     `);
 
     return result.rows[0]?.present === true;
-  }
+  },
 };
 
 function log(message) {
   console.log(`[db:migrate] ${message}`);
 }
 
-async function ensureLegacyMigrationRecords(client) {
+async function ensureLegacyMigrationRecords(client, folder) {
   const drizzleTable = await client.query(`
     select to_regclass('drizzle.__drizzle_migrations') as name
   `);
@@ -116,19 +120,30 @@ async function ensureLegacyMigrationRecords(client) {
     return;
   }
 
-  const journal = JSON.parse(await readFile(journalPath, 'utf8'));
+  const journal = JSON.parse(await readFile(path.join(folder, 'meta', '_journal.json'), 'utf8'));
   const entries = journal.entries ?? [];
   const recorded = await client.query(`
-    select hash from drizzle.__drizzle_migrations
+    select hash, created_at from drizzle.__drizzle_migrations
   `);
+  const latest = Math.max(0, ...recorded.rows.map((row) => Number(row.created_at)));
   const recordedHashes = new Set(recorded.rows.map((row) => row.hash));
+
+  for (const entry of entries.filter((entry) => entry.when <= latest && !legacyChecks[entry.tag])) {
+    const hash = createHash('sha256')
+      .update(await readFile(path.join(folder, entry.tag + '.sql'), 'utf8'))
+      .digest('hex');
+    if (!recordedHashes.has(hash))
+      throw new Error(
+        `Missing historical migration ${entry.tag}; manual schema reconciliation is required`,
+      );
+  }
 
   for (const entry of entries) {
     if (!legacyChecks[entry.tag]) {
       continue;
     }
 
-    const sqlPath = path.join(migrationsFolder, `${entry.tag}.sql`);
+    const sqlPath = path.join(folder, `${entry.tag}.sql`);
     const sql = await readFile(sqlPath, 'utf8');
     const hash = createHash('sha256').update(sql).digest('hex');
 
@@ -138,11 +153,16 @@ async function ensureLegacyMigrationRecords(client) {
 
     const alreadyApplied = await legacyChecks[entry.tag](client);
     if (!alreadyApplied) {
+      if (entry.when <= latest)
+        throw new Error(
+          `Legacy schema proof failed for ${entry.tag}; refusing to skip a missing migration`,
+        );
       log(`stopping legacy repair at ${entry.tag}; migration still needs to run normally`);
       return;
     }
 
-    await client.query(`
+    await client.query(
+      `
       insert into drizzle.__drizzle_migrations (hash, created_at)
       select $1, $2
       where not exists (
@@ -150,36 +170,53 @@ async function ensureLegacyMigrationRecords(client) {
         from drizzle.__drizzle_migrations
         where hash = $1
       )
-    `, [hash, entry.when]);
+    `,
+      [hash, entry.when],
+    );
     recordedHashes.add(hash);
     log(`recorded legacy migration ${entry.tag}`);
   }
 }
 
-async function main() {
-  const client = new Client({ connectionString: databaseUrl });
+export async function migrateDatabase(databaseUrl, folder = migrationsFolder) {
+  if (!databaseUrl) throw new Error('DATABASE_URL must explicitly identify the migration target');
+  const client = new Client({
+    connectionString: databaseUrl,
+    connectionTimeoutMillis: 5000,
+    statement_timeout: 120000,
+  });
   await client.connect();
-
+  let locked = false;
   try {
-    await ensureLegacyMigrationRecords(client);
-  } finally {
-    await client.end();
-  }
-
-  const migrateClient = new Client({ connectionString: databaseUrl });
-  await migrateClient.connect();
-
-  try {
-    const db = drizzle(migrateClient);
-    await migrate(db, { migrationsFolder });
+    const deadline = Date.now() + 60000;
+    while (
+      !(locked = (await client.query('select pg_try_advisory_lock(73012402) as locked')).rows[0]
+        .locked)
+    ) {
+      if (Date.now() >= deadline) throw new Error('Migration lock timed out');
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    await client.query('begin');
+    try {
+      await ensureLegacyMigrationRecords(client, folder);
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    }
+    await migrate(drizzle(client), { migrationsFolder: folder });
     log('migrations applied successfully');
   } finally {
-    await migrateClient.end();
+    if (locked) await client.query('select pg_advisory_unlock(73012402)').catch(() => {});
+    await client.end();
   }
 }
 
-main().catch((error) => {
-  console.error('[db:migrate] migration failed');
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  migrateDatabase(process.env.DATABASE_URL).catch(() => {
+    console.error(
+      '[db:migrate] migration failed; deployment must stop. Inspect the target schema and migration records.',
+    );
+    process.exitCode = 1;
+  });
+}

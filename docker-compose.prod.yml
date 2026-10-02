@@ -28,9 +28,10 @@ services:
       retries: 10
 
   api:
-    image: ${FD_CORE_RUNTIME_IMAGE:-ghcr.io/futuredecade/fd-core-stack:latest}
+    image: ${FD_CORE_RUNTIME_IMAGE:?A verified immutable release image is required}
     restart: unless-stopped
     init: true
+    stop_grace_period: 45s
     env_file:
       - .env
     environment:
@@ -54,21 +55,28 @@ services:
       test:
         [
           'CMD-SHELL',
-          'node -e "fetch(''http://127.0.0.1:3000/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
+          'node -e "fetch(''http://127.0.0.1:3000/ready'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
         ]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
   worker:
-    image: ${FD_CORE_RUNTIME_IMAGE:-ghcr.io/futuredecade/fd-core-stack:latest}
+    image: ${FD_CORE_RUNTIME_IMAGE:?A verified immutable release image is required}
     restart: unless-stopped
     init: true
+    stop_grace_period: 45s
     env_file:
       - .env
     environment:
       APP_VERSION: ${APP_VERSION:-development}
+    healthcheck:
+      test: ['CMD', 'node', 'scripts/check-worker-health.mjs']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     command: ['node', 'dist/worker.js']
     depends_on:
       postgres:

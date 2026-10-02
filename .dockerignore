@@ -9,3 +9,14 @@ npm-debug.log*
 Dockerfile*
 docker-compose*.yml
 README.md
+
+**/node_modules
+**/dist
+test
+playwright-report
+test-results
+.deploy-releases
+
+**/.env*
+.env*
+secrets

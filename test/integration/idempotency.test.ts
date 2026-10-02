@@ -4,7 +4,14 @@ import { after, before, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../../src/app';
-import { orders, idempotencyRequests, entitlements, deployments } from '../../src/db/schema';
+import {
+  orders,
+  idempotencyRequests,
+  entitlements,
+  deployments,
+  users,
+  checkoutSessions,
+} from '../../src/db/schema';
 import { WechatPayProvider } from '../../src/modules/billing/providers/wechat-pay';
 import { BillingService } from '../../src/modules/billing/service';
 import { createServiceFactories } from '../../src/composition/service-factories';
@@ -144,4 +151,106 @@ test('deployment replay keeps the original resource and command correlation', as
     .where(eq(deployments.entitlementId, entitlement.id));
   assert.equal(records.length, 1);
   assert.equal(typeof (records[0].meta as { commandId?: string }).commandId, 'string');
+});
+
+test('checkout creation replays the shared response and retains one session', async (t) => {
+  const fixture = await seedPurchase(db);
+  t.mock.method(WechatPayProvider.prototype, 'isConfigured', () => true);
+  let calls = 0;
+  t.mock.method(
+    WechatPayProvider.prototype,
+    'preparePayment',
+    async (context: Parameters<WechatPayProvider['preparePayment']>[0]) => {
+      calls++;
+      return {
+        provider: 'wechat_pay',
+        orderNo: context.order.orderNo,
+        amount: 100,
+        currency: 'CNY',
+        mode: 'native_qr',
+        configured: true,
+        integrationStatus: 'live',
+        notifyUrl: 'https://example.test/notify',
+        nextStep: 'Pay',
+        payload: { codeUrl: 'weixin://fixture' },
+      };
+    },
+  );
+  const headers = {
+    authorization: `Bearer ${app.jwt.sign({ sub: fixture.user.id, kind: 'user' })}`,
+    'idempotency-key': randomUUID(),
+  };
+  const payload = {
+    appCode: fixture.app.code,
+    planCode: fixture.plan.code,
+    providerPreference: 'wechat_pay',
+  };
+  const responses = await Promise.all(
+    [1, 2].map(() =>
+      app.inject({ method: 'POST', url: '/v1/checkout/sessions', headers, payload }),
+    ),
+  );
+  assert.deepEqual(
+    responses.map((r) => r.statusCode),
+    [201, 201],
+  );
+  assert.deepEqual(responses[0].json(), responses[1].json());
+  assert.equal(calls, 1);
+  const rows = await db
+    .select()
+    .from(checkoutSessions)
+    .where(eq(checkoutSessions.userId, fixture.user.id));
+  assert.equal(rows.length, 1);
+  assert.equal(typeof (rows[0].meta as { commandId?: string }).commandId, 'string');
+});
+test('admin refund replay invokes the provider once with its stable refund identifier', async (t) => {
+  const fixture = await seedPurchase(db);
+  await db.update(users).set({ role: 'admin' }).where(eq(users.id, fixture.user.id));
+  await new BillingService(createServiceFactories(), db, env).handlePaymentNotification({
+    kind: 'paid',
+    provider: 'wechat_pay',
+    providerEventId: fixture.order.orderNo,
+    orderNo: fixture.order.orderNo,
+    providerOrderId: 'fixture',
+    amount: 100,
+    currency: 'CNY',
+    paidAt: new Date(),
+    payload: {},
+  });
+  let calls = 0;
+  t.mock.method(WechatPayProvider.prototype, 'refundPayment', async () => {
+    calls++;
+    await delay(100);
+    return {
+      kind: 'processing',
+      provider: 'wechat_pay',
+      orderNo: fixture.order.orderNo,
+      refundId: 'fixture',
+      refundRequestNo: fixture.order.orderNo + '_refund',
+      amount: 100,
+      currency: 'CNY',
+      payload: {},
+      reason: 'Processing',
+    };
+  });
+  const headers = {
+    authorization: `Bearer ${app.jwt.sign({ sub: fixture.user.id, kind: 'user' })}`,
+    'idempotency-key': randomUUID(),
+  };
+  const responses = await Promise.all(
+    [1, 2].map(() =>
+      app.inject({
+        method: 'POST',
+        url: '/v1/admin/orders/' + fixture.order.orderNo + '/refund',
+        headers,
+      }),
+    ),
+  );
+  assert.deepEqual(
+    responses.map((r) => r.statusCode),
+    [200, 200],
+  );
+  assert.deepEqual(responses[0].json(), responses[1].json());
+  assert.equal(calls, 1);
+  assert(responses.some((r) => r.headers['idempotency-replayed'] === 'true'));
 });

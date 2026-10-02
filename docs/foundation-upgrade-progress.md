@@ -55,3 +55,17 @@ Event 不再直接构造通知服务。事件和仅包含 eventId 的通知投�
 关键创建、退款和部署动作支持可选 Idempotency-Key。保留旧客户端兼容；新客户端对同一未完成命令复用 key。数据库按主体、命令与 key 隔离，校验请求摘要，重复请求返回加密保存的结果。支付订单、Checkout 和部署记录关联 commandId。结果保留 24 小时，清理结果后保留摘要墓碑，禁止旧 key 自动复用。超时、进程中断或未知结果不得盲目重试，需先通过订单号、退款请求号或资源 commandId 对账；本轮不宣称跨外部 Provider 的 exactly-once。
 
 28 个隔离数据库/HTTP 回归通过，包含并发订单的单次 Provider 调用、失败安全重放、部署重放与原资源关联。共享包真实双格式消费和客户端协议/取消测试纳入 check；生产镜像与浏览器交互在阶段 F 验证。
+
+## 阶段 F 发布与运行可靠性
+
+已实现独立生产依赖镜像，固定 Node 22 基础镜像 digest 与 GitHub Actions commit。运行时包含 contracts 真实产物、迁移与 Admin 静态资源，排除 TypeScript、tsx、Drizzle Kit、React 和 Vite。共享包及 Admin 构建置于后端源码复制之前，减少后台改动带来的重复前端构建。
+
+发布先完成镜像 smoke，再推送 registry，传递完整 SHA 与 registry digest；服务器按同一 SHA 检出并使用 digest 启动。GitHub concurrency、服务器 flock 与数据库 advisory lock 分别约束发布和迁移。先停止旧 Worker 再迁移。成功后才更新已验证资产；同 SHA 重新发布失败也不能覆盖旧 digest。失败候选配置保留，镜像和数据卷不做自动 prune。回退要求已验证资产与明确 Schema 兼容性，不逆向修改数据库。
+
+API 启动失败释放连接，readiness 探测有超时，排空时返回 503。Worker 停止领取后有界等待，取消或租约丢失不写回迟到结果；硬退出边界覆盖不响应取消的外部工作。健康检查同时查看进程心跳、数据库和 Redis。真实进程 SIGKILL 回归证明租约可由下一 Worker 恢复。
+
+本轮通过完整 check、26 个单元测试、35 个隔离数据库/HTTP 回归与 3 个浏览器流程。新增旧库升级、legacy 修复证据不足、并发 migration、启动依赖故障、非协作 Handler、实际 SIGKILL、Checkout 与退款请求重放测试。浏览器检查登录、订单、权益、部署刷新、Admin SMTP 数字字段及 If-Match、普通用户访问拒绝。
+
+生产 npm 依赖审计为 0 漏洞，整体无 high / critical；开发工具链剩余 4 个 moderate，影响、控制措施与 2026-11-01 复核期限已登记。CI 与周期审计高危失败会阻断，生产依赖另以 moderate 门槛检查。现有 lint warning 设为后端 18、Admin 31 的上限；模块边界债务仍为 0，并增加共享包访问后端、环境加载别名与括号访问的反例。
+
+最终 Node 22 镜像独立 smoke 已通过：真实 Worker 任务、重复迁移、非 root 只读运行、版本与静态资源、启动故障退出、SIGTERM 和保留镜像重启全部通过。容器级故障启动验收包含 Docker 创建与冷加载，限时 60 秒；运行时代码的依赖探测仍限时 5 秒。健康探针为进程启动和依赖检查预留时间，避免短超时下的误判。A–F 已实施；生产切换与数据库备份恢复仍按 [升级操作说明](foundation-release-runbook.md) 单独执行。

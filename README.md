@@ -10,6 +10,8 @@
 
 当前目标不是一次把所有支付细节都写满，而是先把核心中台的 MVP 主流程跑通。
 
+底座升级分支的工程验证、生产切换与回退流程见 [升级操作说明](docs/foundation-release-runbook.md)，分阶段结果见 [实施记录](docs/foundation-upgrade-progress.md)。
+
 ## 技术选择
 
 - 应用框架：Fastify
@@ -78,10 +80,13 @@ docker compose up --build
 - Docs: `http://localhost:8080/docs`
 - Admin: `http://localhost:8080/admin`
 
-生产部署：
+生产部署需先指定通过验证的完整 SHA 镜像，并配置独立 Settings 加密密钥。完整流程见升级操作说明；手动部署也必须先排空旧 Worker：
 
 ```bash
-docker compose -f docker-compose.prod.yml pull
+export FD_CORE_RUNTIME_IMAGE='<registry>/fd-core-stack@sha256:<verified-image-digest>'
+export APP_VERSION='<full-git-sha>'
+docker compose -f docker-compose.prod.yml pull api worker
+docker compose -f docker-compose.prod.yml stop -t 45 worker
 docker compose -f docker-compose.prod.yml up -d postgres redis
 docker compose -f docker-compose.prod.yml run --rm --no-deps \
   -e HOME=/tmp \
@@ -105,16 +110,16 @@ docker compose -f docker-compose.prod.yml up -d api worker caddy
 - 支付配置页面是 `/admin/payments`
 - 微信支付和支付宝参数现在可以通过后台页面直接填写
 - 敏感值以加密方式写入数据库，不再要求把支付密钥长期写在服务器 `.env`
-- `SETTINGS_ENCRYPTION_KEY` 可单独配置；如果留空，当前版本会回退使用 `JWT_SECRET` 做加密派生密钥
-- 如果系统还没有 admin，首个完成注册或登录的账号会自动成为 admin，用来做初始化配置
+- 生产必须配置独立的 `SETTINGS_ENCRYPTION_KEY` 或 Keyring；旧 JWT 密文的读取兼容只用于迁移过渡
+- 管理员通过 `npm run db:bootstrap` 显式初始化，公开注册和登录只保留普通用户身份
 
-完整自动化发布说明见 [DEPLOYMENT.md](/Users/admin/Desktop/fd-core-stack/DEPLOYMENT.md)。
+完整自动化发布说明见 [升级操作说明](docs/foundation-release-runbook.md) 与 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
-本机提交、push 与发布操作说明见 [docs/local-push-deploy-guide.md](/Users/admin/Desktop/fd-core-stack/docs/local-push-deploy-guide.md)。
+本机提交、push 与发布操作说明见 [docs/local-push-deploy-guide.md](docs/local-push-deploy-guide.md)。
 
-中台目标架构说明见 [docs/platform-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/platform-architecture.md)。
+中台目标架构说明见 [docs/platform-architecture.md](docs/platform-architecture.md)。
 
-Admin UI 基线说明见 [docs/admin-ui-architecture.md](/Users/admin/Desktop/fd-core-stack/docs/admin-ui-architecture.md)。
+Admin UI 基线说明见 [docs/admin-ui-architecture.md](docs/admin-ui-architecture.md)。
 
 ## MVP 初始化
 

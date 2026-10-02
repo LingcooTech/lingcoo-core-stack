@@ -6,4 +6,4 @@
 
 Admin 和后端固定使用已有后端锁定版本 Zod 4.3.6，表单 resolver 使用 5.2.2，安装前已核对 React Hook Form 的兼容要求。迁移依据：[Zod 4 迁移指南](https://zod.dev/v4/changelog)、[Resolver 发行记录](https://github.com/react-hook-form/resolvers/releases)。前端编译与关键表单浏览器验证检查类型和交互兼容。
 
-运行镜像需要根 production dependencies 以及两个 workspace 的 manifest 与 dist；不能仅复制根 node_modules 内的 workspace 符号链接。镜像检查验证 CommonJS 的真实 require 和浏览器构建产物。
+运行镜像只需要根 production dependencies 以及 contracts 的 manifest 与 dist；api-client 已进入 Admin 静态产物。不能仅复制根 node_modules 内的 workspace 符号链接。镜像检查验证 CommonJS 的真实 require 和浏览器构建产物。

@@ -1,5 +1,7 @@
 # Deployment
 
+For the foundation upgrade, use [the release runbook](docs/foundation-release-runbook.md). It adds exact-SHA checkout, Worker drain, migration locking, verified rollback assets and production key requirements.
+
 ## Target flow
 
 `git push -> CI -> Docker build in GitHub -> push GHCR + Aliyun ACR -> server pull -> migrate -> start -> health check`

@@ -57,130 +57,117 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
     trustProxy: env.TRUST_PROXY ?? false,
   });
 
-  app.decorate('appEnv', env);
+  app.decorate('isDraining', false);
+  try {
+    app.decorate('appEnv', env);
 
-  app.setErrorHandler((error, request, reply) => {
-    const response = safeErrorResponse(error, request.id);
-    request.log.error(
-      { requestId: request.id, code: response.body.code, statusCode: response.status },
-      'request failed',
-    );
-    return reply.status(response.status).send(response.body);
-  });
+    app.setErrorHandler((error, request, reply) => {
+      const response = safeErrorResponse(error, request.id);
+      request.log.error(
+        { requestId: request.id, code: response.body.code, statusCode: response.status },
+        'request failed',
+      );
+      return reply.status(response.status).send(response.body);
+    });
 
-  await app.register(sensible);
-  await app.register(cors, {
-    origin: normalizeCorsOrigin(env.CORS_ORIGIN),
-    credentials: true,
-    exposedHeaders: ['x-request-id', 'etag', 'idempotency-replayed'],
-  });
-  await app.register(helmet);
-  await app.register(cookie);
-  await app.register(formbody);
-  await app.register(fastifyRawBody, {
-    field: 'rawBody',
-    global: false,
-    encoding: 'utf8',
-    runFirst: true,
-  });
-  await app.register(jwt, {
-    secret: env.JWT_SECRET,
-    cookie: {
-      cookieName: 'fd_core_token',
-      signed: false,
-    },
-  });
-  app.decorate('authenticate', async (request, reply) => {
-    try {
-      await request.jwtVerify();
-      if (
-        request.user.kind === 'app' ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          request.user.sub ?? '',
-        )
-      ) {
-        return reply.unauthorized('A user access token is required');
+    await app.register(sensible);
+    await app.register(cors, {
+      origin: normalizeCorsOrigin(env.CORS_ORIGIN),
+      credentials: true,
+      exposedHeaders: ['x-request-id', 'etag', 'idempotency-replayed'],
+    });
+    await app.register(helmet);
+    await app.register(cookie);
+    await app.register(formbody);
+    await app.register(fastifyRawBody, {
+      field: 'rawBody',
+      global: false,
+      encoding: 'utf8',
+      runFirst: true,
+    });
+    await app.register(jwt, {
+      secret: env.JWT_SECRET,
+      cookie: {
+        cookieName: 'fd_core_token',
+        signed: false,
+      },
+    });
+    app.decorate('authenticate', async (request, reply) => {
+      try {
+        await request.jwtVerify();
+        if (
+          request.user.kind === 'app' ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            request.user.sub ?? '',
+          )
+        ) {
+          return reply.unauthorized('A user access token is required');
+        }
+        const user = await createAuthAccess(app.db).findUserById(request.user.sub);
+        requireUserPrincipal(user, request.user);
+        if (!user) return reply.unauthorized('User is unavailable');
+        request.user.role = user.role;
+        request.user.emailVerified = user.emailVerified;
+      } catch (error) {
+        return reply.unauthorized('Invalid or expired access token');
       }
-      const user = await createAuthAccess(app.db).findUserById(request.user.sub);
-      requireUserPrincipal(user, request.user);
-      if (!user) return reply.unauthorized('User is unavailable');
-      request.user.role = user.role;
-      request.user.emailVerified = user.emailVerified;
-    } catch (error) {
-      return reply.unauthorized('Invalid or expired access token');
-    }
-  });
-  app.decorate('authenticateApp', async (request, reply) => {
-    const tokenHeader = request.headers['x-fd-app-token'];
-    const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
+    });
+    app.decorate('authenticateApp', async (request, reply) => {
+      const tokenHeader = request.headers['x-fd-app-token'];
+      const token = Array.isArray(tokenHeader) ? tokenHeader[0] : tokenHeader;
 
-    if (!token || typeof token !== 'string') {
-      return reply.unauthorized('Missing app token');
-    }
-
-    try {
-      const payload = await app.jwt.verify<{
-        kind?: 'user' | 'app';
-        appId?: string;
-        appCode?: string;
-        secretId?: string;
-      }>(token);
-
-      if (payload.kind !== 'app' || !payload.appId || !payload.appCode || !payload.secretId) {
-        return reply.unauthorized('Invalid app token');
+      if (!token || typeof token !== 'string') {
+        return reply.unauthorized('Missing app token');
       }
 
-      const routeAppCode =
-        request.params && typeof request.params === 'object' && 'appCode' in request.params
-          ? String((request.params as Record<string, unknown>).appCode ?? '').trim()
-          : '';
+      try {
+        const payload = await app.jwt.verify<{
+          kind?: 'user' | 'app';
+          appId?: string;
+          appCode?: string;
+          secretId?: string;
+        }>(token);
 
-      if (routeAppCode && routeAppCode !== payload.appCode) {
-        throw httpError(403, 'App token does not match requested app');
+        if (payload.kind !== 'app' || !payload.appId || !payload.appCode || !payload.secretId) {
+          return reply.unauthorized('Invalid app token');
+        }
+
+        const routeAppCode =
+          request.params && typeof request.params === 'object' && 'appCode' in request.params
+            ? String((request.params as Record<string, unknown>).appCode ?? '').trim()
+            : '';
+
+        if (routeAppCode && routeAppCode !== payload.appCode) {
+          throw httpError(403, 'App token does not match requested app');
+        }
+
+        await app.services.AppService.requireActiveSecretById(payload.appCode, payload.secretId);
+        request.appClient = {
+          appId: payload.appId,
+          appCode: payload.appCode,
+          secretId: payload.secretId,
+        };
+      } catch (error) {
+        if (reply.sent) {
+          return reply;
+        }
+
+        if (error instanceof Error && 'statusCode' in error) {
+          const statusCode =
+            typeof (error as { statusCode?: number }).statusCode === 'number'
+              ? (error as { statusCode: number }).statusCode
+              : 401;
+          if (statusCode >= 500) throw error;
+          return reply.status(statusCode).send({
+            error: error.name || 'UnauthorizedError',
+            message: error.message,
+          });
+        }
+
+        return reply.unauthorized('Invalid or expired app token');
       }
-
-      await app.services.AppService.requireActiveSecretById(payload.appCode, payload.secretId);
-      request.appClient = {
-        appId: payload.appId,
-        appCode: payload.appCode,
-        secretId: payload.secretId,
-      };
-    } catch (error) {
-      if (reply.sent) {
-        return reply;
-      }
-
-      if (error instanceof Error && 'statusCode' in error) {
-        const statusCode =
-          typeof (error as { statusCode?: number }).statusCode === 'number'
-            ? (error as { statusCode: number }).statusCode
-            : 401;
-        if (statusCode >= 500) throw error;
-        return reply.status(statusCode).send({
-          error: error.name || 'UnauthorizedError',
-          message: error.message,
-        });
-      }
-
-      return reply.unauthorized('Invalid or expired app token');
-    }
-  });
-  app.decorate('requireAdmin', async (request, reply) => {
-    const authResult = await app.authenticate(request, reply);
-
-    if (authResult !== undefined) {
-      return authResult;
-    }
-
-    const user = await createAuthAccess(app.db).findUserById(request.user.sub);
-
-    if (!user || !canAccessAdminConsole(normalizeRole(user.role))) {
-      return reply.forbidden('Admin access is required');
-    }
-  });
-  app.decorate('requirePermission', (permissions: AppPermission | AppPermission[]) => {
-    const required = Array.isArray(permissions) ? permissions : [permissions];
-    return async (request, reply) => {
+    });
+    app.decorate('requireAdmin', async (request, reply) => {
       const authResult = await app.authenticate(request, reply);
 
       if (authResult !== undefined) {
@@ -192,77 +179,96 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
       if (!user || !canAccessAdminConsole(normalizeRole(user.role))) {
         return reply.forbidden('Admin access is required');
       }
+    });
+    app.decorate('requirePermission', (permissions: AppPermission | AppPermission[]) => {
+      const required = Array.isArray(permissions) ? permissions : [permissions];
+      return async (request, reply) => {
+        const authResult = await app.authenticate(request, reply);
 
-      requirePermissions(user.role, required);
-    };
-  });
-  app.decorate('requireEmailVerified', async (request, reply) => {
-    const authResult = await app.authenticate(request, reply);
+        if (authResult !== undefined) {
+          return authResult;
+        }
 
-    if (authResult !== undefined) {
-      return authResult;
-    }
+        const user = await createAuthAccess(app.db).findUserById(request.user.sub);
 
-    const user = await createAuthAccess(app.db).findUserById(request.user.sub);
+        if (!user || !canAccessAdminConsole(normalizeRole(user.role))) {
+          return reply.forbidden('Admin access is required');
+        }
 
-    if (!user) {
-      return reply.unauthorized('User not found');
-    }
+        requirePermissions(user.role, required);
+      };
+    });
+    app.decorate('requireEmailVerified', async (request, reply) => {
+      const authResult = await app.authenticate(request, reply);
 
-    if (!user.emailVerified) {
-      return reply.status(403).send({
-        error: 'EmailNotVerified',
-        message: 'Please verify your email address',
-      });
-    }
-  });
-  await app.register(dbPlugin, { env });
-  app.decorate('services', createApiServices(app.db, env, options.factories));
-  registerRequestContracts(app);
-  app.decorate('runAdminCommand', createAdminCommandRunner(app.db, env, options.factories));
-  app.decorate('settings', new SettingsRegistry(app.db));
-  app.addHook('onSend', async (request, reply, payload) => {
-    const key = settingsKeyForPath(request.url);
-    if (key && reply.statusCode < 400) {
-      const version = await app.settings.responseVersion(request, key);
-      reply.header('etag', `"${version}"`);
-      const definition = settingDefinitions[key.split(':')[0] as keyof typeof settingDefinitions];
-      if (request.method === 'GET' && typeof payload === 'string') {
-        const parsed = JSON.parse(payload);
-        return JSON.stringify({
-          ...parsed,
-          configuration: {
-            version,
-            scope: definition.scope,
-            visibility: definition.visibility,
-            precedence: definition.precedence,
-          },
+      if (authResult !== undefined) {
+        return authResult;
+      }
+
+      const user = await createAuthAccess(app.db).findUserById(request.user.sub);
+
+      if (!user) {
+        return reply.unauthorized('User not found');
+      }
+
+      if (!user.emailVerified) {
+        return reply.status(403).send({
+          error: 'EmailNotVerified',
+          message: 'Please verify your email address',
         });
       }
-    }
-    return payload;
-  });
-  await app.register(redisPlugin, { env });
-  await app.register(rateLimit, {
-    redis: app.redis,
-    max: env.RATE_LIMIT_GLOBAL_MAX,
-    timeWindow: env.RATE_LIMIT_GLOBAL_WINDOW,
-  });
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: env.APP_NAME,
-        version: '0.1.0',
+    });
+    await app.register(dbPlugin, { env });
+    app.decorate('services', createApiServices(app.db, env, options.factories));
+    registerRequestContracts(app);
+    app.decorate('runAdminCommand', createAdminCommandRunner(app.db, env, options.factories));
+    app.decorate('settings', new SettingsRegistry(app.db));
+    app.addHook('onSend', async (request, reply, payload) => {
+      const key = settingsKeyForPath(request.url);
+      if (key && reply.statusCode < 400) {
+        const version = await app.settings.responseVersion(request, key);
+        reply.header('etag', `"${version}"`);
+        const definition = settingDefinitions[key.split(':')[0] as keyof typeof settingDefinitions];
+        if (request.method === 'GET' && typeof payload === 'string') {
+          const parsed = JSON.parse(payload);
+          return JSON.stringify({
+            ...parsed,
+            configuration: {
+              version,
+              scope: definition.scope,
+              visibility: definition.visibility,
+              precedence: definition.precedence,
+            },
+          });
+        }
+      }
+      return payload;
+    });
+    await app.register(redisPlugin, { env });
+    await app.register(rateLimit, {
+      redis: app.redis,
+      max: env.RATE_LIMIT_GLOBAL_MAX,
+      timeWindow: env.RATE_LIMIT_GLOBAL_WINDOW,
+    });
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: env.APP_NAME,
+          version: '0.1.0',
+        },
       },
-    },
-  });
-  if (env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production') {
-    await app.register(swaggerUi, { routePrefix: '/api-docs' });
-  }
+    });
+    if (env.API_DOCS_ENABLED ?? env.NODE_ENV !== 'production') {
+      await app.register(swaggerUi, { routePrefix: '/api-docs' });
+    }
 
-  for (const module of appModules) {
-    await app.register(module.register);
-  }
+    for (const module of appModules) {
+      await app.register(module.register);
+    }
 
-  return app;
+    return app;
+  } catch (error) {
+    await app.close().catch(() => {});
+    throw error;
+  }
 }

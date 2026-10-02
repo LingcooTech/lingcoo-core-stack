@@ -15,3 +15,9 @@ secrets/*
 
 .idea
 .vscode
+
+.deploy-releases
+playwright-report
+test-results
+
+.deploy.lock

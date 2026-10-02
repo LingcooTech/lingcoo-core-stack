@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lingcoo_stack_smoke_test
+      POSTGRES_USER: stack_smoke
+      POSTGRES_PASSWORD: smoke_fixture_only
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U stack_smoke -d lingcoo_stack_smoke_test']
+      interval: 1s
+      timeout: 2s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 1s
+      timeout: 2s
+      retries: 30
+  api:
+    image: ${STACK_SMOKE_IMAGE:-lingcoo-stack-foundation:verify}
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    stop_grace_period: 10s
+    environment: &runtime
+      NODE_ENV: production
+      DATABASE_URL: postgres://stack_smoke:smoke_fixture_only@postgres:5432/lingcoo_stack_smoke_test
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: smoke_fixture_signing_key_32_chars_only
+      SETTINGS_ENCRYPTION_KEY: smoke_fixture_settings_key_32_chars_only
+      SETTINGS_ENCRYPTION_ALLOW_LEGACY_JWT: 'false'
+      CORS_ORIGIN: http://127.0.0.1:15440
+      PUBLIC_BASE_URL: http://127.0.0.1:15440
+      PORT: '3000'
+      API_SHUTDOWN_TIMEOUT_MS: '3000'
+      WORKER_SHUTDOWN_TIMEOUT_MS: '3000'
+      WORKER_POLL_INTERVAL_MS: '100'
+      LOG_LEVEL: silent
+    ports: ['127.0.0.1:15440:3000']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+  worker:
+    image: ${STACK_SMOKE_IMAGE:-lingcoo-stack-foundation:verify}
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    stop_grace_period: 10s
+    healthcheck:
+      test: ['CMD', 'node', 'scripts/check-worker-health.mjs']
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: ['node', 'dist/worker.js']
+    environment: *runtime
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }

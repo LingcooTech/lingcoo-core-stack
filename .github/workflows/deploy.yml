@@ -8,6 +8,10 @@ on:
       - completed
   workflow_dispatch:
 
+concurrency:
+  group: stack-production-release
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
@@ -19,7 +23,7 @@ env:
 jobs:
   build-and-push-acr:
     if: >
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main' &&
@@ -28,12 +32,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.image_tag }}
+      runtime_image: ${{ steps.publish.outputs.runtime_image }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
 
       - name: Prepare image variables
         id: vars
@@ -45,30 +55,48 @@ jobs:
           echo "acr_image=${ACR_IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         with:
           driver: docker
 
       - name: Login to Aliyun ACR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ secrets.ACR_REGISTRY }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build and push runtime image to ACR
-        uses: docker/build-push-action@v6
+      - name: Build runtime image for validation
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
-          push: true
+          push: false
+          load: true
           build-args: |
             APP_VERSION=${{ steps.vars.outputs.image_tag }}
           tags: |
-            ${{ steps.vars.outputs.acr_image }}:latest
             ${{ steps.vars.outputs.acr_image }}:${{ steps.vars.outputs.image_tag }}
           labels: |
             org.opencontainers.image.revision=${{ steps.vars.outputs.image_tag }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Verify production runtime before publishing
+        env:
+          STACK_SMOKE_IMAGE: ${{ steps.vars.outputs.acr_image }}:${{ steps.vars.outputs.image_tag }}
+        run: node scripts/verify-production-image.mjs
+
+      - name: Publish verified release to ACR
+        id: publish
+        env:
+          RELEASE_IMAGE: ${{ steps.vars.outputs.acr_image }}
+          RELEASE_SHA: ${{ steps.vars.outputs.image_tag }}
+        run: |
+          docker push "${RELEASE_IMAGE}:${RELEASE_SHA}"
+          docker tag "${RELEASE_IMAGE}:${RELEASE_SHA}" "${RELEASE_IMAGE}:latest"
+          docker push "${RELEASE_IMAGE}:latest"
+          RUNTIME_IMAGE=$(docker image inspect "${RELEASE_IMAGE}:${RELEASE_SHA}" --format '{{index .RepoDigests 0}}')
+          case "$RUNTIME_IMAGE" in "${RELEASE_IMAGE}@sha256:"*) ;; *) exit 1;; esac
+          echo "runtime_image=${RUNTIME_IMAGE}" >> "$GITHUB_OUTPUT"
 
   publish-ghcr:
     needs:
@@ -79,19 +107,19 @@ jobs:
 
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         with:
           driver: docker
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Aliyun ACR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ secrets.ACR_REGISTRY }}
           username: ${{ secrets.ACR_USERNAME }}
@@ -116,12 +144,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup SSH key
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
@@ -142,6 +170,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          FD_CORE_RELEASE_IMAGE: ${{ needs.build-and-push-acr.outputs.runtime_image }}
           FD_CORE_IMAGE_NAME: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ needs.build-and-push-acr.outputs.image_tag }}
         run: |
@@ -156,6 +185,7 @@ jobs:
              DEPLOY_COMPOSE_FILE=$(escape "${DEPLOY_COMPOSE_FILE}") \
              DEPLOY_HEALTHCHECK_URL=$(escape "${DEPLOY_HEALTHCHECK_URL}") \
              DEPLOY_PATH=$(escape "${DEPLOY_PATH}") \
+             FD_CORE_RELEASE_IMAGE=$(escape "${FD_CORE_RELEASE_IMAGE}") \
              FD_CORE_IMAGE_NAME=$(escape "${FD_CORE_IMAGE_NAME}") \
              IMAGE_TAG=$(escape "${IMAGE_TAG}") \
              sh -s" < ./scripts/deploy/deploy.sh

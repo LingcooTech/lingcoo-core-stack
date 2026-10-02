@@ -8,7 +8,6 @@ export default tseslint.config(
     ignores: [
       'node_modules',
       '**/dist',
-      'packages',
       'coverage',
       'admin-ui',
       'drizzle',
@@ -20,7 +19,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'packages/*/src/**/*.ts', 'test/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
@@ -29,6 +28,7 @@ export default tseslint.config(
       },
       globals: {
         ...globals.node,
+        ...globals.browser,
       },
     },
     rules: {

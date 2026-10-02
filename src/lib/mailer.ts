@@ -17,7 +17,7 @@ export interface MailerConfig {
 }
 
 export class Mailer {
-  private transport: nodemailer.Transporter | null = null;
+  private transport: ReturnType<typeof nodemailer.createTransport> | null = null;
   private from: string;
 
   constructor(config?: MailerConfig | null) {

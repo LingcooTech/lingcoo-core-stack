@@ -13,6 +13,7 @@ import type { AppPermission } from '../lib/rbac';
 
 declare module 'fastify' {
   interface FastifyInstance {
+    isDraining: boolean;
     appEnv: AppEnv;
     services: ApiServices;
     settings: SettingsRegistry;

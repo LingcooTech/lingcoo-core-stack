@@ -13,6 +13,6 @@ export const redisPlugin = fp<RedisPluginOptions>(async (app, options) => {
   app.decorate('redis', redis);
 
   app.addHook('onClose', async () => {
-    await redis.quit();
+    redis.disconnect();
   });
 });

@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { withTimeout } from '../../runtime/lifecycle';
+import { httpError } from '../../lib/errors';
 import { PublicPagesSettingsService } from '../../lib/public-pages-settings';
 import { SiteSettingsService } from '../../lib/site-settings';
 import { moduleNames } from '../names';
@@ -12,8 +14,12 @@ export const systemRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/ready', async () => {
-    await app.pg.query('select 1');
-    await app.redis.ping();
+    if (app.isDraining) throw httpError(503, 'Service is draining');
+    try {
+      await withTimeout(Promise.all([app.pg.query('select 1'), app.redis.ping()]), 5000);
+    } catch {
+      throw httpError(503, 'Dependencies unavailable');
+    }
 
     return {
       status: 'ready',

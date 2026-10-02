@@ -25,6 +25,29 @@ export function collectViolations(root = process.cwd()) {
   };
   const add = (file, rule, detail) =>
     violations.push({ file: relative(root, file).split(sep).join('/'), rule, detail });
+  const schemaFile = resolve(src, 'db/schema.ts');
+  if (existsSync(schemaFile)) {
+    const schemaAst = ts.createSourceFile(
+      schemaFile,
+      readFileSync(schemaFile, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const inspectTable = (node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer &&
+        ts.isCallExpression(node.initializer) &&
+        ts.isIdentifier(node.initializer.expression) &&
+        node.initializer.expression.text === 'pgTable' &&
+        !owners[node.name.text]
+      )
+        add(schemaFile, 'table-owner-missing', node.name.text);
+      ts.forEachChild(node, inspectTable);
+    };
+    inspectTable(schemaAst);
+  }
   for (const file of [
     ...walk(src),
     ...walk(resolve(root, 'packages/contracts/src')),
@@ -32,7 +55,11 @@ export function collectViolations(root = process.cwd()) {
   ]) {
     const source = moduleOf(file),
       ast = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true),
-      tables = new Map();
+      tables = new Map(),
+      protectedEnvironment =
+        Boolean(source) ||
+        file.includes('/packages/contracts/src/') ||
+        file.includes('/packages/api-client/src/');
     const dependency = (specifier, typeOnly = false) => {
       const target =
         ts.resolveModuleName(specifier, file, config.options, ts.sys).resolvedModule
@@ -47,6 +74,14 @@ export function collectViolations(root = process.cwd()) {
         /^react|fastify|drizzle|^pg$/.test(specifier)
       )
         add(file, 'client-infrastructure', specifier);
+      if (protectedEnvironment && !typeOnly && /(?:^|\/)lib\/env$/.test(specifier))
+        add(file, 'module-environment', 'environment-loader-import:' + specifier);
+      if (
+        file.includes('/packages/') &&
+        (target.startsWith(src + sep) ||
+          (file.includes('/contracts/src/') && specifier === '@lingcoo/api-client'))
+      )
+        add(file, 'shared-backend-dependency', specifier);
       const dest = moduleOf(target);
       if (source && dest && source !== dest) {
         if (!target.endsWith('/public.ts')) add(file, 'internal-import', specifier);
@@ -105,7 +140,15 @@ export function collectViolations(root = process.cwd()) {
         if (arg && ts.isStringLiteralLike(arg)) dependency(arg.text);
         else if (source) add(file, 'dynamic-dependency', n.getText(ast));
       }
-      if (source && ts.isPropertyAccessExpression(n) && n.getText(ast) === 'process.env')
+      if (
+        protectedEnvironment &&
+        ((ts.isPropertyAccessExpression(n) && n.getText(ast) === 'process.env') ||
+          (ts.isElementAccessExpression(n) &&
+            ts.isIdentifier(n.expression) &&
+            n.expression.text === 'process' &&
+            ts.isStringLiteralLike(n.argumentExpression) &&
+            n.argumentExpression.text === 'env'))
+      )
         add(file, 'module-environment', 'process.env');
       if (
         source &&

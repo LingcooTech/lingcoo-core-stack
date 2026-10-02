@@ -24,7 +24,9 @@ function run(args) {
 }
 run(['scripts/run-migrations.mjs']);
 run(['scripts/run-migrations.mjs']);
-const files = readdirSync('test/integration').filter((file) => file.endsWith('.test.ts'));
+const files = readdirSync('test/integration').filter(
+  (file) => file.endsWith('.test.ts') || file.endsWith('.test.mjs'),
+);
 run([
   '--import',
   'tsx',
