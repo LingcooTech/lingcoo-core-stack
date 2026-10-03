@@ -133,3 +133,16 @@ test('unresolved database write targets fail closed and split schema tables requ
     f.close();
   }
 });
+
+test('split table declarations must live in their registered owner file', () => {
+  const f = fixture({ 'src/db/schema/billing.ts': "export const users=pgTable('users', {});" });
+  try {
+    assert(
+      collectViolations(f.root).some(
+        (v) => v.rule === 'table-owner-file' && v.detail === 'users:auth',
+      ),
+    );
+  } finally {
+    f.close();
+  }
+});

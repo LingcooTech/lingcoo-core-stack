@@ -13,27 +13,30 @@ import type {
 } from './types';
 
 export async function listApps(): Promise<{ items: AppWithDetails[] }> {
-  return apiClient<{ items: AppWithDetails[] }>('/v1/apps');
+  return apiClient('GET /v1/apps', '/v1/apps');
 }
 
 export async function getAppCatalog(appCode: string): Promise<AppCatalog> {
-  return apiClient<AppCatalog>(`/v1/apps/${encodeURIComponent(appCode)}/catalog`);
+  return apiClient(
+    'GET /v1/apps/:param/catalog',
+    `/v1/apps/${encodeURIComponent(appCode)}/catalog`,
+  );
 }
 
 export async function listAppsAdmin(): Promise<{ items: AppWithDetails[] }> {
-  return apiClient<{ items: AppWithDetails[] }>('/v1/admin/apps');
+  return apiClient('GET /v1/admin/apps', '/v1/admin/apps');
 }
 
 export async function listCatalogPlans(): Promise<{ items: PlanSummary[] }> {
-  return apiClient<{ items: PlanSummary[] }>('/v1/plans');
+  return apiClient('GET /v1/plans', '/v1/plans');
 }
 
 export async function listCatalogFeatures(): Promise<{ items: FeatureSummary[] }> {
-  return apiClient<{ items: FeatureSummary[] }>('/v1/features');
+  return apiClient('GET /v1/features', '/v1/features');
 }
 
 export async function listCatalogSnapshot(): Promise<CatalogSnapshot> {
-  return apiClient<CatalogSnapshot>('/v1/catalog');
+  return apiClient('GET /v1/catalog', '/v1/catalog');
 }
 
 export interface UpsertAppInput {
@@ -85,44 +88,44 @@ export interface UpsertAppInput {
 }
 
 export async function upsertApp(appCode: string, payload: UpsertAppInput): Promise<AppWithDetails> {
-  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}`, {
-    method: 'PUT',
+  return apiClient('PUT /v1/admin/apps/:param', `/v1/admin/apps/${encodeURIComponent(appCode)}`, {
     body: JSON.stringify(payload),
   });
 }
 
 export async function archiveApp(appCode: string): Promise<AppWithDetails> {
-  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/archive`, {
-    method: 'POST',
-  });
+  return apiClient(
+    'POST /v1/admin/apps/:param/archive',
+    `/v1/admin/apps/${encodeURIComponent(appCode)}/archive`,
+  );
 }
 
 export async function purgeAppConfiguration(
   appCode: string,
   confirmAppCode: string,
 ): Promise<AppWithDetails> {
-  return apiClient<AppWithDetails>(`/v1/admin/apps/${encodeURIComponent(appCode)}/purge-config`, {
-    method: 'POST',
-    body: JSON.stringify({ confirmAppCode }),
-  });
+  return apiClient(
+    'POST /v1/admin/apps/:param/purge-config',
+    `/v1/admin/apps/${encodeURIComponent(appCode)}/purge-config`,
+    { body: JSON.stringify({ confirmAppCode }) },
+  );
 }
 
 export async function createAppSecret(
   appCode: string,
   expiresAt?: string,
 ): Promise<AppSecretCreated> {
-  return apiClient<AppSecretCreated>(`/v1/admin/apps/${encodeURIComponent(appCode)}/secrets`, {
-    method: 'POST',
-    body: JSON.stringify({ expiresAt: expiresAt ?? null }),
-  });
+  return apiClient(
+    'POST /v1/admin/apps/:param/secrets',
+    `/v1/admin/apps/${encodeURIComponent(appCode)}/secrets`,
+    { body: JSON.stringify({ expiresAt: expiresAt ?? null }) },
+  );
 }
 
 export async function revokeAppSecret(appCode: string, secretId: string): Promise<unknown> {
   return apiClient(
+    'POST /v1/admin/apps/:param/secrets/:param/revoke',
     `/v1/admin/apps/${encodeURIComponent(appCode)}/secrets/${encodeURIComponent(secretId)}/revoke`,
-    {
-      method: 'POST',
-    },
   );
 }
 
@@ -137,11 +140,9 @@ export async function syncAppDeliveryManifest(
   appCode: string,
   payload: SyncAppDeliveryManifestInput,
 ): Promise<AppWithDetails> {
-  return apiClient<AppWithDetails>(
+  return apiClient(
+    'POST /v1/admin/apps/:param/delivery-manifest/sync',
     `/v1/admin/apps/${encodeURIComponent(appCode)}/delivery-manifest/sync`,
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }

@@ -95,11 +95,7 @@ const asset = z.object({
   checksum: z.string().optional(),
   checksumEnv: z.string().optional(),
 });
-export const externalResponseContracts: readonly {
-  method: string;
-  path: string;
-  schema: z.ZodType;
-}[] = [
+export const externalResponseContracts = [
   { method: 'POST', path: '/v1/auth/register', schema: core.authResponseSchema },
   { method: 'POST', path: '/v1/auth/login', schema: core.authResponseSchema },
   {
@@ -257,7 +253,7 @@ export const externalResponseContracts: readonly {
   },
   { method: 'POST', path: '/v1/deployments/status/report', schema: ok },
   { method: 'POST', path: '/v1/deployments/actions/complete', schema: ok },
-];
+] as const satisfies readonly { method: string; path: string; schema: z.ZodType }[];
 // These payment callbacks deliberately use provider-defined XML/plain text, never SDK JSON.
 export const nonJsonResponseRoutes = [
   { method: 'POST', path: '/v1/billing/providers/wechat/notify' },

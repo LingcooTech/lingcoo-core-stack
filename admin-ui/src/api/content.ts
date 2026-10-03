@@ -19,9 +19,9 @@ export async function listPublishedContent(
   } = {},
 ): Promise<ContentListResponse> {
   const qs = buildQueryString(params);
-  return apiClient<ContentListResponse>(`/v1/content${qs ? `?${qs}` : ''}`);
+  return apiClient('GET /v1/content', `/v1/content${qs ? `?${qs}` : ''}`);
 }
 
 export async function getPublishedContent(slug: string): Promise<ContentItem> {
-  return apiClient<ContentItem>(`/v1/content/${encodeURIComponent(slug)}`);
+  return apiClient('GET /v1/content/:param', `/v1/content/${encodeURIComponent(slug)}`);
 }

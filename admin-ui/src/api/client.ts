@@ -1,5 +1,10 @@
-import { createApiClient, ApiError, type ApiRequestOptions } from '@lingcoo/api-client';
-import { isIdempotentCommand } from '@lingcoo/contracts';
+import { createApiClient, ApiError, type EndpointRequestOptions } from '@lingcoo/api-client';
+import {
+  isIdempotentCommand,
+  endpointContract,
+  type EndpointId,
+  type EndpointResponse,
+} from '@lingcoo/contracts';
 const settingVersions = new Map<string, string>();
 const settingVersionKey = (path: string) =>
   path.replace(/^(\/v1\/admin\/payment-settings)\/(wechat|wechat_pay|alipay)$/, '$1');
@@ -31,27 +36,25 @@ const client = createApiClient({
     return response;
   },
 });
-export async function apiClient<T = unknown>(
+export async function apiClient<Id extends EndpointId>(
+  id: Id,
   path: string,
-  options: ApiRequestOptions = {},
-): Promise<T> {
+  options: EndpointRequestOptions = {},
+): Promise<EndpointResponse<Id>> {
+  const { method } = endpointContract(id, path);
   const headers = new Headers(options.headers);
   const version = settingVersions.get(settingVersionKey(path));
-  if (
-    version &&
-    options.method &&
-    ['PUT', 'POST', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())
-  )
+  if (version && ['PUT', 'POST', 'DELETE', 'PATCH'].includes(method))
     headers.set('If-Match', version);
   let key = options.idempotencyKey;
   let fingerprint: string | undefined;
-  if (!key && isIdempotentCommand(options.method ?? 'GET', path)) {
+  if (!key && isIdempotentCommand(method, path)) {
     fingerprint = `${getCsrfToken()}:${path}:${String(options.body ?? '')}`;
     key = pendingCommands.get(fingerprint) ?? crypto.randomUUID();
     pendingCommands.set(fingerprint, key);
   }
   try {
-    const result = await client<T>(path, { ...options, headers, idempotencyKey: key });
+    const result = await client.endpoint(id, path, { ...options, headers, idempotencyKey: key });
     if (fingerprint) pendingCommands.delete(fingerprint);
     return result;
   } catch (error) {

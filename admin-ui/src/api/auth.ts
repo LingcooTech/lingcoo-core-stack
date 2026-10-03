@@ -3,7 +3,6 @@ import type { BrowserAuthResponse } from '@lingcoo/contracts';
 import type {
   BootstrapStatus,
   ChangePasswordResponse,
-  CurrentUserProfile,
   ForgotPasswordResponse,
   ResendVerificationResponse,
   ResetPasswordResponse,
@@ -12,12 +11,11 @@ import type {
 } from './types';
 
 export async function bootstrapStatus(): Promise<BootstrapStatus> {
-  return apiClient<BootstrapStatus>('/v1/admin/bootstrap-status');
+  return apiClient('GET /v1/admin/bootstrap-status', '/v1/admin/bootstrap-status');
 }
 
 export async function login(email: string, password: string): Promise<BrowserAuthResponse> {
-  const response = await apiClient<BrowserAuthResponse>('/v1/auth/session/login', {
-    method: 'POST',
+  const response = await apiClient('POST /v1/auth/session/login', '/v1/auth/session/login', {
     body: JSON.stringify({ email, password }),
   });
   clearToken();
@@ -25,8 +23,7 @@ export async function login(email: string, password: string): Promise<BrowserAut
 }
 
 export async function register(email: string, password: string): Promise<BrowserAuthResponse> {
-  const response = await apiClient<BrowserAuthResponse>('/v1/auth/session/register', {
-    method: 'POST',
+  const response = await apiClient('POST /v1/auth/session/register', '/v1/auth/session/register', {
     body: JSON.stringify({ email, password }),
   });
   clearToken();
@@ -34,17 +31,11 @@ export async function register(email: string, password: string): Promise<Browser
 }
 
 export async function getCurrentUser() {
-  return apiClient<{
-    authenticated: boolean;
-    user: CurrentUserProfile;
-  }>('/v1/me');
+  return apiClient('GET /v1/me', '/v1/me');
 }
 
 export async function updateCurrentUser(displayName: string): Promise<UpdateCurrentUserResponse> {
-  return apiClient<UpdateCurrentUserResponse>('/v1/me', {
-    method: 'PATCH',
-    body: JSON.stringify({ displayName }),
-  });
+  return apiClient('PATCH /v1/me', '/v1/me', { body: JSON.stringify({ displayName }) });
 }
 
 export async function changePassword(
@@ -52,8 +43,7 @@ export async function changePassword(
   newPassword: string,
   confirmPassword: string,
 ): Promise<ChangePasswordResponse> {
-  const result = await apiClient<ChangePasswordResponse>('/v1/me/change-password', {
-    method: 'POST',
+  const result = await apiClient('POST /v1/me/change-password', '/v1/me/change-password', {
     body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
   });
   clearToken();
@@ -62,19 +52,17 @@ export async function changePassword(
 }
 
 export async function verifyEmail(code: string): Promise<VerifyEmailResponse> {
-  return apiClient<VerifyEmailResponse>('/v1/auth/verify-email', {
-    method: 'POST',
+  return apiClient('POST /v1/auth/verify-email', '/v1/auth/verify-email', {
     body: JSON.stringify({ code }),
   });
 }
 
 export async function resendVerification(): Promise<ResendVerificationResponse> {
-  return apiClient<ResendVerificationResponse>('/v1/auth/resend-verification', { method: 'POST' });
+  return apiClient('POST /v1/auth/resend-verification', '/v1/auth/resend-verification');
 }
 
 export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
-  return apiClient<ForgotPasswordResponse>('/v1/auth/forgot-password', {
-    method: 'POST',
+  return apiClient('POST /v1/auth/forgot-password', '/v1/auth/forgot-password', {
     body: JSON.stringify({ email }),
   });
 }
@@ -84,14 +72,13 @@ export async function resetPassword(
   code: string,
   newPassword: string,
 ): Promise<ResetPasswordResponse> {
-  return apiClient<ResetPasswordResponse>('/v1/auth/reset-password', {
-    method: 'POST',
+  return apiClient('POST /v1/auth/reset-password', '/v1/auth/reset-password', {
     body: JSON.stringify({ email, code, newPassword }),
   });
 }
 
 export async function logoutSession(): Promise<void> {
-  await apiClient('/v1/auth/session/logout', { method: 'POST' });
+  await apiClient('POST /v1/auth/session/logout', '/v1/auth/session/logout');
   clearToken();
   window.dispatchEvent(new Event('stack:session-expired'));
 }

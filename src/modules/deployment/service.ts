@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { DeploymentActionUseCases } from './action-use-cases';
 
 import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
 
@@ -13,7 +13,6 @@ import {
   DEFAULT_INSTALLER,
   AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
   type DeploymentStatusReportPayload,
-  type DeploymentActionKind,
   normalizeString,
   normalizeValueRecord,
   normalizeSecretRecord,
@@ -590,216 +589,6 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     return { ok: true };
   }
 
-  async requestDeploymentAction(
-    input: Parameters<DeploymentService['requestDeploymentActionLocked']>[0],
-  ) {
-    return this.db.transaction(async (tx) => {
-      await new DeploymentRepository(tx).lockById(input.deploymentId);
-      return new DeploymentService(this.capabilities, tx, this.env).requestDeploymentActionLocked(
-        input,
-      );
-    });
-  }
-
-  private async requestDeploymentActionLocked(input: {
-    commandId?: string;
-    deploymentId: string;
-    userId: string;
-    kind: DeploymentActionKind;
-  }) {
-    const repository = new DeploymentRepository(this.db);
-    const deployment = await repository.findDeploymentById(input.deploymentId);
-    if (!deployment || deployment.userId !== input.userId) {
-      throw httpError(404, 'Deployment not found');
-    }
-    await this.loadDeploymentEntitlement(deployment);
-
-    const meta = this.normalizeMeta(deployment.meta);
-    const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
-    const runtimeAssetsUpdate = this.normalizeMeta(meta.runtimeAssetsUpdate);
-    const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
-
-    if (input.kind === 'apply_runtime_images' || input.kind === 'ignore_runtime_images') {
-      const hasAvailableRuntimeImage =
-        normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-        normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
-        Object.values(this.normalizeMeta(runtimeAssetsUpdate.available)).some(
-          (value) => normalizeString(value).length > 0,
-        );
-      if (!hasAvailableRuntimeImage) {
-        throw httpError(409, 'No available runtime image update to process');
-      }
-    }
-
-    if (input.kind === 'apply_wordpress_assets' || input.kind === 'ignore_wordpress_assets') {
-      const hasAvailableWordpressAssets =
-        Object.values(this.normalizeMeta(wordpressAssetsUpdate.available)).some(
-          (value) => normalizeString(value).length > 0,
-        ) ||
-        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-          (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
-        );
-      if (!hasAvailableWordpressAssets) {
-        throw httpError(409, 'No available WordPress asset update to process');
-      }
-    }
-
-    if (normalizeString(this.normalizeMeta(meta.pendingAction).id))
-      throw httpError(409, 'A deployment action is already pending');
-    meta.pendingAction = {
-      commandId: input.commandId,
-      id: `fdda_${randomBytes(12).toString('base64url')}`,
-      kind: input.kind,
-      requestedAt: this.capabilities.now().toISOString(),
-      requestedByUserId: input.userId,
-    };
-
-    const updated = await repository.updateDeployment(deployment.id, { meta });
-    if (!updated) {
-      throw httpError(500, 'Failed to queue deployment action');
-    }
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId: deployment.userId,
-      appId: deployment.appId,
-      eventName: 'deployment.action_requested',
-      properties: {
-        deploymentId: deployment.id,
-        kind: input.kind,
-      },
-    });
-
-    return { ok: true };
-  }
-
-  async pullDeploymentAction(input: { deploymentId: string; token: string }) {
-    const repository = new DeploymentRepository(this.db);
-    const deployment = await repository.findDeploymentById(input.deploymentId);
-
-    if (!deployment) {
-      throw httpError(404, 'Deployment not found');
-    }
-
-    const meta = this.normalizeMeta(deployment.meta);
-    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
-    let expectedToken = '';
-
-    if (runtimeStatusReport.token) {
-      try {
-        const decrypted = decryptJson<{ token?: string }>(
-          runtimeStatusReport.token,
-          this.getEncryptionSecret(),
-        );
-        expectedToken = normalizeString(decrypted.token);
-      } catch {
-        expectedToken = '';
-      }
-    }
-
-    if (!expectedToken || expectedToken !== input.token) {
-      throw httpError(401, 'Deployment action token is invalid');
-    }
-
-    const pendingAction = this.normalizeMeta(meta.pendingAction);
-    if (normalizeString(pendingAction.id).length === 0) {
-      return { action: null };
-    }
-
-    return {
-      action: {
-        id: normalizeString(pendingAction.id),
-        kind: normalizeString(pendingAction.kind),
-        requestedAt: normalizeString(pendingAction.requestedAt) || null,
-      },
-    };
-  }
-
-  async completeDeploymentAction(
-    input: Parameters<DeploymentService['completeDeploymentActionLocked']>[0],
-  ) {
-    return this.db.transaction(async (tx) => {
-      await new DeploymentRepository(tx).lockById(input.deploymentId);
-      return new DeploymentService(this.capabilities, tx, this.env).completeDeploymentActionLocked(
-        input,
-      );
-    });
-  }
-
-  private async completeDeploymentActionLocked(input: {
-    deploymentId: string;
-    token: string;
-    actionId: string;
-    status: 'completed' | 'failed';
-    message?: string;
-  }) {
-    const repository = new DeploymentRepository(this.db);
-    const deployment = await repository.findDeploymentById(input.deploymentId);
-
-    if (!deployment) {
-      throw httpError(404, 'Deployment not found');
-    }
-
-    const meta = this.normalizeMeta(deployment.meta);
-    const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
-    let expectedToken = '';
-
-    if (runtimeStatusReport.token) {
-      try {
-        const decrypted = decryptJson<{ token?: string }>(
-          runtimeStatusReport.token,
-          this.getEncryptionSecret(),
-        );
-        expectedToken = normalizeString(decrypted.token);
-      } catch {
-        expectedToken = '';
-      }
-    }
-
-    if (!expectedToken || expectedToken !== input.token) {
-      throw httpError(401, 'Deployment action token is invalid');
-    }
-
-    const pendingAction = this.normalizeMeta(meta.pendingAction);
-    const lastAction = this.normalizeMeta(meta.lastAction);
-    if (
-      !normalizeString(pendingAction.id) &&
-      normalizeString(lastAction.id) === input.actionId &&
-      lastAction.status === input.status
-    )
-      return { ok: true };
-    if (normalizeString(pendingAction.id) !== input.actionId) {
-      throw httpError(409, 'Deployment action does not match the current pending action');
-    }
-
-    meta.lastAction = {
-      id: normalizeString(pendingAction.id),
-      kind: normalizeString(pendingAction.kind),
-      status: input.status,
-      message: normalizeString(input.message),
-      finishedAt: this.capabilities.now().toISOString(),
-    };
-    delete meta.pendingAction;
-
-    const updated = await repository.updateDeployment(deployment.id, { meta });
-    if (!updated) {
-      throw httpError(500, 'Failed to complete deployment action');
-    }
-
-    await this.capabilities.createEventService(this.db).capture({
-      userId: deployment.userId,
-      appId: deployment.appId,
-      eventName:
-        input.status === 'completed' ? 'deployment.action_completed' : 'deployment.action_failed',
-      properties: {
-        deploymentId: deployment.id,
-        kind: normalizeString(pendingAction.kind),
-        message: normalizeString(input.message),
-      },
-    });
-
-    return { ok: true };
-  }
-
   async deactivateDeployment(
     input: Parameters<DeploymentService['deactivateDeploymentLocked']>[0],
   ) {
@@ -842,5 +631,24 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
 
     const [hydrated] = await this.hydrateDeployments([updated]);
     return hydrated;
+  }
+  requestDeploymentAction(
+    input: Parameters<DeploymentActionUseCases['requestDeploymentAction']>[0],
+  ) {
+    return new DeploymentActionUseCases(this.capabilities, this.db, () =>
+      this.getEncryptionSecret(),
+    ).requestDeploymentAction(input);
+  }
+  pullDeploymentAction(input: Parameters<DeploymentActionUseCases['pullDeploymentAction']>[0]) {
+    return new DeploymentActionUseCases(this.capabilities, this.db, () =>
+      this.getEncryptionSecret(),
+    ).pullDeploymentAction(input);
+  }
+  completeDeploymentAction(
+    input: Parameters<DeploymentActionUseCases['completeDeploymentAction']>[0],
+  ) {
+    return new DeploymentActionUseCases(this.capabilities, this.db, () =>
+      this.getEncryptionSecret(),
+    ).completeDeploymentAction(input);
   }
 }

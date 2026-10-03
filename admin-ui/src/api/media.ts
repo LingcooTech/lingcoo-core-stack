@@ -31,14 +31,18 @@ export async function listQiniuImages(
 
   const query = params.toString();
 
-  return apiClient<QiniuImageListResult>(`/v1/admin/media/qiniu/images${query ? `?${query}` : ''}`);
+  return apiClient(
+    'GET /v1/admin/media/qiniu/images',
+    `/v1/admin/media/qiniu/images${query ? `?${query}` : ''}`,
+  );
 }
 
 export async function createQiniuUploadToken(
   payload: CreateQiniuUploadTokenInput,
 ): Promise<QiniuUploadTokenResult> {
-  return apiClient<QiniuUploadTokenResult>('/v1/admin/media/qiniu/upload-token', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiClient(
+    'POST /v1/admin/media/qiniu/upload-token',
+    '/v1/admin/media/qiniu/upload-token',
+    { body: JSON.stringify(payload) },
+  );
 }

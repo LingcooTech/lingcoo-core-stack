@@ -2,7 +2,7 @@ import { externalResponseContracts, nonJsonResponseRoutes } from './external-res
 import { z } from 'zod';
 import * as models from './models.js';
 import * as core from './core-responses.js';
-const clientResponseContracts: readonly { method: string; path: string; schema: z.ZodType }[] = [
+const clientResponseContracts = [
   { method: 'GET', path: '/v1/admin/orders', schema: models.OrdersResponseSchema },
   { method: 'GET', path: '/v1/admin/docs/spaces', schema: models.AdminDocSpaceListResponseSchema },
   { method: 'GET', path: '/v1/admin/docs/spaces/:param', schema: models.AdminDocSpaceDetailSchema },
@@ -426,19 +426,47 @@ const clientResponseContracts: readonly { method: string; path: string; schema: 
     path: '/v1/deployments/:param/actions',
     schema: z.object({ ok: z.literal(true) }),
   },
-];
-export const responseContracts = [...clientResponseContracts, ...externalResponseContracts];
+] as const satisfies readonly { method: string; path: string; schema: z.ZodType }[];
+export const responseContracts = [
+  ...clientResponseContracts,
+  ...externalResponseContracts,
+] as const;
 export function isNonJsonResponseRoute(method: string, path: string) {
   return nonJsonResponseRoutes.some((r) => r.method === method && r.path === path);
 }
 function matchPath(pattern: string, path: string) {
   const a = pattern.split('/');
   const b = path.split('/');
-  return a.length === b.length && a.every((part, i) => part.startsWith(':') || part === b[i]);
+  return (
+    a.length === b.length &&
+    a.every((part, i) => (part.startsWith(':') && Boolean(b[i])) || part === b[i])
+  );
 }
 export function responseSchemaFor(method: string, path: string): z.ZodType | undefined {
   const clean = path.split('?')[0] ?? '';
   return responseContracts.find(
     (r) => r.method === method.toUpperCase() && matchPath(r.path, clean),
   )?.schema;
+}
+
+/** Stable endpoint identity: response types are derived from the registered schema. */
+type Endpoint = (typeof responseContracts)[number];
+export type EndpointId = Endpoint extends infer E
+  ? E extends { method: infer M extends string; path: infer P extends string }
+    ? `${M} ${P}`
+    : never
+  : never;
+type EndpointFor<Id extends EndpointId> = Endpoint extends infer E
+  ? E extends { method: infer M extends string; path: infer P extends string }
+    ? Id extends `${M} ${P}`
+      ? E
+      : never
+    : never
+  : never;
+export type EndpointResponse<Id extends EndpointId> = z.output<EndpointFor<Id>['schema']>;
+export function endpointContract(id: EndpointId, path: string) {
+  const contract = responseContracts.find((r) => `${r.method} ${r.path}` === id);
+  if (!contract || !matchPath(contract.path, path.split('?')[0] ?? ''))
+    throw new Error('Request path does not match endpoint: ' + id);
+  return contract;
 }

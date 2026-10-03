@@ -5,10 +5,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
 import ts from 'typescript';
-import { responseSchemaFor, isNonJsonResponseRoute } from '@lingcoo/contracts';
+import { responseContracts, responseSchemaFor, isNonJsonResponseRoute } from '@lingcoo/contracts';
 import { createApiClient, ProtocolError } from '@lingcoo/api-client';
 
 test('every literal v1 route has a structural response contract or an explicit provider text protocol', () => {
+  const identities = responseContracts.map((route) => `${route.method} ${route.path}`);
+  assert.equal(new Set(identities).size, identities.length, 'Endpoint identities must be unique');
   let count = 0;
   for (const name of readdirSync('src/modules')) {
     let source: string;
@@ -104,33 +106,36 @@ test('client routes resolve to registered server methods and response contracts'
         node.expression.text === 'apiClient'
       ) {
         const target = node.arguments[0];
-        let path: string | undefined;
-        if (target && (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target)))
-          path = target.text;
-        else if (target && ts.isTemplateExpression(target)) {
-          path = target.head.text;
-          for (const span of target.templateSpans) {
+        assert.ok(target && ts.isStringLiteral(target), `${name}: static endpoint ID required`);
+        assert.equal(
+          node.typeArguments?.length ?? 0,
+          0,
+          `${name}: caller response assertions are forbidden`,
+        );
+        const id = target.text;
+        const space = id.indexOf(' ');
+        const method = id.slice(0, space);
+        const path = id.slice(space + 1);
+        const actualTarget = node.arguments[1];
+        let actualPath: string | undefined;
+        if (actualTarget && ts.isStringLiteralLike(actualTarget)) actualPath = actualTarget.text;
+        else if (actualTarget && ts.isTemplateExpression(actualTarget)) {
+          actualPath = actualTarget.head.text;
+          for (const span of actualTarget.templateSpans) {
             if (
               /qs|query|params/.test(span.expression.getText(ast)) &&
               !span.expression.getText(ast).includes('encodeURIComponent')
             )
               break;
-            path += ':param' + span.literal.text;
+            actualPath += ':param' + span.literal.text;
           }
         }
-        assert.ok(path, `${name}: static API path required`);
-        path = path.split('?')[0] ?? '';
-        let method = 'GET';
-        const options = node.arguments[1];
-        if (options && ts.isObjectLiteralExpression(options)) {
-          for (const prop of options.properties)
-            if (
-              ts.isPropertyAssignment(prop) &&
-              prop.name.getText(ast) === 'method' &&
-              ts.isStringLiteral(prop.initializer)
-            )
-              method = prop.initializer.text;
-        }
+        assert.ok(actualPath, `${name}: reviewable API path required`);
+        assert.equal(
+          normalize(actualPath.split('?')[0] ?? ''),
+          path,
+          `${name}: actual path must match endpoint identity`,
+        );
         assert.ok(
           registered.has(`${method} ${normalize(path)}`),
           `Unregistered client route: ${method} ${path}`,

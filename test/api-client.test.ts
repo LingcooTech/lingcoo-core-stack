@@ -85,3 +85,64 @@ test('explicit schemas infer and return validated output, including transformati
   assert.equal(result.count, 2);
   assert.deepEqual(result, { count: 2 });
 });
+
+test('endpoint requests infer response output and reject path mismatches before fetching', async () => {
+  let calls = 0;
+  const request = createApiClient({
+    fetch: async (_url, init) => {
+      calls++;
+      assert.equal(init?.method, 'GET');
+      return Response.json({ hasAdmin: true, ignored: 'extra' });
+    },
+  });
+  const result = await request.endpoint(
+    'GET /v1/admin/bootstrap-status',
+    '/v1/admin/bootstrap-status?probe=1',
+  );
+  const hasAdmin: boolean = result.hasAdmin;
+  assert.equal(hasAdmin, true);
+  assert.deepEqual(result, { hasAdmin: true });
+  await assert.rejects(
+    request.endpoint('GET /v1/admin/bootstrap-status', '/v1/admin/users'),
+    /does not match endpoint/,
+  );
+  await assert.rejects(
+    request.endpoint('GET /v1/admin/orders/:param', '/v1/admin/orders/'),
+    /does not match endpoint/,
+  );
+  assert.equal(calls, 1);
+});
+
+test('endpoint requests enforce the registered parser and method for writes', async () => {
+  const request = createApiClient({
+    fetch: async (_url, init) => {
+      assert.equal(init?.method, 'POST');
+      return Response.json({ changed: 'not-a-boolean' });
+    },
+  });
+  await assert.rejects(
+    request.endpoint('POST /v1/me/change-password', '/v1/me/change-password', { body: '{}' }),
+    ProtocolError,
+  );
+});
+
+// Compile-time regression: these failures must stay failures as the SDK evolves.
+async function endpointTypeChecks() {
+  const request = createApiClient();
+  const result = await request.endpoint(
+    'GET /v1/admin/bootstrap-status',
+    '/v1/admin/bootstrap-status',
+  );
+  // @ts-expect-error Return values come from the registered parser, not caller type assertions.
+  const invalid: string = result.hasAdmin;
+  void invalid;
+  // @ts-expect-error Unknown endpoint identities are rejected.
+  await request.endpoint('GET /v1/unregistered', '/v1/unregistered');
+  await request.endpoint('GET /v1/admin/bootstrap-status', '/v1/admin/bootstrap-status', {
+    // @ts-expect-error Method is part of endpoint identity and cannot be overridden.
+    method: 'POST',
+  });
+  // @ts-expect-error Low-level requests cannot assert an arbitrary response type.
+  await request<{ anything: string }>('/fixture');
+}
+void endpointTypeChecks;

@@ -17,17 +17,18 @@ import type {
 } from './types';
 
 export async function listMyOrders(): Promise<MyOrdersResponse> {
-  return apiClient<MyOrdersResponse>('/v1/billing/orders/me');
+  return apiClient('GET /v1/billing/orders/me', '/v1/billing/orders/me');
 }
 
 export async function syncMyOrder(orderNo: string) {
-  return apiClient(`/v1/billing/orders/${encodeURIComponent(orderNo)}/sync`, {
-    method: 'POST',
-  });
+  return apiClient(
+    'POST /v1/billing/orders/:param/sync',
+    `/v1/billing/orders/${encodeURIComponent(orderNo)}/sync`,
+  );
 }
 
 export async function listMyEntitlements(): Promise<MyEntitlementsResponse> {
-  return apiClient<MyEntitlementsResponse>('/v1/entitlements/me');
+  return apiClient('GET /v1/entitlements/me', '/v1/entitlements/me');
 }
 
 export async function listMyNotifications(
@@ -52,36 +53,31 @@ export async function listMyNotifications(
     if (!normalized) continue;
     qs.set(key, normalized);
   }
-  return apiClient<NotificationsResponse>(
+  return apiClient(
+    'GET /v1/notifications/me',
     `/v1/notifications/me${qs.toString() ? `?${qs.toString()}` : ''}`,
   );
 }
 
 export async function getMyNotificationUnreadCount(): Promise<NotificationUnreadCount> {
-  return apiClient<NotificationUnreadCount>('/v1/notifications/me/unread-count');
+  return apiClient('GET /v1/notifications/me/unread-count', '/v1/notifications/me/unread-count');
 }
 
 export async function markNotificationRead(notificationId: string): Promise<NotificationItem> {
-  return apiClient<NotificationItem>(
+  return apiClient(
+    'POST /v1/notifications/:param/read',
     `/v1/notifications/${encodeURIComponent(notificationId)}/read`,
-    {
-      method: 'POST',
-    },
   );
 }
 
 export async function markAllNotificationsRead(): Promise<{ updatedCount: number }> {
-  return apiClient<{ updatedCount: number }>('/v1/notifications/read-all', {
-    method: 'POST',
-  });
+  return apiClient('POST /v1/notifications/read-all', '/v1/notifications/read-all');
 }
 
 export async function archiveNotification(notificationId: string): Promise<NotificationItem> {
-  return apiClient<NotificationItem>(
+  return apiClient(
+    'POST /v1/notifications/:param/archive',
     `/v1/notifications/${encodeURIComponent(notificationId)}/archive`,
-    {
-      method: 'POST',
-    },
   );
 }
 
@@ -110,7 +106,8 @@ export async function listMyTickets(
     if (!normalized) continue;
     qs.set(key, normalized);
   }
-  return apiClient<SupportTicketsResponse>(
+  return apiClient(
+    'GET /v1/tickets/me',
     `/v1/tickets/me${qs.toString() ? `?${qs.toString()}` : ''}`,
   );
 }
@@ -133,27 +130,26 @@ export async function createMyTicket(payload: {
   subject: string;
   body: string;
 }): Promise<SupportTicketDetail> {
-  return apiClient<SupportTicketDetail>('/v1/tickets', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiClient('POST /v1/tickets', '/v1/tickets', { body: JSON.stringify(payload) });
 }
 
 export async function getMyTicket(ticketNo: string): Promise<SupportTicketDetail> {
-  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}`);
+  return apiClient('GET /v1/tickets/:param', `/v1/tickets/${encodeURIComponent(ticketNo)}`);
 }
 
 export async function replyMyTicket(ticketNo: string, body: string): Promise<SupportTicketDetail> {
-  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}/messages`, {
-    method: 'POST',
-    body: JSON.stringify({ body }),
-  });
+  return apiClient(
+    'POST /v1/tickets/:param/messages',
+    `/v1/tickets/${encodeURIComponent(ticketNo)}/messages`,
+    { body: JSON.stringify({ body }) },
+  );
 }
 
 export async function closeMyTicket(ticketNo: string): Promise<SupportTicketDetail> {
-  return apiClient<SupportTicketDetail>(`/v1/tickets/${encodeURIComponent(ticketNo)}/close`, {
-    method: 'POST',
-  });
+  return apiClient(
+    'POST /v1/tickets/:param/close',
+    `/v1/tickets/${encodeURIComponent(ticketNo)}/close`,
+  );
 }
 
 export async function createCheckoutSession(payload: {
@@ -164,8 +160,7 @@ export async function createCheckoutSession(payload: {
   successUrl?: string;
   cancelUrl?: string;
 }): Promise<CheckoutSessionCreated> {
-  return apiClient<CheckoutSessionCreated>('/v1/checkout/sessions', {
-    method: 'POST',
+  return apiClient('POST /v1/checkout/sessions', '/v1/checkout/sessions', {
     body: JSON.stringify(payload),
   });
 }
@@ -173,7 +168,8 @@ export async function createCheckoutSession(payload: {
 export async function getCheckoutSessionPublic(
   sessionCode: string,
 ): Promise<CheckoutSessionPublic> {
-  return apiClient<CheckoutSessionPublic>(
+  return apiClient(
+    'GET /v1/checkout/sessions/:param/public',
     `/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/public`,
   );
 }
@@ -181,22 +177,21 @@ export async function getCheckoutSessionPublic(
 export async function getCheckoutSessionStatus(
   sessionCode: string,
 ): Promise<CheckoutSessionStatus> {
-  return apiClient<CheckoutSessionStatus>(
+  return apiClient(
+    'GET /v1/checkout/sessions/:param/status',
     `/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/status`,
   );
 }
 
 export async function reconcileCheckoutSession(sessionCode: string): Promise<ReconcileResponse> {
-  return apiClient<ReconcileResponse>(
+  return apiClient(
+    'POST /v1/checkout/sessions/:param/reconcile',
     `/v1/checkout/sessions/${encodeURIComponent(sessionCode)}/reconcile`,
-    {
-      method: 'POST',
-    },
   );
 }
 
 export async function listMyDeployments(): Promise<DeploymentsResponse> {
-  return apiClient<DeploymentsResponse>('/v1/deployments/me');
+  return apiClient('GET /v1/deployments/me', '/v1/deployments/me');
 }
 
 export async function createDeployment(payload: {
@@ -211,10 +206,7 @@ export async function createDeployment(payload: {
   values?: Record<string, string | boolean>;
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {
-  return apiClient<DeploymentSummary>('/v1/deployments', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiClient('POST /v1/deployments', '/v1/deployments', { body: JSON.stringify(payload) });
 }
 
 export async function updateDeployment(payload: {
@@ -229,20 +221,21 @@ export async function updateDeployment(payload: {
   secrets?: Record<string, string>;
 }): Promise<DeploymentSummary> {
   const { deploymentId, ...body } = payload;
-  return apiClient<DeploymentSummary>(`/v1/deployments/${encodeURIComponent(deploymentId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  return apiClient(
+    'PATCH /v1/deployments/:param',
+    `/v1/deployments/${encodeURIComponent(deploymentId)}`,
+    { body: JSON.stringify(body) },
+  );
 }
 
 export async function issueDeploymentToken(payload: {
   deploymentId: string;
   expiresInHours?: number;
 }): Promise<IssueDeploymentTokenResult> {
-  return apiClient<IssueDeploymentTokenResult>(
+  return apiClient(
+    'POST /v1/deployments/:param/tokens',
     `/v1/deployments/${encodeURIComponent(payload.deploymentId)}/tokens`,
     {
-      method: 'POST',
       body: JSON.stringify({
         expiresInHours: payload.expiresInHours ?? 2,
       }),
@@ -253,11 +246,9 @@ export async function issueDeploymentToken(payload: {
 export async function deactivateDeployment(payload: {
   deploymentId: string;
 }): Promise<DeploymentSummary> {
-  return apiClient<DeploymentSummary>(
+  return apiClient(
+    'POST /v1/deployments/:param/deactivate',
     `/v1/deployments/${encodeURIComponent(payload.deploymentId)}/deactivate`,
-    {
-      method: 'POST',
-    },
   );
 }
 
@@ -269,11 +260,9 @@ export async function requestDeploymentAction(payload: {
     | 'ignore_runtime_images'
     | 'ignore_wordpress_assets';
 }): Promise<{ ok: true }> {
-  return apiClient<{ ok: true }>(
+  return apiClient(
+    'POST /v1/deployments/:param/actions',
     `/v1/deployments/${encodeURIComponent(payload.deploymentId)}/actions`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ kind: payload.kind }),
-    },
+    { body: JSON.stringify({ kind: payload.kind }) },
   );
 }

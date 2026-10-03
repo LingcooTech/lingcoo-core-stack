@@ -1,5 +1,8 @@
+import { isEffectiveEntitlement, loadDeploymentEntitlement } from './entitlement-policy';
+import { normalizeDeploymentMeta } from './record-utils';
+import { hydrateDeploymentViews } from './projection';
 import { assembleDeploymentBootstrap, buildExchangeCurl } from './bootstrap-payload';
-import { queryBatch } from '../../db/query-batch';
+
 import { pickDeploymentDependencies, type DeploymentDependencies } from './dependencies';
 import { randomBytes } from 'node:crypto';
 import type { DbExecutor } from '../../db/types';
@@ -24,16 +27,12 @@ import {
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { decryptJson, encryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
-import { createAppAccess } from '../app/public';
-import { createAuthAccess } from '../auth/public';
+
 import { type LicenseRepositoryPort as LicenseRepository } from '../license/public';
 import { DeploymentRepository } from './repository';
 import {
   type DeploymentAppRecord,
   LEGACY_APP_DEFAULT_VALUE_KEYS,
-  WORDPRESS_ASSET_RELEASE_KEYS,
-  AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
-  type DeploymentActionKind,
   normalizeString,
   normalizeBoolean,
   normalizeValueRecord,
@@ -84,10 +83,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected isEffectiveEntitlement(entitlement: { status: string; expiresAt: Date | null }) {
-    return (
-      entitlement.status === 'active' &&
-      (!entitlement.expiresAt || entitlement.expiresAt.getTime() >= Date.now())
-    );
+    return isEffectiveEntitlement(entitlement);
   }
 
   protected async resolveDeploymentEntitlement(input: {
@@ -116,248 +112,27 @@ export class DeploymentConfigurationUseCases {
   protected async loadDeploymentEntitlement(
     deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>,
   ) {
-    if (!deployment?.entitlementId) {
-      throw httpError(
-        409,
-        'Deployment is not bound to an entitlement. Create a new deployment with an active entitlement.',
-      );
-    }
-
-    const entitlement = await this.capabilities
-      .createLicenseAccess(this.db)
-      .findEntitlementById(deployment.entitlementId);
-    if (
-      !entitlement ||
-      entitlement.userId !== deployment.userId ||
-      entitlement.appId !== deployment.appId
-    ) {
-      throw httpError(
-        409,
-        'Deployment entitlement is missing or no longer matches this deployment.',
-      );
-    }
-    if (!this.isEffectiveEntitlement(entitlement)) {
-      throw httpError(
-        403,
-        'Deployment entitlement is not active. Restore access before continuing.',
-      );
-    }
-    const plan = await this.capabilities
-      .createLicenseAccess(this.db)
-      .getPlanById(entitlement.planId);
-    if (!plan) {
-      throw httpError(500, 'Deployment entitlement is missing related plan');
-    }
-
-    return { entitlement, plan };
+    return loadDeploymentEntitlement(this.capabilities.createLicenseAccess(this.db), deployment);
   }
 
   protected async hydrateDeployments(
     rows: Awaited<ReturnType<DeploymentRepository['listDeploymentsByUserId']>>,
   ) {
-    const appIds = [...new Set(rows.map((item) => item.appId))];
-    const userIds = [...new Set(rows.map((item) => item.userId))];
-    const entitlementIds = [
-      ...new Set(
-        rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)),
-      ),
-    ];
-    const [apps, users, tokens, entitlements] = await queryBatch(this.db, [
-      () => createAppAccess(this.db).listAppsByIds(appIds),
-      () => createAuthAccess(this.db).listUsersByIds(userIds),
-      () =>
-        new DeploymentRepository(this.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
-      () => this.capabilities.createLicenseAccess(this.db).listEntitlementsByIds(entitlementIds),
-    ]);
-
-    const appMap = new Map(apps.map((item) => [item.id, item]));
-    const userMap = new Map(users.map((item) => [item.id, item]));
-    const entitlementMap = new Map(entitlements.map((item) => [item.id, item]));
-    const planIds = [...new Set(entitlements.map((item) => item.planId))];
-    const plans = await this.capabilities.createLicenseAccess(this.db).listPlansByIds(planIds);
-    const planMap = new Map(plans.map((item) => [item.id, item]));
-    const latestTokenMap = new Map<string, (typeof tokens)[number]>();
-    for (const token of tokens) {
-      if (!latestTokenMap.has(token.deploymentId)) {
-        latestTokenMap.set(token.deploymentId, token);
-      }
-    }
-
-    return queryBatch(
-      this.db,
-      rows.map((row) => async () => {
-        const app = appMap.get(row.appId) ?? null;
-        const user = userMap.get(row.userId) ?? null;
-        const token = latestTokenMap.get(row.id) ?? null;
-        const entitlement = row.entitlementId
-          ? (entitlementMap.get(row.entitlementId) ?? null)
-          : null;
-        const plan = entitlement ? (planMap.get(entitlement.planId) ?? null) : null;
-        const manifest = app ? this.readManifest(app as DeploymentAppRecord) : null;
-        const deliveryValues = this.readDeploymentInputValues(row);
-        const domainValues = this.filterDomainValuesForManifest(
-          manifest,
-          this.readDeploymentDomainValues(row),
-        );
-        const configuredSecretKeys = Object.keys(this.readDeploymentInputSecrets(row));
-        const updatePolicy = this.readDeploymentRuntimeUpdatePolicy(row);
-        const meta = this.normalizeMeta(row.meta);
-        const runtimeUpdateMeta = this.normalizeMeta(meta.runtimeUpdate);
-        const runtimeAssetsMeta = this.normalizeMeta(meta.runtimeAssetsUpdate);
-        const wordpressAssetsMeta = this.normalizeMeta(meta.wordpressAssetsUpdate);
-        const policy = entitlement ? this.readEntitlementDeploymentPolicy(entitlement) : null;
-        const binding = this.readEntitlementBinding(entitlement);
-        const activeBindingSource =
-          policy?.domainBindingMode === 'lock_on_first_success'
-            ? policy.domainBindingSource
-            : 'none';
-        const currentBoundValue =
-          activeBindingSource === 'none'
-            ? null
-            : getDomainBindingValue(
-                this.getSourceFieldValue(row, activeBindingSource),
-                policy?.domainBindingScope ?? 'registrable_domain',
-              ) || null;
-        const isDomainLocked =
-          activeBindingSource !== 'none' &&
-          Boolean(binding.boundDomain) &&
-          currentBoundValue === binding.boundDomain;
-        const envDefaults = this.buildDeploymentDisplayEnvDefaults({
-          app: app ? (app as DeploymentAppRecord) : null,
-          deploymentValues: deliveryValues,
-        });
-        const reportedCurrentRuntimeImages = {
-          frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
-          websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null,
-        };
-        const currentRuntimeImages = {
-          frontendImage:
-            reportedCurrentRuntimeImages.frontendImage ||
-            normalizeString(envDefaults.FRONTEND_IMAGE) ||
-            null,
-          websocketImage:
-            reportedCurrentRuntimeImages.websocketImage ||
-            normalizeString(envDefaults.WEBSOCKET_IMAGE) ||
-            null,
-        };
-        const availableRuntimeImages = {
-          frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
-          websocketImage: normalizeString(runtimeUpdateMeta.availableWebsocketImage) || null,
-          offeredAt: normalizeString(runtimeUpdateMeta.offeredAt) || null,
-          appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null,
-        };
-        const reportedCurrentRuntimeAssets = this.normalizeMeta(runtimeAssetsMeta.current);
-        const reportedAvailableRuntimeAssets = this.normalizeMeta(runtimeAssetsMeta.available);
-        const runtimeAssetLabels = new Map(
-          (manifest?.assets ?? [])
-            .filter((asset) => asset.type === 'docker_image')
-            .map((asset) => [asset.key, asset.label]),
-        );
-        const runtimeAssetKeys = [
-          ...new Set([
-            ...Object.keys(reportedCurrentRuntimeAssets),
-            ...Object.keys(reportedAvailableRuntimeAssets),
-          ]),
-        ];
-        const runtimeAssets = runtimeAssetKeys.map((key) => ({
-          key,
-          label: runtimeAssetLabels.get(key) ?? key,
-          current: normalizeString(reportedCurrentRuntimeAssets[key]) || null,
-          available: normalizeString(reportedAvailableRuntimeAssets[key]) || null,
-        }));
-        const currentWordpressAssetReleases = Object.fromEntries(
-          WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
-            key,
-            normalizeString(this.normalizeMeta(wordpressAssetsMeta.current)[key]) ||
-              normalizeString(envDefaults[key]) ||
-              null,
-          ]),
-        ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
-        const availableWordpressAssetReleases = Object.fromEntries(
-          AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
-            key,
-            normalizeString(this.normalizeMeta(wordpressAssetsMeta.available)[key]) ||
-              normalizeString(wordpressAssetsMeta[key]) ||
-              null,
-          ]),
-        ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
-        const pendingAction = this.normalizeMeta(meta.pendingAction);
-        const lastAction = this.normalizeMeta(meta.lastAction);
-
-        return {
-          ...row,
-          deliveryValues,
-          domainValues,
-          configuredSecretKeys,
-          updatePolicy,
-          currentRuntimeImages,
-          availableRuntimeImages,
-          runtimeAssets,
-          runtimeAssetsOfferedAt: normalizeString(runtimeAssetsMeta.offeredAt) || null,
-          runtimeAssetsAppliedAt: normalizeString(runtimeAssetsMeta.appliedAt) || null,
-          currentWordpressAssetReleases,
-          availableWordpressAssetReleases,
-          pendingAction:
-            normalizeString(pendingAction.id).length > 0
-              ? {
-                  id: normalizeString(pendingAction.id),
-                  kind: normalizeString(pendingAction.kind) as DeploymentActionKind,
-                  requestedAt: normalizeString(pendingAction.requestedAt) || null,
-                }
-              : null,
-          lastAction:
-            normalizeString(lastAction.id).length > 0
-              ? {
-                  id: normalizeString(lastAction.id),
-                  kind: normalizeString(lastAction.kind) as DeploymentActionKind,
-                  status: normalizeString(lastAction.status) || 'completed',
-                  message: normalizeString(lastAction.message) || null,
-                  finishedAt: normalizeString(lastAction.finishedAt) || null,
-                }
-              : null,
-          domainBinding: {
-            sourceField: activeBindingSource,
-            sourceLabel:
-              activeBindingSource === 'none'
-                ? null
-                : (manifest?.domainSlots.find((slot) => slot.sourceField === activeBindingSource)
-                    ?.label ?? activeBindingSource),
-            isLocked: isDomainLocked,
-            boundDomain: binding.boundDomain,
-            boundAt: binding.boundAt,
-            scope: binding.scope ?? policy?.domainBindingScope ?? 'registrable_domain',
-          },
-          entitlement: entitlement
-            ? {
-                id: entitlement.id,
-                status: entitlement.status,
-                startsAt: entitlement.startsAt,
-                expiresAt: entitlement.expiresAt,
-                plan: plan
-                  ? {
-                      id: plan.id,
-                      code: plan.code,
-                      name: plan.name,
-                      interval: plan.interval,
-                    }
-                  : null,
-              }
-            : null,
-          user: user ? { id: user.id, email: user.email, displayName: user.displayName } : null,
-          app: app ? { id: app.id, code: app.code, name: app.name, type: app.type } : null,
-          latestToken: token
-            ? {
-                id: token.id,
-                tokenHint: token.tokenHint,
-                status: token.status,
-                expiresAt: token.expiresAt,
-                usedAt: token.usedAt,
-                createdAt: token.createdAt,
-              }
-            : null,
-        };
-      }),
-    );
+    return hydrateDeploymentViews(rows, {
+      db: this.db,
+      capabilities: this.capabilities,
+      readManifest: this.readManifest.bind(this),
+      readDeploymentInputValues: this.readDeploymentInputValues.bind(this),
+      filterDomainValuesForManifest: this.filterDomainValuesForManifest.bind(this),
+      readDeploymentDomainValues: this.readDeploymentDomainValues.bind(this),
+      readDeploymentInputSecrets: this.readDeploymentInputSecrets.bind(this),
+      readDeploymentRuntimeUpdatePolicy: this.readDeploymentRuntimeUpdatePolicy.bind(this),
+      normalizeMeta: this.normalizeMeta.bind(this),
+      readEntitlementDeploymentPolicy: this.readEntitlementDeploymentPolicy.bind(this),
+      readEntitlementBinding: this.readEntitlementBinding.bind(this),
+      getSourceFieldValue: this.getSourceFieldValue.bind(this),
+      buildDeploymentDisplayEnvDefaults: this.buildDeploymentDisplayEnvDefaults.bind(this),
+    });
   }
 
   protected createPlainToken() {
@@ -369,9 +144,7 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected normalizeMeta(meta: unknown) {
-    return meta && typeof meta === 'object' && !Array.isArray(meta)
-      ? { ...(meta as Record<string, unknown>) }
-      : {};
+    return normalizeDeploymentMeta(meta);
   }
 
   protected async ensureDeploymentStatusReportAuth(

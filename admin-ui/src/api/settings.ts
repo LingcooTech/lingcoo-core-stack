@@ -114,87 +114,88 @@ export interface ContentImportSettingsInput {
 }
 
 export async function getSmtpSettings(): Promise<SmtpSettingsOverview> {
-  return apiClient<SmtpSettingsOverview>('/v1/admin/system-settings/smtp');
+  return apiClient('GET /v1/admin/system-settings/smtp', '/v1/admin/system-settings/smtp');
 }
 
 export async function upsertSmtpSettings(
   payload: SmtpSettingsInput,
 ): Promise<SmtpSettingsOverview> {
-  return apiClient<SmtpSettingsOverview>('/v1/admin/system-settings/smtp', {
-    method: 'PUT',
+  return apiClient('PUT /v1/admin/system-settings/smtp', '/v1/admin/system-settings/smtp', {
     body: JSON.stringify(payload),
   });
 }
 
 export async function clearSmtpSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/smtp', { method: 'DELETE' });
+  await apiClient('DELETE /v1/admin/system-settings/smtp', '/v1/admin/system-settings/smtp');
 }
 
 export async function sendSmtpTestEmail(payload: SmtpTestEmailInput): Promise<SmtpTestEmailResult> {
-  return apiClient<SmtpTestEmailResult>('/v1/admin/system-settings/smtp/test', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiClient(
+    'POST /v1/admin/system-settings/smtp/test',
+    '/v1/admin/system-settings/smtp/test',
+    { body: JSON.stringify(payload) },
+  );
 }
 
 export async function getAlertingSettings(): Promise<AlertingSettingsOverview> {
-  return apiClient<AlertingSettingsOverview>('/v1/admin/system-settings/alerting');
+  return apiClient('GET /v1/admin/system-settings/alerting', '/v1/admin/system-settings/alerting');
 }
 
 export async function upsertAlertingSettings(
   payload: AlertingSettingsInput,
 ): Promise<AlertingSettingsOverview> {
-  return apiClient<AlertingSettingsOverview>('/v1/admin/system-settings/alerting', {
-    method: 'PUT',
+  return apiClient('PUT /v1/admin/system-settings/alerting', '/v1/admin/system-settings/alerting', {
     body: JSON.stringify(payload),
   });
 }
 
 export async function clearAlertingSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/alerting', { method: 'DELETE' });
+  await apiClient(
+    'DELETE /v1/admin/system-settings/alerting',
+    '/v1/admin/system-settings/alerting',
+  );
 }
 
 export async function getQiniuSettings(): Promise<QiniuSettingsOverview> {
-  return apiClient<QiniuSettingsOverview>('/v1/admin/system-settings/qiniu');
+  return apiClient('GET /v1/admin/system-settings/qiniu', '/v1/admin/system-settings/qiniu');
 }
 
 export async function upsertQiniuSettings(
   payload: QiniuSettingsInput,
 ): Promise<QiniuSettingsOverview> {
-  return apiClient<QiniuSettingsOverview>('/v1/admin/system-settings/qiniu', {
-    method: 'PUT',
+  return apiClient('PUT /v1/admin/system-settings/qiniu', '/v1/admin/system-settings/qiniu', {
     body: JSON.stringify(payload),
   });
 }
 
 export async function clearQiniuSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/qiniu', { method: 'DELETE' });
+  await apiClient('DELETE /v1/admin/system-settings/qiniu', '/v1/admin/system-settings/qiniu');
 }
 
 export async function testQiniuSettings(
   payload: QiniuSettingsInput,
 ): Promise<QiniuTestConnectionResult> {
-  return apiClient<QiniuTestConnectionResult>('/v1/admin/system-settings/qiniu/test', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return apiClient(
+    'POST /v1/admin/system-settings/qiniu/test',
+    '/v1/admin/system-settings/qiniu/test',
+    { body: JSON.stringify(payload) },
+  );
 }
 
 export async function getSiteSettings(): Promise<SiteSettingsOverview> {
-  return apiClient<SiteSettingsOverview>('/v1/admin/system-settings/site');
+  return apiClient('GET /v1/admin/system-settings/site', '/v1/admin/system-settings/site');
 }
 
 export async function upsertSiteSettings(
   payload: SiteSettingsInput,
 ): Promise<SiteSettingsOverview> {
-  return apiClient<SiteSettingsOverview>('/v1/admin/system-settings/site', {
-    method: 'PUT',
+  return apiClient('PUT /v1/admin/system-settings/site', '/v1/admin/system-settings/site', {
     body: JSON.stringify(payload),
   });
 }
 
 export async function clearSiteSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/site', { method: 'DELETE' });
+  await apiClient('DELETE /v1/admin/system-settings/site', '/v1/admin/system-settings/site');
 }
 
 export interface PublicPagesSettingsInput {
@@ -203,41 +204,55 @@ export interface PublicPagesSettingsInput {
 }
 
 export async function getPublicPagesSettings(): Promise<PublicPagesSettingsOverview> {
-  return apiClient<PublicPagesSettingsOverview>('/v1/admin/system-settings/public-pages');
+  return apiClient(
+    'GET /v1/admin/system-settings/public-pages',
+    '/v1/admin/system-settings/public-pages',
+  );
 }
 
 export async function upsertPublicPagesSettings(
   payload: PublicPagesSettingsInput,
 ): Promise<PublicPagesSettingsOverview> {
-  return apiClient<PublicPagesSettingsOverview>('/v1/admin/system-settings/public-pages', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return apiClient(
+    'PUT /v1/admin/system-settings/public-pages',
+    '/v1/admin/system-settings/public-pages',
+    { body: JSON.stringify(payload) },
+  );
 }
 
 export async function clearPublicPagesSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/public-pages', { method: 'DELETE' });
+  await apiClient(
+    'DELETE /v1/admin/system-settings/public-pages',
+    '/v1/admin/system-settings/public-pages',
+  );
 }
 
 export async function getPublicSiteSettings(): Promise<PublicSiteSettings> {
-  return apiClient<PublicSiteSettings>('/v1/system/site-settings');
+  return apiClient('GET /v1/system/site-settings', '/v1/system/site-settings');
 }
 
 export async function getContentImportSettings(): Promise<ContentImportSettingsOverview> {
-  return apiClient<ContentImportSettingsOverview>('/v1/admin/system-settings/content-import');
+  return apiClient(
+    'GET /v1/admin/system-settings/content-import',
+    '/v1/admin/system-settings/content-import',
+  );
 }
 
 export async function upsertContentImportSettings(
   payload: ContentImportSettingsInput,
 ): Promise<ContentImportSettingsOverview> {
-  return apiClient<ContentImportSettingsOverview>('/v1/admin/system-settings/content-import', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return apiClient(
+    'PUT /v1/admin/system-settings/content-import',
+    '/v1/admin/system-settings/content-import',
+    { body: JSON.stringify(payload) },
+  );
 }
 
 export async function clearContentImportSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/content-import', { method: 'DELETE' });
+  await apiClient(
+    'DELETE /v1/admin/system-settings/content-import',
+    '/v1/admin/system-settings/content-import',
+  );
 }
 
 export async function testWordPressImportSettings(payload: {
@@ -245,89 +260,86 @@ export async function testWordPressImportSettings(payload: {
   username?: string;
   appPassword?: string;
 }): Promise<ContentImportWordPressTestResult> {
-  return apiClient<ContentImportWordPressTestResult>(
+  return apiClient(
+    'POST /v1/admin/system-settings/content-import/wordpress/test',
     '/v1/admin/system-settings/content-import/wordpress/test',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function testNotionImportSettings(payload: {
   apiToken?: string;
 }): Promise<ContentImportNotionTestResult> {
-  return apiClient<ContentImportNotionTestResult>(
+  return apiClient(
+    'POST /v1/admin/system-settings/content-import/notion/test',
     '/v1/admin/system-settings/content-import/notion/test',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function getAiProviders(): Promise<AiProviderListResponse> {
-  return apiClient<AiProviderListResponse>('/v1/admin/ai/providers');
+  return apiClient('GET /v1/admin/ai/providers', '/v1/admin/ai/providers');
 }
 
 export async function listAiProviderModels(
   provider: 'openrouter',
 ): Promise<AiProviderModelsResponse> {
-  return apiClient<AiProviderModelsResponse>(`/v1/admin/ai/providers/${provider}/models`);
+  return apiClient(
+    'GET /v1/admin/ai/providers/:param/models',
+    `/v1/admin/ai/providers/${provider}/models`,
+  );
 }
 
 export async function previewOpenRouterModels(
   payload: OpenRouterSettingsInput,
 ): Promise<AiProviderModelsResponse> {
-  return apiClient<AiProviderModelsResponse>(
+  return apiClient(
+    'POST /v1/admin/system-settings/ai/providers/openrouter/models',
     '/v1/admin/system-settings/ai/providers/openrouter/models',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function getOpenRouterSettings(): Promise<OpenRouterSettingsOverview> {
-  return apiClient<OpenRouterSettingsOverview>('/v1/admin/system-settings/ai/providers/openrouter');
+  return apiClient(
+    'GET /v1/admin/system-settings/ai/providers/openrouter',
+    '/v1/admin/system-settings/ai/providers/openrouter',
+  );
 }
 
 export async function upsertOpenRouterSettings(
   payload: OpenRouterSettingsInput,
 ): Promise<OpenRouterSettingsOverview> {
-  return apiClient<OpenRouterSettingsOverview>(
+  return apiClient(
+    'PUT /v1/admin/system-settings/ai/providers/openrouter',
     '/v1/admin/system-settings/ai/providers/openrouter',
-    {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function testOpenRouterSettings(
   payload: OpenRouterSettingsInput,
 ): Promise<OpenRouterTestConnectionResult> {
-  return apiClient<OpenRouterTestConnectionResult>(
+  return apiClient(
+    'POST /v1/admin/system-settings/ai/providers/openrouter/test',
     '/v1/admin/system-settings/ai/providers/openrouter/test',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function previewOpenRouterChatCompletion(
   payload: OpenRouterChatPreviewInput,
 ): Promise<AiChatCompletionResult> {
-  return apiClient<AiChatCompletionResult>(
+  return apiClient(
+    'POST /v1/admin/system-settings/ai/providers/openrouter/chat/completions',
     '/v1/admin/system-settings/ai/providers/openrouter/chat/completions',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function clearOpenRouterSettings(): Promise<void> {
-  await apiClient('/v1/admin/system-settings/ai/providers/openrouter', { method: 'DELETE' });
+  await apiClient(
+    'DELETE /v1/admin/system-settings/ai/providers/openrouter',
+    '/v1/admin/system-settings/ai/providers/openrouter',
+  );
 }

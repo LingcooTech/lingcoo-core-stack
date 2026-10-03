@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { resolve, relative, dirname, sep } from 'node:path';
+import { resolve, relative, dirname, basename, sep } from 'node:path';
 import ts from 'typescript';
 export function collectViolations(root = process.cwd()) {
   const src = resolve(root, 'src'),
@@ -49,10 +49,16 @@ export function collectViolations(root = process.cwd()) {
         node.initializer &&
         ts.isCallExpression(node.initializer) &&
         ts.isIdentifier(node.initializer.expression) &&
-        node.initializer.expression.text === 'pgTable' &&
-        !owners[node.name.text]
-      )
-        add(schemaFile, 'table-owner-missing', node.name.text);
+        node.initializer.expression.text === 'pgTable'
+      ) {
+        const owner = owners[node.name.text];
+        if (!owner) add(schemaFile, 'table-owner-missing', node.name.text);
+        else if (
+          schemaFile !== resolve(src, 'db/schema.ts') &&
+          basename(schemaFile, '.ts') !== owner
+        )
+          add(schemaFile, 'table-owner-file', `${node.name.text}:${owner}`);
+      }
       ts.forEachChild(node, inspectTable);
     };
     inspectTable(schemaAst);

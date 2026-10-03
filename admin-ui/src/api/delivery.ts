@@ -11,7 +11,8 @@ export interface UpsertDeliverySettingsInput {
 }
 
 export async function getDeliverySettings(appCode: string): Promise<DeliverySettingsOverview> {
-  return apiClient<DeliverySettingsOverview>(
+  return apiClient(
+    'GET /v1/admin/delivery-settings/:param',
     `/v1/admin/delivery-settings/${encodeURIComponent(appCode)}`,
   );
 }
@@ -20,17 +21,16 @@ export async function upsertDeliverySettings(
   appCode: string,
   payload: UpsertDeliverySettingsInput,
 ): Promise<DeliverySettingsOverview> {
-  return apiClient<DeliverySettingsOverview>(
+  return apiClient(
+    'PUT /v1/admin/delivery-settings/:param',
     `/v1/admin/delivery-settings/${encodeURIComponent(appCode)}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    },
+    { body: JSON.stringify(payload) },
   );
 }
 
 export async function clearDeliverySettings(appCode: string): Promise<void> {
-  await apiClient(`/v1/admin/delivery-settings/${encodeURIComponent(appCode)}`, {
-    method: 'DELETE',
-  });
+  await apiClient(
+    'DELETE /v1/admin/delivery-settings/:param',
+    `/v1/admin/delivery-settings/${encodeURIComponent(appCode)}`,
+  );
 }

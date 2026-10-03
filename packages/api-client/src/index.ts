@@ -1,4 +1,10 @@
-import { responseSchemaFor, errorResponseSchema } from '@lingcoo/contracts';
+import {
+  responseSchemaFor,
+  errorResponseSchema,
+  endpointContract,
+  type EndpointId,
+  type EndpointResponse,
+} from '@lingcoo/contracts';
 import type { z } from 'zod';
 export class ApiError<TDetails = unknown> extends Error {
   constructor(
@@ -28,6 +34,7 @@ export class NetworkError extends Error {
   }
 }
 export type ApiRequestOptions = RequestInit & { schema?: z.ZodType; idempotencyKey?: string };
+export type EndpointRequestOptions = Omit<ApiRequestOptions, 'method' | 'schema'>;
 export function createApiClient(
   config: {
     baseUrl?: string;
@@ -42,8 +49,8 @@ export function createApiClient(
     path: string,
     options: ApiRequestOptions & { schema: S },
   ): Promise<z.output<S>>;
-  function request<T = unknown>(path: string, options?: ApiRequestOptions): Promise<T>;
-  async function request<T = unknown>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  function request(path: string, options?: ApiRequestOptions): Promise<unknown>;
+  async function request(path: string, options: ApiRequestOptions = {}): Promise<unknown> {
     const { schema, idempotencyKey, ...init } = options;
     const headers = new Headers(init.headers);
     const token = config.getToken?.();
@@ -71,7 +78,7 @@ export function createApiClient(
     if (response.status === 204) {
       const contract = schema ?? responseSchemaFor((init.method ?? 'GET').toUpperCase(), path);
       if (!contract?.safeParse(undefined).success) throw new ProtocolError(path, requestId);
-      return undefined as T;
+      return undefined;
     }
     let data: unknown;
     try {
@@ -93,7 +100,20 @@ export function createApiClient(
     const contract = schema ?? responseSchemaFor((init.method ?? 'GET').toUpperCase(), path);
     const parsed = contract?.safeParse(data);
     if (!parsed?.success) throw new ProtocolError(path, requestId);
-    return parsed.data as T;
+    return parsed.data;
   }
-  return request;
+  async function endpoint<Id extends EndpointId>(
+    id: Id,
+    path: string,
+    options: EndpointRequestOptions = {},
+  ): Promise<EndpointResponse<Id>> {
+    const contract = endpointContract(id, path);
+    // The registry selects both the runtime parser and the inferred response for this ID.
+    return (await request(path, {
+      ...options,
+      method: contract.method,
+      schema: contract.schema,
+    })) as EndpointResponse<Id>;
+  }
+  return Object.assign(request, { endpoint });
 }
