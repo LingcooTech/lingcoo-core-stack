@@ -23,3 +23,11 @@ updates:
       day: monday
       time: '01:15'
       timezone: Asia/Shanghai
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '01:30'
+      timezone: Asia/Shanghai

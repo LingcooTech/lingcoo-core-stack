@@ -6,20 +6,22 @@ USER 0
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package*.json .node-version .npmrc ./
+COPY scripts/check-toolchain.mjs ./scripts/check-toolchain.mjs
 COPY admin-ui/package.json ./admin-ui/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/api-client/package.json ./packages/api-client/package.json
-RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci --cache=/root/.npm --ignore-scripts --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm,sharing=locked node scripts/check-toolchain.mjs && npm ci --cache=/root/.npm --ignore-scripts --no-audit --no-fund
 
 FROM ${NODE_BASE_IMAGE} AS production-deps
 USER 0
 WORKDIR /app
-COPY package*.json ./
+COPY package*.json .node-version .npmrc ./
+COPY scripts/check-toolchain.mjs ./scripts/check-toolchain.mjs
 COPY admin-ui/package.json ./admin-ui/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/api-client/package.json ./packages/api-client/package.json
-RUN --mount=type=cache,target=/root/.npm,sharing=locked npm ci --cache=/root/.npm --omit=dev --ignore-scripts --no-audit --no-fund --workspace @lingcoo/contracts --include-workspace-root
+RUN --mount=type=cache,target=/root/.npm,sharing=locked node scripts/check-toolchain.mjs && npm ci --cache=/root/.npm --omit=dev --ignore-scripts --no-audit --no-fund --workspace @lingcoo/contracts --include-workspace-root
 
 FROM deps AS build
 
@@ -50,6 +52,7 @@ LABEL org.opencontainers.image.source="https://github.com/LingcooTech/lingcoo-co
 LABEL org.opencontainers.image.version="${APP_VERSION}"
 
 COPY --from=build /app/package*.json ./
+COPY --from=build /app/.node-version /app/.npmrc ./
 COPY --from=production-deps /app/node_modules ./node_modules
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/app-products ./app-products
