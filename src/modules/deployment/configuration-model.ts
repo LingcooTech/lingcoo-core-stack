@@ -73,6 +73,7 @@ export const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
 export type DeploymentStatusReportPayload = {
   deploymentId: string;
   token: string;
+  runtimeHealth?: 'ready' | 'unhealthy';
   runtimeAssets?: {
     current?: Record<string, string | null>;
     available?: Record<string, string | null>;

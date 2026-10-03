@@ -395,10 +395,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       entitlementId: entitlement.id,
       policy,
     });
-    const updatedDeployment = await repository.updateDeployment(boundDeployment.id, {
-      lastDeployedAt: this.capabilities.now(),
-    });
-    const targetDeployment = updatedDeployment ?? boundDeployment;
+    const targetDeployment = boundDeployment;
 
     await this.capabilities.createEventService(this.db).capture({
       userId: deployment.userId,
@@ -545,10 +542,12 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     meta.runtimeStatusReport = {
       ...runtimeStatusReport,
       lastReportedAt: this.capabilities.now().toISOString(),
+      ...(input.runtimeHealth ? { health: input.runtimeHealth } : {}),
     };
 
     const updated = await repository.updateDeployment(deployment.id, {
       meta,
+      ...(input.runtimeHealth === 'ready' ? { lastDeployedAt: this.capabilities.now() } : {}),
     });
 
     if (!updated) {

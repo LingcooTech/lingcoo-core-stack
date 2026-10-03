@@ -238,6 +238,7 @@ export class BillingService extends BillingRefundUseCases {
     if (order.status === 'paid') {
       return {
         order,
+        granted: false,
         entitlements: await this.capabilities
           .createLicenseService(this.db)
           .listUserEntitlements(input.userId),
@@ -262,7 +263,7 @@ export class BillingService extends BillingRefundUseCases {
       entitlements: await this.capabilities
         .createLicenseService(this.db)
         .listUserEntitlements(input.userId),
-      granted: result.granted,
+      granted: result.granted?.granted ?? false,
     };
   }
 

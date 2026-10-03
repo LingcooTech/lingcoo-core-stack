@@ -2,7 +2,11 @@
 
 本文定义后续应用上架到 `fd-core-stack` 的统一标准。目标是让每个应用都可以按同一套模式完成购买、授权、部署、更新和运维，同时保证客户拿到的是镜像和部署权益，而不是源码。
 
+本文主要对应现有自有服务器交付方式。前后端分离、不可变 Release 和独立云托管实例的下一阶段设计见 [应用业务闭环与独立实例托管方案](app-lifecycle-and-managed-hosting-plan.md)，其中新增能力尚未实现。自部署目标服务器的管理员能够访问下发到该服务器的凭据，镜像也不构成源码不可提取的保证；后续标准应采用受限、可撤销的实例凭据。
+
 ## 1. 核心原则
+
+后续接入的责任分工与协议边界见 [应用与 Stack 接入责任契约](app-platform-responsibility-contract.md)；该规划不代表新增托管与 SDK 能力已经实现。
 
 ### 1.1 镜像交付
 
@@ -803,7 +807,7 @@ npm run app:import -- app-products/fd_edu_system/product.json --require-secrets
 
 - Stack 后台支持将 manifest 内容写入 `apps.meta.deliveryManifest`。
 - remote install 脚本必要时提供镜像源或代理方案。
-- 上架时验证目标服务器能访问 `raw.githubusercontent.com`。
+- 上架时验证目标服务器能访问该应用实际使用的交付源。旧安装器可能使用 `raw.githubusercontent.com`；Retail 样本使用国内可访问的 HTTPS 下载入口与镜像仓库，不在客户服务器克隆源码。
 
 ## 12. 后续平台改进建议
 
@@ -816,4 +820,5 @@ npm run app:import -- app-products/fd_edu_system/product.json --require-secrets
 - E2E 部署测试环境池。
 - Add-on / bundled offer 建模。
 - 小程序独立交付模型。
-- delivery manifest schema 自动校验命令。
+
+严格发布校验已提供：`npm run app:validate -- <product.json>`；正式商品增加 `--ready`，导入增加 `--ready-for-sale`。这仍是离线校验，不能替代下载入口、镜像凭据和目标网络验收。真实 Retail 样本见 [接入与交付验收](retail-stack-onboarding-runbook.md)，正式上线事项集中见 [统一待办](retail-stack-user-tasks.md)。

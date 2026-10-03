@@ -43,6 +43,7 @@ export const exchangeDeploymentTokenSchema = z.object({
 export const reportDeploymentStatusSchema = z.object({
   deploymentId: z.string().uuid(),
   token: z.string().trim().min(16).max(255),
+  runtimeHealth: z.enum(['ready', 'unhealthy']).optional(),
   runtimeAssets: z
     .object({
       current: z.record(z.string(), z.string().trim().min(1).max(4096).nullable()).optional(),

@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-03T11:03:54.228Z",
+  "payment": "simulated",
+  "target": "isolated-self-hosted-compose",
+  "customerInstances": 2,
+  "applicationImage": "lingcoo-retail-oms:smoke-stack-onboarding",
+  "updateImage": "lingcoo-retail-oms:smoke-stack-onboarding-v2",
+  "stages": [
+    "repeatable product import, catalog and secret redaction",
+    "checkout, simulated payment and exactly one entitlement",
+    "deployment quota and customer ownership",
+    "one-use token, actual API/Web/Worker and version report",
+    "two customer instances with independent databases and credentials",
+    "new image redeployment, coordinated backup and preserved credentials",
+    "pre-upgrade database and attachment backup restored to a separate isolated project",
+    "refund revokes further delivery without deleting customer application"
+  ],
+  "productionPublished": false,
+  "managedHostingCertified": false
+}

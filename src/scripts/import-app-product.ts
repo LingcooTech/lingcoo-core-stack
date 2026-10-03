@@ -3,7 +3,8 @@ import path from 'node:path';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { z } from 'zod';
+import { type ProductConfig } from '../lib/app-product';
+import { validateAppProduct } from '../lib/app-product-validation';
 
 import * as schema from '../db/schema';
 import type { DbClient } from '../db/types';
@@ -13,106 +14,13 @@ import { EventService } from '../modules/event/service';
 import { AppRepository } from '../modules/app/repository';
 import { LicenseRepository } from '../modules/license/repository';
 
-const statusSchema = z.enum(['active', 'inactive', 'cancelled', 'expired']);
-const intervalSchema = z.enum(['month', 'year', 'one_time']);
-
-const productSchema = z.object({
-  schemaVersion: z.literal(1),
-  app: z.object({
-    code: z.string().trim().min(1).max(64),
-    name: z.string().trim().min(1).max(120),
-    tagline: z.string().trim().max(200).optional(),
-    description: z.string().trim().max(5000).optional(),
-    content: z.string().trim().max(50000).optional(),
-    iconUrl: z.string().trim().max(500).optional(),
-    coverUrl: z.string().trim().max(500).optional(),
-    screenshots: z.array(z.record(z.string(), z.unknown())).optional(),
-    highlights: z.array(z.record(z.string(), z.unknown())).optional(),
-    faq: z.array(z.record(z.string(), z.unknown())).optional(),
-    links: z.array(z.record(z.string(), z.unknown())).optional(),
-    category: z.string().trim().max(64).optional(),
-    sortOrder: z.number().int().min(0).max(99999).optional(),
-    type: z.string().trim().min(1).max(64).default('web_app'),
-    status: statusSchema.default('active'),
-    meta: z.record(z.string(), z.unknown()).optional(),
-  }),
-  features: z
-    .array(
-      z.object({
-        code: z.string().trim().min(1).max(64),
-        name: z.string().trim().min(1).max(120),
-        kind: z.string().trim().min(1).max(32).default('boolean'),
-        status: statusSchema.default('active'),
-      }),
-    )
-    .optional(),
-  plans: z
-    .array(
-      z.object({
-        code: z.string().trim().min(1).max(64),
-        name: z.string().trim().min(1).max(120),
-        billingProvider: z.string().trim().min(1).max(32).default('self_hosted'),
-        billingPriceId: z.string().trim().max(128).optional(),
-        priceAmount: z.number().int().min(0).max(999999999),
-        currency: z.string().trim().min(1).max(16).default('CNY'),
-        interval: intervalSchema,
-        status: statusSchema.default('active'),
-        featureCodes: z.array(z.string().trim().min(1).max(64)).min(1).max(100),
-        meta: z.record(z.string(), z.unknown()).optional(),
-      }),
-    )
-    .optional(),
-  offers: z
-    .array(
-      z.object({
-        code: z.string().trim().min(1).max(64),
-        planCode: z.string().trim().min(1).max(64),
-        title: z.string().trim().min(1).max(200),
-        description: z.string().trim().max(500).optional(),
-        badge: z.string().trim().max(64).optional(),
-        priceAmount: z.number().int().min(0).max(999999999),
-        currency: z.string().trim().min(1).max(16).default('CNY'),
-        isDefault: z.boolean().optional(),
-        sortOrder: z.number().int().min(0).max(9999).optional(),
-        status: statusSchema.default('active'),
-      }),
-    )
-    .optional(),
-  delivery: z
-    .object({
-      manifestSource: z
-        .object({
-          repoUrl: z.string().trim().url(),
-          repoBranch: z.string().trim().min(1).max(120).default('main'),
-          manifestPath: z.string().trim().min(1).max(255).default('fd-delivery.manifest.json'),
-          manifestUrl: z.string().trim().url().optional(),
-        })
-        .optional(),
-      manifest: z.record(z.string(), z.unknown()).optional(),
-      settings: z
-        .object({
-          values: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
-          secretsFromEnv: z.record(z.string(), z.string().trim().min(1)).optional(),
-          installer: z
-            .object({
-              repoUrl: z.string().trim().url().optional(),
-              repoBranch: z.string().trim().min(1).max(120).optional(),
-            })
-            .optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-});
-
-type ProductConfig = z.infer<typeof productSchema>;
-
 type CliOptions = {
   configPath: string;
   actorUserId?: string;
   dryRun: boolean;
   requireSecrets: boolean;
   skipDeliverySettings: boolean;
+  readyForSale: boolean;
 };
 
 function parseArgs(argv: string[]): CliOptions {
@@ -121,6 +29,7 @@ function parseArgs(argv: string[]): CliOptions {
   let dryRun = false;
   let requireSecrets = false;
   let skipDeliverySettings = false;
+  let readyForSale = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -135,6 +44,11 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === '--skip-delivery-settings') {
       skipDeliverySettings = true;
+      continue;
+    }
+    if (arg === '--ready-for-sale') {
+      readyForSale = true;
+      requireSecrets = true;
       continue;
     }
     if (arg === '--actor-user-id') {
@@ -167,6 +81,7 @@ function parseArgs(argv: string[]): CliOptions {
     dryRun,
     requireSecrets,
     skipDeliverySettings,
+    readyForSale,
   };
 }
 
@@ -175,7 +90,7 @@ async function loadProductConfig(configPath: string) {
   const raw = await readFile(absolutePath, 'utf8');
   return {
     absolutePath,
-    product: productSchema.parse(JSON.parse(raw)),
+    product: validateAppProduct(JSON.parse(raw)),
   };
 }
 
@@ -345,7 +260,10 @@ async function upsertProduct(db: DbClient, product: ProductConfig) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
+  if (options.readyForSale && options.skipDeliverySettings)
+    throw new Error('--ready-for-sale cannot skip delivery settings');
   const { absolutePath, product } = await loadProductConfig(options.configPath);
+  if (options.readyForSale) validateAppProduct(product, true);
   const { secrets, missing } = resolveSecrets(product.delivery?.settings?.secretsFromEnv, options);
   const shouldApplyDeliverySettings =
     Boolean(product.delivery?.settings) && !options.skipDeliverySettings;
@@ -383,19 +301,22 @@ async function main() {
   const db = drizzle(pool, { schema });
 
   try {
-    await upsertProduct(db, product);
-
-    if (shouldApplyDeliverySettings && product.delivery?.settings && options.actorUserId) {
-      await new DeliverySettingsService(db, env).upsertSettings(
-        product.app.code,
-        {
-          values: product.delivery.settings.values ?? {},
-          secrets,
-          installer: product.delivery.settings.installer,
-        },
-        options.actorUserId,
-      );
-    }
+    // Catalog, plans, offers, encrypted delivery settings and events are one import.
+    // A credential/configuration failure must not leave a half-published product.
+    await db.transaction(async (tx) => {
+      await upsertProduct(tx as DbClient, product);
+      if (shouldApplyDeliverySettings && product.delivery?.settings && options.actorUserId) {
+        await new DeliverySettingsService(tx, env).upsertSettings(
+          product.app.code,
+          {
+            values: product.delivery.settings.values ?? {},
+            secrets,
+            installer: product.delivery.settings.installer,
+          },
+          options.actorUserId,
+        );
+      }
+    });
 
     console.info(
       JSON.stringify(
