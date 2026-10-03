@@ -63,6 +63,7 @@ export function createServiceFactories(
         deactivatePlansByAppExceptCodes: value.deactivatePlansByAppExceptCodes.bind(value),
         deactivatePlansByAppId: value.deactivatePlansByAppId.bind(value),
         deleteFeaturesByAppId: value.deleteFeaturesByAppId.bind(value),
+        lockEntitlementById: value.lockEntitlementById.bind(value),
         findEntitlementById: value.findEntitlementById.bind(value),
         getPlanById: value.getPlanById.bind(value),
         listEntitlements: value.listEntitlements.bind(value),

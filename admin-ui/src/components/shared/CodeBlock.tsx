@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -134,7 +135,7 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
         </span>
         <button
           type="button"
-          onClick={handleCopy}
+          onClick={handleAsync(handleCopy)}
           aria-label="复制代码"
           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >

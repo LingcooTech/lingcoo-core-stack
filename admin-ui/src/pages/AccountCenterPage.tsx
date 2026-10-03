@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -240,8 +241,8 @@ function AccountProfileTab() {
           <CardContent>
             <Form {...profileForm}>
               <form
-                onSubmit={profileForm.handleSubmit((values) =>
-                  updateProfileMutation.mutate(values),
+                onSubmit={handleAsync(
+                  profileForm.handleSubmit((values) => updateProfileMutation.mutate(values)),
                 )}
                 className="space-y-4"
               >
@@ -274,8 +275,8 @@ function AccountProfileTab() {
           <CardContent className="space-y-5">
             <Form {...passwordForm}>
               <form
-                onSubmit={passwordForm.handleSubmit((values) =>
-                  changePasswordMutation.mutate(values),
+                onSubmit={handleAsync(
+                  passwordForm.handleSubmit((values) => changePasswordMutation.mutate(values)),
                 )}
                 className="space-y-4"
               >

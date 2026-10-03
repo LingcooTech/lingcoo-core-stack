@@ -1,3 +1,4 @@
+import { runAsync, handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -34,7 +35,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin', { replace: true });
+      runAsync(() => navigate('/admin', { replace: true }));
       return;
     }
     bootstrapStatus()
@@ -57,7 +58,7 @@ export function LoginPage() {
       }
       authLogin(result.user);
       toast.success('登录成功');
-      navigate('/admin', { replace: true });
+      runAsync(() => navigate('/admin', { replace: true }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '操作失败');
     }
@@ -99,7 +100,7 @@ export function LoginPage() {
           </p>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleAsync(form.handleSubmit(onSubmit))} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"

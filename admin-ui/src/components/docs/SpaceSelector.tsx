@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +55,7 @@ export function SpaceSelector({ currentSlug }: SpaceSelectorProps) {
           )}
           onSelect={(event) => {
             event.preventDefault();
-            navigate('/docs');
+            runAsync(() => navigate('/docs'));
           }}
         >
           <span className="flex-1">所有文档空间</span>
@@ -71,7 +72,7 @@ export function SpaceSelector({ currentSlug }: SpaceSelectorProps) {
               )}
               onSelect={(event) => {
                 event.preventDefault();
-                navigate(`/docs/${space.slug}`);
+                runAsync(() => navigate(`/docs/${space.slug}`));
               }}
             >
               <div className="flex min-w-0 flex-1 flex-col">

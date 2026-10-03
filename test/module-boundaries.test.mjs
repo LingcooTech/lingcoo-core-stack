@@ -104,3 +104,32 @@ test('shared contracts and modules reject environment access and aliased runtime
     f.close();
   }
 });
+
+test('local table aliases, raw execution and shared private bridges cannot bypass ownership', () => {
+  const f = fixture({
+    'src/modules/billing/service.ts': `import {users} from '../../db/schema'; import {secret} from '../../lib/bridge'; const target = users; const alias = (target); db.update(alias); db.execute(sql\`update users set role='admin'\`);`,
+    'src/lib/bridge.ts': `export {secret} from '../auth/repository'; export {secret as hidden} from '../modules/auth/repository';`,
+  });
+  try {
+    const found = collectViolations(f.root);
+    assert(found.some((v) => v.rule === 'foreign-table-write' && v.detail === 'update:users:auth'));
+    assert(found.some((v) => v.rule === 'raw-database-execution'));
+    assert(found.some((v) => v.file === 'src/lib/bridge.ts' && v.rule === 'internal-import'));
+  } finally {
+    f.close();
+  }
+});
+
+test('unresolved database write targets fail closed and split schema tables require ownership', () => {
+  const f = fixture({
+    'src/modules/billing/service.ts': `function write(target) { db.insert(target); }`,
+    'src/db/schema/new.ts': `export const unknownTable = pgTable('unknown', {});`,
+  });
+  try {
+    const found = collectViolations(f.root);
+    assert(found.some((v) => v.rule === 'unresolved-table-write'));
+    assert(found.some((v) => v.rule === 'table-owner-missing' && v.detail === 'unknownTable'));
+  } finally {
+    f.close();
+  }
+});

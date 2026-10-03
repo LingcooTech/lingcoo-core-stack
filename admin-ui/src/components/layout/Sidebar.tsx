@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronRight,
@@ -261,7 +262,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/account?tab=profile');
+                    runAsync(() => navigate('/account?tab=profile'));
                   }}
                 >
                   <UserCircle2 className="h-4 w-4 text-muted-foreground" />
@@ -271,7 +272,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/account?tab=orders');
+                    runAsync(() => navigate('/account?tab=orders'));
                   }}
                 >
                   <ShoppingBag className="h-4 w-4 text-muted-foreground" />
@@ -281,7 +282,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/account?tab=apps');
+                    runAsync(() => navigate('/account?tab=apps'));
                   }}
                 >
                   <Package2 className="h-4 w-4 text-muted-foreground" />
@@ -291,7 +292,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/tickets');
+                    runAsync(() => navigate('/tickets'));
                   }}
                 >
                   <CircleHelp className="h-4 w-4 text-muted-foreground" />
@@ -306,7 +307,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/admin');
+                    runAsync(() => navigate('/admin'));
                   }}
                 >
                   <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
@@ -316,7 +317,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                   className="rounded-md px-2.5 py-2 text-[13px]"
                   onSelect={(event) => {
                     event.preventDefault();
-                    navigate('/admin/settings');
+                    runAsync(() => navigate('/admin/settings'));
                   }}
                 >
                   <Settings className="h-4 w-4 text-muted-foreground" />
@@ -340,7 +341,7 @@ export function Sidebar({ collapsed, onToggle, showCollapseToggle = true }: Side
                 className="rounded-md px-2.5 py-2 text-[13px] text-rose-600 focus:bg-rose-50 focus:text-rose-600"
                 onSelect={(event) => {
                   event.preventDefault();
-                  logout();
+                  runAsync(() => logout());
                 }}
               >
                 <LogOut className="h-4 w-4" />

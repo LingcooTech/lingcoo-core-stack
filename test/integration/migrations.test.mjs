@@ -75,3 +75,47 @@ test('legacy repair refuses a missing migration when schema proof is incomplete'
     );
   });
 });
+
+test('schema reconciliation refuses orphan events, preserves history and succeeds after explicit repair', async () => {
+  await fixture(async ({ url, client, folder }) => {
+    const previous = { ...journal, entries: journal.entries.slice(0, 28) };
+    await writeFile(path.join(folder, 'meta/_journal.json'), JSON.stringify(previous));
+    for (const entry of previous.entries.slice(24))
+      await copyFile(path.join(source, entry.tag + '.sql'), path.join(folder, entry.tag + '.sql'));
+    await migrateDatabase(url, folder);
+    const orphan = randomUUID();
+    const id = randomUUID();
+    await client.query('insert into events (id, app_id, event_name) values ($1, $2, $3)', [
+      id,
+      orphan,
+      'migration.test',
+    ]);
+    await assert.rejects(migrateDatabase(url), (error) =>
+      /orphan app_id/.test(String(error.cause ?? error)),
+    );
+    assert.equal(
+      (await client.query('select count(*)::int as n from drizzle.__drizzle_migrations')).rows[0].n,
+      28,
+    );
+    assert.equal(
+      (await client.query('select app_id from events where id=$1', [id])).rows[0].app_id,
+      orphan,
+    );
+    // An operator must decide how to reconcile historical data. This fixture chooses unlinking.
+    await client.query('update events set app_id=null where id=$1', [id]);
+    await migrateDatabase(url);
+    await assert.rejects(client.query('update events set app_id=$1 where id=$2', [orphan, id]), {
+      code: '23503',
+    });
+    const constraint = (
+      await client.query(
+        "select confdeltype from pg_constraint where conname='installs_app_id_apps_id_fk'",
+      )
+    ).rows[0];
+    assert.equal(constraint.confdeltype, 'r');
+    assert.equal(
+      (await client.query('select count(*)::int as n from events where id=$1', [id])).rows[0].n,
+      1,
+    );
+  });
+});

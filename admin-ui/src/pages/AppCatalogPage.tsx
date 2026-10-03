@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -142,7 +143,7 @@ export function AppCatalogPage() {
 
   const startCheckout = (offerCode?: string | null) => {
     if (!isAuthenticated) {
-      navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      runAsync(() => navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`));
       return;
     }
     setSelectedPurchaseOfferCode(offerCode ?? preferredOffer?.code ?? null);

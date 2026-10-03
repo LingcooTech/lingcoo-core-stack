@@ -25,4 +25,6 @@ export type BillingServicePort = Pick<
 >;
 export type BillingServiceFactory = (db: DbExecutor, env: AppEnv) => BillingServicePort;
 
+export type { PreparedPayment } from './providers/types';
+
 export { billingProviderSchema } from './schemas';

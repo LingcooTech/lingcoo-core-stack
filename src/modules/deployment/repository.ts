@@ -6,6 +6,14 @@ import type { DbExecutor } from '../../db/types';
 export class DeploymentRepository {
   constructor(private readonly db: DbExecutor) {}
 
+  async lockById(id: string): Promise<void> {
+    await this.db
+      .select({ id: deployments.id })
+      .from(deployments)
+      .where(eq(deployments.id, id))
+      .for('update');
+  }
+
   async createDeployment(input: {
     userId: string;
     appId: string;

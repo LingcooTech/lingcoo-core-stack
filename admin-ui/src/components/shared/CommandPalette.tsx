@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { ArrowRight, Clock } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -111,7 +112,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       if (item.external) {
         window.open(item.href, '_blank', 'noopener,noreferrer');
       } else {
-        navigate(item.href);
+        runAsync(() => navigate(item.href));
       }
     },
     [navigate, onOpenChange],

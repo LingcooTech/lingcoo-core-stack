@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1079,8 +1080,10 @@ export function SettingsPage() {
               ) : (
                 <Form {...siteForm}>
                   <form
-                    onSubmit={siteForm.handleSubmit((values) =>
-                      saveSiteMutation.mutate(buildSitePayload(values)),
+                    onSubmit={handleAsync(
+                      siteForm.handleSubmit((values) =>
+                        saveSiteMutation.mutate(buildSitePayload(values)),
+                      ),
                     )}
                     className="space-y-6"
                   >
@@ -1546,19 +1549,21 @@ export function SettingsPage() {
               ) : (
                 <Form {...publicPagesForm}>
                   <form
-                    onSubmit={publicPagesForm.handleSubmit((values) =>
-                      savePublicPagesMutation.mutate({
-                        contentHub: {
-                          eyebrow: values.contentHub?.eyebrow?.trim() || '',
-                          title: values.contentHub?.title?.trim() || '',
-                          description: values.contentHub?.description?.trim() || '',
-                        },
-                        docsHub: {
-                          eyebrow: values.docsHub?.eyebrow?.trim() || '',
-                          title: values.docsHub?.title?.trim() || '',
-                          description: values.docsHub?.description?.trim() || '',
-                        },
-                      }),
+                    onSubmit={handleAsync(
+                      publicPagesForm.handleSubmit((values) =>
+                        savePublicPagesMutation.mutate({
+                          contentHub: {
+                            eyebrow: values.contentHub?.eyebrow?.trim() || '',
+                            title: values.contentHub?.title?.trim() || '',
+                            description: values.contentHub?.description?.trim() || '',
+                          },
+                          docsHub: {
+                            eyebrow: values.docsHub?.eyebrow?.trim() || '',
+                            title: values.docsHub?.title?.trim() || '',
+                            description: values.docsHub?.description?.trim() || '',
+                          },
+                        }),
+                      ),
                     )}
                     className="space-y-6"
                   >
@@ -1723,11 +1728,13 @@ export function SettingsPage() {
               ) : (
                 <Form {...smtpForm}>
                   <form
-                    onSubmit={smtpForm.handleSubmit((values) =>
-                      saveSmtpMutation.mutate(
-                        buildSmtpPayload(values, {
-                          includePassword: Boolean(smtpForm.formState.dirtyFields.password),
-                        }),
+                    onSubmit={handleAsync(
+                      smtpForm.handleSubmit((values) =>
+                        saveSmtpMutation.mutate(
+                          buildSmtpPayload(values, {
+                            includePassword: Boolean(smtpForm.formState.dirtyFields.password),
+                          }),
+                        ),
                       ),
                     )}
                     className="space-y-5"
@@ -1873,7 +1880,7 @@ export function SettingsPage() {
                           type="button"
                           variant="secondary"
                           disabled={testSmtpMutation.isPending}
-                          onClick={handleSendTestEmail}
+                          onClick={handleAsync(handleSendTestEmail)}
                         >
                           {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
                         </Button>
@@ -1916,11 +1923,13 @@ export function SettingsPage() {
               ) : (
                 <Form {...qiniuForm}>
                   <form
-                    onSubmit={qiniuForm.handleSubmit((values) =>
-                      saveQiniuMutation.mutate(
-                        buildQiniuPayload(values, {
-                          includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
-                        }),
+                    onSubmit={handleAsync(
+                      qiniuForm.handleSubmit((values) =>
+                        saveQiniuMutation.mutate(
+                          buildQiniuPayload(values, {
+                            includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
+                          }),
+                        ),
                       ),
                     )}
                     className="space-y-5"
@@ -2025,7 +2034,7 @@ export function SettingsPage() {
                         type="button"
                         variant="secondary"
                         disabled={testQiniuMutation.isPending}
-                        onClick={handleTestQiniu}
+                        onClick={handleAsync(handleTestQiniu)}
                       >
                         {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
                       </Button>
@@ -2069,16 +2078,18 @@ export function SettingsPage() {
               ) : (
                 <Form {...contentImportForm}>
                   <form
-                    onSubmit={contentImportForm.handleSubmit((values) =>
-                      saveContentImportMutation.mutate(
-                        buildContentImportPayload(values, {
-                          includeWordPressPassword: Boolean(
-                            contentImportForm.formState.dirtyFields.wordpressAppPassword,
-                          ),
-                          includeNotionToken: Boolean(
-                            contentImportForm.formState.dirtyFields.notionApiToken,
-                          ),
-                        }),
+                    onSubmit={handleAsync(
+                      contentImportForm.handleSubmit((values) =>
+                        saveContentImportMutation.mutate(
+                          buildContentImportPayload(values, {
+                            includeWordPressPassword: Boolean(
+                              contentImportForm.formState.dirtyFields.wordpressAppPassword,
+                            ),
+                            includeNotionToken: Boolean(
+                              contentImportForm.formState.dirtyFields.notionApiToken,
+                            ),
+                          }),
+                        ),
                       ),
                     )}
                     className="space-y-6"
@@ -2117,7 +2128,7 @@ export function SettingsPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={handleTestWordPressImport}
+                            onClick={handleAsync(handleTestWordPressImport)}
                             disabled={testWordPressImportMutation.isPending}
                           >
                             {testWordPressImportMutation.isPending ? '测试中...' : '测试连接'}
@@ -2154,7 +2165,7 @@ export function SettingsPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={handleTestNotionImport}
+                            onClick={handleAsync(handleTestNotionImport)}
                             disabled={testNotionImportMutation.isPending}
                           >
                             {testNotionImportMutation.isPending ? '测试中...' : '测试连接'}
@@ -2227,8 +2238,10 @@ export function SettingsPage() {
               ) : (
                 <Form {...openrouterForm}>
                   <form
-                    onSubmit={openrouterForm.handleSubmit((values) =>
-                      saveOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values)),
+                    onSubmit={handleAsync(
+                      openrouterForm.handleSubmit((values) =>
+                        saveOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values)),
+                      ),
                     )}
                     className="space-y-5"
                   >
@@ -2267,7 +2280,7 @@ export function SettingsPage() {
                         type="button"
                         variant="secondary"
                         disabled={testOpenRouterMutation.isPending}
-                        onClick={handleTestOpenRouter}
+                        onClick={handleAsync(handleTestOpenRouter)}
                       >
                         {testOpenRouterMutation.isPending ? '测试中...' : '测试连接'}
                       </Button>
@@ -2275,7 +2288,7 @@ export function SettingsPage() {
                         type="button"
                         variant="outline"
                         disabled={previewOpenRouterModelsMutation.isPending}
-                        onClick={handleLoadOpenRouterModels}
+                        onClick={handleAsync(handleLoadOpenRouterModels)}
                       >
                         {previewOpenRouterModelsMutation.isPending ? '拉取中...' : '拉取模型列表'}
                       </Button>
@@ -2468,7 +2481,7 @@ export function SettingsPage() {
                           disabled={
                             previewOpenRouterChatMutation.isPending || !selectedOpenRouterModelId
                           }
-                          onClick={handleRunOpenRouterChatTest}
+                          onClick={handleAsync(handleRunOpenRouterChatTest)}
                         >
                           {previewOpenRouterChatMutation.isPending ? '发送中...' : '发送测试'}
                         </Button>

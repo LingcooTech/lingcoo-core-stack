@@ -10,6 +10,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   varchar,
@@ -18,11 +19,11 @@ import {
 export const userStatusEnum = pgEnum('user_status', ['active', 'suspended']);
 export const userRoleEnum = pgEnum('user_role', [
   'user',
+  'admin',
   'support',
   'finance',
   'editor',
   'operator',
-  'admin',
 ]);
 export const intervalEnum = pgEnum('billing_interval', ['month', 'year', 'one_time']);
 export const sourceTypeEnum = pgEnum('entitlement_source_type', [
@@ -43,8 +44,8 @@ export const orderStatusEnum = pgEnum('order_status', [
   'paid',
   'failed',
   'cancelled',
-  'refunding',
   'refunded',
+  'refunding',
 ]);
 export const checkoutSessionStatusEnum = pgEnum('checkout_session_status', [
   'pending',
@@ -497,7 +498,7 @@ export const appOffers = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    appCodeKey: uniqueIndex('app_offers_app_id_code_idx').on(table.appId, table.code),
+    appCodeKey: unique('app_offers_app_id_code_key').on(table.appId, table.code),
   }),
 );
 
@@ -646,7 +647,7 @@ export const installs = pgTable('installs', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   appId: uuid('app_id')
     .notNull()
-    .references(() => apps.id, { onDelete: 'cascade' }),
+    .references(() => apps.id, { onDelete: 'restrict' }),
   extensionInstallId: varchar('extension_install_id', { length: 128 }).notNull().unique(),
   deviceFingerprint: varchar('device_fingerprint', { length: 255 }),
   chromeProfileHint: varchar('chrome_profile_hint', { length: 255 }),
@@ -657,30 +658,36 @@ export const installs = pgTable('installs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const deployments = pgTable('deployments', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  appId: uuid('app_id')
-    .notNull()
-    .references(() => apps.id, { onDelete: 'restrict' }),
-  entitlementId: uuid('entitlement_id').references(() => entitlements.id, { onDelete: 'restrict' }),
-  label: varchar('label', { length: 120 }).notNull(),
-  environment: varchar('environment', { length: 32 }).notNull().default('production'),
-  serverHost: varchar('server_host', { length: 255 }),
-  installPath: varchar('install_path', { length: 255 })
-    .notNull()
-    .default('/opt/fd-headless-wp-system'),
-  status: recordStatusEnum('status').notNull().default('active'),
-  lastTokenIssuedAt: timestamp('last_token_issued_at', { withTimezone: true }),
-  lastDeployedAt: timestamp('last_deployed_at', { withTimezone: true }),
-  meta: jsonb('meta')
-    .notNull()
-    .default(sql`'{}'::jsonb`),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const deployments = pgTable(
+  'deployments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
+    entitlementId: uuid('entitlement_id').references(() => entitlements.id, {
+      onDelete: 'restrict',
+    }),
+    label: varchar('label', { length: 120 }).notNull(),
+    environment: varchar('environment', { length: 32 }).notNull().default('production'),
+    serverHost: varchar('server_host', { length: 255 }),
+    installPath: varchar('install_path', { length: 255 })
+      .notNull()
+      .default('/opt/fd-headless-wp-system'),
+    status: recordStatusEnum('status').notNull().default('active'),
+    lastTokenIssuedAt: timestamp('last_token_issued_at', { withTimezone: true }),
+    lastDeployedAt: timestamp('last_deployed_at', { withTimezone: true }),
+    meta: jsonb('meta')
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({ entitlementIdx: index('deployments_entitlement_id_idx').on(table.entitlementId) }),
+);
 
 export const deploymentTokens = pgTable(
   'deployment_tokens',
@@ -830,7 +837,7 @@ export const notifications = pgTable(
       table.createdAt,
     ),
     sourceEventIdx: index('notifications_source_event_idx').on(table.sourceEventId),
-    dedupeKeyIdx: uniqueIndex('notifications_dedupe_key_idx').on(table.dedupeKey),
+    dedupeKeyIdx: unique('notifications_dedupe_key_unique').on(table.dedupeKey),
   }),
 );
 

@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { sql } from 'drizzle-orm';
 
 import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
 
@@ -33,9 +32,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
 
   async createDeployment(input: Parameters<DeploymentService['createDeploymentLocked']>[0]) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select id from entitlements where id = ${input.entitlementId} for update`,
-      );
+      await this.capabilities.createLicenseAccess(tx).lockEntitlementById(input.entitlementId);
       return new DeploymentService(this.capabilities, tx, this.env).createDeploymentLocked(input);
     });
   }
@@ -154,7 +151,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
 
   async updateDeployment(input: Parameters<DeploymentService['updateDeploymentLocked']>[0]) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).updateDeploymentLocked(input);
     });
   }
@@ -275,7 +272,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['issueDeploymentTokenLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).issueDeploymentTokenLocked(
         input,
       );
@@ -391,7 +388,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       app,
       deployment,
     });
-    await this.db.execute(sql`select id from deployments where id = ${deployment.id} for update`);
+    await new DeploymentRepository(this.db).lockById(deployment.id);
     if (!(await repository.markTokenUsed(matched.id)))
       throw httpError(401, 'Deployment token is invalid or expired');
     const boundDeployment = await this.bindDeploymentDomainOnExchange({
@@ -428,7 +425,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['reportDeploymentStatusLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).reportDeploymentStatusLocked(
         input,
       );
@@ -597,7 +594,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['requestDeploymentActionLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).requestDeploymentActionLocked(
         input,
       );
@@ -721,7 +718,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['completeDeploymentActionLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).completeDeploymentActionLocked(
         input,
       );
@@ -807,7 +804,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['deactivateDeploymentLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select id from deployments where id = ${input.deploymentId} for update`);
+      await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).deactivateDeploymentLocked(
         input,
       );

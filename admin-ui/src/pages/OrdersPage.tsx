@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Eye, RefreshCw } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
@@ -278,7 +279,7 @@ export function OrdersPage() {
         selectedCount={selectedRowIds.size}
         onClear={() => setSelectedRowIds(new Set())}
       >
-        <BulkActionButton onClick={runBulkReconcile} disabled={bulkRunning}>
+        <BulkActionButton onClick={handleAsync(runBulkReconcile)} disabled={bulkRunning}>
           <RefreshCw className={`size-3.5 ${bulkRunning ? 'animate-spin' : ''}`} />
           {bulkRunning ? '同步中...' : '批量同步'}
         </BulkActionButton>

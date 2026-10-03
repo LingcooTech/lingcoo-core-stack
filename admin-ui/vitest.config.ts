@@ -5,7 +5,7 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
-      include: ['src/**/*.browser.test.tsx'],
+      include: ['src/**/*.browser.test.{ts,tsx}'],
       browser: {
         enabled: true,
         headless: true,

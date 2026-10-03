@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -376,7 +377,7 @@ export function AppEditPage() {
       toast.success(isCreateMode ? '应用已创建' : '应用配置已保存');
 
       if (isCreateMode) {
-        navigate(`/admin/apps/${result.code}/edit`, { replace: true });
+        runAsync(() => navigate(`/admin/apps/${result.code}/edit`, { replace: true }));
       }
     },
     onError: (error) => {

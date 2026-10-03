@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -52,7 +53,7 @@ export function CreateTicketPage() {
     mutationFn: createMyTicket,
     onSuccess: (result) => {
       toast.success(`工单已创建：${result.ticket.ticketNo}`);
-      navigate('/tickets');
+      runAsync(() => navigate('/tickets'));
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : '创建工单失败'),
   });

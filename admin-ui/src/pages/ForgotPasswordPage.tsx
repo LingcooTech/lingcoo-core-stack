@@ -1,3 +1,4 @@
+import { runAsync, handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -67,7 +68,7 @@ export function ForgotPasswordPage() {
       resetPassword(submittedEmail, values.code, values.newPassword),
     onSuccess: () => {
       toast.success('密码已重置，请重新登录');
-      navigate(`/login?next=${encodeURIComponent('/orders')}`, { replace: true });
+      runAsync(() => navigate(`/login?next=${encodeURIComponent('/orders')}`, { replace: true }));
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败'),
   });
@@ -81,7 +82,9 @@ export function ForgotPasswordPage() {
         <CardContent className="space-y-6">
           <Form {...requestForm}>
             <form
-              onSubmit={requestForm.handleSubmit((values) => requestMutation.mutate(values))}
+              onSubmit={handleAsync(
+                requestForm.handleSubmit((values) => requestMutation.mutate(values)),
+              )}
               className="space-y-4"
             >
               <FormField
@@ -120,7 +123,9 @@ export function ForgotPasswordPage() {
 
             <Form {...resetForm}>
               <form
-                onSubmit={resetForm.handleSubmit((values) => resetMutation.mutate(values))}
+                onSubmit={handleAsync(
+                  resetForm.handleSubmit((values) => resetMutation.mutate(values)),
+                )}
                 className="mt-4 space-y-4"
               >
                 <FormField

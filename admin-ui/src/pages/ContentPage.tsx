@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -186,7 +187,7 @@ export function ContentPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate(`/admin/content/${row.id}/edit`)}
+            onClick={handleAsync(() => navigate(`/admin/content/${row.id}/edit`))}
           >
             编辑
           </Button>

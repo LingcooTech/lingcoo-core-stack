@@ -11,6 +11,7 @@ export type LicenseRepositoryPort = Pick<
   | 'deactivatePlansByAppExceptCodes'
   | 'deactivatePlansByAppId'
   | 'deleteFeaturesByAppId'
+  | 'lockEntitlementById'
   | 'findEntitlementById'
   | 'getPlanById'
   | 'listEntitlements'

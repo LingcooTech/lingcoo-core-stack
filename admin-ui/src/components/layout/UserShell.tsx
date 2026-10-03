@@ -1,3 +1,4 @@
+import { runAsync, handleAsync } from '@/lib/async-events';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -129,7 +130,7 @@ export function UserShell() {
     }
 
     if (isInternalSiteUrl(url)) {
-      navigate(url);
+      runAsync(() => navigate(url));
       return;
     }
 
@@ -260,7 +261,7 @@ export function UserShell() {
                   variant="ghost"
                   size="icon"
                   className="relative hidden h-9 w-9 rounded-full text-muted-foreground transition hover:bg-card hover:text-foreground lg:inline-flex"
-                  onClick={() => navigate('/account?tab=notifications')}
+                  onClick={handleAsync(() => navigate('/account?tab=notifications'))}
                   aria-label="打开消息通知"
                 >
                   <Bell className="h-4 w-4" />
@@ -303,7 +304,7 @@ export function UserShell() {
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            navigate('/account?tab=profile');
+                            runAsync(() => navigate('/account?tab=profile'));
                           }}
                           aria-label="打开账户设置"
                         >
@@ -330,7 +331,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/account?tab=notifications');
+                            runAsync(() => navigate('/account?tab=notifications'));
                           }}
                         >
                           <Bell className="h-4 w-4 text-muted-foreground" />
@@ -340,7 +341,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/account?tab=profile');
+                            runAsync(() => navigate('/account?tab=profile'));
                           }}
                         >
                           <UserCircle2 className="h-4 w-4 text-muted-foreground" />
@@ -350,7 +351,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/account?tab=orders');
+                            runAsync(() => navigate('/account?tab=orders'));
                           }}
                         >
                           <ShoppingBag className="h-4 w-4 text-muted-foreground" />
@@ -360,7 +361,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/account?tab=apps');
+                            runAsync(() => navigate('/account?tab=apps'));
                           }}
                         >
                           <Package2 className="h-4 w-4 text-muted-foreground" />
@@ -370,7 +371,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/tickets');
+                            runAsync(() => navigate('/tickets'));
                           }}
                         >
                           <CircleHelp className="h-4 w-4 text-muted-foreground" />
@@ -385,7 +386,7 @@ export function UserShell() {
                           className="rounded-lg px-3 py-2.5 text-[14px]"
                           onSelect={(event) => {
                             event.preventDefault();
-                            navigate('/admin');
+                            runAsync(() => navigate('/admin'));
                           }}
                         >
                           <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
@@ -399,7 +400,7 @@ export function UserShell() {
                         className="rounded-lg px-3 py-2.5 text-[14px] text-destructive focus:bg-destructive/10 focus:text-destructive"
                         onSelect={(event) => {
                           event.preventDefault();
-                          logout();
+                          runAsync(() => logout());
                         }}
                       >
                         <LogOut className="h-4 w-4" />
@@ -509,7 +510,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card/90 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
-                          onClick={() => navigate('/account?tab=profile')}
+                          onClick={handleAsync(() => navigate('/account?tab=profile'))}
                           aria-label="打开账户设置"
                         >
                           <Settings className="h-4 w-4" />
@@ -537,7 +538,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/account?tab=notifications')}
+                          onClick={handleAsync(() => navigate('/account?tab=notifications'))}
                         >
                           <Bell className="h-4 w-4 text-muted-foreground" />
                           消息通知
@@ -550,7 +551,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/account?tab=profile')}
+                          onClick={handleAsync(() => navigate('/account?tab=profile'))}
                         >
                           <UserCircle2 className="h-4 w-4 text-muted-foreground" />
                           个人资料
@@ -558,7 +559,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/account?tab=orders')}
+                          onClick={handleAsync(() => navigate('/account?tab=orders'))}
                         >
                           <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                           我的订单
@@ -566,7 +567,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/account?tab=apps')}
+                          onClick={handleAsync(() => navigate('/account?tab=apps'))}
                         >
                           <Package2 className="h-4 w-4 text-muted-foreground" />
                           我的应用
@@ -574,7 +575,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/tickets')}
+                          onClick={handleAsync(() => navigate('/tickets'))}
                         >
                           <CircleHelp className="h-4 w-4 text-muted-foreground" />
                           我的工单
@@ -582,7 +583,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                          onClick={() => navigate('/account?tab=profile')}
+                          onClick={handleAsync(() => navigate('/account?tab=profile'))}
                         >
                           <Settings className="h-4 w-4 text-muted-foreground" />
                           设置
@@ -591,7 +592,7 @@ export function UserShell() {
                           <button
                             type="button"
                             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-foreground transition hover:bg-muted hover:text-primary"
-                            onClick={() => navigate('/admin')}
+                            onClick={handleAsync(() => navigate('/admin'))}
                           >
                             <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                             管理后台
@@ -601,7 +602,7 @@ export function UserShell() {
                         <button
                           type="button"
                           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14px] font-medium text-destructive transition-colors hover:bg-destructive/10"
-                          onClick={logout}
+                          onClick={handleAsync(logout)}
                         >
                           <LogOut className="h-4 w-4" />
                           退出登录

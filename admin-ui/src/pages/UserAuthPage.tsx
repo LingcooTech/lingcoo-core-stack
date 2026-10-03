@@ -1,3 +1,4 @@
+import { runAsync, handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -36,7 +37,7 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(next, { replace: true });
+      runAsync(() => navigate(next, { replace: true }));
     }
   }, [isAuthenticated, navigate, next]);
 
@@ -54,11 +55,13 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
       authLogin(result.user);
       if (result.user.emailVerified === false) {
         toast.success(mode === 'register' ? '注册成功，请验证邮箱' : '登录成功，请先验证邮箱');
-        navigate(`/verify-email?next=${encodeURIComponent(next)}`, { replace: true });
+        runAsync(() =>
+          navigate(`/verify-email?next=${encodeURIComponent(next)}`, { replace: true }),
+        );
         return;
       }
       toast.success(mode === 'register' ? '注册成功，已进入用户中心' : '登录成功');
-      navigate(next, { replace: true });
+      runAsync(() => navigate(next, { replace: true }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '操作失败');
     }
@@ -74,7 +77,7 @@ export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleAsync(form.handleSubmit(onSubmit))} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"

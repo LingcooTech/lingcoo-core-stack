@@ -1,3 +1,4 @@
+import { acquireTransactionLock } from '../../db/locks';
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 
 import { aiUsageEvents } from '../../db/schema';
@@ -46,9 +47,7 @@ export class AiRepository {
   }
 
   async lockQuota(userId: string, appCode: string) {
-    await this.db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${'ai-quota:' + userId + ':' + appCode},0))`,
-    );
+    await acquireTransactionLock(this.db, `ai-quota:${userId}:${appCode}`);
   }
   async finishUsageEvent(
     id: string,

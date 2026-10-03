@@ -13,6 +13,7 @@ export interface DeploymentDependencies {
     ...args: Parameters<LicenseRepositoryFactory>
   ) => Pick<
     ReturnType<LicenseRepositoryFactory>,
+    | 'lockEntitlementById'
     | 'findEntitlementById'
     | 'getPlanById'
     | 'listEntitlementsByIds'
@@ -37,6 +38,7 @@ export function pickDeploymentDependencies(input: DeploymentDependencies): Deplo
     createLicenseAccess: (...args) => {
       const port = input.createLicenseAccess(...args);
       return {
+        lockEntitlementById: port.lockEntitlementById.bind(port),
         findEntitlementById: port.findEntitlementById.bind(port),
         getPlanById: port.getPlanById.bind(port),
         listEntitlementsByIds: port.listEntitlementsByIds.bind(port),

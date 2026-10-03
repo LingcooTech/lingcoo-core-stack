@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import type { PreparedPayment } from '../modules/billing/providers/types';
+import type { PreparedPayment } from '../modules/billing/public';
 import { httpError } from './errors';
 
 export type CheckoutAction =

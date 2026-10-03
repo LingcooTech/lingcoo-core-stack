@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -150,7 +151,7 @@ export function PaymentsPage() {
 
                 <Form {...wechatForm}>
                   <form
-                    onSubmit={wechatForm.handleSubmit((v) => wechatMutation.mutate(v))}
+                    onSubmit={handleAsync(wechatForm.handleSubmit((v) => wechatMutation.mutate(v)))}
                     className="space-y-4"
                   >
                     <div className="grid grid-cols-2 gap-4">
@@ -282,7 +283,7 @@ export function PaymentsPage() {
 
                 <Form {...alipayForm}>
                   <form
-                    onSubmit={alipayForm.handleSubmit((v) => alipayMutation.mutate(v))}
+                    onSubmit={handleAsync(alipayForm.handleSubmit((v) => alipayMutation.mutate(v)))}
                     className="space-y-4"
                   >
                     <FormField

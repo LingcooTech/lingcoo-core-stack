@@ -28,6 +28,8 @@ export default tseslint.config(
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: { jsx: true },
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         ...globals.browser,
@@ -39,6 +41,8 @@ export default tseslint.config(
       'jsx-a11y': jsxA11y,
     },
     rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': [
         'warn',

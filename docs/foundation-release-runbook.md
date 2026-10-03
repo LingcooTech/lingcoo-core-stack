@@ -54,3 +54,9 @@ API 默认排空 30 秒，Worker 默认排空 30 秒，Compose 等待 45 秒。�
 临时接受的开发工具风险由仓库维护者负责在 2026-11-01 前复核：不向公网暴露 esbuild 开发服务器；这些开发依赖不进入生产镜像。未使用 `npm audit fix --force` 降级 Drizzle。依据见 [esbuild 开发服务公告](https://github.com/evanw/esbuild/security/advisories/GHSA-67mh-4wv8-2f99)、[Drizzle 发行记录](https://github.com/drizzle-team/drizzle-orm/releases)。Fastify JWT 与 Nodemailer 升级按[官方兼容说明](https://github.com/fastify/fastify-jwt)、[官方发行记录](https://github.com/nodemailer/nodemailer/releases)核对并进行回归。
 
 生产镜像基础镜像固定 digest，GitHub Actions 固定为官方 tag 对应 commit；后续维护通过独立依赖变更更新并重新验证。
+
+## Schema 生成与历史数据校准
+
+使用 `.node-version` 指定的 Node 和 `packageManager` 指定的 npm。修改 schema 后运行 `npm run db:generate`，审核 SQL 与最新 snapshot，一起提交；`npm run check:schema` 和真实数据库回归必须通过。不能修改已经执行过的历史迁移来消除差异。
+
+0028 为生成基线校准迁移，不重写旧迁移记录。它会拒绝带有不存在 app 的事件记录。遇到该错误，应先备份、查询并按业务规则核对 `events.app_id`，再显式修复后重试；不要跳过迁移或批量删除历史数据。安装记录引用的 app 采用 RESTRICT 删除语义。

@@ -71,12 +71,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
     window.addEventListener('stack:session-expired', expired);
-    window.addEventListener('focus', refresh);
+    const onFocus = () => {
+      void refresh();
+    };
+    window.addEventListener('focus', onFocus);
     void refresh();
     return () => {
       active = false;
       window.removeEventListener('stack:session-expired', expired);
-      window.removeEventListener('focus', refresh);
+      window.removeEventListener('focus', onFocus);
     };
   }, [client]);
   return (

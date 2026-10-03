@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useMutation } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -30,7 +31,7 @@ export function VerifyEmailPage() {
     onSuccess: () => {
       setEmailVerified();
       toast.success('邮箱验证成功');
-      navigate(next, { replace: true });
+      runAsync(() => navigate(next, { replace: true }));
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : '验证失败');

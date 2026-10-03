@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, FileText } from 'lucide-react';
 import { useEffect } from 'react';
@@ -63,7 +64,7 @@ export function DocsCommandPalette({ open, onOpenChange }: DocsCommandPalettePro
                 key={`${page.spaceSlug}/${page.pagePath}`}
                 value={`${page.spaceTitle} ${page.pageTitle} ${page.summary ?? ''}`}
                 onSelect={() => {
-                  navigate(`/docs/${page.spaceSlug}/${page.pagePath}`);
+                  runAsync(() => navigate(`/docs/${page.spaceSlug}/${page.pagePath}`));
                   onOpenChange(false);
                 }}
               >

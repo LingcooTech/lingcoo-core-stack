@@ -9,7 +9,8 @@ import {
   adminUpsertDeliverySettingsSchema,
 } from './schemas';
 import { z } from 'zod';
-import { eq, sql } from 'drizzle-orm';
+import { acquireTransactionLock } from '../../db/locks';
+import { eq } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { DbExecutor } from '../../db/types';
 import { settingsRevisions } from '../../db/schema';
@@ -101,7 +102,7 @@ export class SettingsRegistry {
     const key = settingsKeyForPath(request.url);
     if (!key) throw httpError(400, 'Unregistered setting');
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`settings:${key}`},0))`);
+      await acquireTransactionLock(tx, `settings:${key}`);
       const version = await new SettingsRegistry(tx).version(key);
       const result = await work(tx);
       this.responseVersions.set(request, version);
@@ -127,7 +128,7 @@ export class SettingsRegistry {
     if (header !== undefined && expected === undefined)
       throw httpError(400, 'Invalid settings version');
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`settings:${key}`},0))`);
+      await acquireTransactionLock(tx, `settings:${key}`);
       const current = await new SettingsRegistry(tx).version(key);
       if (expected !== undefined && current !== expected)
         throw httpError(409, 'Settings changed; reload before saving');

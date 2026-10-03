@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -786,7 +787,7 @@ export function DeploymentWizard({
                   creating ||
                   issuing
                 }
-                onClick={handleCreate}
+                onClick={handleAsync(handleCreate)}
               >
                 {creating || issuing ? '创建中...' : '创建部署'}
               </Button>

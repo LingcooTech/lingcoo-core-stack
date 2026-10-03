@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Clock, FileText, Link2, LoaderCircle, Share2 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -193,7 +194,7 @@ export function ContentDetailPage() {
           觉得有帮助？分享给更多人
         </span>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCopyLink}>
+          <Button variant="outline" size="sm" onClick={handleAsync(handleCopyLink)}>
             <Link2 className="h-4 w-4" />
             复制链接
           </Button>

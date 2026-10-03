@@ -7,6 +7,14 @@ import type { DbExecutor } from '../../db/types';
 export class LicenseRepository {
   constructor(private readonly db: DbExecutor) {}
 
+  async lockEntitlementById(id: string): Promise<void> {
+    await this.db
+      .select({ id: entitlements.id })
+      .from(entitlements)
+      .where(eq(entitlements.id, id))
+      .for('update');
+  }
+
   async listPlans() {
     return this.db.select().from(plans).orderBy(desc(plans.createdAt));
   }

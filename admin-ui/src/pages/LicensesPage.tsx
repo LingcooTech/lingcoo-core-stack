@@ -1,3 +1,4 @@
+import { handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
@@ -249,7 +250,7 @@ export function LicensesPage() {
           <h3 className="mb-4 text-sm font-semibold">人工发放授权</h3>
           <Form {...grantForm}>
             <form
-              onSubmit={grantForm.handleSubmit((v) => grantMutation.mutate(v))}
+              onSubmit={handleAsync(grantForm.handleSubmit((v) => grantMutation.mutate(v)))}
               className="space-y-4"
             >
               <div className="grid gap-4 md:grid-cols-2">

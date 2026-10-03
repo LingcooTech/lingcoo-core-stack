@@ -25,8 +25,17 @@ export function collectViolations(root = process.cwd()) {
   };
   const add = (file, rule, detail) =>
     violations.push({ file: relative(root, file).split(sep).join('/'), rule, detail });
-  const schemaFile = resolve(src, 'db/schema.ts');
-  if (existsSync(schemaFile)) {
+  const files = [
+    ...walk(src),
+    ...walk(resolve(root, 'packages/contracts/src')),
+    ...walk(resolve(root, 'packages/api-client/src')),
+  ];
+  const program = ts.createProgram(files, { ...config.options, noResolve: true, noLib: true });
+  const checker = program.getTypeChecker();
+  for (const schemaFile of [
+    resolve(src, 'db/schema.ts'),
+    ...walk(resolve(src, 'db/schema')),
+  ].filter(existsSync)) {
     const schemaAst = ts.createSourceFile(
       schemaFile,
       readFileSync(schemaFile, 'utf8'),
@@ -48,14 +57,9 @@ export function collectViolations(root = process.cwd()) {
     };
     inspectTable(schemaAst);
   }
-  for (const file of [
-    ...walk(src),
-    ...walk(resolve(root, 'packages/contracts/src')),
-    ...walk(resolve(root, 'packages/api-client/src')),
-  ]) {
+  for (const file of files) {
     const source = moduleOf(file),
-      ast = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true),
-      tables = new Map(),
+      ast = program.getSourceFile(file),
       protectedEnvironment =
         Boolean(source) ||
         file.includes('/packages/contracts/src/') ||
@@ -83,12 +87,25 @@ export function collectViolations(root = process.cwd()) {
       )
         add(file, 'shared-backend-dependency', specifier);
       const dest = moduleOf(target);
-      if (source && target.startsWith(resolve(src, 'composition') + sep))
+      if (
+        source &&
+        (target.startsWith(resolve(src, 'composition') + sep) ||
+          target.startsWith(resolve(src, 'scripts') + sep) ||
+          target === resolve(modulesRoot, 'index.ts'))
+      )
         add(file, 'module-composition-dependency', specifier);
       if (source && /\/lib\/[^/]*settings\.ts$/.test(target))
         add(file, 'legacy-settings-import', specifier);
+      if (
+        dest &&
+        source !== dest &&
+        !target.endsWith('/public.ts') &&
+        !file.startsWith(resolve(src, 'composition') + sep) &&
+        !file.startsWith(resolve(src, 'scripts') + sep) &&
+        file !== resolve(modulesRoot, 'index.ts')
+      )
+        add(file, 'internal-import', specifier);
       if (source && dest && source !== dest) {
-        if (!target.endsWith('/public.ts')) add(file, 'internal-import', specifier);
         if (!typeOnly) {
           if (!edges.has(source)) edges.set(source, new Set());
           edges.get(source).add(dest);
@@ -110,16 +127,28 @@ export function collectViolations(root = process.cwd()) {
       )
         add(file, 'repository-export', specifier);
     };
-    for (const st of ast.statements)
+    const tableOf = (node, seen = new Set()) => {
+      if (!node || seen.has(node)) return null;
+      seen.add(node);
       if (
-        ts.isImportDeclaration(st) &&
-        st.importClause?.namedBindings &&
-        ts.isNamedImports(st.importClause.namedBindings)
+        ts.isAsExpression(node) ||
+        ts.isParenthesizedExpression(node) ||
+        ts.isNonNullExpression(node)
       )
-        for (const binding of st.importClause.namedBindings.elements) {
-          const original = binding.propertyName?.text || binding.name.text;
-          if (owners[original]) tables.set(binding.name.text, original);
+        return tableOf(node.expression, seen);
+      if (ts.isPropertyAccessExpression(node))
+        return owners[node.name.text] ? node.name.text : null;
+      if (!ts.isIdentifier(node)) return null;
+      const symbol = checker.getSymbolAtLocation(node);
+      for (const declaration of symbol?.declarations || []) {
+        if (ts.isImportSpecifier(declaration)) {
+          const name = declaration.propertyName?.text || declaration.name.text;
+          if (owners[name]) return name;
         }
+        if (ts.isVariableDeclaration(declaration)) return tableOf(declaration.initializer, seen);
+      }
+      return null;
+    };
     const visit = (n) => {
       if (
         (ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) &&
@@ -169,14 +198,24 @@ export function collectViolations(root = process.cwd()) {
         n.arguments.length
       ) {
         const arg = n.arguments[0];
-        const name = ts.isIdentifier(arg)
-          ? tables.get(arg.text)
-          : ts.isPropertyAccessExpression(arg)
-            ? arg.name.text
-            : null;
+        const name = tableOf(arg);
+        if (!name && /(?:^|\.)(?:db|tx)$/.test(n.expression.expression.getText(ast)))
+          add(file, 'unresolved-table-write', n.getText(ast));
         if (name && owners[name] && owners[name] !== source)
           add(file, 'foreign-table-write', `${n.expression.name.text}:${name}:${owners[name]}`);
       }
+      if (
+        source &&
+        ts.isCallExpression(n) &&
+        ((ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'execute') ||
+          (ts.isElementAccessExpression(n.expression) &&
+            n.expression.argumentExpression?.text === 'execute'))
+      )
+        add(
+          file,
+          'raw-database-execution',
+          'Use an owned repository query or a fixed infrastructure operation',
+        );
       ts.forEachChild(n, visit);
     };
     visit(ast);

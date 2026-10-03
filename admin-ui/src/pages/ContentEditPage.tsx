@@ -1,3 +1,4 @@
+import { runAsync } from '@/lib/async-events';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -78,7 +79,7 @@ export function ContentEditPage() {
     onSuccess: async (item) => {
       toast.success(isCreateMode ? '内容已创建' : '内容已保存');
       await qc.invalidateQueries({ queryKey: ['admin-content'] });
-      navigate(`/admin/content/${item.id}/edit`, { replace: true });
+      runAsync(() => navigate(`/admin/content/${item.id}/edit`, { replace: true }));
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : '保存失败'),
   });
