@@ -17,3 +17,13 @@ with tempfile.TemporaryDirectory() as tmp:
   m.publish({'gatewayConfigPath':str(p),'gatewayContainer':'gateway'},w,{'deploymentId':id,'hostname':'foo.app.lingcoo.com','aliases':[]})
   assert 'shop.example.com' not in p.read_text() and old.strip() in p.read_text()
 print('Ingress aliases, injection rejection, existing routes and removal checks passed')
+
+with tempfile.TemporaryDirectory() as tmp:
+    directory = Path(tmp)
+    (directory / '.env').write_text("APP_IMAGE='test-image'\nCORS_ORIGIN='https://foo.app.lingcoo.com'\n")
+    with patch.object(m.subprocess, 'run'):
+        m.sync_origins(directory, id, ['foo.app.lingcoo.com', 'shop.example.com'])
+    text = (directory / '.env').read_text()
+    assert "CORS_ORIGIN='https://foo.app.lingcoo.com,https://shop.example.com'" in text
+    assert "APP_IMAGE='test-image'" in text
+print('Managed environment quoting preserved')

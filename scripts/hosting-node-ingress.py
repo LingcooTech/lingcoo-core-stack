@@ -95,7 +95,7 @@ def sync_origins(directory, deployment_id, hostnames):
     """Keep Retail browser API requests working on all verified aliases."""
     path = directory / '.env'
     old = path.read_text()
-    value = 'CORS_ORIGIN=' + ','.join('https://' + name for name in hostnames)
+    value = "CORS_ORIGIN='" + ','.join('https://' + name for name in hostnames) + "'"
     lines = old.splitlines()
     updated = '\n'.join(value if line.startswith('CORS_ORIGIN=') else line for line in lines) + '\n'
     if updated == old:
