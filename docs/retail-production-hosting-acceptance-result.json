@@ -1,0 +1,147 @@
+{
+  "verifiedAt": "2026-10-07T17:20:48.343407+00:00",
+  "scope": "production managed hosting pilot; not a real-payment certification",
+  "deploymentId": "c000d1a7-f0ab-4350-9d89-cad20831651f",
+  "nodeIp": "118.25.36.15",
+  "defaultUrl": "https://retail-demo-20261008.app.lingcoo.com",
+  "customUrl": "https://retail-demo.lingcoo.com",
+  "runtimeImage": "crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com/futuredecade/lingcoo-retail-oms@sha256:8e6cd1b43734278a5b698d13795dfb8a9851f6eba7f67b84820f633f8e52c044",
+  "deliverySourceCommit": "603fa5fd9988c90ea37b8845acce62e15f0c7d36",
+  "commerce": {
+    "productionEntitlement": "audited admin grant",
+    "checkoutAndPayment": "isolated simulated payment verified separately",
+    "realPayment": false,
+    "planActive": false,
+    "offerActive": false
+  },
+  "hosting": {
+    "registryLoginAndPull": true,
+    "cachedOnly": false,
+    "automaticDns": true,
+    "automaticTls": true,
+    "state": "ready",
+    "cpuMillis": 1000,
+    "memoryLimitMiB": 1024,
+    "observedIdleMemoryMiBApprox": 315,
+    "loadTest": false
+  },
+  "publicChecks": [
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "path": "/",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "path": "/admin/",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "path": "/health/ready",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "path": "/health/worker",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "loginStatus": 200,
+      "cors": "https://retail-demo-20261008.app.lingcoo.com",
+      "responseKeys": ["user", "session", "csrfToken"]
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "path": "/",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "path": "/admin/",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "path": "/health/ready",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "path": "/health/worker",
+      "status": 200,
+      "deployment": "c000d1a7-f0ab-4350-9d89-cad20831651f"
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "loginStatus": 200,
+      "cors": "https://retail-demo.lingcoo.com",
+      "responseKeys": ["user", "session", "csrfToken"]
+    }
+  ],
+  "customDomainRemoval": {
+    "wasReady": true,
+    "removedViaCustomerApi": true,
+    "rowReleasedAfterNodeAcknowledgment": true,
+    "gatewayRouteRemoved": true,
+    "temporaryDnsRemoved": true
+  },
+  "backup": {
+    "directory": "/opt/lingcoo-hosting/backups/c000d1a7-f0ab-4350-9d89-cad20831651f-20261007T170643Z",
+    "manifestChecksums": "passed",
+    "hostingCompleteMarker": true,
+    "isolatedRestore": "passed",
+    "publicTables": 79,
+    "identityUsers": 1,
+    "passwordCredentials": 1,
+    "attachmentMarker": "matched",
+    "restoredApiWorkerStarted": false,
+    "restoreContainers": "stopped; private volumes retained",
+    "schedule": "daily 04:00 Asia/Shanghai",
+    "offsiteCopy": false
+  },
+  "engineering": {
+    "fullLocalIntegrationTests": 66,
+    "additionalFocusedDomainTests": 3,
+    "browserTests": 10,
+    "unitTests": 55,
+    "imageVerificationWorkflow": "37656802421",
+    "finalCiIntegrationTests": 67,
+    "finalCiWorkflow": "37656651412",
+    "finalCiConclusion": "success",
+    "branchCiWorkflow": "37656802433",
+    "branchCiConclusion": "success",
+    "productionDependencyAudit": "0 vulnerabilities",
+    "allDependencyAudit": "0 vulnerabilities"
+  },
+  "limitations": [
+    "Production commerce remains inactive pending price and real-payment acceptance",
+    "Replace operator registry credential with dedicated pull-only credential before customer delivery",
+    "Off-host encrypted backup, retention and alerting remain to implement",
+    "No load/capacity certification, host-loss cutover, managed rolling upgrade or node migration certification"
+  ],
+  "postUnbindVerification": {
+    "defaultAndCustomFourPaths": "HTTP 200; deployment header matched",
+    "tlsVerifiedFromNode": true,
+    "existingSitesHttp200": [
+      "lingcoo.com",
+      "edusys.lingcoo.com",
+      "retailsys.lingcoo.com",
+      "stack.lingcoo.com"
+    ]
+  },
+  "release": {
+    "commit": "4d10d8a428126d9d61f36875672f7409f7683ca3",
+    "workflow": "37657444112",
+    "conclusion": "success",
+    "productionReadyVersionMatched": true
+  }
+}

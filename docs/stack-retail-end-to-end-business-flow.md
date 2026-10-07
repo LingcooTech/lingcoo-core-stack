@@ -1,6 +1,6 @@
 # Stack 应用接入、售卖授权与托管交付全流程
 
-更新：2026-10-08。本文以 Lingcoo Retail OMS 为实际样本。实施证据分别记录在 `retail-stack-acceptance-result.json`、`retail-managed-hosting-acceptance-result.json` 和后续生产验收记录中；模拟支付不等同于真实收款，试点授权不等同于正式定价上架。
+更新：2026-10-08。本文以 Lingcoo Retail OMS 为实际样本。实施证据分别记录在 `retail-stack-acceptance-result.json`、`retail-managed-hosting-acceptance-result.json` 和 `retail-production-hosting-acceptance-result.json` 中；模拟支付不等同于真实收款，试点授权不等同于正式定价上架。
 
 ## 1. 产品边界
 
@@ -125,7 +125,7 @@ flowchart LR
 
 ## 9. 备份、恢复和后续运营
 
-节点可安装每日 04:00 备份 timer，备份与部署使用同一个排他锁。备份包含 PostgreSQL、附件、实例配置、密钥、镜像信息和托管资源覆盖配置。现有备份方式短暂停止 API/Worker 写入保证一致性，完成后恢复服务；此窗口需要纳入托管说明。
+节点可安装每日服务器本地时间 04:00 备份 timer（本轮节点为 Asia/Shanghai），备份与部署使用同一个排他锁。备份包含 PostgreSQL、附件、实例配置、密钥、镜像信息和托管资源覆盖配置。现有备份方式短暂停止 API/Worker 写入保证一致性，完成后恢复服务；此窗口需要纳入托管说明。
 
 备份目录权限受限，成功标识及 SHA256 用于检查完整性。恢复先到隔离项目验证，再决定切换，禁止未经验证覆盖客户在线数据库。
 
@@ -136,3 +136,22 @@ flowchart LR
 以下事项必须在验收记录中分别列出：商品导入、真实/模拟支付、权益来源、实际镜像拉取、运行健康、默认域名、自定义域名、解绑、备份恢复、生产版本和当前访问链接。
 
 软件售价和托管价格未确认时保持验收/试点状态，不把测试价格公开售卖。真实收款与退款、业务负载测试、整机故障恢复、多节点迁移，以及新版本托管升级不因一次健康检查成功而自动获得认证。
+
+## 11. 2026-10-08 生产试点实测
+
+- 独立部署 ID：`c000d1a7-f0ab-4350-9d89-cad20831651f`，托管节点 `118.25.36.15`。
+- 默认入口：<https://retail-demo-20261008.app.lingcoo.com>；管理端在 `/admin/`。
+- 自定义入口：<https://retail-demo.lingcoo.com>；这次用平台自有域名模拟客户配置 CNAME/TXT，平台随后自动验证和签发证书。
+- 默认与自定义入口的 Web、Admin、API 就绪、Worker 健康均返回 200，部署标识一致，真实管理员登录和对应 CORS 来源通过。
+- 额外测试域名完成 ready → removing → 删除；节点清理路由后才释放平台占用，测试 DNS 记录已按记录 ID 和归属标记清理，保留域名继续正常访问。
+- 最终代码 CI 通过 55 项单元测试、67 项集成测试和前端/浏览器检查；生产及全依赖审计均为 0 漏洞。
+- 节点实际执行仓库登录和应用镜像拉取，没有启用仅缓存镜像模式；交付镜像按 digest 固定。
+- 总容器预算 1 CPU / 1024 MiB，本轮空载采样约 315 MiB；这不是压力测试结果，也不是可容纳客户数量的承诺。
+- 备份包含数据库、附件、配置和密钥，校验清单通过；隔离恢复得到 79 张 public 表、管理员及密码凭据记录，附件探针内容一致。恢复项目没有启动 API/Worker，不是整机切换演练。
+- 原有业务实例保留；旧独立试点停止但保留数据卷，新验收实例持续运行。
+
+真实商业支付尚未执行。生产试点权益来自管理员审计授权，套餐和交付 Offer 未开放售卖。当前镜像凭据仅用于受控运营试点，公开自部署交付前需换成专用只读拉取凭据。
+
+详见 [生产验收数据](retail-production-hosting-acceptance-result.json)、[模拟交易验收数据](retail-commerce-acceptance-result.json)、[节点运维](managed-hosting-operations.md) 与 [商用待办](retail-stack-user-tasks.md)。
+
+生产 Stack 运行代码：`4d10d8a428126d9d61f36875672f7409f7683ca3`；[CI](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37656651412) 与 [生产发布](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37657444112) 均成功，线上 `/ready` 版本匹配。随后仅补充本文及验收记录，不再重复发布相同运行代码。
