@@ -128,3 +128,32 @@ test('ownership TXT and exact DNS target are mandatory before ingress and HTTPS 
   await service.nodeComplete(f.node.node.id, f.deployment.id, domain.id, true);
   assert.equal((await service.list(f.deployment.id, f.user.id)).items.length, 0);
 });
+
+test('automatic DNS retries rotate unresolved records instead of starving later customers', async () => {
+  const f = await fixture();
+  const service = new CustomDomainService(db, env, {
+    resolve4: async () => [],
+    resolve6: async () => [],
+    resolveCname: async () => [],
+    resolveTxt: async () => {
+      throw new Error('DNS not configured');
+    },
+  });
+  const domain = await service.add(
+    f.deployment.id,
+    f.user.id,
+    'waiting-' + randomUUID() + '.example.com',
+  );
+  await db
+    .update(deploymentDomains)
+    .set({ updatedAt: new Date('2000-01-01T00:00:00Z') })
+    .where(eq(deploymentDomains.id, domain.id));
+  await service.reconcile();
+  const [row] = await db
+    .select()
+    .from(deploymentDomains)
+    .where(eq(deploymentDomains.id, domain.id));
+  assert.equal(row!.state, 'pending_dns');
+  assert(row!.updatedAt.getTime() > new Date('2000-01-01T00:00:00Z').getTime());
+  await db.delete(deploymentDomains).where(eq(deploymentDomains.id, domain.id));
+});

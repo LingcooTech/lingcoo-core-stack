@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-07T16:38:33.675Z",
+  "payment": "simulated",
+  "controlPlane": "isolated test database",
+  "stages": [
+    "repeatable product import",
+    "catalog and secret redaction",
+    "checkout and repeated simulated payment grants exactly one entitlement",
+    "purchased entitlement creates managed deployment without false readiness"
+  ],
+  "success": true
+}

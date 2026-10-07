@@ -2,7 +2,7 @@ import { probeHostedHttps } from './https-probe';
 import { randomBytes } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { customHostnameSchema, type DeploymentDomain } from '@lingcoo/contracts';
 import { deploymentDomains, deployments } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -214,12 +214,17 @@ export class CustomDomainService {
       .from(deploymentDomains)
       .innerJoin(deployments, eq(deployments.id, deploymentDomains.deploymentId))
       .where(and(eq(deploymentDomains.state, 'pending_dns'), eq(deployments.status, 'active')))
+      .orderBy(asc(deploymentDomains.updatedAt))
       .limit(50);
     for (const row of rows) {
       try {
         await this.verify(row.deploymentId, row.userId, row.id);
       } catch {
-        /* DNS propagation is retried by maintenance. */
+        // Rotate unresolved entries so one batch of missing DNS records cannot starve later customers.
+        await this.db
+          .update(deploymentDomains)
+          .set({ updatedAt: new Date() })
+          .where(and(eq(deploymentDomains.id, row.id), eq(deploymentDomains.state, 'pending_dns')));
       }
     }
   }
