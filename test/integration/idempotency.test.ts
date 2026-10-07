@@ -141,6 +141,7 @@ test('deployment replay keeps the original resource and command correlation', as
     entitlementId: entitlement.id,
     label: 'Replay fixture',
     environment: 'production',
+    serverHost: '192.0.2.10',
   };
   const results = await Promise.all(
     [1, 2].map(() => app.inject({ method: 'POST', url: '/v1/deployments', headers, payload })),

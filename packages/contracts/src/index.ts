@@ -14,3 +14,4 @@ export function isIdempotentCommand(method: string, path: string) {
     /^\/v1\/deployments\/[^/]+\/actions$/.test(clean)
   );
 }
+export * from './hosting.js';

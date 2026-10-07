@@ -22,3 +22,6 @@ test-results
 
 .deploy.lock
 .deploy-backups
+
+admin-ui/.vitest-attachments/
+admin-ui/src/**/__screenshots__/

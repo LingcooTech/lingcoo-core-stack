@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { deploymentModeSchema, ManagedDeploymentSchema } from '../hosting.js';
 import { PaymentProviderSecretStatusSchema } from './settings.js';
 import { UserSummarySchema, AppSummarySchema } from './summaries.js';
 
@@ -24,6 +25,8 @@ export type DeploymentTokenSummary = z.infer<typeof DeploymentTokenSummarySchema
 
 export const DeploymentSummarySchema = z.object({
   id: z.uuid(),
+  deploymentMode: deploymentModeSchema,
+  managed: ManagedDeploymentSchema.nullable(),
   label: z.string(),
   environment: z.string(),
   serverHost: z.union([z.string(), z.null()]),

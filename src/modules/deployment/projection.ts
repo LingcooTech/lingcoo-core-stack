@@ -171,8 +171,25 @@ export async function hydrateDeploymentViews(
       const pendingAction = context.normalizeMeta(meta.pendingAction);
       const lastAction = context.normalizeMeta(meta.lastAction);
 
+      const publicRow = { ...row };
+      const { hostingNodeId: _nodeId, hostingResources: _resources, ...visibleRow } = publicRow;
       return {
-        ...row,
+        ...visibleRow,
+        deploymentMode: row.deploymentMode as 'self_hosted' | 'managed',
+        serverHost: row.deploymentMode === 'managed' ? null : row.serverHost,
+        managed:
+          row.deploymentMode === 'managed'
+            ? {
+                prefix: row.hostedPrefix!,
+                hostname: row.hostedDomain!,
+                state: row.hostingState as
+                  | 'waiting_capacity'
+                  | 'pending_infrastructure'
+                  | 'cancelled',
+                nodeAssigned: Boolean(row.hostingNodeId),
+                accessUrl: null,
+              }
+            : null,
         deliveryValues,
         domainValues,
         configuredSecretKeys,

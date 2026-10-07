@@ -204,6 +204,13 @@
       "when": 1790991709233,
       "tag": "0028_schema_generation_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791366362485,
+      "tag": "0029_managed_hosting_workflow",
+      "breakpoints": true
     }
   ]
 }

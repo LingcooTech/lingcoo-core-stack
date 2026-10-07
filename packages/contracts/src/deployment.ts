@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { deploymentModeSchema, hostedPrefixSchema, serverIpSchema } from './hosting.js';
 
 export const createDeploymentSchema = z
   .object({
@@ -6,14 +7,34 @@ export const createDeploymentSchema = z
     entitlementId: z.string().uuid(),
     label: z.string().trim().min(1).max(120),
     environment: z.string().trim().min(1).max(32).default('production'),
-    serverHost: z.string().trim().min(1).max(255).optional(),
+    deploymentMode: deploymentModeSchema.default('self_hosted'),
+    hostedPrefix: hostedPrefixSchema.optional(),
+    serverHost: serverIpSchema.optional(),
     installPath: z.string().trim().min(1).max(255).optional(),
     updatePolicy: z.enum(['manual', 'auto']).optional(),
     domainValues: z.record(z.string(), z.string().trim().min(1).max(255)).optional(),
     values: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
     secrets: z.record(z.string(), z.string().trim().min(1).max(4096)).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.deploymentMode === 'self_hosted' && !value.serverHost) {
+      ctx.addIssue({ code: 'custom', path: ['serverHost'], message: '请填写自有服务器 IP' });
+    }
+    if (value.deploymentMode === 'self_hosted' && value.hostedPrefix) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['hostedPrefix'],
+        message: '自有服务器不分配托管子域名',
+      });
+    }
+    if (
+      value.deploymentMode === 'managed' &&
+      (value.serverHost || value.installPath || Object.keys(value.domainValues ?? {}).length)
+    ) {
+      ctx.addIssue({ code: 'custom', message: '托管服务器、安装路径和域名由平台分配' });
+    }
+  });
 
 export const updateDeploymentSchema = z
   .object({

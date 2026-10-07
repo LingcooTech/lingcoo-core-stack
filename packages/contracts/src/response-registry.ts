@@ -1,8 +1,31 @@
 import { externalResponseContracts, nonJsonResponseRoutes } from './external-responses.js';
 import { z } from 'zod';
+import {
+  DeploymentOptionsSchema,
+  HostingNodesResponseSchema,
+  HostingNodeCreatedSchema,
+} from './hosting.js';
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  { method: 'GET', path: '/v1/deployments/options', schema: DeploymentOptionsSchema },
+  {
+    method: 'POST',
+    path: '/v1/deployments/:param/allocate',
+    schema: models.DeploymentSummarySchema,
+  },
+  { method: 'GET', path: '/v1/admin/hosting/nodes', schema: HostingNodesResponseSchema },
+  { method: 'POST', path: '/v1/admin/hosting/nodes', schema: HostingNodeCreatedSchema },
+  {
+    method: 'PATCH',
+    path: '/v1/admin/hosting/nodes/:param',
+    schema: z.object({ ok: z.boolean() }),
+  },
+  {
+    method: 'POST',
+    path: '/v1/hosting/nodes/:param/report',
+    schema: z.object({ ok: z.boolean() }),
+  },
   { method: 'GET', path: '/v1/admin/orders', schema: models.OrdersResponseSchema },
   { method: 'GET', path: '/v1/admin/docs/spaces', schema: models.AdminDocSpaceListResponseSchema },
   { method: 'GET', path: '/v1/admin/docs/spaces/:param', schema: models.AdminDocSpaceDetailSchema },

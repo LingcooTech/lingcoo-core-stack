@@ -11,8 +11,17 @@
     "meta": {
       "deliveryMode": "one_click",
       "onboardingStatus": "acceptance_pending",
-      "deploymentModes": ["self_hosted"],
-      "managedHostingStatus": "not_certified"
+      "deploymentModes": ["self_hosted", "managed"],
+      "managedHostingStatus": "workflow_only",
+      "hostingProfile": {
+        "enabled": true,
+        "domainField": "primaryDomain",
+        "resources": {
+          "cpuMillis": 2000,
+          "memoryMb": 4096,
+          "diskMb": 20480
+        }
+      }
     }
   },
   "features": [

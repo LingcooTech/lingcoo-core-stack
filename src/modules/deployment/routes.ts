@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { hostingRoutes } from './hosting-routes';
 
 import {
   completeDeploymentActionSchema,
@@ -13,6 +14,7 @@ import {
 } from './schemas';
 
 export const deploymentRoutes: FastifyPluginAsync = async (app) => {
+  await app.register(hostingRoutes);
   app.get('/v1/deployments/me', { preHandler: app.authenticate }, async (request) => {
     return app.services.DeploymentService.listUserDeployments(request.user.sub);
   });

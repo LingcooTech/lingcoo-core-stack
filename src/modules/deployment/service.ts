@@ -1,3 +1,5 @@
+import { hostedPrefixSchema, hostingProfileSchema, serverIpSchema } from '@lingcoo/contracts';
+import { HostingRepository } from './hosting';
 import { DeploymentActionUseCases } from './action-use-cases';
 
 import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
@@ -43,6 +45,8 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     entitlementId: string;
     label: string;
     environment: string;
+    deploymentMode?: 'self_hosted' | 'managed';
+    hostedPrefix?: string;
     serverHost?: string;
     installPath?: string;
     updatePolicy?: DeploymentRuntimeUpdatePolicy;
@@ -76,7 +80,41 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     const manifest = this.readManifest(selection.app);
     const deploymentValues = normalizeValueRecord(input.values);
     const deploymentSecrets = normalizeSecretRecord(input.secrets);
-    const deploymentDomainValues = normalizeDomainValueRecord(input.domainValues);
+    const mode = input.deploymentMode ?? 'self_hosted';
+    if (mode !== 'self_hosted' && mode !== 'managed') throw httpError(422, '不支持的部署方式');
+    if (mode === 'self_hosted' && !serverIpSchema.safeParse(input.serverHost).success)
+      throw httpError(422, '请填写有效的自有服务器 IP');
+    if (mode === 'self_hosted' && input.hostedPrefix)
+      throw httpError(422, '自有服务器不分配托管子域名');
+    const hosting = new HostingRepository(this.db);
+    let prefix: string | null = null;
+    let hostname: string | null = null;
+    let resources: { cpuMillis: number; memoryMb: number; diskMb: number } | null = null;
+    let deploymentDomainValues = normalizeDomainValueRecord(input.domainValues);
+    if (mode === 'managed') {
+      if (input.serverHost || input.installPath || Object.keys(deploymentDomainValues).length)
+        throw httpError(422, '托管地址和服务器由平台分配');
+      const profile = hostingProfileSchema.safeParse(
+        this.normalizeMeta(selection.app.meta).hostingProfile,
+      );
+      if (
+        !profile.success ||
+        !manifest ||
+        manifest.domainSlots.length !== 1 ||
+        manifest.domainSlots[0]?.sourceField !== profile.data.domainField
+      )
+        throw httpError(422, '当前应用尚未配置可用的托管规格');
+      await hosting.lockPool();
+      prefix = await hosting.reservePrefix(
+        input.hostedPrefix === undefined ? undefined : hostedPrefixSchema.parse(input.hostedPrefix),
+      );
+      hostname = `${prefix}.${this.env.HOSTING_DOMAIN_SUFFIX}`;
+      const binding = this.readEntitlementBinding(entitlement);
+      if (binding.boundDomain && binding.boundDomain !== hostname)
+        throw httpError(409, '该授权已绑定其他域名，请先处理原有部署绑定');
+      resources = profile.data.resources;
+      deploymentDomainValues = { [profile.data.domainField]: hostname };
+    }
 
     this.validateDeploymentInputs({
       manifest,
@@ -126,11 +164,20 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       entitlementId: entitlement.id,
       label: input.label,
       environment: input.environment,
+      deploymentMode: mode,
+      hostedPrefix: prefix,
+      hostedDomain: hostname,
+      hostingState: mode === 'managed' ? 'waiting_capacity' : null,
+      hostingResources: resources,
       serverHost: input.serverHost ?? null,
       installPath:
-        input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath,
+        mode === 'managed'
+          ? `/opt/lingcoo/instances/${prefix}`
+          : (input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath),
       meta: deploymentMeta,
     });
+
+    if (mode === 'managed') await hosting.allocate(deployment, this.capabilities.now());
 
     await this.capabilities.createEventService(this.db).capture({
       userId: input.userId,
@@ -143,7 +190,8 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       },
     });
 
-    const [hydrated] = await this.hydrateDeployments([deployment]);
+    const created = await new DeploymentRepository(this.db).findDeploymentById(deployment.id);
+    const [hydrated] = await this.hydrateDeployments([created ?? deployment]);
     if (!hydrated) throw new Error('Missing deployment projection');
     return hydrated;
   }
@@ -172,6 +220,14 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     if (!deployment || deployment.userId !== input.userId) {
       throw httpError(404, 'Deployment not found');
     }
+
+    if (
+      deployment.deploymentMode === 'managed' &&
+      (input.serverHost !== undefined ||
+        input.installPath !== undefined ||
+        input.domainValues !== undefined)
+    )
+      throw httpError(422, '托管实例的服务器和域名由平台管理');
 
     const appRow = await createAppAccess(this.db).findAppById(deployment.appId);
     if (!appRow) {
@@ -289,6 +345,9 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(404, 'Deployment not found');
     }
 
+    if (deployment.deploymentMode === 'managed')
+      throw httpError(409, '托管实例由平台部署，不签发客户安装令牌');
+
     if (deployment.status !== 'active') {
       throw httpError(
         409,
@@ -376,6 +435,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(404, 'Deployment not found');
     }
 
+    if (deployment.deploymentMode === 'managed') throw httpError(409, '托管实例不支持安装令牌兑换');
     const [hydrated] = await this.hydrateDeployments([deployment]);
     if (!hydrated) throw new Error('Missing deployment projection');
     const app = await this.capabilities
@@ -436,6 +496,8 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(404, 'Deployment not found');
     }
 
+    if (deployment.deploymentMode === 'managed')
+      throw httpError(409, '托管实例尚未接入运行状态验证');
     const meta = this.normalizeMeta(deployment.meta);
     const runtimeStatusReport = this.normalizeMeta(meta.runtimeStatusReport);
     let expectedToken = '';
@@ -592,6 +654,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     input: Parameters<DeploymentService['deactivateDeploymentLocked']>[0],
   ) {
     return this.db.transaction(async (tx) => {
+      await new HostingRepository(tx).lockPool();
       await new DeploymentRepository(tx).lockById(input.deploymentId);
       return new DeploymentService(this.capabilities, tx, this.env).deactivateDeploymentLocked(
         input,
@@ -606,12 +669,22 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(404, 'Deployment not found');
     }
 
+    if (
+      deployment.deploymentMode === 'managed' &&
+      !['waiting_capacity', 'pending_infrastructure', 'cancelled'].includes(
+        deployment.hostingState ?? '',
+      )
+    )
+      throw httpError(409, '已执行的托管部署需要先完成资源回收');
     await repository.expireActiveTokensByDeploymentId(deployment.id);
 
     const updated =
       deployment.status === 'active'
         ? await repository.updateDeployment(deployment.id, {
             status: 'inactive',
+            ...(deployment.deploymentMode === 'managed'
+              ? { hostingState: 'cancelled', hostingNodeId: null, serverHost: null }
+              : {}),
           })
         : deployment;
 
@@ -630,6 +703,46 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
 
     const [hydrated] = await this.hydrateDeployments([updated]);
     return hydrated;
+  }
+  async refreshManagedAllocations() {
+    return this.db.transaction(async (tx) => {
+      const hosting = new HostingRepository(tx);
+      await hosting.lockPool();
+      const service = new DeploymentService(this.capabilities, tx, this.env);
+      for (const row of await hosting.waiting()) {
+        try {
+          await service.loadDeploymentEntitlement(row);
+        } catch (error) {
+          if (
+            error &&
+            typeof error === 'object' &&
+            'statusCode' in error &&
+            [403, 409].includes(Number(error.statusCode))
+          )
+            continue;
+          throw error;
+        }
+        await hosting.allocate(row, this.capabilities.now());
+      }
+    });
+  }
+
+  async retryManagedAllocation(input: { deploymentId: string; userId: string }) {
+    return this.db.transaction(async (tx) => {
+      const hosting = new HostingRepository(tx);
+      await hosting.lockPool();
+      const repository = new DeploymentRepository(tx);
+      await repository.lockById(input.deploymentId);
+      const row = await repository.findDeploymentById(input.deploymentId);
+      if (!row || row.userId !== input.userId) throw httpError(404, 'Deployment not found');
+      if (row.deploymentMode !== 'managed' || row.status !== 'active')
+        throw httpError(409, '该实例不能申请托管分配');
+      const service = new DeploymentService(this.capabilities, tx, this.env);
+      await service.loadDeploymentEntitlement(row);
+      await hosting.allocate(row, this.capabilities.now());
+      const updated = await repository.findDeploymentById(row.id);
+      return (await service.hydrateDeployments([updated ?? row]))[0];
+    });
   }
   requestDeploymentAction(
     input: Parameters<DeploymentActionUseCases['requestDeploymentAction']>[0],

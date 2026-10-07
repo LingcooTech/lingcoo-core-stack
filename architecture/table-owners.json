@@ -36,5 +36,6 @@
   "jobAttempts": "jobs",
   "settingsRevisions": "settings",
   "idempotencyRequests": "idempotency",
-  "authSessions": "auth"
+  "authSessions": "auth",
+  "hostingNodes": "deployment"
 }

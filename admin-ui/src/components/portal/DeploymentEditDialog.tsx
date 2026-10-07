@@ -251,13 +251,18 @@ export function DeploymentEditDialog({
       deploymentId: deployment.id,
       label: label.trim(),
       environment: environment.trim() || deployment.environment,
-      serverHost: serverHost.trim() || undefined,
-      domainValues: Object.fromEntries(
-        Object.entries(domainValues)
-          .map(([key, value]) => [key, value.trim()] as const)
-          .filter(([, value]) => value.length > 0),
-      ),
-      installPath: installPath.trim() || undefined,
+      serverHost:
+        deployment.deploymentMode === 'managed' ? undefined : serverHost.trim() || undefined,
+      domainValues:
+        deployment.deploymentMode === 'managed'
+          ? undefined
+          : Object.fromEntries(
+              Object.entries(domainValues)
+                .map(([key, value]) => [key, value.trim()] as const)
+                .filter(([, value]) => value.length > 0),
+            ),
+      installPath:
+        deployment.deploymentMode === 'managed' ? undefined : installPath.trim() || undefined,
       updatePolicy,
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets:
@@ -334,8 +339,9 @@ export function DeploymentEditDialog({
                       onChange={(event) => onChange(event.target.value)}
                       placeholder={slot.placeholder}
                       disabled={
-                        deployment?.domainBinding.isLocked === true &&
-                        bindingSourceField === slot.sourceField
+                        deployment?.deploymentMode === 'managed' ||
+                        (deployment?.domainBinding.isLocked === true &&
+                          bindingSourceField === slot.sourceField)
                       }
                     />
                     {deployment?.domainBinding.isLocked === true &&
@@ -452,6 +458,7 @@ export function DeploymentEditDialog({
                     <Label htmlFor="edit-deployment-server">服务器 / Host</Label>
                     <Input
                       id="edit-deployment-server"
+                      disabled={deployment?.deploymentMode === 'managed'}
                       value={serverHost}
                       onChange={(event) => setServerHost(event.target.value)}
                       placeholder="144.48.8.218"
@@ -461,6 +468,7 @@ export function DeploymentEditDialog({
                     <Label htmlFor="edit-deployment-install-path">安装路径</Label>
                     <Input
                       id="edit-deployment-install-path"
+                      disabled={deployment?.deploymentMode === 'managed'}
                       value={installPath}
                       onChange={(event) => setInstallPath(event.target.value)}
                       placeholder={appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}

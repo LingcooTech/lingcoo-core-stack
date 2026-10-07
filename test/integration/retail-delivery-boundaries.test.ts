@@ -48,6 +48,7 @@ test('token exchange is not deployment success; only a ready report records comp
     entitlementId: entitlement.id,
     label: 'Ready reporting fixture',
     environment: 'test',
+    serverHost: '192.0.2.10',
   });
   const issued = await app.services.DeploymentService.issueDeploymentToken({
     userId: fixture.user.id,

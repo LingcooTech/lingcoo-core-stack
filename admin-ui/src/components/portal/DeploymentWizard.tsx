@@ -1,5 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+import { hostedPrefixSchema, serverIpSchema, type ManagedDeployment } from '@lingcoo/contracts';
+import { getDeploymentOptions } from '@/api/user';
+import { ManagedDeploymentProgress } from './ManagedDeploymentProgress';
 import { handleAsync } from '@/lib/async-events';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +38,7 @@ export interface DeployableAppOption {
   featureCount: number;
   manifest: DeliveryManifest | null;
   defaultInstallPath: string;
+  managedAvailable?: boolean;
   entitlements: Array<{
     id: string;
     planCode: string;
@@ -53,6 +58,8 @@ export interface CreateDeploymentPayload {
   entitlementId: string;
   label: string;
   environment: string;
+  deploymentMode: 'self_hosted' | 'managed';
+  hostedPrefix?: string;
   serverHost?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
@@ -64,7 +71,9 @@ export interface CreateDeploymentPayload {
 export interface DeploymentWizardProps {
   options: DeployableAppOption[];
   initialAppCode?: string;
-  onCreateDeployment: (payload: CreateDeploymentPayload) => Promise<{ id: string }>;
+  onCreateDeployment: (
+    payload: CreateDeploymentPayload,
+  ) => Promise<{ id: string; managed?: ManagedDeployment | null }>;
   onIssueToken: (params: {
     deploymentId: string;
     expiresInHours: number;
@@ -116,8 +125,16 @@ export function DeploymentWizard({
   creating,
   issuing,
 }: DeploymentWizardProps) {
+  const deploymentOptions = useQuery({
+    queryKey: ['deployment-options'],
+    queryFn: getDeploymentOptions,
+  });
+  const [deploymentMode, setDeploymentMode] = useState<'self_hosted' | 'managed'>('self_hosted');
+  const [hostedPrefix, setHostedPrefix] = useState('');
+  const [managedResult, setManagedResult] = useState<ManagedDeployment | null>(null);
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedAppCode, setSelectedAppCode] = useState('');
+  const initializedAppCode = useRef<string | null>(null);
   const [selectedEntitlementId, setSelectedEntitlementId] = useState('');
   const [label, setLabel] = useState('');
   const [environment, setEnvironment] = useState('production');
@@ -183,10 +200,14 @@ export function DeploymentWizard({
   }, [initialAppCode, options]);
 
   useEffect(() => {
+    if (!selectedApp || initializedAppCode.current === selectedAppCode) return;
+    initializedAppCode.current = selectedAppCode;
     setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
     setSelectedEntitlementId(
       selectedApp?.entitlements.length === 1 ? (selectedApp.entitlements[0]?.id ?? '') : '',
     );
+    setDeploymentMode('self_hosted');
+    setHostedPrefix('');
     setDomainValues({});
     setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
     setUpdatePolicy('manual');
@@ -225,7 +246,21 @@ export function DeploymentWizard({
       return false;
     }
 
-    for (const slot of manifest.domainSlots) {
+    if (deploymentMode === 'self_hosted' && !serverIpSchema.safeParse(serverHost.trim()).success) {
+      toast.error('请填写有效的服务器 IPv4 或 IPv6 地址');
+      return false;
+    }
+    if (
+      deploymentMode === 'managed' &&
+      hostedPrefix &&
+      !hostedPrefixSchema.safeParse(hostedPrefix).success
+    ) {
+      toast.error(
+        '子域名前缀须为 3–48 位，以字母开头，仅含字母、数字和单个连字符，且不能使用平台保留名称',
+      );
+      return false;
+    }
+    for (const slot of deploymentMode === 'managed' ? [] : manifest.domainSlots) {
       const value = domainValues[slot.sourceField] ?? '';
       if (slot.required && !value.trim()) {
         toast.error(`${slot.label}不能为空`);
@@ -266,7 +301,15 @@ export function DeploymentWizard({
     }
 
     return true;
-  }, [deploymentDraft, domainValues, manifest, userInputGroups]);
+  }, [
+    deploymentDraft,
+    domainValues,
+    manifest,
+    userInputGroups,
+    deploymentMode,
+    hostedPrefix,
+    serverHost,
+  ]);
 
   const handleCreate = useCallback(async () => {
     if (!selectedAppCode || !selectedEntitlementId || !label.trim()) {
@@ -283,14 +326,19 @@ export function DeploymentWizard({
       entitlementId: selectedEntitlementId,
       label,
       environment,
-      serverHost: serverHost || undefined,
-      installPath: installPath || undefined,
+      deploymentMode,
+      hostedPrefix: deploymentMode === 'managed' ? hostedPrefix.trim() || undefined : undefined,
+      serverHost: deploymentMode === 'self_hosted' ? serverHost.trim() : undefined,
+      installPath: deploymentMode === 'self_hosted' ? installPath || undefined : undefined,
       updatePolicy,
-      domainValues: Object.fromEntries(
-        Object.entries(domainValues)
-          .map(([key, value]) => [key, value.trim()] as const)
-          .filter(([, value]) => value.length > 0),
-      ),
+      domainValues:
+        deploymentMode === 'managed'
+          ? undefined
+          : Object.fromEntries(
+              Object.entries(domainValues)
+                .map(([key, value]) => [key, value.trim()] as const)
+                .filter(([, value]) => value.length > 0),
+            ),
       values: Object.keys(manifestPayload.values).length > 0 ? manifestPayload.values : undefined,
       secrets:
         Object.keys(manifestPayload.secrets).length > 0 ? manifestPayload.secrets : undefined,
@@ -298,17 +346,21 @@ export function DeploymentWizard({
 
     try {
       const result = await onCreateDeployment(payload);
-      try {
-        const token = await onIssueToken({ deploymentId: result.id, expiresInHours: 2 });
-        setTokenResult(token);
-      } catch {
-        /* token issue failed but deployment succeeded */
-      }
+      setManagedResult(result.managed ?? null);
+      if (deploymentMode === 'self_hosted')
+        try {
+          const token = await onIssueToken({ deploymentId: result.id, expiresInHours: 2 });
+          setTokenResult(token);
+        } catch {
+          /* token issue failed but deployment succeeded */
+        }
       setStep(3);
     } catch {
       /* error handled by parent via toast */
     }
   }, [
+    deploymentMode,
+    hostedPrefix,
     deploymentDraft,
     domainValues,
     environment,
@@ -324,6 +376,9 @@ export function DeploymentWizard({
   ]);
 
   const handleReset = useCallback(() => {
+    setDeploymentMode('self_hosted');
+    setHostedPrefix('');
+    setManagedResult(null);
     setStep(1);
     setSelectedAppCode('');
     setSelectedEntitlementId('');
@@ -347,7 +402,11 @@ export function DeploymentWizard({
     });
   }, []);
 
-  const stepLabels = ['选择应用', '填写部署信息', '安装命令'];
+  const stepLabels = [
+    '选择应用',
+    '选择方式并填写信息',
+    deploymentMode === 'managed' ? '托管进度' : '安装命令',
+  ];
   const hasAdvancedSection =
     advancedUserInputGroups.length > 0 || Boolean(serverHost || installPath);
 
@@ -355,9 +414,7 @@ export function DeploymentWizard({
     <Card className="border-border/80 bg-card/95">
       <CardHeader>
         <CardTitle>创建部署记录</CardTitle>
-        <CardDescription>
-          通过三步向导完成部署配置：选择应用、填写信息、获取安装命令。
-        </CardDescription>
+        <CardDescription>选择已购买的应用，再选择部署到自有服务器或交给平台托管。</CardDescription>
         <div className="flex items-center gap-2 pt-2">
           {stepLabels.map((sLabel, idx) => {
             const stepNum = (idx + 1) as WizardStep;
@@ -500,6 +557,75 @@ export function DeploymentWizard({
               </div>
             ) : null}
 
+            <div className="space-y-3">
+              <p className="text-sm font-bold">部署方式 *</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Button
+                  type="button"
+                  variant={deploymentMode === 'self_hosted' ? 'default' : 'outline'}
+                  aria-pressed={deploymentMode === 'self_hosted'}
+                  onClick={() => setDeploymentMode('self_hosted')}
+                >
+                  客户自有服务器
+                </Button>
+                <Button
+                  type="button"
+                  variant={deploymentMode === 'managed' ? 'default' : 'outline'}
+                  aria-pressed={deploymentMode === 'managed'}
+                  disabled={!selectedApp?.managedAvailable || !deploymentOptions.data}
+                  onClick={() => setDeploymentMode('managed')}
+                >
+                  平台托管
+                </Button>
+              </div>
+              {!selectedApp?.managedAvailable ? (
+                <p className="text-sm text-muted-foreground">
+                  此应用的托管规格尚未配置，目前可部署到自有服务器。
+                </p>
+              ) : null}
+              {deploymentMode === 'self_hosted' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="wizard-server">服务器 IP *</Label>
+                  <Input
+                    id="wizard-server"
+                    value={serverHost}
+                    onChange={(event) => setServerHost(event.target.value)}
+                    placeholder="服务器 IPv4 或 IPv6 地址"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    创建后，在你的服务器上运行安装命令。请将应用域名解析到该服务器。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="wizard-prefix">子域名前缀</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="wizard-prefix"
+                      value={hostedPrefix}
+                      onChange={(event) => setHostedPrefix(event.target.value.toLowerCase())}
+                      placeholder="留空由平台自动生成"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        setHostedPrefix(`app-${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`)
+                      }
+                    >
+                      自动生成
+                    </Button>
+                  </div>
+                  <p className="text-sm">
+                    {hostedPrefix || '自动生成的前缀'}.{deploymentOptions.data?.managedDomainSuffix}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    平台按可用容量分配服务器。当前可提交托管申请并预留地址，部署接入完成后才可访问。
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="wizard-label">部署名称 *</Label>
@@ -521,7 +647,7 @@ export function DeploymentWizard({
               </div>
             </div>
 
-            {manifest?.domainSlots.length ? (
+            {deploymentMode === 'self_hosted' && manifest?.domainSlots.length ? (
               <div className="grid gap-4 md:grid-cols-3">
                 {manifest.domainSlots.map((slot) => {
                   const value = domainValues[slot.sourceField] ?? '';
@@ -645,19 +771,11 @@ export function DeploymentWizard({
               {advancedOpen && (
                 <div className="space-y-4 border-t border-border px-4 pt-3 pb-4">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="wizard-server">服务器 / Host</Label>
-                      <Input
-                        id="wizard-server"
-                        value={serverHost}
-                        onChange={(event) => setServerHost(event.target.value)}
-                        placeholder="144.48.8.218"
-                      />
-                    </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2" hidden={deploymentMode === 'managed'}>
                       <Label htmlFor="wizard-install-path">安装路径</Label>
                       <Input
                         id="wizard-install-path"
+                        disabled={deploymentMode === 'managed'}
                         value={installPath}
                         onChange={(event) => setInstallPath(event.target.value)}
                         placeholder={
@@ -789,7 +907,11 @@ export function DeploymentWizard({
                 }
                 onClick={handleAsync(handleCreate)}
               >
-                {creating || issuing ? '创建中...' : '创建部署'}
+                {creating || issuing
+                  ? '创建中...'
+                  : deploymentMode === 'managed'
+                    ? '提交托管申请'
+                    : '创建部署'}
               </Button>
             </div>
           </>
@@ -806,7 +928,8 @@ export function DeploymentWizard({
               </p>
             </div>
 
-            {tokenResult ? (
+            {managedResult ? <ManagedDeploymentProgress managed={managedResult} /> : null}
+            {deploymentMode === 'self_hosted' && tokenResult ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <p className="text-xs font-bold tracking-wide text-muted-foreground">
@@ -876,13 +999,13 @@ export function DeploymentWizard({
                   </pre>
                 </div>
               </div>
-            ) : (
+            ) : deploymentMode === 'self_hosted' ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm text-amber-800">
                   部署令牌签发未能完成，请在下方部署列表中手动签发。
                 </p>
               </div>
-            )}
+            ) : null}
 
             <div className="flex justify-end pt-2">
               <Button onClick={handleReset}>完成</Button>

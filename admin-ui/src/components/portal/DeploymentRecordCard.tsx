@@ -1,3 +1,4 @@
+import { ManagedDeploymentProgress } from './ManagedDeploymentProgress';
 import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -177,7 +178,11 @@ export function DeploymentRecordCard({
             </CardDescription>
           </div>
           <Badge variant={deployment.status === 'active' ? 'default' : 'secondary'}>
-            {deploymentStatusLabel(deployment.status)}
+            {deployment.managed
+              ? deployment.status === 'active'
+                ? '托管申请'
+                : '已取消'
+              : deploymentStatusLabel(deployment.status)}
           </Badge>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -198,6 +203,12 @@ export function DeploymentRecordCard({
       </CardHeader>
 
       <CardContent className="space-y-3.5">
+        {deployment.managed ? (
+          <ManagedDeploymentProgress
+            managed={deployment.managed}
+            deploymentId={deployment.status === 'active' ? deployment.id : undefined}
+          />
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -352,90 +363,94 @@ export function DeploymentRecordCard({
           />
         ) : null}
 
-        <div className="rounded-lg border border-border bg-muted/85 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold tracking-tight text-foreground">安装令牌</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {deployment.latestToken
-                  ? `最近一次令牌尾号 ${deployment.latestToken.tokenHint}，状态 ${deploymentTokenStatusLabel(deployment.latestToken.status)}`
-                  : '还没有签发安装令牌'}
+        {deployment.deploymentMode === 'self_hosted' ? (
+          <div className="rounded-lg border border-border bg-muted/85 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold tracking-tight text-foreground">安装令牌</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {deployment.latestToken
+                    ? `最近一次令牌尾号 ${deployment.latestToken.tokenHint}，状态 ${deploymentTokenStatusLabel(deployment.latestToken.status)}`
+                    : '还没有签发安装令牌'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-lg"
+                onClick={() => onIssueToken(deployment.id)}
+                disabled={issuing || deployment.status !== 'active'}
+              >
+                {issuing ? '签发中...' : '签发安装令牌'}
+              </Button>
+            </div>
+            {deployment.status !== 'active' ? (
+              <p className="mt-3 text-xs text-amber-700">
+                当前部署已停用。需要继续使用时，请新建部署，或保留此记录作为历史参考。
               </p>
-            </div>
-            <Button
-              variant="outline"
-              className="rounded-lg"
-              onClick={() => onIssueToken(deployment.id)}
-              disabled={issuing || deployment.status !== 'active'}
-            >
-              {issuing ? '签发中...' : '签发安装令牌'}
-            </Button>
-          </div>
-          {deployment.status !== 'active' ? (
-            <p className="mt-3 text-xs text-amber-700">
-              当前部署已停用。需要继续使用时，请新建部署，或保留此记录作为历史参考。
-            </p>
-          ) : null}
-          {deployment.pendingAction ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              待执行动作：{getActionLabel(deployment.pendingAction.kind)}
-              {deployment.pendingAction.requestedAt
-                ? ` · ${formatTime(deployment.pendingAction.requestedAt)}`
-                : ''}
-            </p>
-          ) : null}
-          {deployment.lastAction ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              最近动作：{getActionLabel(deployment.lastAction.kind)} ·
-              {deployment.lastAction.status === 'completed' ? ' 已完成' : ' 失败'}
-              {deployment.lastAction.finishedAt
-                ? ` · ${formatTime(deployment.lastAction.finishedAt)}`
-                : ''}
-              {deployment.lastAction.message ? ` · ${deployment.lastAction.message}` : ''}
-            </p>
-          ) : null}
-          {deployment.domainBinding.isLocked ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              当前{domainBindingLabel}已绑定为 {boundDomain ?? '已绑定'}
-              。如需更换，需要提交工单处理。
-            </p>
-          ) : null}
+            ) : null}
+            {deployment.pendingAction ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                待执行动作：{getActionLabel(deployment.pendingAction.kind)}
+                {deployment.pendingAction.requestedAt
+                  ? ` · ${formatTime(deployment.pendingAction.requestedAt)}`
+                  : ''}
+              </p>
+            ) : null}
+            {deployment.lastAction ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                最近动作：{getActionLabel(deployment.lastAction.kind)} ·
+                {deployment.lastAction.status === 'completed' ? ' 已完成' : ' 失败'}
+                {deployment.lastAction.finishedAt
+                  ? ` · ${formatTime(deployment.lastAction.finishedAt)}`
+                  : ''}
+                {deployment.lastAction.message ? ` · ${deployment.lastAction.message}` : ''}
+              </p>
+            ) : null}
+            {deployment.domainBinding.isLocked ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                当前{domainBindingLabel}已绑定为 {boundDomain ?? '已绑定'}
+                。如需更换，需要提交工单处理。
+              </p>
+            ) : null}
 
-          {issuedToken?.deploymentId === deployment.id ? (
-            <div className="mt-4 space-y-3">
-              <InfoLine label="本次令牌尾号" value={issuedToken.tokenHint} mono />
-              <InfoLine label="过期时间" value={formatTime(issuedToken.expiresAt)} />
-              <div className="space-y-2">
-                <p className="text-xs font-bold tracking-wide text-muted-foreground">
-                  远程安装命令
-                </p>
-                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-                  {issuedToken.remoteInstallCommand ?? '当前未生成远程安装命令'}
-                </pre>
+            {issuedToken?.deploymentId === deployment.id ? (
+              <div className="mt-4 space-y-3">
+                <InfoLine label="本次令牌尾号" value={issuedToken.tokenHint} mono />
+                <InfoLine label="过期时间" value={formatTime(issuedToken.expiresAt)} />
+                <div className="space-y-2">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
+                    远程安装命令
+                  </p>
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
+                    {issuedToken.remoteInstallCommand ?? '当前未生成远程安装命令'}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">兑换地址</p>
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
+                    {issuedToken.exchangeUrl}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
+                    一次性令牌
+                  </p>
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
+                    {issuedToken.token}
+                  </pre>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold tracking-wide text-muted-foreground">
+                    调试命令（cURL）
+                  </p>
+                  <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
+                    {issuedToken.exchangeCurl}
+                  </pre>
+                </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold tracking-wide text-muted-foreground">兑换地址</p>
-                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-                  {issuedToken.exchangeUrl}
-                </pre>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold tracking-wide text-muted-foreground">一次性令牌</p>
-                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-                  {issuedToken.token}
-                </pre>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold tracking-wide text-muted-foreground">
-                  调试命令（cURL）
-                </p>
-                <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-                  {issuedToken.exchangeCurl}
-                </pre>
-              </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

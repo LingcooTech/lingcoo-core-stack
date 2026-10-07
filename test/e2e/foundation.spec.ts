@@ -46,6 +46,7 @@ test.beforeAll(async () => {
     entitlementId: entitlement.id,
     label: deploymentLabel,
     environment: 'production',
+    serverHost: '192.0.2.10',
   });
 });
 test.afterAll(() => pool.end());

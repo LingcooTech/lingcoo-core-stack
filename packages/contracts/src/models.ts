@@ -16,3 +16,4 @@ export * from './models/pagination.js';
 export * from './models/settings.js';
 export * from './models/summaries.js';
 export * from './models/ticket.js';
+export * from './hosting.js';

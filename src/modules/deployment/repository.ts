@@ -20,6 +20,11 @@ export class DeploymentRepository {
     entitlementId: string;
     label: string;
     environment: string;
+    deploymentMode?: 'self_hosted' | 'managed';
+    hostedPrefix?: string | null;
+    hostedDomain?: string | null;
+    hostingState?: string | null;
+    hostingResources?: { cpuMillis: number; memoryMb: number; diskMb: number } | null;
     serverHost?: string | null;
     installPath?: string | null;
     meta?: Record<string, unknown>;
@@ -32,6 +37,11 @@ export class DeploymentRepository {
         entitlementId: input.entitlementId,
         label: input.label,
         environment: input.environment,
+        deploymentMode: input.deploymentMode ?? 'self_hosted',
+        hostedPrefix: input.hostedPrefix,
+        hostedDomain: input.hostedDomain,
+        hostingState: input.hostingState,
+        hostingResources: input.hostingResources,
         serverHost: input.serverHost ?? null,
         installPath: input.installPath ?? '/opt/fd-headless-wp-system',
         status: 'active',
@@ -178,6 +188,8 @@ export class DeploymentRepository {
       environment?: string;
       serverHost?: string | null;
       installPath?: string | null;
+      hostingNodeId?: string | null;
+      hostingState?: string;
       status?: 'active' | 'inactive' | 'cancelled' | 'expired';
       meta?: Record<string, unknown>;
       lastTokenIssuedAt?: Date | null;
@@ -189,6 +201,8 @@ export class DeploymentRepository {
       updatedAt: input.updatedAt ?? new Date(),
     };
 
+    if (typeof input.hostingState !== 'undefined') changes.hostingState = input.hostingState;
+    if (typeof input.hostingNodeId !== 'undefined') changes.hostingNodeId = input.hostingNodeId;
     if (typeof input.label !== 'undefined') changes.label = input.label;
     if (typeof input.environment !== 'undefined') changes.environment = input.environment;
     if (typeof input.serverHost !== 'undefined') changes.serverHost = input.serverHost;

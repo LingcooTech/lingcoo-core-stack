@@ -58,6 +58,12 @@ const envSchema = z.object({
   ALERT_WEBHOOK_SECRET: z.string().optional(),
   ALERT_MIN_LEVEL: z.enum(['info', 'warning', 'error']).optional(),
   ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().optional(),
+  HOSTING_DOMAIN_SUFFIX: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9]+(?:[-.][a-z0-9]+)*\.[a-z]{2,}$/)
+    .default('app.lingcoo.com'),
   PUBLIC_BASE_URL: z.url().default('http://localhost:8080'),
   CORS_ORIGIN: z.string().default('http://localhost:8080'),
   CADDY_SITE_ADDRESS: z.string().default(':80'),

@@ -199,6 +199,8 @@ export async function createDeployment(payload: {
   entitlementId: string;
   label: string;
   environment?: string;
+  deploymentMode?: 'self_hosted' | 'managed';
+  hostedPrefix?: string;
   serverHost?: string;
   installPath?: string;
   updatePolicy?: 'manual' | 'auto';
@@ -264,5 +266,15 @@ export async function requestDeploymentAction(payload: {
     'POST /v1/deployments/:param/actions',
     `/v1/deployments/${encodeURIComponent(payload.deploymentId)}/actions`,
     { body: JSON.stringify({ kind: payload.kind }) },
+  );
+}
+
+export async function getDeploymentOptions() {
+  return apiClient('GET /v1/deployments/options', '/v1/deployments/options');
+}
+export async function retryManagedAllocation(deploymentId: string) {
+  return apiClient(
+    'POST /v1/deployments/:param/allocate',
+    `/v1/deployments/${encodeURIComponent(deploymentId)}/allocate`,
   );
 }

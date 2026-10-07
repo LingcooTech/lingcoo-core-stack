@@ -8,17 +8,16 @@ import ts from 'typescript';
 import { responseContracts, responseSchemaFor, isNonJsonResponseRoute } from '@lingcoo/contracts';
 import { createApiClient, ProtocolError } from '@lingcoo/api-client';
 
+const routeFiles = readdirSync('src/modules', { recursive: true }).filter(
+  (name): name is string => typeof name === 'string' && /(?:^|\/|-)routes\.ts$/.test(name),
+);
+
 test('every literal v1 route has a structural response contract or an explicit provider text protocol', () => {
   const identities = responseContracts.map((route) => `${route.method} ${route.path}`);
   assert.equal(new Set(identities).size, identities.length, 'Endpoint identities must be unique');
   let count = 0;
-  for (const name of readdirSync('src/modules')) {
-    let source: string;
-    try {
-      source = readFileSync(`src/modules/${name}/routes.ts`, 'utf8');
-    } catch {
-      continue;
-    }
+  for (const name of routeFiles) {
+    const source = readFileSync(`src/modules/${name}`, 'utf8');
     const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true);
     function visit(node: ts.Node) {
       if (
@@ -72,13 +71,8 @@ test('unknown SDK success and malformed nested business objects fail closed', as
 test('client routes resolve to registered server methods and response contracts', () => {
   const registered = new Set<string>();
   const normalize = (path: string) => path.replace(/:[^/]+/g, ':param');
-  for (const name of readdirSync('src/modules')) {
-    let source: string;
-    try {
-      source = readFileSync(`src/modules/${name}/routes.ts`, 'utf8');
-    } catch {
-      continue;
-    }
+  for (const name of routeFiles) {
+    const source = readFileSync(`src/modules/${name}`, 'utf8');
     const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true);
     function visit(node: ts.Node) {
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {

@@ -68,6 +68,9 @@ export class DeploymentActionUseCases {
     if (!deployment || deployment.userId !== input.userId) {
       throw httpError(404, 'Deployment not found');
     }
+    if (deployment.deploymentMode === 'managed') {
+      throw httpError(409, '托管执行器尚未接入，暂不支持运行时操作');
+    }
     await loadDeploymentEntitlement(this.capabilities.createLicenseAccess(this.db), deployment);
 
     const meta = normalizeDeploymentMeta(deployment.meta);

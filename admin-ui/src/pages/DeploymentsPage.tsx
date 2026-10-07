@@ -1,3 +1,4 @@
+import { hostingProfileSchema } from '@lingcoo/contracts';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowRight, Boxes, LoaderCircle, Rocket } from 'lucide-react';
@@ -85,7 +86,11 @@ export function DeploymentsPage() {
     queryKey: ['my-entitlements'],
     queryFn: listMyEntitlements,
   });
-  const deploymentsQuery = useQuery({ queryKey: ['my-deployments'], queryFn: listMyDeployments });
+  const deploymentsQuery = useQuery({
+    queryKey: ['my-deployments'],
+    queryFn: listMyDeployments,
+    refetchInterval: 15000,
+  });
 
   const apps = useMemo(() => appsQuery.data?.items ?? [], [appsQuery.data?.items]);
   const entitlements = useMemo(
@@ -166,6 +171,7 @@ export function DeploymentsPage() {
           appCode: app.code,
           appName: app.name,
           appType: app.type,
+          managedAvailable: hostingProfileSchema.safeParse(app.meta?.hostingProfile).success,
           featureCount: summaryMap.get(app.code)?.length ?? 0,
           manifest,
           defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',

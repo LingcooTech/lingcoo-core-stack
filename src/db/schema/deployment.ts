@@ -7,12 +7,27 @@ import {
   varchar,
   index,
   uniqueIndex,
+  integer,
 } from 'drizzle-orm/pg-core';
 import { apps } from './app';
 import { sql } from 'drizzle-orm';
 import { users } from './auth';
 import { entitlements } from './license';
 import { recordStatusEnum } from './enums';
+
+export const hostingNodes = pgTable('hosting_nodes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 80 }).notNull(),
+  serverIp: varchar('server_ip', { length: 64 }).notNull().unique(),
+  enabled: boolean('enabled').notNull().default(false),
+  cpuMillis: integer('cpu_millis').notNull(),
+  memoryMb: integer('memory_mb').notNull(),
+  diskMb: integer('disk_mb').notNull(),
+  reportTokenHash: varchar('report_token_hash', { length: 255 }).notNull(),
+  report: jsonb('report'),
+  lastReportedAt: timestamp('last_reported_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const appDeliverySettings = pgTable('app_delivery_settings', {
   appId: uuid('app_id')
@@ -41,6 +56,14 @@ export const deployments = pgTable(
       onDelete: 'restrict',
     }),
     label: varchar('label', { length: 120 }).notNull(),
+    deploymentMode: varchar('deployment_mode', { length: 24 }).notNull().default('self_hosted'),
+    hostedPrefix: varchar('hosted_prefix', { length: 48 }),
+    hostedDomain: varchar('hosted_domain', { length: 255 }),
+    hostingNodeId: uuid('hosting_node_id').references(() => hostingNodes.id, {
+      onDelete: 'restrict',
+    }),
+    hostingState: varchar('hosting_state', { length: 32 }),
+    hostingResources: jsonb('hosting_resources'),
     environment: varchar('environment', { length: 32 }).notNull().default('production'),
     serverHost: varchar('server_host', { length: 255 }),
     installPath: varchar('install_path', { length: 255 })
@@ -55,7 +78,11 @@ export const deployments = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({ entitlementIdx: index('deployments_entitlement_id_idx').on(table.entitlementId) }),
+  (table) => ({
+    entitlementIdx: index('deployments_entitlement_id_idx').on(table.entitlementId),
+    hostedPrefixKey: uniqueIndex('deployments_hosted_prefix_key').on(table.hostedPrefix),
+    hostingNodeIdx: index('deployments_hosting_node_idx').on(table.hostingNodeId),
+  }),
 );
 
 export const deploymentTokens = pgTable(

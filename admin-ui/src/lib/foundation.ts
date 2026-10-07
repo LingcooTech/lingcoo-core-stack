@@ -9,6 +9,7 @@ export type AdminSectionKey =
   | 'settings'
   | 'users'
   | 'licenses'
+  | 'hosting'
   | 'installs'
   | 'tickets'
   | 'notifications'
@@ -108,6 +109,23 @@ export function listAllowedAdminSectionKeys(
 }
 
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
+  hosting: {
+    groupLabel: '平台',
+    navTitle: '托管服务器',
+    navNote: '容量与健康',
+    icon: 'Server',
+    permission: 'settings.manage',
+    title: '托管服务器',
+    lead: '管理平台托管节点与资源预留',
+    href: '/admin/hosting',
+    contextCards: [
+      { label: '节点', value: '健康上报', note: '超过 5 分钟的报告不参与分配' },
+      { label: '容量', value: '并发预留', note: '按应用规格分配资源' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['hosting', '托管', '服务器'],
+  },
   dashboard: {
     groupLabel: '概览',
     navTitle: '仪表盘',
@@ -410,7 +428,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   { label: '客户管理', items: ['users', 'licenses', 'installs', 'tickets', 'notifications'] },
-  { label: '运维', items: ['settings', 'observability'] },
+  { label: '运维', items: ['hosting', 'settings', 'observability'] },
 ];
 
 export const adminCommandItems: AdminCommandItem[] = [

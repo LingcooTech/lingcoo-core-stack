@@ -34,6 +34,7 @@ async function fixture() {
     entitlementId: entitlement.id,
     label: 'Fixture',
     environment: 'production',
+    serverHost: '192.0.2.10',
   };
   return { ...seeded, input, service: new DeploymentService(createServiceFactories(), db, env) };
 }
