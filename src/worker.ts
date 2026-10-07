@@ -47,6 +47,7 @@ export async function runWorker(
         await jobs.pruneCompleted(env.JOB_RETENTION_DAYS);
         await pruneIdempotencyResults(runtime.db);
         try {
+          await runtime.hostingDns.reconcile();
           await alertDelivery.dispatchActiveAlerts({ traceId: workerId });
         } catch {
           console.error('[worker] alert dispatch failed');

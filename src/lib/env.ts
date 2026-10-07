@@ -58,6 +58,9 @@ const envSchema = z.object({
   ALERT_WEBHOOK_SECRET: z.string().optional(),
   ALERT_MIN_LEVEL: z.enum(['info', 'warning', 'error']).optional(),
   ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().optional(),
+  HOSTING_DNS_SECRET_ID: z.string().min(1).optional(),
+  HOSTING_DNS_SECRET_KEY: z.string().min(1).optional(),
+  HOSTING_DNS_ZONE: z.string().default('lingcoo.com'),
   HOSTING_DOMAIN_SUFFIX: z
     .string()
     .trim()

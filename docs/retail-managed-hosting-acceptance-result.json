@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-07T15:05:37.580Z",
+  "target": "lingcoo-edu-oms",
+  "deploymentId": "2df1e209-f4cd-43eb-b7b7-f114db75b500",
+  "project": "retail-2df1e209f4cd43ebb7b7f114db75b500",
+  "remoteDirectory": "/opt/lingcoo-hosting-pilot-5a97ad05-2eff-4260-800b-3dcbc04aa01d",
+  "payment": "simulated",
+  "imageSource": "existing immutable image cache",
+  "resources": {
+    "cpuMillis": 1000,
+    "memoryMb": 1024,
+    "diskMb": 10240
+  },
+  "runtimeState": "ready",
+  "publicAccessCertified": true,
+  "metrics": "retail-2df1e209f4cd43ebb7b7f114db75b500_caddy_1 10.33MiB / 64MiB 0.00%\nretail-2df1e209f4cd43ebb7b7f114db75b500_web_1 50.79MiB / 256MiB 0.01%\nretail-2df1e209f4cd43ebb7b7f114db75b500_worker_1 75.24MiB / 320MiB 1.73%\nretail-2df1e209f4cd43ebb7b7f114db75b500_api_1 80.98MiB / 192MiB 0.01%\nretail-2df1e209f4cd43ebb7b7f114db75b500_postgres_1 60.08MiB / 192MiB 2.01%\n",
+  "stages": [
+    "entitlement",
+    "node assignment",
+    "encrypted task",
+    "database migration",
+    "bootstrap",
+    "API/Web/Worker health",
+    "loopback HTTP",
+    "DNSPod automatic record creation",
+    "Caddy ingress reload",
+    "ACME certificate issuance",
+    "public HTTP and TLS verification",
+    "Stack ready state"
+  ],
+  "note": "Isolated control plane, real hosted runtime and DNS/TLS. Simulated payment; cached immutable image. No fresh registry pull, load test, production rollout, custom domain or permanent node scheduling certification. Local proxy DNS was bypassed by forwarding genuine public DNS queries through SSH; application verification code and TLS checks were unchanged.",
+  "publicVerificationDate": "2026-10-07T15:59:00.711Z",
+  "hostname": "pilot-5a97ad05.app.lingcoo.com",
+  "dns": {
+    "provider": "dnspod",
+    "automaticCreation": true,
+    "ipv4": "118.25.36.15"
+  },
+  "tls": {
+    "issuer": "Let's Encrypt YE2",
+    "expires": "2027-01-05T14:57:59Z",
+    "verifiedWithoutTlsBypass": true
+  },
+  "publicPaths": {
+    "/": 200,
+    "/admin/": 200,
+    "/health/ready": 200,
+    "/health/worker": 200
+  },
+  "existingSites": {
+    "lingcoo.com": 200,
+    "edusys.lingcoo.com": 200,
+    "retailsys.lingcoo.com": 200
+  },
+  "idleMemoryMiB": 273.76,
+  "backupRestore": {
+    "databaseMarker": true,
+    "attachmentMarker": true,
+    "fullRestoredApplicationVerified": false
+  },
+  "productionStackPublished": false,
+  "customDomainCertified": false
+}

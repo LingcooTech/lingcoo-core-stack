@@ -1,5 +1,7 @@
+import { HostingDnsService } from './hosting-dns';
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  hostingCompletionSchema,
   createHostingNodeSchema,
   hostingNodeParamsSchema,
   hostingNodeReportSchema,
@@ -10,6 +12,52 @@ import { deploymentParamsSchema } from './schemas';
 import { AuditLogService } from '../../lib/audit-logs';
 
 export const hostingRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/v1/hosting/nodes/:nodeId/ingress', async (request) => {
+    const { nodeId } = hostingNodeParamsSchema.parse(request.params);
+    const node = await new HostingRepository(app.db).authenticate(
+      nodeId,
+      (request.headers.authorization ?? '').replace(/^Bearer /, ''),
+    );
+    return {
+      items: node.enabled
+        ? await new HostingDnsService(app.db, app.appEnv).listIngress(nodeId)
+        : [],
+    };
+  });
+  app.post('/v1/hosting/nodes/:nodeId/ingress/:deploymentId', async (request) => {
+    const { nodeId } = hostingNodeParamsSchema.parse(request.params);
+    const { deploymentId } = deploymentParamsSchema.parse(request.params);
+    await new HostingRepository(app.db).authenticate(
+      nodeId,
+      (request.headers.authorization ?? '').replace(/^Bearer /, ''),
+    );
+    return new HostingDnsService(app.db, app.appEnv).verifyIngress(nodeId, deploymentId);
+  });
+
+  app.post(
+    '/v1/hosting/nodes/:nodeId/claim',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (request) => {
+      const { nodeId } = hostingNodeParamsSchema.parse(request.params);
+      return app.services.DeploymentService.claimHostingJob({
+        nodeId,
+        token: (request.headers.authorization ?? '').replace(/^Bearer /, ''),
+      });
+    },
+  );
+  app.post(
+    '/v1/hosting/nodes/:nodeId/complete',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    async (request) => {
+      const { nodeId } = hostingNodeParamsSchema.parse(request.params);
+      return app.services.DeploymentService.completeHostingJob({
+        nodeId,
+        token: (request.headers.authorization ?? '').replace(/^Bearer /, ''),
+        ...hostingCompletionSchema.parse(request.body),
+      });
+    },
+  );
+
   app.get('/v1/deployments/options', { preHandler: app.authenticate }, async () => ({
     modes: ['self_hosted', 'managed'],
     managedDomainSuffix: app.appEnv.HOSTING_DOMAIN_SUFFIX,

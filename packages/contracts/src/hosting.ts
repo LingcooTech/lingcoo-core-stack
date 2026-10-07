@@ -56,7 +56,16 @@ export const hostingNodeParamsSchema = z.object({ nodeId: z.uuid() });
 export const ManagedDeploymentSchema = z.object({
   prefix: z.string(),
   hostname: z.string(),
-  state: z.enum(['waiting_capacity', 'pending_infrastructure', 'cancelled']),
+  state: z.enum([
+    'waiting_capacity',
+    'pending_infrastructure',
+    'deploying',
+    'runtime_ready',
+    'pending_tls',
+    'ready',
+    'failed',
+    'cancelled',
+  ]),
   nodeAssigned: z.boolean(),
   accessUrl: z.string().nullable(),
 });
@@ -83,3 +92,22 @@ export const DeploymentOptionsSchema = z.object({
 });
 export type HostingResources = z.infer<typeof hostingResourcesSchema>;
 export type HostingNode = z.infer<typeof HostingNodeSchema>;
+
+export const HostingJobSchema = z.object({
+  id: z.uuid(),
+  deploymentId: z.uuid(),
+  appCode: z.string(),
+  hostname: z.string(),
+  resources: hostingResourcesSchema,
+  env: z.record(z.string(), z.string()),
+});
+export type HostingJob = z.infer<typeof HostingJobSchema>;
+export const HostingClaimSchema = z.object({ job: HostingJobSchema.nullable() });
+export const hostingCompletionSchema = z
+  .object({
+    deploymentId: z.uuid(),
+    jobId: z.uuid(),
+    success: z.boolean(),
+    image: z.string().max(512).optional(),
+  })
+  .strict();

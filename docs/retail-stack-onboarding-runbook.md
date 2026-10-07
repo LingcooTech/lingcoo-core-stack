@@ -97,3 +97,18 @@ DATABASE_TEST_URL=postgres://.../stack_retail_test npm run smoke:retail-delivery
 ```
 
 测试镜像标签只在显式 loopback `--test-local` 下允许；正式交付必须 digest。验收脚本只清理自己创建的 Retail 项目和恢复项目，运行报告明确 `productionPublished=false`、`managedHostingCertified=false`。
+
+## 6. 自管虚拟机托管公网验收（2026-10-08）
+
+机器可读记录：[托管公网验收结果](retail-managed-hosting-acceptance-result.json)。这是隔离测试控制端和真实腾讯云虚拟机上的独立实例，尚未发布到生产 Stack。
+
+- DNSPod 专用子账号已授权；平台服务自动创建 `pilot-5a97ad05.app.lingcoo.com` 指向 `118.25.36.15`。密钥仅保存在控制端私有配置，不进入仓库、交付任务或应用容器。
+- 节点入口程序保留现有 Caddy 路由，先校验配置，再平滑重载。仅测试实例的 Caddy 接入专用入口网络。
+- Let's Encrypt 自动签发证书；公网 `/`、`/admin/`、`/health/ready`、`/health/worker` 全部返回 200，部署标识匹配。Stack 的真实 DNS/TLS 验证通过后将状态更新为 `ready`。
+- 本机代理 DNS 会返回虚拟 IP，测试进程通过 SSH 转发真实公共 DNS 查询后完成验证；未绕过 DNS 比对或 TLS 校验，未修改系统解析设置。
+- 既有官网、教育和 Retail 域名均返回 200。测试实例保持 1 CPU、合计 1024 MiB 内存上限；本次空载快照 273.76 MiB，不代表业务峰值。
+- 数据库和附件标记已备份并恢复到隔离项目；尚未完成恢复后整套应用验证。
+
+默认域名由平台自动管理；托管客户的自定义域名由客户按照平台提供的 CNAME/A 记录配置一次，平台负责绑定验证和证书，不要求客户委托整个域名。自定义域名尚未实现验收。
+
+当前仍待完成：生产控制端发布、节点执行器常驻调度、从镜像仓库实际拉取、正式下载入口、真实支付、自动备份及完整恢复演练、负载与故障测试。不能将本次公网试点等同于完整商用托管已经上线。测试使用已有缓存 digest 镜像，没有内存优化改造。

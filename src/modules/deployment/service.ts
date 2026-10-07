@@ -1,3 +1,4 @@
+import { HostingExecutionService } from './hosting-execution';
 import { hostedPrefixSchema, hostingProfileSchema, serverIpSchema } from '@lingcoo/contracts';
 import { HostingRepository } from './hosting';
 import { DeploymentActionUseCases } from './action-use-cases';
@@ -24,6 +25,13 @@ import {
 } from './configuration';
 
 export class DeploymentService extends DeploymentConfigurationUseCases {
+  claimHostingJob(input: { nodeId: string; token: string }) {
+    return new HostingExecutionService(this.capabilities, this.db, this.env).claim(input);
+  }
+  completeHostingJob(input: Parameters<HostingExecutionService['complete']>[0]) {
+    return new HostingExecutionService(this.capabilities, this.db, this.env).complete(input);
+  }
+
   async listUserDeployments(userId: string) {
     const rows = await new DeploymentRepository(this.db).listDeploymentsByUserId(userId);
     return {
@@ -739,7 +747,11 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
         throw httpError(409, '该实例不能申请托管分配');
       const service = new DeploymentService(this.capabilities, tx, this.env);
       await service.loadDeploymentEntitlement(row);
-      await hosting.allocate(row, this.capabilities.now());
+      if (row.hostingState === 'failed') {
+        await repository.updateDeployment(row.id, { hostingState: 'deploying' });
+      } else {
+        await hosting.allocate(row, this.capabilities.now());
+      }
       const updated = await repository.findDeploymentById(row.id);
       return (await service.hydrateDeployments([updated ?? row]))[0];
     });

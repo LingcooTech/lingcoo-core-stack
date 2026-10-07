@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   hostingNodeReportSchema,
   hostingResourcesSchema,
@@ -121,6 +121,31 @@ export class HostingRepository {
       .where(eq(hostingNodes.id, nodeId))
       .returning();
     if (!node) throw httpError(404, '托管节点不存在');
+  }
+
+  async authenticate(nodeId: string, token: string) {
+    const [node] = await this.db.select().from(hostingNodes).where(eq(hostingNodes.id, nodeId));
+    if (!node || !verifyPassword(token, node.reportTokenHash))
+      throw httpError(401, '节点报告凭据无效');
+    return node;
+  }
+
+  async nextExecution(nodeId: string) {
+    const [row] = await this.db
+      .select()
+      .from(deployments)
+      .where(
+        and(
+          eq(deployments.hostingNodeId, nodeId),
+          eq(deployments.status, 'active'),
+          eq(deployments.deploymentMode, 'managed'),
+          inArray(deployments.hostingState, ['pending_infrastructure', 'deploying']),
+        ),
+      )
+      .orderBy(asc(deployments.createdAt))
+      .limit(1)
+      .for('update');
+    return row;
   }
 
   async report(nodeId: string, token: string, payload: unknown, now: Date) {

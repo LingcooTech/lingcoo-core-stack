@@ -246,3 +246,135 @@ test('administrator registers an empty node and lists it without exposing its re
     await db.delete(hostingNodes).where(eq(hostingNodes.id, result.node.id));
   }
 });
+
+test('node execution is scoped, replayable, encrypted and never implies public readiness', async () => {
+  const f = await fixture();
+  const image = 'registry.example/retail@sha256:' + 'a'.repeat(64);
+  await db
+    .update(apps)
+    .set({
+      meta: {
+        deliveryMode: 'one_click',
+        hostingProfile: { enabled: true, domainField: 'primaryDomain', resources },
+        deliveryManifest: {
+          ...product.delivery.manifest,
+          envFields: [
+            {
+              key: 'APP_IMAGE',
+              label: 'Runtime',
+              type: 'text',
+              scope: 'preset',
+              required: true,
+              defaultValue: image,
+            },
+          ],
+          secretFields: [],
+          assets: [],
+        },
+      },
+    })
+    .where(eq(apps.id, f.app.id));
+  const repository = new HostingRepository(db);
+  const node = await repository.createNode(
+    { name: 'Execution node', serverIp: '192.0.2.203', capacity: resources },
+    new Date(),
+  );
+  const node2 = await repository.createNode(
+    { name: 'Other node', serverIp: '192.0.2.204', capacity: resources },
+    new Date(),
+  );
+  let id: string | undefined;
+  try {
+    await repository.setEnabled(node.node.id, true);
+    await repository.report(
+      node.node.id,
+      node.reportToken,
+      { dockerReady: true, available: resources },
+      new Date(),
+    );
+    const deployment = await app.services.DeploymentService.createDeployment(f.input);
+    id = deployment.id;
+    const headers = { authorization: `Bearer ${node.reportToken}` };
+    const url = `/v1/hosting/nodes/${node.node.id}`;
+    assert.equal(
+      (await app.inject({ method: 'POST', url: url + '/claim', payload: {} })).statusCode,
+      401,
+    );
+    const claim = await app.inject({ method: 'POST', url: url + '/claim', headers, payload: {} });
+    assert.equal(claim.statusCode, 200, claim.body);
+    const job = claim.json().job;
+    assert.equal(job.deploymentId, id);
+    const again = await app.inject({ method: 'POST', url: url + '/claim', headers, payload: {} });
+    assert.deepEqual(again.json().job, job);
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/v1/deployments/me',
+      headers: f.headers,
+    });
+    assert(!listed.body.includes(job.env.FD_STACK_STATUS_REPORT_TOKEN));
+    assert(!listed.body.includes('hostingExecution'));
+    assert.equal(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/v1/hosting/nodes/${node2.node.id}/complete`,
+          headers: { authorization: `Bearer ${node2.reportToken}` },
+          payload: { deploymentId: id, jobId: job.id, success: false },
+        })
+      ).statusCode,
+      404,
+    );
+    assert.equal(
+      (
+        await app.inject({
+          method: 'POST',
+          url: url + '/complete',
+          headers,
+          payload: { deploymentId: id, jobId: randomUUID(), success: false },
+        })
+      ).statusCode,
+      409,
+    );
+    const failed = await app.inject({
+      method: 'POST',
+      url: url + '/complete',
+      headers,
+      payload: { deploymentId: id, jobId: job.id, success: false },
+    });
+    assert.equal(failed.statusCode, 200, failed.body);
+    assert.equal(
+      (await repository.nodeViews(new Date())).items.find((n) => n.id === node.node.id)!.reserved
+        .memoryMb,
+      resources.memoryMb,
+    );
+    await app.services.DeploymentService.retryManagedAllocation({
+      deploymentId: id,
+      userId: f.user.id,
+    });
+    const retry = await app.inject({ method: 'POST', url: url + '/claim', headers, payload: {} });
+    assert.deepEqual(retry.json().job, job);
+    const done = await app.inject({
+      method: 'POST',
+      url: url + '/complete',
+      headers,
+      payload: { deploymentId: id, jobId: job.id, success: true, image },
+    });
+    assert.equal(done.statusCode, 200, done.body);
+    const result = (await app.services.DeploymentService.listUserDeployments(f.user.id)).items[0]!;
+    assert.equal(result.managed?.state, 'runtime_ready');
+    assert.equal(result.managed?.accessUrl, null);
+    assert.equal(result.lastDeployedAt, null);
+    await assert.rejects(
+      () =>
+        app.services.DeploymentService.deactivateDeployment({
+          deploymentId: id!,
+          userId: f.user.id,
+        }),
+      /资源回收/,
+    );
+  } finally {
+    if (id) await db.delete(deployments).where(eq(deployments.id, id));
+    await db.delete(hostingNodes).where(eq(hostingNodes.id, node.node.id));
+    await db.delete(hostingNodes).where(eq(hostingNodes.id, node2.node.id));
+  }
+});

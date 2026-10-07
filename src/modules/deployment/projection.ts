@@ -175,6 +175,9 @@ export async function hydrateDeploymentViews(
       const { hostingNodeId: _nodeId, hostingResources: _resources, ...visibleRow } = publicRow;
       return {
         ...visibleRow,
+        meta: Object.fromEntries(
+          Object.entries(meta).filter(([key]) => key !== 'hostingExecution'),
+        ),
         deploymentMode: row.deploymentMode as 'self_hosted' | 'managed',
         serverHost: row.deploymentMode === 'managed' ? null : row.serverHost,
         managed:
@@ -185,9 +188,14 @@ export async function hydrateDeploymentViews(
                 state: row.hostingState as
                   | 'waiting_capacity'
                   | 'pending_infrastructure'
+                  | 'deploying'
+                  | 'runtime_ready'
+                  | 'pending_tls'
+                  | 'ready'
+                  | 'failed'
                   | 'cancelled',
                 nodeAssigned: Boolean(row.hostingNodeId),
-                accessUrl: null,
+                accessUrl: row.hostingState === 'ready' ? `https://${row.hostedDomain}` : null,
               }
             : null,
         deliveryValues,

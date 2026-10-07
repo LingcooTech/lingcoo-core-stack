@@ -17,3 +17,5 @@ export type DeliverySettingsFactory = (
   db: DbExecutor,
   env: AppEnv,
 ) => Pick<DeliverySettingsService, 'upsertSettings'>;
+
+export { HostingDnsService } from './hosting-dns';
