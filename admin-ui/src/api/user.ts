@@ -278,3 +278,20 @@ export async function retryManagedAllocation(deploymentId: string) {
     `/v1/deployments/${encodeURIComponent(deploymentId)}/allocate`,
   );
 }
+
+export const listDeploymentDomains = (id: string) =>
+  apiClient('GET /v1/deployments/:param/domains', `/v1/deployments/${id}/domains`);
+export const addDeploymentDomain = (id: string, hostname: string) =>
+  apiClient('POST /v1/deployments/:param/domains', `/v1/deployments/${id}/domains`, {
+    body: JSON.stringify({ hostname }),
+  });
+export const verifyDeploymentDomain = (id: string, domainId: string) =>
+  apiClient(
+    'POST /v1/deployments/:param/domains/:param/verify',
+    `/v1/deployments/${id}/domains/${domainId}/verify`,
+  );
+export const removeDeploymentDomain = (id: string, domainId: string) =>
+  apiClient(
+    'DELETE /v1/deployments/:param/domains/:param',
+    `/v1/deployments/${id}/domains/${domainId}`,
+  );

@@ -12,14 +12,14 @@
       "deliveryMode": "one_click",
       "onboardingStatus": "acceptance_pending",
       "deploymentModes": ["self_hosted", "managed"],
-      "managedHostingStatus": "workflow_only",
+      "managedHostingStatus": "runtime_dns_tls_verified",
       "hostingProfile": {
         "enabled": true,
         "domainField": "primaryDomain",
         "resources": {
-          "cpuMillis": 2000,
-          "memoryMb": 4096,
-          "diskMb": 20480
+          "cpuMillis": 1000,
+          "memoryMb": 1024,
+          "diskMb": 10240
         }
       }
     }

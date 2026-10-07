@@ -48,6 +48,11 @@ export async function runWorker(
         await pruneIdempotencyResults(runtime.db);
         try {
           await runtime.hostingDns.reconcile();
+          await runtime.customDomains.reconcile();
+        } catch {
+          console.error('[worker] hosting reconciliation failed');
+        }
+        try {
           await alertDelivery.dispatchActiveAlerts({ traceId: workerId });
         } catch {
           console.error('[worker] alert dispatch failed');

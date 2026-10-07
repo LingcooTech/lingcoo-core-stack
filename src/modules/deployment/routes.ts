@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { domainRoutes } from './domain-routes';
 import { hostingRoutes } from './hosting-routes';
 
 import {
@@ -15,6 +16,7 @@ import {
 
 export const deploymentRoutes: FastifyPluginAsync = async (app) => {
   await app.register(hostingRoutes);
+  await app.register(domainRoutes);
   app.get('/v1/deployments/me', { preHandler: app.authenticate }, async (request) => {
     return app.services.DeploymentService.listUserDeployments(request.user.sub);
   });

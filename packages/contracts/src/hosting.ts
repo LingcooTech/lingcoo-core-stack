@@ -111,3 +111,32 @@ export const hostingCompletionSchema = z
     image: z.string().max(512).optional(),
   })
   .strict();
+
+export const customHostnameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(253)
+  .regex(
+    /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+    '请填写域名，不包含协议、端口或路径',
+  );
+export const addDeploymentDomainSchema = z.object({ hostname: customHostnameSchema }).strict();
+export const DeploymentDomainSchema = z.object({
+  id: z.uuid(),
+  hostname: z.string(),
+  state: z.enum(['pending_dns', 'pending_tls', 'ready', 'removing']),
+  verificationName: z.string(),
+  verificationValue: z.string(),
+  cnameTarget: z.string(),
+  ipv4Target: z.string().nullable(),
+  accessUrl: z.string().nullable(),
+});
+export const DeploymentDomainsSchema = z.object({ items: z.array(DeploymentDomainSchema) });
+export type DeploymentDomain = z.infer<typeof DeploymentDomainSchema>;
+export const HostingIngressItemSchema = z.object({
+  deploymentId: z.uuid(),
+  hostname: z.string(),
+  aliases: z.array(z.object({ id: z.uuid(), hostname: z.string() })).default([]),
+  removals: z.array(z.object({ id: z.uuid(), hostname: z.string() })).default([]),
+});

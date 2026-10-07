@@ -1,3 +1,4 @@
+import { DeploymentDomains } from './DeploymentDomains';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ManagedDeployment } from '@lingcoo/contracts';
 import { toast } from 'sonner';
@@ -78,6 +79,9 @@ export function ManagedDeploymentProgress({
               ? '重试部署'
               : '重新检查可用资源'}
         </Button>
+      ) : null}
+      {managed.state === 'ready' && deploymentId ? (
+        <DeploymentDomains deploymentId={deploymentId} />
       ) : null}
     </div>
   );

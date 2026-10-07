@@ -1,4 +1,4 @@
-import { HostingDnsService } from '../modules/deployment/public';
+import { CustomDomainService, HostingDnsService } from '../modules/deployment/public';
 import type { AppEnv } from '../lib/env';
 import { AuditLogService } from '../lib/audit-logs';
 import { JobRunService } from '../modules/jobs/service';
@@ -42,6 +42,7 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
     db,
     redis,
     registry,
+    customDomains: new CustomDomainService(db, env),
     hostingDns: new HostingDnsService(db, env),
     jobs: new JobRunService(db, env),
     audits: new AuditLogService(db),

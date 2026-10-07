@@ -1,10 +1,11 @@
+import { probeHostedHttps } from './https-probe';
 import { resolve4, resolve6 } from 'node:dns/promises';
 import { dnspod } from 'tencentcloud-sdk-nodejs-dnspod';
 import { isIP } from 'node:net';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
-import { deployments } from '../../db/schema';
+import { deploymentDomains, deployments } from '../../db/schema';
 import { DeploymentRepository } from './repository';
 import { normalizeDeploymentMeta } from './record-utils';
 import { httpError } from '../../lib/errors';
@@ -155,17 +156,7 @@ export class HostingDnsService {
     const hostname = row.hostedDomain!;
     const resolved = await (isIP(row.serverHost!) === 6 ? resolve6(hostname) : resolve4(hostname));
     if (!resolved.includes(row.serverHost!)) throw httpError(409, 'DNS 尚未指向所属节点');
-    await Promise.all(
-      ['/health/ready', '/health/worker', '/', '/admin/'].map(async (path) => {
-        const response = await fetch(`https://${hostname}${path}`, {
-          redirect: 'error',
-          signal: AbortSignal.timeout(8000),
-        });
-        await response.body?.cancel();
-        if (!response.ok || response.headers.get('x-lingcoo-deployment') !== row.id)
-          throw httpError(409, '公网 HTTPS 尚未就绪或路由不匹配');
-      }),
-    );
+    await probeHostedHttps(hostname, row.serverHost!, row.id);
     await this.db.transaction(async (tx) => {
       const locked = new DeploymentRepository(tx);
       await locked.lockById(row.id);
@@ -185,7 +176,7 @@ export class HostingDnsService {
   }
 
   async listIngress(nodeId: string) {
-    return this.db
+    const items = await this.db
       .select({ deploymentId: deployments.id, hostname: deployments.hostedDomain })
       .from(deployments)
       .where(
@@ -195,5 +186,22 @@ export class HostingDnsService {
           inArray(deployments.hostingState, ['pending_tls', 'ready']),
         ),
       );
+    return Promise.all(
+      items.map(async (item) => {
+        const domains = await this.db
+          .select()
+          .from(deploymentDomains)
+          .where(eq(deploymentDomains.deploymentId, item.deploymentId));
+        return {
+          ...item,
+          aliases: domains
+            .filter((d) => ['pending_tls', 'ready'].includes(d.state))
+            .map((d) => ({ id: d.id, hostname: d.hostname })),
+          removals: domains
+            .filter((d) => d.state === 'removing')
+            .map((d) => ({ id: d.id, hostname: d.hostname })),
+        };
+      }),
+    );
   }
 }

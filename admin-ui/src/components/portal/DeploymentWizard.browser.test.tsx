@@ -8,6 +8,7 @@ vi.mock('@/api/user', () => ({
   getDeploymentOptions: mocks.options,
   retryManagedAllocation: mocks.retry,
 }));
+vi.mock('./DeploymentDomains', () => ({ DeploymentDomains: () => null }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error, success: vi.fn() } }));
 const options: DeployableAppOption[] = [
   {

@@ -19,11 +19,16 @@ import uuid
 
 
 def private_json(path, value):
-    temporary = path.with_suffix('.new')
-    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, 'w') as stream:
-        json.dump(value, stream)
-    os.replace(temporary, path)
+    fd, name = tempfile.mkstemp(prefix=path.name + '.', dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(value, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def validate_job(job):
@@ -140,7 +145,10 @@ def execute(job, config, workspace):
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
             if result.returncode:
                 raise RuntimeError('Registry login failed')
-            run(command + ['pull'], directory, registry_env)
+            run(command + ['pull', 'api', 'worker', 'web'], directory, registry_env)
+            for base_image in (values['POSTGRES_IMAGE'], values['CADDY_IMAGE']):
+                if subprocess.run(['docker', 'image', 'inspect', base_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+                    run(['docker', 'pull', base_image], directory, registry_env)
     # No runtime/migration overlap beyond the reserved instance budget during recovery.
     run(command + ['stop', 'api', 'worker', 'web', 'caddy'], directory)
     print('STEP postgres', flush=True)
@@ -206,8 +214,12 @@ def main():
                                          'Authorization': 'Bearer ' + config['reportToken'], 'Content-Type': 'application/json'})
         with urllib.request.build_opener(NoRedirect).open(req, timeout=60) as response:
             return json.loads(response.read(2_000_000))
+    spec = importlib.util.spec_from_file_location('hosting_report', Path(__file__).with_name('hosting-node-report.py'))
+    report = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(report)
     with open(workspace / '.agent.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        api('report', report.collect(str(workspace)))
         job = api('claim', {})['job']
         if job is None:
             print('No eligible runtime task')
@@ -241,6 +253,13 @@ def publish_ingress(config, workspace, api):
         try:
             ingress.publish(config, workspace, item)
             api('ingress/' + item['deploymentId'], {})
+            for domain in item.get('removals', []):
+                api('ingress/' + item['deploymentId'] + '/domains/' + domain['id'], {'removed': True})
+            for domain in item.get('aliases', []):
+                try:
+                    api('ingress/' + item['deploymentId'] + '/domains/' + domain['id'], {'removed': False})
+                except Exception:
+                    print('Custom domain HTTPS pending')
             print('Public HTTPS verified')
         except Exception:
             # DNS propagation or ACME may still be pending; never report false readiness.

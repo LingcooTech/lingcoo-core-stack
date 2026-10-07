@@ -108,3 +108,15 @@ export const deploymentTokens = pgTable(
     tokenHashKey: uniqueIndex('deployment_tokens_token_hash_idx').on(table.tokenHash),
   }),
 );
+
+export const deploymentDomains = pgTable('deployment_domains', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deploymentId: uuid('deployment_id')
+    .notNull()
+    .references(() => deployments.id, { onDelete: 'cascade' }),
+  hostname: varchar('hostname', { length: 253 }).notNull().unique(),
+  verificationToken: varchar('verification_token', { length: 128 }).notNull(),
+  state: varchar('state', { length: 24 }).notNull().default('pending_dns'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

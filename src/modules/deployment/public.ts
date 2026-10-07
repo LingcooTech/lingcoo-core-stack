@@ -19,3 +19,5 @@ export type DeliverySettingsFactory = (
 ) => Pick<DeliverySettingsService, 'upsertSettings'>;
 
 export { HostingDnsService } from './hosting-dns';
+
+export { CustomDomainService } from './custom-domains';
