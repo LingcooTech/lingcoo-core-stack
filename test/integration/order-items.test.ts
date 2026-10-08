@@ -167,3 +167,39 @@ test('checkout only reuses a matching purchase snapshot and sends actual offer a
   assert.equal((await checkout.getPublicSession(first.sessionCode)).plan.name, 'Original offer');
   assert.equal(changed.order.items[0]?.amount, 250);
 });
+
+test('admin order detail accepts persisted integer payment attempt numbers', async () => {
+  const f = await seedPurchase(db);
+  const { paymentAttempts } = await import('../../src/db/schema');
+  const { AdminService } = await import('../../src/modules/admin/service');
+  const { OrderDetailSchema } = await import('@lingcoo/contracts/models');
+  const [session] = await db
+    .insert(checkoutSessions)
+    .values({
+      sessionCode: randomUUID(),
+      userId: f.user.id,
+      appId: f.app.id,
+      planId: f.plan.id,
+      orderId: f.order.id,
+      provider: 'wechat_pay',
+      actionType: 'qr_code',
+    })
+    .returning();
+  assert.ok(session);
+  await db
+    .insert(paymentAttempts)
+    .values({
+      checkoutSessionId: session.id,
+      orderId: f.order.id,
+      provider: 'wechat_pay',
+      actionType: 'qr_code',
+      status: 'prepared',
+      attemptNo: 1,
+    });
+  const result = await new AdminService(createServiceFactories(), db, env).getOrderDetail(
+    f.order.orderNo,
+  );
+  const parsed = OrderDetailSchema.parse(JSON.parse(JSON.stringify(result)));
+  assert.equal(parsed.paymentAttempts[0]?.attemptNo, 1);
+  assert.deepEqual(parsed.item.items, []);
+});

@@ -385,6 +385,13 @@ export function OrdersPage() {
                     <div key={i} className="h-8 animate-pulse rounded bg-muted" />
                   ))}
                 </div>
+              ) : orderDetailQuery.isError ? (
+                <div role="alert" className="space-y-3 text-sm text-destructive">
+                  <p>订单详情加载失败：{orderDetailQuery.error.message}</p>
+                  <Button variant="outline" onClick={() => void orderDetailQuery.refetch()}>
+                    重试
+                  </Button>
+                </div>
               ) : detail ? (
                 <OrderDetailSection detail={detail} />
               ) : null}

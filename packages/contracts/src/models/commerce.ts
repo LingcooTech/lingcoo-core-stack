@@ -53,7 +53,7 @@ export type HydratedOrder = z.infer<typeof HydratedOrderSchema>;
 
 export const PaymentAttemptSchema = z.object({
   id: z.uuid(),
-  attemptNo: z.string(),
+  attemptNo: z.number().int().positive(),
   status: z.string(),
   actionType: z.union([z.string(), z.null()]),
   providerReference: z.union([z.string(), z.null()]),
