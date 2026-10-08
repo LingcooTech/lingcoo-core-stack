@@ -172,7 +172,7 @@ test('admin order detail accepts persisted integer payment attempt numbers', asy
   const f = await seedPurchase(db);
   const { paymentAttempts } = await import('../../src/db/schema');
   const { AdminService } = await import('../../src/modules/admin/service');
-  const { OrderDetailSchema } = await import('@lingcoo/contracts/models');
+  const { responseSchemaFor } = await import('@lingcoo/contracts');
   const [session] = await db
     .insert(checkoutSessions)
     .values({
@@ -186,20 +186,20 @@ test('admin order detail accepts persisted integer payment attempt numbers', asy
     })
     .returning();
   assert.ok(session);
-  await db
-    .insert(paymentAttempts)
-    .values({
-      checkoutSessionId: session.id,
-      orderId: f.order.id,
-      provider: 'wechat_pay',
-      actionType: 'qr_code',
-      status: 'prepared',
-      attemptNo: 1,
-    });
+  await db.insert(paymentAttempts).values({
+    checkoutSessionId: session.id,
+    orderId: f.order.id,
+    provider: 'wechat_pay',
+    actionType: 'qr_code',
+    status: 'prepared',
+    attemptNo: 1,
+  });
   const result = await new AdminService(createServiceFactories(), db, env).getOrderDetail(
     f.order.orderNo,
   );
-  const parsed = OrderDetailSchema.parse(JSON.parse(JSON.stringify(result)));
-  assert.equal(parsed.paymentAttempts[0]?.attemptNo, 1);
-  assert.deepEqual(parsed.item.items, []);
+  const contract = responseSchemaFor('GET', '/v1/admin/orders/' + f.order.orderNo);
+  assert.ok(contract);
+  assert.equal(contract.safeParse(JSON.parse(JSON.stringify(result))).success, true);
+  assert.equal(result.paymentAttempts[0]?.attemptNo, 1);
+  assert.deepEqual(result.item?.items, []);
 });
