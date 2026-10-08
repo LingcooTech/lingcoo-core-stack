@@ -1,3 +1,4 @@
+import { validateOrderItems, type OrderItem } from '@lingcoo/contracts';
 import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
@@ -14,10 +15,12 @@ export class BillingRepository {
     orderNo: string;
     provider: 'wechat_pay' | 'alipay';
     subject: string;
+    items: OrderItem[];
     amount: number;
     currency: string;
     meta?: Record<string, unknown>;
   }) {
+    validateOrderItems(input.items, input.amount, input.currency);
     const [order] = await this.db
       .insert(orders)
       .values({

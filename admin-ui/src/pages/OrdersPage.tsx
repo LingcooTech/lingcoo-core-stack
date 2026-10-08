@@ -1,3 +1,4 @@
+import { OrderItems } from '@/components/shared/OrderItems';
 import { handleAsync } from '@/lib/async-events';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Eye, RefreshCw } from 'lucide-react';
@@ -439,13 +440,22 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
           valueClassName="text-[15px] font-semibold tabular-nums"
         />
         <InfoBlock label="用户" value={item.user?.email ?? item.userId} />
-        <InfoBlock label="应用名" value={item.app?.name ?? item.appId} />
+        <InfoBlock
+          label="应用名"
+          value={item.items?.[0]?.appName ?? item.app?.name ?? item.appId}
+        />
         <InfoBlock label="应用 Code" value={item.app?.code ?? '—'} mono />
-        <InfoBlock label="套餐" value={item.plan?.name ?? item.planId} />
+        <InfoBlock
+          label="套餐"
+          value={
+            item.items?.find((i) => i.kind === 'software')?.title ?? item.plan?.name ?? item.planId
+          }
+        />
         <InfoBlock label="支付时间" value={formatTime(item.paidAt)} />
         <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
       </section>
 
+      <OrderItems items={item.items} />
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-foreground">关联处理</h3>

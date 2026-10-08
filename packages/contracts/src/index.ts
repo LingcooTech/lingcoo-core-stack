@@ -21,3 +21,5 @@ export * from './admin-deployments.js';
 export * from './hosting-service.js';
 
 export * from './hosting-offer.js';
+
+export * from './order-items.js';

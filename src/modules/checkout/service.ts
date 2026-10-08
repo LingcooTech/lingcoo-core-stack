@@ -1,3 +1,4 @@
+import type { OrderItem } from '@lingcoo/contracts';
 import { queryBatch } from '../../db/query-batch';
 import { pickCheckoutDependencies, type CheckoutDependencies } from './dependencies';
 import QRCode from 'qrcode';
@@ -176,6 +177,7 @@ export class CheckoutService {
     };
     order: {
       id: string;
+      items: OrderItem[];
       orderNo: string;
       amount: number;
       currency: string;
@@ -186,17 +188,24 @@ export class CheckoutService {
       sessionId: input.session.id,
       sessionCode: input.session.sessionCode,
       status: input.session.status,
-      app: { code: input.app.code, name: input.app.name, type: input.app.type },
-      product: { code: input.app.code, name: input.app.name },
+      app: {
+        code: input.app.code,
+        name: input.order.items[0]?.appName ?? input.app.name,
+        type: input.app.type,
+      },
+      product: { code: input.app.code, name: input.order.items[0]?.appName ?? input.app.name },
       plan: {
         code: input.plan.code,
-        name: input.plan.name,
-        interval: input.plan.interval,
-        priceAmount: input.plan.priceAmount,
-        currency: input.plan.currency,
+        name: input.order.items.find((i) => i.kind === 'software')?.title ?? input.plan.name,
+        interval:
+          input.order.items.find((i) => i.kind === 'software')?.interval ?? input.plan.interval,
+        priceAmount:
+          input.order.items.find((i) => i.kind === 'software')?.amount ?? input.order.amount,
+        currency: input.order.currency,
       },
       order: {
         id: input.order.id,
+        items: input.order.items,
         orderNo: input.order.orderNo,
         amount: input.order.amount,
         currency: input.order.currency,
@@ -261,7 +270,18 @@ export class CheckoutService {
       const existingOrder = await this.capabilities
         .createBillingAccess(this.db)
         .findOrderById(reusableSession.orderId);
-      if (existingOrder?.status === 'pending') {
+      const savedItem = existingOrder?.items[0];
+      if (
+        existingOrder?.status === 'pending' &&
+        existingOrder.items.length === 1 &&
+        savedItem?.kind === 'software' &&
+        savedItem.productId === plan.id &&
+        savedItem.amount === offer.priceAmount &&
+        savedItem.currency === offer.currency &&
+        savedItem.title === offer.title &&
+        savedItem.interval === plan.interval &&
+        savedItem.appName === app.name
+      ) {
         await this.capabilities.createEventService(this.db).capture({
           userId: input.userId,
           appId: app.id,
@@ -383,21 +403,24 @@ export class CheckoutService {
       status,
       app: {
         code: detail.app.code,
-        name: detail.app.name,
+        name: detail.order.items[0]?.appName ?? detail.app.name,
         type: detail.app.type,
       },
       product: {
         code: detail.app.code,
-        name: detail.app.name,
+        name: detail.order.items[0]?.appName ?? detail.app.name,
       },
       plan: {
         code: detail.plan.code,
-        name: detail.plan.name,
-        interval: detail.plan.interval,
-        priceAmount: detail.plan.priceAmount,
-        currency: detail.plan.currency,
+        name: detail.order.items.find((i) => i.kind === 'software')?.title ?? detail.plan.name,
+        interval:
+          detail.order.items.find((i) => i.kind === 'software')?.interval ?? detail.plan.interval,
+        priceAmount:
+          detail.order.items.find((i) => i.kind === 'software')?.amount ?? detail.order.amount,
+        currency: detail.order.currency,
       },
       order: {
+        items: detail.order.items,
         orderNo: detail.order.orderNo,
         amount: detail.order.amount,
         currency: detail.order.currency,
@@ -454,19 +477,21 @@ export class CheckoutService {
       status,
       app: {
         code: detail.app.code,
-        name: detail.app.name,
+        name: detail.order.items[0]?.appName ?? detail.app.name,
         type: detail.app.type,
       },
       product: {
         code: detail.app.code,
-        name: detail.app.name,
+        name: detail.order.items[0]?.appName ?? detail.app.name,
       },
       plan: {
         code: detail.plan.code,
-        name: detail.plan.name,
-        interval: detail.plan.interval,
+        name: detail.order.items.find((i) => i.kind === 'software')?.title ?? detail.plan.name,
+        interval:
+          detail.order.items.find((i) => i.kind === 'software')?.interval ?? detail.plan.interval,
       },
       order: {
+        items: detail.order.items,
         orderNo: detail.order.orderNo,
         subject: detail.order.subject,
         amount: detail.order.amount,

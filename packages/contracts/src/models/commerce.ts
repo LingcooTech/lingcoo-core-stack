@@ -1,3 +1,4 @@
+import { OrderItemsSchema } from '../order-items.js';
 import { z } from 'zod';
 import { UserSummarySchema, AppSummarySchema, PlanSummarySchema } from './summaries.js';
 import { paginationSchema, AdminListParamsSchema } from './pagination.js';
@@ -20,6 +21,7 @@ export const CheckoutSessionSummarySchema = z.object({
 export type CheckoutSessionSummary = z.infer<typeof CheckoutSessionSummarySchema>;
 
 export const OrderSchema = z.object({
+  items: OrderItemsSchema.optional(),
   id: z.uuid(),
   orderNo: z.string(),
   status: z.string(),
@@ -124,6 +126,7 @@ export const CheckoutSessionCreatedSchema = z.object({
     currency: z.string(),
   }),
   order: z.object({
+    items: OrderItemsSchema.optional(),
     id: z.uuid(),
     orderNo: z.string(),
     amount: z.number(),
@@ -145,6 +148,7 @@ export const CheckoutSessionPublicSchema = z.object({
   product: z.object({ code: z.string(), name: z.string() }),
   plan: z.object({ code: z.string(), name: z.string(), interval: z.union([z.string(), z.null()]) }),
   order: z.object({
+    items: OrderItemsSchema.optional(),
     orderNo: z.string(),
     subject: z.string(),
     amount: z.number(),

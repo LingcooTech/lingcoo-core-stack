@@ -1,3 +1,4 @@
+import { OrderItems } from '@/components/shared/OrderItems';
 import { RefreshCw } from 'lucide-react';
 
 import type { MyOrder } from '@/api/types';
@@ -41,15 +42,18 @@ export function OrderCard({
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-xl tracking-tight">
-              {order.app?.name ?? '未命名产品'}
+              {order.items?.[0]?.appName ?? order.app?.name ?? '未命名产品'}
             </CardTitle>
             <Badge variant={order.status === 'paid' ? 'default' : 'secondary'}>
               {orderStatusLabel(order.status)}
             </Badge>
           </div>
           <CardDescription className="text-sm leading-6">
-            订单号 {order.orderNo} · {order.plan?.name ?? '未命名套餐'} ·{' '}
-            {paymentProviderLabel(order.provider)}
+            订单号 {order.orderNo} ·{' '}
+            {order.items?.find((i) => i.kind === 'software')?.title ??
+              order.plan?.name ??
+              '未命名套餐'}{' '}
+            · {paymentProviderLabel(order.provider)}
           </CardDescription>
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground">
@@ -71,6 +75,7 @@ export function OrderCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-4">
+        <OrderItems items={order.items} />
         <div className="text-sm leading-7 text-muted-foreground">
           {orderStatusDescription(order.status)}
         </div>

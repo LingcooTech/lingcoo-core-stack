@@ -71,6 +71,20 @@ export class BillingService extends BillingRefundUseCases {
       subject: `${app.name} - ${offer.title}`,
       amount: offer.priceAmount,
       currency: offer.currency,
+      items: [
+        {
+          kind: 'software',
+          productId: plan.id,
+          code: offer.code,
+          title: offer.title,
+          appName: app.name,
+          interval: plan.interval,
+          quantity: 1,
+          unitAmount: offer.priceAmount,
+          amount: offer.priceAmount,
+          currency: offer.currency,
+        },
+      ],
       meta: {
         commandId: input.commandId ?? null,
         appCode: input.appCode,

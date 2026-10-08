@@ -1,3 +1,4 @@
+import type { OrderItem } from '@lingcoo/contracts';
 import {
   pgTable,
   uuid,
@@ -58,6 +59,10 @@ export const orders = pgTable('orders', {
   provider: paymentProviderEnum('provider').notNull(),
   providerOrderId: varchar('provider_order_id', { length: 128 }),
   subject: varchar('subject', { length: 255 }).notNull(),
+  items: jsonb('items')
+    .$type<OrderItem[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
   amount: integer('amount').notNull(),
   currency: varchar('currency', { length: 16 }).notNull().default('CNY'),
   status: orderStatusEnum('status').notNull().default('pending'),

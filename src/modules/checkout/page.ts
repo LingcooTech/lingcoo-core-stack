@@ -265,6 +265,7 @@ export function renderCheckoutPage(sessionCode: string) {
 
         <div class="panel card">
           <h2>订单摘要</h2>
+          <div id="order-items" class="facts"></div>
           <div class="facts">
             <div class="fact"><label>应用</label><strong id="app-name">-</strong></div>
             <div class="fact"><label>产品</label><strong id="product-name">-</strong></div>
@@ -332,6 +333,25 @@ export function renderCheckoutPage(sessionCode: string) {
         byId('session-code').textContent = data.sessionCode;
         byId('order-no').textContent = data.order.orderNo;
         byId('amount').textContent = data.order.amountYuan + ' ' + data.order.currency;
+        const itemRoot = byId('order-items');
+        itemRoot.replaceChildren();
+        const items = data.order.items || [];
+        if (!items.length) {
+          const note = document.createElement('p');
+          note.className = 'muted';
+          note.textContent = '历史订单未记录购买明细，请以订单总金额及原始购买凭证为准。';
+          itemRoot.appendChild(note);
+        }
+        items.forEach(function(item) {
+          const row = document.createElement('div'); row.className = 'fact';
+          const label = document.createElement('label');
+          label.textContent = (item.kind === 'software' ? '软件授权' : '托管服务') + ' · ' + item.title;
+          const value = document.createElement('strong');
+          value.textContent = (item.amount / 100).toFixed(2) + ' ' + item.currency + ' · ' +
+            (item.interval === 'one_time' ? '一次性' : item.interval === 'month' ? '自然月' : '自然年') + ' × ' + item.quantity;
+          row.append(label, value); itemRoot.appendChild(row);
+        });
+
         byId('app-name').textContent = data.app.name + ' (' + data.app.code + ')';
         byId('product-name').textContent = data.product.name;
         byId('plan-name').textContent = data.plan.name;
