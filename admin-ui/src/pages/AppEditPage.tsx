@@ -10,6 +10,7 @@ import { listAppsAdmin, listCatalogSnapshot, syncAppDeliveryManifest, upsertApp 
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
 import type { AppWithDetails } from '@/api/types';
 import { AppEditBasicsTab } from '@/components/apps/app-edit/AppEditBasicsTab';
+import { AppReadiness } from '@/components/apps/app-edit/AppReadiness';
 import { AppEditContentTab } from '@/components/apps/app-edit/AppEditContentTab';
 import { AppEditDeliveryTab } from '@/components/apps/app-edit/AppEditDeliveryTab';
 import { AppEditHeader } from '@/components/apps/app-edit/AppEditHeader';
@@ -368,6 +369,7 @@ export function AppEditPage() {
 
       void qc.invalidateQueries({ queryKey: ['apps'] });
       void qc.invalidateQueries({ queryKey: ['catalog'] });
+      void qc.invalidateQueries({ queryKey: ['app-readiness'] });
       if (deliveryOverview) {
         qc.setQueryData(['delivery-settings', result.code], deliveryOverview);
       } else if (!isCreateMode && appCode) {
@@ -814,6 +816,7 @@ export function AppEditPage() {
         />
 
         <div className="mx-auto max-w-5xl p-6">
+          <AppReadiness appCode={appCode} />
           <AppEditBasicsTab
             form={form}
             setField={setField}

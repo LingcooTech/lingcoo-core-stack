@@ -16,7 +16,7 @@ import type { AppEnv } from '../../lib/env';
 export type DeliverySettingsFactory = (
   db: DbExecutor,
   env: AppEnv,
-) => Pick<DeliverySettingsService, 'upsertSettings'>;
+) => Pick<DeliverySettingsService, 'upsertSettings' | 'getOverview'>;
 
 export { HostingDnsService } from './hosting-dns';
 

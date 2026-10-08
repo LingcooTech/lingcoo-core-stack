@@ -158,7 +158,7 @@ export const EMPTY_FORM_STATE: FormState = {
   category: '',
   type: 'web_app',
   deliveryMode: 'none',
-  status: 'active',
+  status: 'inactive',
   iconUrl: '',
   coverUrl: '',
   content: '',

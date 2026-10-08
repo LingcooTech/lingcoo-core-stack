@@ -1,0 +1,55 @@
+{
+  "ready": {
+    "status": "ready",
+    "version": "a8812639897acfa78821631dd76b6e2f759a2b14"
+  },
+  "lastScanAt": "2026-10-08T23:53:06.136Z",
+  "activeCount": 0,
+  "incidents": [],
+  "externalNotificationsEnabled": false,
+  "desktopMobileVerified": true,
+  "readOnly": true,
+  "health": {
+    "ready": {
+      "status": "ready",
+      "version": "a8812639897acfa78821631dd76b6e2f759a2b14"
+    },
+    "hostingOfferCount": 0,
+    "operatorPurchaseCount": 0,
+    "pilotServiceUnchanged": true,
+    "instances": 1,
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "enabled": false
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "enabled": true
+      }
+    ],
+    "backups": [
+      {
+        "status": "success",
+        "offsiteStatus": "success",
+        "telemetryFresh": true
+      }
+    ],
+    "domains": [
+      {
+        "host": "retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "host": "retail-demo.lingcoo.com",
+        "status": 200
+      }
+    ]
+  },
+  "ciRun": 37860748908,
+  "deployRun": 37861330157,
+  "validatedAt": "2026-10-08T23:54:01.937076+00:00",
+  "scope": "Read-only production API and desktop/mobile UI; external notifications disabled"
+}

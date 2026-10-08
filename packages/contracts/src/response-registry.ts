@@ -1,3 +1,4 @@
+import { AppReadinessSchema } from './app-readiness.js';
 import { HostingIncidentsSchema, HostingIncidentEventsSchema } from './hosting-monitor.js';
 import { ItemRefundLedgerSchema } from './item-refund.js';
 import { HostingPurchasesSchema, HostingFulfillmentsSchema } from './hosting-purchase.js';
@@ -80,6 +81,7 @@ const clientResponseContracts = [
     path: '/v1/admin/deployments/:deploymentId/hosting-service',
     schema: AdminHostingServiceResponseSchema,
   },
+  { method: 'GET', path: '/v1/admin/apps/:appCode/readiness', schema: AppReadinessSchema },
   { method: 'GET', path: '/v1/admin/hosting/overview', schema: HostingOverviewSchema },
   { method: 'GET', path: '/v1/admin/hosting/incidents', schema: HostingIncidentsSchema },
   {

@@ -12,6 +12,12 @@ import {
 } from './schemas';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
+  app.get(
+    '/v1/admin/apps/:appCode/readiness',
+    { preHandler: app.requirePermission('apps.manage') },
+    async (request) =>
+      app.services.AppService.releaseReadiness(appCodeParamsSchema.parse(request.params).appCode),
+  );
   app.get('/v1/apps', async () => {
     return {
       items: await app.services.AppService.listActiveApps(),

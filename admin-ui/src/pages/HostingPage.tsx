@@ -134,15 +134,17 @@ export function HostingPage() {
           <span>
             {items.length === 0
               ? '添加第一台服务器，开始建立托管资源池。'
-              : monitor.isError
-                ? '完整性监测状态读取失败，请在“告警与恢复”中重试。'
-                : !monitor.data?.lastScanAt
-                  ? '等待首次完整性扫描，暂不能确认实例健康状态。'
-                  : Date.now() - Date.parse(monitor.data.lastScanAt) > 10 * 60000
-                    ? '完整性监测超过 10 分钟未更新，请检查平台 Worker。'
-                    : monitor.data.activeCount
-                      ? `有 ${monitor.data.activeCount} 项完整性告警，请查看“告警与恢复”。`
-                      : '最近完整性扫描未发现异常。请同时留意节点报告时间。'}
+              : monitor.isPending
+                ? '正在读取完整性监测状态…'
+                : monitor.isError
+                  ? '完整性监测状态读取失败，请在“告警与恢复”中重试。'
+                  : !monitor.data?.lastScanAt
+                    ? '等待首次完整性扫描，暂不能确认实例健康状态。'
+                    : Date.now() - Date.parse(monitor.data.lastScanAt) > 10 * 60000
+                      ? '完整性监测超过 10 分钟未更新，请检查平台 Worker。'
+                      : monitor.data.activeCount
+                        ? `有 ${monitor.data.activeCount} 项完整性告警，请查看“告警与恢复”。`
+                        : '最近完整性扫描未发现异常。请同时留意节点报告时间。'}
           </span>
         </div>
       ) : null}

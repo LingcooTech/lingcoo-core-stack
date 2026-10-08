@@ -8,7 +8,7 @@ import type { deleteLegacyDeliverySettings } from '../settings/public';
 export interface AppDependencies {
   readonly createDeliverySettings: (
     ...args: Parameters<DeliverySettingsFactory>
-  ) => Pick<ReturnType<DeliverySettingsFactory>, 'upsertSettings'>;
+  ) => Pick<ReturnType<DeliverySettingsFactory>, 'upsertSettings' | 'getOverview'>;
   readonly createEventService: (
     ...args: Parameters<EventServiceFactory>
   ) => Pick<ReturnType<EventServiceFactory>, 'capture'>;
@@ -40,7 +40,10 @@ export function pickAppDependencies(input: AppDependencies): AppDependencies {
   return {
     createDeliverySettings: (...args) => {
       const port = input.createDeliverySettings(...args);
-      return { upsertSettings: port.upsertSettings.bind(port) };
+      return {
+        upsertSettings: port.upsertSettings.bind(port),
+        getOverview: port.getOverview.bind(port),
+      };
     },
     createEventService: (...args) => {
       const port = input.createEventService(...args);

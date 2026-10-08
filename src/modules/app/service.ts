@@ -1,3 +1,5 @@
+import { AppReadiness } from './readiness';
+import { acquireTransactionLock } from '../../db/locks';
 import { requireResult } from '../../db/required-result';
 import { queryBatch } from '../../db/query-batch';
 import { pickAppDependencies, type AppDependencies } from './dependencies';
@@ -407,6 +409,10 @@ export class AppService {
     };
   }
 
+  async releaseReadiness(appCode: string) {
+    return new AppReadiness(this.db, this.env, this.capabilities).inspect(appCode);
+  }
+
   async upsertApp(
     appCode: string,
     input: {
@@ -459,7 +465,9 @@ export class AppService {
     actorUserId: string,
   ) {
     await this.db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + appCode);
       const repository = new AppRepository(tx);
+      const previous = await repository.findAppByCode(appCode);
       const licenseRepository = this.capabilities.createLicenseAccess(tx);
 
       const app = await repository.upsertApp({
@@ -556,6 +564,14 @@ export class AppService {
 
         await repository.replaceAppOffers(app.id, validOffers);
       }
+
+      if (
+        input.status === 'active' &&
+        (previous?.status !== 'active' ||
+          (previous.meta as Record<string, unknown>)?.deliveryMode !== 'one_click') &&
+        (app.meta as Record<string, unknown>)?.deliveryMode === 'one_click'
+      )
+        await new AppReadiness(tx, this.env, this.capabilities).assertConfiguration(appCode);
 
       await this.capabilities.createEventService(tx).capture({
         userId: actorUserId,

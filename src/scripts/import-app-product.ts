@@ -13,6 +13,9 @@ import { DeliverySettingsService } from '../modules/deployment/public';
 import { EventService } from '../modules/event/service';
 import { AppRepository } from '../modules/app/repository';
 import { LicenseRepository } from '../modules/license/repository';
+import { AppReadiness } from '../modules/app/readiness';
+import { createServiceFactories } from '../composition/service-factories';
+import { acquireTransactionLock } from '../db/locks';
 
 type CliOptions = {
   configPath: string;
@@ -263,7 +266,14 @@ async function main() {
   if (options.readyForSale && options.skipDeliverySettings)
     throw new Error('--ready-for-sale cannot skip delivery settings');
   const { absolutePath, product } = await loadProductConfig(options.configPath);
-  if (options.readyForSale) validateAppProduct(product, true);
+  const publishingOneClick =
+    product.app.status === 'active' && product.app.meta?.deliveryMode === 'one_click';
+  if (options.readyForSale || publishingOneClick) {
+    validateAppProduct(product, true);
+    options.requireSecrets = true;
+  }
+  if (publishingOneClick && options.skipDeliverySettings)
+    throw new Error('Publishing cannot skip delivery settings');
   const { secrets, missing } = resolveSecrets(product.delivery?.settings?.secretsFromEnv, options);
   const shouldApplyDeliverySettings =
     Boolean(product.delivery?.settings) && !options.skipDeliverySettings;
@@ -304,6 +314,7 @@ async function main() {
     // Catalog, plans, offers, encrypted delivery settings and events are one import.
     // A credential/configuration failure must not leave a half-published product.
     await db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + product.app.code);
       await upsertProduct(tx as DbClient, product);
       if (shouldApplyDeliverySettings && product.delivery?.settings && options.actorUserId) {
         await new DeliverySettingsService(tx, env).upsertSettings(
@@ -314,6 +325,11 @@ async function main() {
             installer: product.delivery.settings.installer,
           },
           options.actorUserId,
+        );
+      }
+      if (publishingOneClick) {
+        await new AppReadiness(tx, env, createServiceFactories()).assertConfiguration(
+          product.app.code,
         );
       }
     });
