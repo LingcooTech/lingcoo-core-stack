@@ -1,3 +1,4 @@
+import { hostingAlerts } from '../src/modules/deployment/hosting-alerts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDeploymentSchema, hostedPrefixSchema } from '@lingcoo/contracts';
@@ -8,6 +9,7 @@ const now = new Date('2026-10-07T04:00:00Z');
 const node: typeof hostingNodes.$inferSelect = {
   id: '00000000-0000-4000-8000-000000000001',
   name: 'test',
+  asset: {},
   serverIp: '192.0.2.1',
   enabled: true,
   cpuMillis: 4000,
@@ -90,4 +92,29 @@ test('deployment commands expose exactly two modes and enforce their distinct in
   }
   for (const deploymentMode of ['cloudbase', 'sae', 'cloud_run'])
     assert.equal(createDeploymentSchema.safeParse({ ...base, deploymentMode }).success, false);
+});
+
+test('certificate automation failures and stale backups remain visible on paused nodes', () => {
+  const report = {
+    dockerReady: true,
+    canDeploy: false,
+    available: { cpuMillis: 1000, memoryMb: 1000, diskMb: 20000 },
+    certificateAutomation: { status: 'failed', checkedAt: now.toISOString() },
+    containers: [],
+    backups: [
+      {
+        deploymentId: node.id,
+        status: 'success',
+        completedAt: new Date(now.getTime() - 37 * 3600000).toISOString(),
+        offsiteStatus: 'failed',
+        offsiteAt: null,
+      },
+    ],
+  };
+  const alerts = hostingAlerts({ ...node, enabled: false, report }, now);
+  assert.ok(alerts.some((a) => a.code === 'certificate_automation'));
+  assert.ok(alerts.some((a) => a.code === 'backup_' + node.id));
+  assert.ok(alerts.some((a) => a.code === 'offsite_' + node.id));
+  assert.ok(alerts.some((a) => a.code === 'instance_unavailable_' + node.id));
+  assert.ok(!alerts.some((a) => a.code === 'node_offline'));
 });

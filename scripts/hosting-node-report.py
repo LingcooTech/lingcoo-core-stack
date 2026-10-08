@@ -11,7 +11,39 @@ import urllib.parse
 import urllib.request
 
 
-def collect(data_path):
+def memory_mb(value):
+    import re
+    match = re.fullmatch(r'([0-9.]+)([KMGT]?i?B)', value.strip())
+    if not match:
+        return 0
+    units = {'B':1, 'kB':1000, 'KB':1000, 'KiB':1024, 'MB':1000000, 'MiB':1048576, 'GB':1000000000, 'GiB':1073741824, 'TB':1000000000000, 'TiB':1099511627776}
+    return round(float(match[1]) * units.get(match[2], 1) / 1048576, 2)
+
+
+def inventory():
+    ids = subprocess.check_output(['docker', 'ps', '-aq'], text=True, timeout=15).split()
+    if not ids:
+        return []
+    if len(ids) > 1000:
+        raise ValueError('Inventory exceeds supported node capacity')
+    inspected = json.loads(subprocess.check_output(['docker', 'inspect', *ids], timeout=30))
+    stats = subprocess.check_output(['docker', 'stats', '--no-stream', '--format', '{{json .}}'], text=True, timeout=30)
+    measured = {row['Name']: row for row in [json.loads(line) for line in stats.splitlines() if line]}
+    rows = []
+    for container in inspected:
+        name = container['Name'].lstrip('/')
+        labels = container['Config'].get('Labels') or {}
+        stat = measured.get(name, {})
+        rows.append({'name':name, 'project':labels.get('com.docker.compose.project',''),
+            'service':labels.get('com.docker.compose.service',''), 'image':container['Config']['Image'],
+            'state':container['State']['Status'], 'health':container['State'].get('Health',{}).get('Status','none'),
+            'memoryMb':memory_mb(stat.get('MemUsage','0B').split('/')[0].strip()),
+            'cpuPercent':float(stat.get('CPUPerc','0%').rstrip('%')), 'restarts':container['RestartCount']})
+    return rows
+
+
+def collect(data_path, config=None):
+    config = config or {}
     mem = {}
     for line in Path('/proc/meminfo').read_text().splitlines():
         key, value = line.split(':', 1)
@@ -27,7 +59,36 @@ def collect(data_path):
     except (OSError, subprocess.SubprocessError):
         ready = False
         free_disk = 0
-    return {'dockerReady': ready, 'available': {
+    total_disk = shutil.disk_usage(data_path).total
+    certificate = None
+    if config.get('certificateStatusPath'):
+        try:
+            certificate = json.loads(Path(config['certificateStatusPath']).read_text())
+        except (OSError, ValueError):
+            pass
+    automation = None
+    if config.get('issuerStatusPath'):
+        try: automation = json.loads(Path(config['issuerStatusPath']).read_text())
+        except (OSError, ValueError):
+            automation = {'status':'failed','checkedAt': __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
+    backups = []
+    workspace = Path(config.get('workspace', data_path))
+    for journal in workspace.glob('*/execution.json'):
+        import uuid
+        try:
+            deployment_id = str(uuid.UUID(journal.parent.name))
+            if json.loads(journal.read_text()).get('phase') != 'runtime_ready':
+                continue
+            status = journal.parent / 'backup-status.json'
+            backups.append(json.loads(status.read_text()) if status.exists() else {
+                'deploymentId':deployment_id, 'completedAt':None, 'status':'never', 'offsiteAt':None, 'offsiteStatus':'not_configured'})
+        except (ValueError, OSError):
+            continue
+    containers = inventory() if ready else []
+    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True),
+        'totals': {'cpuMillis': (os.cpu_count() or 1)*1000, 'memoryMb':mem['MemTotal']//1024, 'diskMb':total_disk//1048576},
+        'certificateAutomation':automation, 'load1':os.getloadavg()[0], 'containers':containers, 'certificate':certificate, 'backups':backups,
+        'available': {
         'cpuMillis': max(0, int(((os.cpu_count() or 1) - os.getloadavg()[0]) * 1000)),
         'memoryMb': mem.get('MemAvailable', 0) // 1024,
         'diskMb': free_disk // (1024 * 1024),
@@ -45,7 +106,7 @@ def main():
     node_id = config['nodeId']
     import uuid
     uuid.UUID(node_id)
-    payload = collect(config.get('dataPath', '/opt/lingcoo'))
+    payload = collect(config.get('dataPath', '/opt/lingcoo'), config)
     url = config['stackUrl'].rstrip('/') + '/v1/hosting/nodes/' + node_id + '/report'
     request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={
         'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config['reportToken'],

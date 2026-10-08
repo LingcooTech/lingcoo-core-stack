@@ -19,9 +19,7 @@ export const hostingRoutes: FastifyPluginAsync = async (app) => {
       (request.headers.authorization ?? '').replace(/^Bearer /, ''),
     );
     return {
-      items: node.enabled
-        ? await new HostingDnsService(app.db, app.appEnv).listIngress(nodeId)
-        : [],
+      items: await new HostingDnsService(app.db, app.appEnv).listIngress(node.id),
     };
   });
   app.post('/v1/hosting/nodes/:nodeId/ingress/:deploymentId', async (request) => {
@@ -106,18 +104,18 @@ export const hostingRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: app.requirePermission('settings.manage') },
     async (request) => {
       const { nodeId } = hostingNodeParamsSchema.parse(request.params);
-      const { enabled } = hostingNodeStateSchema.parse(request.body);
+      const payload = hostingNodeStateSchema.parse(request.body);
       await app.db.transaction(async (tx) => {
         const repository = new HostingRepository(tx);
         await repository.lockPool();
-        await repository.setEnabled(nodeId, enabled);
+        await repository.updateNode(nodeId, payload);
         await new AuditLogService(tx).record({
           actorType: 'user',
           actorUserId: request.user.sub,
           action: 'hosting.node_state_changed',
           resourceType: 'hosting_node',
           resourceId: nodeId,
-          summary: enabled ? '启用托管分配' : '暂停托管分配',
+          summary: '更新节点资产或分配配置',
           requestId: request.id,
         });
       });

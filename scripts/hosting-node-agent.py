@@ -218,8 +218,24 @@ def main():
     report = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(report)
     with open(workspace / '.agent.lock', 'a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        api('report', report.collect(str(workspace)))
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print('Node is busy with a managed operation; retry next tick')
+            return
+        api('report', report.collect(str(workspace), config))
+        if config.get('monitorOnly'):
+            print('Inventory report accepted; deployment disabled on this node')
+            return
+        operation = api('operations/claim', {})['operation']
+        if operation:
+            spec = importlib.util.spec_from_file_location('operation', Path(__file__).with_name('hosting-node-operation.py'))
+            module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            result = module.execute(config, workspace, operation)
+            api('operations/complete', {'operationId':operation['id'], 'success':result})
+            api('report', report.collect(str(workspace), config))
+            print('Managed operation completed' if result else 'Managed operation failed')
+            return
         job = api('claim', {})['job']
         if job is None:
             print('No eligible runtime task')

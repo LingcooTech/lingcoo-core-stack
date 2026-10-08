@@ -2,6 +2,9 @@ import { externalResponseContracts, nonJsonResponseRoutes } from './external-res
 import { z } from 'zod';
 import {
   HostingClaimSchema,
+  HostingOverviewSchema,
+  HostingOperationSchema,
+  HostingOperationClaimSchema,
   DeploymentDomainsSchema,
   DeploymentDomainSchema,
   HostingIngressItemSchema,
@@ -12,6 +15,22 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  { method: 'GET', path: '/v1/admin/hosting/overview', schema: HostingOverviewSchema },
+  {
+    method: 'POST',
+    path: '/v1/admin/hosting/instances/:param/operations',
+    schema: HostingOperationSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/hosting/nodes/:param/operations/claim',
+    schema: HostingOperationClaimSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/hosting/nodes/:param/operations/complete',
+    schema: z.object({ ok: z.boolean() }),
+  },
   { method: 'GET', path: '/v1/deployments/:param/domains', schema: DeploymentDomainsSchema },
   { method: 'POST', path: '/v1/deployments/:param/domains', schema: DeploymentDomainSchema },
   {

@@ -1,3 +1,6 @@
+import { hostingAlerts } from './hosting-alerts';
+import { hostingAssetSchema, type hostingNodeStateSchema } from '@lingcoo/contracts';
+import type { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
@@ -29,6 +32,7 @@ export function evaluateHostingNode(
     !node.enabled ||
     !report.success ||
     !report.data.dockerReady ||
+    report.data.canDeploy === false ||
     age < 0 ||
     age > HOSTING_REPORT_MAX_AGE_MS
   )
@@ -87,7 +91,15 @@ export class HostingRepository {
           capacity: { cpuMillis: node.cpuMillis, memoryMb: node.memoryMb, diskMb: node.diskMb },
           reserved: reserved.get(node.id) ?? emptyResources(),
           available: report.success ? report.data.available : null,
-          healthy: evaluateHostingNode(node, emptyResources(), emptyResources(), now) !== null,
+          healthy:
+            report.success &&
+            report.data.dockerReady &&
+            !!node.lastReportedAt &&
+            now.getTime() - node.lastReportedAt.getTime() >= 0 &&
+            now.getTime() - node.lastReportedAt.getTime() <= HOSTING_REPORT_MAX_AGE_MS,
+          asset: hostingAssetSchema.parse(node.asset),
+          telemetry: report.success ? report.data : null,
+          alerts: hostingAlerts(node, now),
           lastReportedAt: node.lastReportedAt?.toISOString() ?? null,
         };
       }),
@@ -95,7 +107,12 @@ export class HostingRepository {
   }
 
   async createNode(
-    input: { name: string; serverIp: string; capacity: HostingResources },
+    input: {
+      name: string;
+      serverIp: string;
+      capacity: HostingResources;
+      asset?: z.infer<typeof hostingAssetSchema>;
+    },
     now: Date,
   ) {
     const reportToken = randomBytes(32).toString('base64url');
@@ -103,6 +120,7 @@ export class HostingRepository {
       .insert(hostingNodes)
       .values({
         name: input.name,
+        asset: input.asset ?? {},
         serverIp: input.serverIp,
         ...input.capacity,
         reportTokenHash: hashPassword(reportToken),
@@ -112,6 +130,28 @@ export class HostingRepository {
     if (!node) throw httpError(409, '该服务器 IP 已登记');
     const view = (await this.nodeViews(now)).items.find((item) => item.id === node.id)!;
     return { node: view, reportToken };
+  }
+
+  async updateNode(nodeId: string, input: z.infer<typeof hostingNodeStateSchema>) {
+    const [node] = await this.db.select().from(hostingNodes).where(eq(hostingNodes.id, nodeId));
+    if (!node) throw httpError(404, '托管节点不存在');
+    if (input.capacity) {
+      const reserved = (await this.reservations()).get(nodeId) ?? emptyResources();
+      for (const key of resourceKeys)
+        if (input.capacity[key] < reserved[key]) throw httpError(409, '容量预算不得低于已预留资源');
+    }
+    const report = hostingNodeReportSchema.safeParse(node.report);
+    if (input.enabled && report.success && report.data.canDeploy === false)
+      throw httpError(409, '当前节点仅监控，未安装部署执行器');
+    await this.db
+      .update(hostingNodes)
+      .set({
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+        ...(input.capacity ?? {}),
+        ...(input.asset ? { asset: input.asset } : {}),
+      })
+      .where(eq(hostingNodes.id, nodeId));
   }
 
   async setEnabled(nodeId: string, enabled: boolean) {

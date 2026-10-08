@@ -24,6 +24,9 @@ export const hostingNodes = pgTable('hosting_nodes', {
   memoryMb: integer('memory_mb').notNull(),
   diskMb: integer('disk_mb').notNull(),
   reportTokenHash: varchar('report_token_hash', { length: 255 }).notNull(),
+  asset: jsonb('asset')
+    .notNull()
+    .default(sql`'{}'::jsonb`),
   report: jsonb('report'),
   lastReportedAt: timestamp('last_reported_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -120,3 +123,30 @@ export const deploymentDomains = pgTable('deployment_domains', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const hostingOperations = pgTable(
+  'hosting_operations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => hostingNodes.id, { onDelete: 'restrict' }),
+    kind: varchar('kind', { length: 24 }).notNull(),
+    state: varchar('state', { length: 24 }).notNull().default('pending'),
+    requestKey: uuid('request_key').notNull().unique(),
+    requestedBy: uuid('requested_by').references(() => users.id, { onDelete: 'set null' }),
+    result: varchar('result', { length: 40 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    pendingNodeIdx: index('hosting_operations_node_state_idx').on(t.nodeId, t.state),
+    activeInstanceKey: uniqueIndex('hosting_operations_active_instance_key')
+      .on(t.deploymentId)
+      .where(sql`${t.state} in ('pending', 'running')`),
+  }),
+);

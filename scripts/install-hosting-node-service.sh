@@ -12,7 +12,7 @@ python3 - "$HOSTING_NODE_CONFIG" <<'PY'
 import json,sys,urllib.parse
 c=json.load(open(sys.argv[1]));u=urllib.parse.urlsplit(c['stackUrl'])
 assert u.scheme=='https' and not c.get('testLoopback'), 'Permanent service requires HTTPS'
-assert c.get('gatewayConfigPath') and c.get('gatewayContainer'), 'Gateway config required'
+assert c.get('monitorOnly') or (c.get('gatewayConfigPath') and c.get('gatewayContainer')), 'Gateway config required'
 assert not c.get('useCachedImagesOnly'), 'Permanent service must support registry pulls'
 PY
 cat > /etc/systemd/system/lingcoo-hosting.service <<UNIT

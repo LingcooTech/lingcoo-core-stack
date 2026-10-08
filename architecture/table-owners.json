@@ -38,5 +38,6 @@
   "idempotencyRequests": "idempotency",
   "authSessions": "auth",
   "hostingNodes": "deployment",
-  "deploymentDomains": "deployment"
+  "deploymentDomains": "deployment",
+  "hostingOperations": "deployment"
 }

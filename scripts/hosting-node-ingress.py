@@ -10,7 +10,7 @@ import tempfile
 import uuid
 
 
-def route_block(deployment_id, hostname, aliases=()):
+def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None):
     uuid.UUID(deployment_id)
     if not re.fullmatch(r'[a-z][a-z0-9-]*\.[a-z0-9.-]+', hostname) or '..' in hostname:
         raise ValueError('Invalid ingress hostname')
@@ -19,10 +19,19 @@ def route_block(deployment_id, hostname, aliases=()):
         if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', name):
             raise ValueError('Invalid alias')
     upstream = 'retail-' + deployment_id.replace('-', '') + '-ingress'
-    return ('# BEGIN LINGCOO ' + deployment_id + '\n' + ', '.join(names) + ' {\n'
-            '  header X-Lingcoo-Deployment ' + deployment_id + '\n'
-            '  reverse_proxy ' + upstream + ':80\n}\n'
-            '# END LINGCOO ' + deployment_id + '\n')
+    def site(hosts, tls=False):
+        return (', '.join(hosts) + ' {\n'
+                + ('  tls /data/lingcoo-platform-tls/current/fullchain.pem /data/lingcoo-platform-tls/current/privkey.pem\n' if tls else '')
+                + '  header X-Lingcoo-Deployment ' + deployment_id + '\n'
+                + '  reverse_proxy ' + upstream + ':80\n}\n')
+    if wildcard_domain:
+        if not hostname.endswith('.' + wildcard_domain) or '.' in hostname[:-(len(wildcard_domain) + 1)]:
+            raise ValueError('Default hostname outside wildcard certificate')
+        # Custom domains must keep their own certificate automation.
+        content = site([hostname], True) + (site(list(aliases)) if aliases else '')
+    else:
+        content = site(names)
+    return '# BEGIN LINGCOO ' + deployment_id + '\n' + content + '# END LINGCOO ' + deployment_id + '\n'
 
 
 def publish(config, workspace, item):
@@ -38,7 +47,7 @@ def publish(config, workspace, item):
     start = '# BEGIN LINGCOO ' + deployment_id + '\n'
     end = '# END LINGCOO ' + deployment_id + '\n'
     aliases = [entry['hostname'] for entry in item.get('aliases', [])]
-    block = route_block(deployment_id, item['hostname'], aliases)
+    block = route_block(deployment_id, item['hostname'], aliases, config.get('wildcardDomain'))
     if start in old:
         left = old.index(start)
         right = old.index(end, left) + len(end)
