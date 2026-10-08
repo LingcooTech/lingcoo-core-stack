@@ -281,6 +281,13 @@
       "when": 1791501320285,
       "tag": "0039_bent_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791502063795,
+      "tag": "0040_simple_chronomancer",
+      "breakpoints": true
     }
   ]
 }

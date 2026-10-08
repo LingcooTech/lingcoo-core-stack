@@ -27,3 +27,5 @@ export type HostingTermsFactory = (
   db: DbExecutor,
   clock: () => Date,
 ) => Pick<HostingServiceTerms, 'quoteRenewal' | 'applyPaidRenewal' | 'assertSoftwareRefundable'>;
+
+export { HostingMonitor } from './hosting-monitor';

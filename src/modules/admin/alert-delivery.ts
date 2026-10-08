@@ -71,9 +71,11 @@ export class AlertDeliveryService {
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
     private readonly loadSummary: () => ReturnType<AdminService['getObservabilitySummary']>,
+    private readonly beforeDispatch: () => Promise<unknown> = async () => {},
   ) {}
 
   async dispatchActiveAlerts(options: { traceId?: string } = {}) {
+    await this.beforeDispatch();
     const settings = await new AlertingSettingsService(this.db, this.env).getRuntimeSettings();
     if (!settings?.enabled) {
       return { dispatched: 0, channels: [], alerts: 0 };

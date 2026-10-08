@@ -1,0 +1,69 @@
+{
+  "ready": {
+    "status": "ready",
+    "version": "2f3331409b55c3ecfa5d9e5d04dc22bf38fe05a3"
+  },
+  "hostingOfferCount": 0,
+  "operatorPurchaseCount": 0,
+  "pilotServiceUnchanged": true,
+  "instances": 1,
+  "nodes": [
+    {
+      "ip": "82.157.22.93",
+      "healthy": true,
+      "enabled": false
+    },
+    {
+      "ip": "118.25.36.15",
+      "healthy": true,
+      "enabled": true
+    }
+  ],
+  "backups": [
+    {
+      "status": "success",
+      "offsiteStatus": "success",
+      "telemetryFresh": true
+    }
+  ],
+  "domains": [
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "status": 200
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "status": 200
+    }
+  ],
+  "date": "2026-10-09",
+  "codeCommit": "2f3331409b55c3ecfa5d9e5d04dc22bf38fe05a3",
+  "ciRun": 37859287136,
+  "deployRun": 37859871131,
+  "localVerification": {
+    "engineeringChecks": "passed",
+    "unitTests": 83,
+    "integrationTests": 92,
+    "browserTests": 24,
+    "finalFocusedIntegrationTests": 6
+  },
+  "ledger": {
+    "status": 200,
+    "legacyOrderStatus": "pending",
+    "records": 0,
+    "lines": 0,
+    "readOnly": true
+  },
+  "browser": {
+    "desktop": "passed",
+    "mobile390": "passed",
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "productionReadOnly": true,
+  "realRefundPerformed": false,
+  "limitations": [
+    "Applied hosting termination and entitlement rollback are protected, not automated",
+    "Real payment-channel refund acceptance is pending"
+  ]
+}

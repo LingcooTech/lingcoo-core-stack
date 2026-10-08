@@ -201,3 +201,47 @@ export const hostingServiceChanges = pgTable(
     versionKey: uniqueIndex('hosting_service_changes_version_key').on(t.deploymentId, t.version),
   }),
 );
+
+export const hostingIncidents = pgTable(
+  'hosting_incidents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    scope: varchar('scope', { length: 16 }).$type<'node' | 'deployment' | 'service'>().notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    code: varchar('code', { length: 100 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    severity: varchar('severity', { length: 16 }).$type<'warning' | 'critical'>().notNull(),
+    state: varchar('state', { length: 16 }).$type<'active' | 'resolved'>().notNull(),
+    occurrences: integer('occurrences').notNull().default(1),
+    firstDetectedAt: timestamp('first_detected_at', { withTimezone: true }).notNull(),
+    lastDetectedAt: timestamp('last_detected_at', { withTimezone: true }).notNull(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolution: varchar('resolution', { length: 16 }).$type<'recovered' | 'retired'>(),
+  },
+  (t) => ({
+    resource: uniqueIndex('hosting_incidents_resource_idx').on(t.scope, t.resourceId, t.code),
+    state: index('hosting_incidents_state_idx').on(t.state, t.lastDetectedAt),
+    valid: check(
+      'hosting_incidents_valid',
+      sql`${t.scope} in ('node','deployment','service') and ${t.state} in ('active','resolved') and ${t.severity} in ('warning','critical') and ${t.occurrences}>0`,
+    ),
+  }),
+);
+export const hostingIncidentEvents = pgTable(
+  'hosting_incident_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    incidentId: uuid('incident_id')
+      .notNull()
+      .references(() => hostingIncidents.id, { onDelete: 'restrict' }),
+    kind: varchar('kind', { length: 16 }).$type<'opened' | 'recovered' | 'retired'>().notNull(),
+    observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
+  },
+  (t) => ({
+    incident: index('hosting_incident_events_incident_idx').on(t.incidentId, t.observedAt),
+  }),
+);
+export const hostingMonitorState = pgTable('hosting_monitor_state', {
+  id: integer('id').primaryKey(),
+  checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
+});

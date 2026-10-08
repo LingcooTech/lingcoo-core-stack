@@ -26,3 +26,4 @@ export * from './order-items.js';
 
 export * from './hosting-purchase.js';
 export * from './item-refund.js';
+export * from './hosting-monitor.js';

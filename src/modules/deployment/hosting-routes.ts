@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { HostingMonitor } from './hosting-monitor';
 import { HostingDnsService } from './hosting-dns';
 import type { FastifyPluginAsync } from 'fastify';
 import {
@@ -12,6 +14,19 @@ import { deploymentParamsSchema } from './schemas';
 import { AuditLogService } from '../../lib/audit-logs';
 
 export const hostingRoutes: FastifyPluginAsync = async (app) => {
+  app.get(
+    '/v1/admin/hosting/incidents',
+    { preHandler: app.requirePermission('settings.manage') },
+    async (request) => new HostingMonitor(app.db).list(request.query),
+  );
+  app.get(
+    '/v1/admin/hosting/incidents/:incidentId/events',
+    { preHandler: app.requirePermission('settings.manage') },
+    async (request) =>
+      new HostingMonitor(app.db).history(
+        z.object({ incidentId: z.uuid() }).parse(request.params).incidentId,
+      ),
+  );
   app.get('/v1/hosting/nodes/:nodeId/ingress', async (request) => {
     const { nodeId } = hostingNodeParamsSchema.parse(request.params);
     const node = await new HostingRepository(app.db).authenticate(

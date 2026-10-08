@@ -1,4 +1,8 @@
-import { CustomDomainService, HostingDnsService } from '../modules/deployment/public';
+import {
+  CustomDomainService,
+  HostingDnsService,
+  HostingMonitor,
+} from '../modules/deployment/public';
 import type { AppEnv } from '../lib/env';
 import { AuditLogService } from '../lib/audit-logs';
 import { JobRunService } from '../modules/jobs/service';
@@ -52,8 +56,14 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
     hostingDns: new HostingDnsService(db, env),
     jobs: new JobRunService(db, env),
     audits: new AuditLogService(db),
-    alertDelivery: new AlertDeliveryService(db, env, () =>
-      new AdminService(factories, db, env).getObservabilitySummary(),
+    alertDelivery: new AlertDeliveryService(
+      db,
+      env,
+      () => new AdminService(factories, db, env).getObservabilitySummary(),
+      () =>
+        new HostingMonitor(db).reconcile().catch(() => {
+          console.error('[worker] hosting monitor failed');
+        }),
     ),
   };
 }

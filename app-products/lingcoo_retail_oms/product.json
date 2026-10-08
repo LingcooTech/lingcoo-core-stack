@@ -20,6 +20,12 @@
           "cpuMillis": 1000,
           "memoryMb": 1024,
           "diskMb": 10240
+        },
+        "monitoring": {
+          "projectPrefix": "retail",
+          "services": ["api", "worker", "web", "postgres", "caddy"],
+          "backupRequired": true,
+          "offsiteRequired": true
         }
       }
     }

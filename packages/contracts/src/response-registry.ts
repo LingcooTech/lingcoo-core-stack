@@ -1,3 +1,4 @@
+import { HostingIncidentsSchema, HostingIncidentEventsSchema } from './hosting-monitor.js';
 import { ItemRefundLedgerSchema } from './item-refund.js';
 import { HostingPurchasesSchema, HostingFulfillmentsSchema } from './hosting-purchase.js';
 import { HostingOfferSchema, HostingOfferListSchema } from './hosting-offer.js';
@@ -80,6 +81,12 @@ const clientResponseContracts = [
     schema: AdminHostingServiceResponseSchema,
   },
   { method: 'GET', path: '/v1/admin/hosting/overview', schema: HostingOverviewSchema },
+  { method: 'GET', path: '/v1/admin/hosting/incidents', schema: HostingIncidentsSchema },
+  {
+    method: 'GET',
+    path: '/v1/admin/hosting/incidents/:incidentId/events',
+    schema: HostingIncidentEventsSchema,
+  },
   {
     method: 'POST',
     path: '/v1/admin/hosting/instances/:param/operations',

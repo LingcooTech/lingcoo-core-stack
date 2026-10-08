@@ -45,5 +45,8 @@
   "hostingOffers": "billing",
   "hostingPurchases": "billing",
   "hostingFulfillments": "billing",
-  "orderItemRefunds": "billing"
+  "orderItemRefunds": "billing",
+  "hostingIncidents": "deployment",
+  "hostingIncidentEvents": "deployment",
+  "hostingMonitorState": "deployment"
 }

@@ -1,3 +1,4 @@
+import { HostingMonitor } from '../deployment/public';
 import { queryBatch } from '../../db/query-batch';
 import { pickAdminDependencies, type AdminDependencies } from './dependencies';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -513,7 +514,7 @@ export class AdminService {
         waitingStaffTickets,
         events24h,
       },
-      alerts,
+      alerts: [...alerts, ...(await new HostingMonitor(this.db).activeAlerts())],
     };
   }
 

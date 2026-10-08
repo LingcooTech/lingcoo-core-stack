@@ -1,3 +1,4 @@
+import { hostingMonitorProfileSchema } from './hosting-monitor.js';
 import { z } from 'zod';
 
 export const deploymentModeSchema = z.enum(['self_hosted', 'managed']);
@@ -31,6 +32,7 @@ export const hostingProfileSchema = z
   .object({
     enabled: z.literal(true),
     domainField: z.string().min(1).max(64),
+    monitoring: hostingMonitorProfileSchema.optional(),
     resources: hostingResourcesSchema,
   })
   .strict();

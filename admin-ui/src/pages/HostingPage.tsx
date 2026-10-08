@@ -1,3 +1,4 @@
+import { HostingIncidents } from '@/components/hosting/HostingIncidents';
 import { HostingOffers } from '@/components/hosting/HostingOffers';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
@@ -22,6 +23,7 @@ export function HostingPage() {
     'servers',
     'instances',
     'operations',
+    'incidents',
     ...(canManageOffers ? ['offers'] : []),
   ].includes(params.get('tab') ?? '')
     ? params.get('tab')!
@@ -34,8 +36,16 @@ export function HostingPage() {
     refetchInterval: 15000,
   });
   const overview = useHostingOverview();
+  const monitor = useQuery({
+    queryKey: ['hosting-monitor-summary'],
+    queryFn: () =>
+      apiClient(
+        'GET /v1/admin/hosting/incidents',
+        '/v1/admin/hosting/incidents?state=active&limit=1&offset=0',
+      ),
+    refetchInterval: 30000,
+  });
   const items = nodes.data?.items ?? [];
-  const alerts = items.reduce((sum, n) => sum + n.alerts.length, 0);
   const filtered = items.filter(
     (n) =>
       `${n.name} ${n.serverIp} ${n.asset.provider}`.toLowerCase().includes(search.toLowerCase()) &&
@@ -55,6 +65,7 @@ export function HostingPage() {
   const refresh = () => {
     void nodes.refetch();
     void overview.refetch();
+    void monitor.refetch();
   };
   return (
     <div className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
@@ -101,9 +112,9 @@ export function HostingPage() {
             icon: ShieldCheck,
           },
           {
-            title: '待关注提醒',
-            value: nodes.data ? String(alerts) : '—',
-            note: '资源、证书与备份异常',
+            title: '完整性告警',
+            value: monitor.data?.lastScanAt ? String(monitor.data.activeCount) : '—',
+            note: '实例、资源、备份与期限',
             icon: Activity,
           },
         ].map((m) => (
@@ -123,9 +134,15 @@ export function HostingPage() {
           <span>
             {items.length === 0
               ? '添加第一台服务器，开始建立托管资源池。'
-              : alerts
-                ? `有 ${alerts} 项提醒需要处理，可筛选“需要关注”查看。`
-                : '节点当前无告警。运行数据每 15 秒刷新，实际采样由节点上报。'}
+              : monitor.isError
+                ? '完整性监测状态读取失败，请在“告警与恢复”中重试。'
+                : !monitor.data?.lastScanAt
+                  ? '等待首次完整性扫描，暂不能确认实例健康状态。'
+                  : Date.now() - Date.parse(monitor.data.lastScanAt) > 10 * 60000
+                    ? '完整性监测超过 10 分钟未更新，请检查平台 Worker。'
+                    : monitor.data.activeCount
+                      ? `有 ${monitor.data.activeCount} 项完整性告警，请查看“告警与恢复”。`
+                      : '最近完整性扫描未发现异常。请同时留意节点报告时间。'}
           </span>
         </div>
       ) : null}
@@ -161,6 +178,7 @@ export function HostingPage() {
           <TabsList aria-label="托管管理分类">
             <TabsTrigger value="servers">服务器资源</TabsTrigger>
             <TabsTrigger value="instances">托管实例</TabsTrigger>
+            <TabsTrigger value="incidents">告警与恢复</TabsTrigger>
             <TabsTrigger value="operations">运维记录</TabsTrigger>
             {canManageOffers && <TabsTrigger value="offers">托管套餐</TabsTrigger>}
           </TabsList>
@@ -235,6 +253,9 @@ export function HostingPage() {
             deploymentId={params.get('deploymentId') ?? undefined}
             nodeNames={Object.fromEntries(items.map((n) => [n.id, n.name]))}
           />
+        </TabsContent>
+        <TabsContent value="incidents">
+          <HostingIncidents />
         </TabsContent>
         <TabsContent value="operations">
           <HostingInstances view="operations" />
