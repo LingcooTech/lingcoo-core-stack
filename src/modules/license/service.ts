@@ -1,3 +1,4 @@
+import { billingPeriodEnd } from '../../lib/billing-period';
 import { queryBatch } from '../../db/query-batch';
 import { pickLicenseDependencies, type LicenseDependencies } from './dependencies';
 import type { DbExecutor } from '../../db/types';
@@ -6,21 +7,6 @@ import { httpError } from '../../lib/errors';
 
 import { createAppAccess } from '../app/public';
 import { LicenseRepository } from './repository';
-
-function addInterval(base: Date, interval: 'month' | 'year' | 'one_time') {
-  if (interval === 'one_time') {
-    return null;
-  }
-
-  const next = new Date(base);
-  if (interval === 'month') {
-    next.setMonth(next.getMonth() + 1);
-    return next;
-  }
-
-  next.setFullYear(next.getFullYear() + 1);
-  return next;
-}
 
 function normalizeMeta(value: unknown) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -113,7 +99,8 @@ export class LicenseService {
     }
 
     const startsAt = input.startsAt ?? this.capabilities.now();
-    const expiresAt = addInterval(startsAt, plan.interval);
+    const expiresAt =
+      plan.interval === 'one_time' ? null : billingPeriodEnd(startsAt, plan.interval);
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
 
