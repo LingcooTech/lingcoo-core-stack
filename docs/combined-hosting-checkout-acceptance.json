@@ -1,0 +1,58 @@
+{
+  "ready": {
+    "status": "ready",
+    "version": "85b65b4db7fff0652022556917441a88351d9d71"
+  },
+  "hostingOfferCount": 0,
+  "operatorPurchaseCount": 0,
+  "pilotServiceUnchanged": true,
+  "instances": 1,
+  "nodes": [
+    {
+      "ip": "82.157.22.93",
+      "healthy": true,
+      "enabled": false
+    },
+    {
+      "ip": "118.25.36.15",
+      "healthy": true,
+      "enabled": true
+    }
+  ],
+  "backups": [
+    {
+      "status": "success",
+      "offsiteStatus": "success",
+      "telemetryFresh": true
+    }
+  ],
+  "domains": [
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "status": 200
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "status": 200
+    }
+  ],
+  "runtimeCommit": "85b65b4db7fff0652022556917441a88351d9d71",
+  "ci": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37799908460",
+  "deploy": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37800827827",
+  "tests": {
+    "unit": 81,
+    "integration": 83,
+    "adminBrowser": 19
+  },
+  "liveBrowser": {
+    "desktop": true,
+    "mobileWidth": 390,
+    "orderDetails": true,
+    "hostingCatalogAndDraftForm": true,
+    "readOnly": true,
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "realPaymentTested": false,
+  "realRefundTested": false
+}
