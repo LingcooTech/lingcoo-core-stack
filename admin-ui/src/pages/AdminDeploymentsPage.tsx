@@ -85,6 +85,7 @@ export function AdminDeploymentsPage() {
   const columns: Column<AdminDeployment>[] = [
     {
       key: 'label',
+      className: 'min-w-[240px]',
       header: '应用 / 部署',
       cell: (r) => (
         <div>
@@ -97,11 +98,13 @@ export function AdminDeploymentsPage() {
     },
     {
       key: 'customer',
+      className: 'min-w-[200px]',
       header: '客户',
       cell: (r) => <span className="break-all">{r.customerEmail}</span>,
     },
     {
       key: 'mode',
+      className: 'min-w-[150px] whitespace-nowrap',
       header: '部署方式',
       cell: (r) => (
         <StatusPill
@@ -112,6 +115,7 @@ export function AdminDeploymentsPage() {
     },
     {
       key: 'state',
+      className: 'min-w-[120px] whitespace-nowrap',
       header: '交付状态',
       cell: (r) => (
         <StatusPill
@@ -122,6 +126,7 @@ export function AdminDeploymentsPage() {
     },
     {
       key: 'domain',
+      className: 'min-w-[240px]',
       header: '域名 / 服务器',
       cell: (r) => (
         <div className="text-xs">
@@ -132,6 +137,7 @@ export function AdminDeploymentsPage() {
     },
     {
       key: 'action',
+      className: 'min-w-[110px] whitespace-nowrap',
       header: '详情',
       cell: (r) => (
         <Button variant="outline" size="sm" onClick={() => setSelected(r)}>
@@ -207,6 +213,7 @@ export function AdminDeploymentsPage() {
           <div className="overflow-x-auto rounded-lg border">
             <DataTable
               columns={columns}
+              minTableWidth="1060px"
               data={query.data?.items ?? []}
               isLoading={query.isPending}
               getRowId={(r) => r.id}
