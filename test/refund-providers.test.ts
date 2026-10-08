@@ -262,3 +262,37 @@ test('domestic refund adapters reject unsupported currencies before contacting p
   assert.equal(fetch.mock.callCount(), 0);
   assert.equal(sdk.mock.callCount(), 0);
 });
+
+test('refund query transport/business errors cannot release reserved funds', async (t) => {
+  t.mock.method(AlipaySdk.prototype, 'exec', async () => ({
+    code: '20000',
+    msg: 'Service unavailable',
+  }));
+  await assert.rejects(
+    new AlipayProvider().queryRefundPayment({ ...base, refund }),
+    /terminal result|Service unavailable/,
+  );
+  t.mock.method(globalThis, 'fetch', async () =>
+    signedResponse({ ...wxPayload, status: 'ABNORMAL' }),
+  );
+  await assert.rejects(
+    new WechatPayProvider().queryRefundPayment({ ...base, refund }),
+    /reconciliation/,
+  );
+});
+test('WeChat closed refunds require matching identity and amount before releasing funds', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () =>
+    signedResponse({ ...wxPayload, status: 'CLOSED' }),
+  );
+  assert.equal(
+    (await new WechatPayProvider().queryRefundPayment({ ...base, refund })).kind,
+    'failed',
+  );
+  t.mock.method(globalThis, 'fetch', async () =>
+    signedResponse({ ...wxPayload, status: 'CLOSED', out_refund_no: 'other' }),
+  );
+  await assert.rejects(
+    new WechatPayProvider().queryRefundPayment({ ...base, refund }),
+    /refund|Refund/,
+  );
+});

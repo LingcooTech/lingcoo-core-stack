@@ -1,3 +1,4 @@
+import { ItemRefundLedgerSchema } from './item-refund.js';
 import { HostingPurchasesSchema, HostingFulfillmentsSchema } from './hosting-purchase.js';
 import { HostingOfferSchema, HostingOfferListSchema } from './hosting-offer.js';
 import {
@@ -26,6 +27,26 @@ const clientResponseContracts = [
     method: 'GET',
     path: '/v1/billing/hosting-offers/:appCode',
     schema: z.object({ items: z.array(HostingOfferSchema) }),
+  },
+  {
+    method: 'GET',
+    path: '/v1/billing/orders/:orderNo/item-refunds',
+    schema: ItemRefundLedgerSchema,
+  },
+  {
+    method: 'GET',
+    path: '/v1/admin/billing/orders/:orderNo/item-refunds',
+    schema: ItemRefundLedgerSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/billing/orders/:orderNo/item-refunds',
+    schema: ItemRefundLedgerSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/billing/orders/:orderNo/item-refunds/:refundId/reconcile',
+    schema: ItemRefundLedgerSchema,
   },
   { method: 'GET', path: '/v1/billing/hosting-purchases/me', schema: HostingPurchasesSchema },
   { method: 'GET', path: '/v1/billing/hosting-fulfillments/me', schema: HostingFulfillmentsSchema },

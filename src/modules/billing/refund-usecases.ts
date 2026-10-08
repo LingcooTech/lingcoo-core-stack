@@ -1,3 +1,6 @@
+import { hostingLicenseAccess } from '../license/public';
+import { ItemRefunds } from './item-refunds';
+import type { ItemRefundCommand } from '@lingcoo/contracts';
 import { HostingFulfillments } from './hosting-fulfillments';
 import { HostingPurchases } from './hosting-purchases';
 import { pickBillingDependencies, type BillingDependencies } from './dependencies';
@@ -28,6 +31,19 @@ export class BillingRefundUseCases {
   ) {
     this.capabilities = pickBillingDependencies(capabilities);
   }
+  itemRefundLedger(orderNo: string, userId?: string) {
+    return new ItemRefunds(this.db, this.env, this.capabilities).read(orderNo, userId);
+  }
+  requestItemRefund(orderNo: string, actorId: string, input: ItemRefundCommand) {
+    return new ItemRefunds(this.db, this.env, this.capabilities).request(orderNo, actorId, input);
+  }
+  reconcileItemRefund(orderNo: string, refundId: string, forJob = false) {
+    return new ItemRefunds(this.db, this.env, this.capabilities).reconcile(
+      orderNo,
+      refundId,
+      forJob,
+    );
+  }
   async refundOrderByOrderNo(orderNo: string) {
     const repository = new BillingRepository(this.db);
     const order = await repository.findOrderByOrderNo(orderNo);
@@ -45,9 +61,20 @@ export class BillingRefundUseCases {
     }
 
     await new HostingFulfillments(this.db).assertRefundable(order.id);
-    const reservation = await this.db.transaction((tx) =>
-      new HostingPurchases(tx).reserveRefund(order.id),
-    );
+    const reservation = await this.db.transaction(async (tx) => {
+      const state = await new HostingPurchases(tx).reserveRefund(order.id);
+      if (state === 'reserved') {
+        const license = hostingLicenseAccess(tx);
+        const entitlements = await license.source(order.id);
+        for (const item of entitlements.sort((a, b) => a.id.localeCompare(b.id)))
+          await license.lock(item.id);
+        await this.capabilities
+          .createHostingTerms(tx, this.capabilities.now)
+          .assertSoftwareRefundable(entitlements.map((e) => e.id));
+      }
+      if (state === 'reserved') await this.enqueueRefundReconciliation(order.orderNo, null, tx);
+      return state;
+    });
     // Another request may have reached the provider. Query the stable refund id instead of sending twice.
     if (reservation === 'pending') return this.reconcileRefundRecord(order);
 

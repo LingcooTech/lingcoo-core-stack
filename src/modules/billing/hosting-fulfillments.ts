@@ -1,3 +1,4 @@
+import { hasPendingSoftwareRefund } from './refund-guard';
 import { and, desc, eq } from 'drizzle-orm';
 import { hostingFulfillments, orders } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -34,6 +35,7 @@ export class HostingFulfillments {
       entitlement.appId !== order.appId ||
       entitlement.planId !== order.planId ||
       entitlement.status !== 'active' ||
+      (await hasPendingSoftwareRefund(this.db, entitlement)) ||
       (entitlement.startsAt && entitlement.startsAt > now) ||
       (entitlement.expiresAt && entitlement.expiresAt <= now)
     ) {

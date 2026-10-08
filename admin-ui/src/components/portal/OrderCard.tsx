@@ -1,3 +1,4 @@
+import { ItemRefundLedger } from '@/components/shared/ItemRefundLedger';
 import { HostingFulfillmentStatus } from '@/components/hosting/HostingFulfillmentStatus';
 import { OrderItems } from '@/components/shared/OrderItems';
 import { RefreshCw } from 'lucide-react';
@@ -78,6 +79,7 @@ export function OrderCard({
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-4">
         <OrderItems items={order.items} />
+        {!!order.items?.length && <ItemRefundLedger orderNo={order.orderNo} />}
         {order.items?.some((i) => i.hostingTerms?.target) && (
           <HostingFulfillmentStatus orderNo={order.orderNo} />
         )}

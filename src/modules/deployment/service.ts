@@ -1,3 +1,4 @@
+import { assertNoPendingSoftwareRefund } from '../billing/public';
 import { HostingPurchases } from '../billing/public';
 import { HostingServiceTerms } from './hosting-service';
 import { HostingExecutionService } from './hosting-execution';
@@ -77,6 +78,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       appId: selection.app.id,
       entitlementId: input.entitlementId,
     });
+    await assertNoPendingSoftwareRefund(this.db, entitlement);
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     const activeCount = await new DeploymentRepository(
       this.db,
@@ -269,6 +271,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     const app = await this.capabilities.createAppService(this.db).getPublicApp(appRow.code);
     const { entitlement } = await this.loadDeploymentEntitlement(deployment);
     const manifest = this.readManifest(app);
+    await assertNoPendingSoftwareRefund(this.db, entitlement);
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     const binding = this.readEntitlementBinding(entitlement);
     const currentValues = this.readDeploymentInputValues(deployment);
@@ -474,6 +477,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       .createAppService(this.db)
       .getPublicApp(hydrated.app?.code ?? '');
     const { entitlement } = await this.loadDeploymentEntitlement(deployment);
+    await assertNoPendingSoftwareRefund(this.db, entitlement);
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     await this.ensureDeploymentReadyForTokenIssue({
       app,

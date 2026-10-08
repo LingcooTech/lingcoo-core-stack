@@ -1,3 +1,4 @@
+import { assertNoItemRefunds } from './refund-guard';
 import { and, desc, eq } from 'drizzle-orm';
 import { OrderItemSchema } from '@lingcoo/contracts';
 import { hostingPurchases, orders, apps } from '../../db/schema';
@@ -88,8 +89,16 @@ export class HostingPurchases {
       .from(hostingPurchases)
       .where(eq(hostingPurchases.orderId, orderId))
       .for('update');
-    if (!purchase) return 'none' as const;
-    if (!order || order.status !== 'paid') throw httpError(409, '订单状态已变化，请刷新后重试');
+    await assertNoItemRefunds(this.db, orderId);
+    if (order?.status === 'refunding') return 'pending' as const;
+    if (!order || order.status !== 'paid') throw httpError(409, '订单状态已变化');
+    if (!purchase) {
+      await this.db
+        .update(orders)
+        .set({ status: 'refunding', updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
+      return 'reserved' as const;
+    }
     if (purchase.status === 'refund_pending') return 'pending' as const;
     if (purchase.status === 'revoked') throw httpError(409, '托管资格已退款撤销');
     if (purchase.status === 'bound')
@@ -99,9 +108,18 @@ export class HostingPurchases {
         .update(hostingPurchases)
         .set({ status: 'refund_pending', updatedAt: new Date() })
         .where(eq(hostingPurchases.id, purchase.id));
+    await this.db
+      .update(orders)
+      .set({ status: 'refunding', updatedAt: new Date() })
+      .where(eq(orders.id, orderId));
     return 'reserved' as const;
   }
   async settleRefund(orderId: string, refunded: boolean) {
+    if (!refunded)
+      await this.db
+        .update(orders)
+        .set({ status: 'paid', updatedAt: new Date() })
+        .where(and(eq(orders.id, orderId), eq(orders.status, 'refunding')));
     await this.db
       .update(hostingPurchases)
       .set({ status: refunded ? 'revoked' : 'available', updatedAt: new Date() })

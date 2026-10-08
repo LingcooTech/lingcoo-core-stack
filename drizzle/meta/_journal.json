@@ -267,6 +267,20 @@
       "when": 1791500067971,
       "tag": "0037_outstanding_trauma",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791501119856,
+      "tag": "0038_tricky_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791501320285,
+      "tag": "0039_bent_angel",
+      "breakpoints": true
     }
   ]
 }

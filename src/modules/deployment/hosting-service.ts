@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import {
   HostingServiceSchema,
   OrderItemSchema,
@@ -34,6 +34,18 @@ export function hostingServiceView(row: ServiceRow, now: Date) {
 }
 
 export class HostingServiceTerms {
+  async assertSoftwareRefundable(entitlementIds: string[]) {
+    if (!entitlementIds.length) return;
+    const [row] = await this.db
+      .select({ id: deployments.id })
+      .from(deployments)
+      .where(
+        and(inArray(deployments.entitlementId, entitlementIds), eq(deployments.status, 'active')),
+      )
+      .limit(1);
+    if (row) throw httpError(409, '软件已有有效部署，请先完成服务终止和数据交接');
+  }
+
   constructor(
     private readonly db: DbExecutor,
     private readonly clock = () => new Date(),

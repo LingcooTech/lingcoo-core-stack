@@ -8,6 +8,7 @@ import {
   integer,
   jsonb,
   uniqueIndex,
+  index,
   check,
   text,
 } from 'drizzle-orm/pg-core';
@@ -181,6 +182,36 @@ export const hostingFulfillments = pgTable(
     status: check(
       'hosting_fulfillments_status_check',
       sql`${t.status} in ('applied', 'review', 'revoked')`,
+    ),
+  }),
+);
+
+export const orderItemRefunds = pgTable(
+  'order_item_refunds',
+  {
+    id: uuid('id').primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'restrict' }),
+    kind: varchar('kind', { length: 16 }).$type<'software' | 'hosting'>().notNull(),
+    amount: integer('amount').notNull(),
+    reason: text('reason').notNull(),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    status: varchar('status', { length: 16 })
+      .$type<'pending' | 'succeeded' | 'failed'>()
+      .notNull()
+      .default('pending'),
+    providerRefundId: varchar('provider_refund_id', { length: 128 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    orderLookup: index('order_item_refunds_order_idx').on(t.orderId, t.createdAt),
+    valid: check(
+      'order_item_refunds_valid',
+      sql`${t.kind} in ('software','hosting') and ${t.status} in ('pending','succeeded','failed') and ${t.amount}>0`,
     ),
   }),
 );

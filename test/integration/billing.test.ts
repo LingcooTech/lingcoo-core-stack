@@ -184,7 +184,7 @@ test('partial or mismatched refund results cannot revoke a full software order',
     .select()
     .from(entitlements)
     .where(eq(entitlements.sourceId, fixture.order.id));
-  assert.equal(order?.status, 'paid');
+  assert.equal(order?.status, 'refunding'); // Unverified result must keep the reservation.
   assert.equal(entitlement?.status, 'active');
 });
 

@@ -143,6 +143,7 @@ export function createServiceFactories(
         listProviders: value.listProviders.bind(value),
         reconcileRefundByOrderNo: value.reconcileRefundByOrderNo.bind(value),
         refundOrderByOrderNo: value.refundOrderByOrderNo.bind(value),
+        reconcileItemRefund: value.reconcileItemRefund.bind(value),
         syncOrderStatusByOrderNo: value.syncOrderStatusByOrderNo.bind(value),
       };
     },

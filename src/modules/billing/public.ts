@@ -21,6 +21,7 @@ export type BillingServicePort = Pick<
   | 'listProviders'
   | 'reconcileRefundByOrderNo'
   | 'refundOrderByOrderNo'
+  | 'reconcileItemRefund'
   | 'syncOrderStatusByOrderNo'
 >;
 export type BillingServiceFactory = (db: DbExecutor, env: AppEnv) => BillingServicePort;
@@ -32,3 +33,5 @@ export { billingProviderSchema } from './schemas';
 export { HostingPurchases } from './hosting-purchases';
 
 export { HostingCheckoutSelection } from './hosting-checkout';
+
+export { assertNoPendingSoftwareRefund } from './refund-guard';

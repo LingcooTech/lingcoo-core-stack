@@ -14,6 +14,7 @@ export type JobRunKind =
   | 'email.deliver'
   | 'alert.webhook.deliver'
   | 'billing.refund.reconcile'
+  | 'billing.item-refund.reconcile'
   | 'notifications.project';
 
 export interface MailDeliveryJobPayload {

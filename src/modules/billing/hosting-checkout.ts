@@ -1,3 +1,4 @@
+import { assertNoPendingSoftwareRefund } from './refund-guard';
 import { createAppAccess } from '../app/public';
 import { hostingLicenseAccess } from '../license/public';
 import type { HostingTermsFactory } from '../deployment/public';
@@ -24,6 +25,7 @@ export class HostingCheckoutSelection {
     const entitlement = await license.find(input.hostingOnly.entitlementId);
     if (!app || !entitlement || entitlement.userId !== input.userId || entitlement.appId !== app.id)
       throw httpError(404, '未找到对应软件授权');
+    await assertNoPendingSoftwareRefund(this.db, entitlement);
     const now = this.clock();
     if (
       entitlement.status !== 'active' ||

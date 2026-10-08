@@ -5,6 +5,7 @@ export function hostingLicenseAccess(db: DbExecutor) {
   return {
     find: (id: string) => repository.findEntitlementById(id),
     lock: (id: string) => repository.lockEntitlementById(id),
+    source: (id: string) => repository.listEntitlementsBySource('order', id),
     plan: (id: string) => repository.getPlanById(id),
   };
 }

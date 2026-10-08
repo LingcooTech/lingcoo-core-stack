@@ -1,0 +1,62 @@
+{
+  "ready": {
+    "status": "ready",
+    "version": "3bde4d0b1cf76842c5d8d8fe066ac0171326d74d"
+  },
+  "hostingOfferCount": 0,
+  "operatorPurchaseCount": 0,
+  "pilotServiceUnchanged": true,
+  "instances": 1,
+  "nodes": [
+    {
+      "ip": "82.157.22.93",
+      "healthy": true,
+      "enabled": false
+    },
+    {
+      "ip": "118.25.36.15",
+      "healthy": true,
+      "enabled": true
+    }
+  ],
+  "backups": [
+    {
+      "status": "success",
+      "offsiteStatus": "success",
+      "telemetryFresh": true
+    }
+  ],
+  "domains": [
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "status": 200
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "status": 200
+    }
+  ],
+  "date": "2026-10-09",
+  "codeCommit": "3bde4d0b1cf76842c5d8d8fe066ac0171326d74d",
+  "ciRun": 37857773815,
+  "deployRun": 37858193565,
+  "localVerification": {
+    "fullCheck": "passed",
+    "integrationTests": 86,
+    "browserTests": 22
+  },
+  "productionReadOnly": true,
+  "browser": {
+    "desktop": "passed",
+    "mobile390": "passed",
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "realPaymentPerformed": false,
+  "realRefundPerformed": false,
+  "limitations": [
+    "No production hosting prices configured",
+    "No real paid renewal; isolated provider simulation only",
+    "Item refund and service termination are separate follow-up phases"
+  ]
+}

@@ -1,3 +1,4 @@
+import { ItemRefundLedger } from '@/components/shared/ItemRefundLedger';
 import { HostingFulfillmentStatus } from '@/components/hosting/HostingFulfillmentStatus';
 import { OrderItems } from '@/components/shared/OrderItems';
 import { handleAsync } from '@/lib/async-events';
@@ -356,6 +357,7 @@ export function OrdersPage() {
                   size="sm"
                   variant="outline"
                   disabled={
+                    (!!detail?.item.items?.length && detail?.item.status !== 'refunding') ||
                     !['paid', 'refunding'].includes(detail?.item.status ?? '') ||
                     refundMutation.isPending ||
                     reconcileMutation.isPending
@@ -370,11 +372,13 @@ export function OrdersPage() {
                     })
                   }
                 >
-                  {refundMutation.isPending
-                    ? '退款中'
-                    : detail?.item.status === 'refunding'
-                      ? '回查退款'
-                      : '全额退款'}
+                  {!!detail?.item.items?.length && detail?.item.status !== 'refunding'
+                    ? '请使用下方分项退款'
+                    : refundMutation.isPending
+                      ? '退款中'
+                      : detail?.item.status === 'refunding'
+                        ? '回查退款'
+                        : '全额退款'}
                 </Button>
               </div>
             </SheetHeader>
@@ -464,6 +468,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       </section>
 
       <OrderItems items={item.items} />
+      {!!item.items?.length && <ItemRefundLedger orderNo={item.orderNo} admin />}
       {item.items?.some((i) => i.hostingTerms?.target) && (
         <HostingFulfillmentStatus orderNo={item.orderNo} admin />
       )}

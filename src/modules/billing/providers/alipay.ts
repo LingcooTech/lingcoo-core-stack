@@ -557,15 +557,6 @@ export class AlipayProvider implements BillingProviderAdapter {
       };
     }
 
-    return {
-      kind: 'failed',
-      provider: this.code,
-      orderNo: context.order.orderNo,
-      providerOrderId: tradeNo,
-      refundId: outRequestNo,
-      refundRequestNo: outRequestNo,
-      payload,
-      reason: subMsg || msg || 'Alipay refund query failed',
-    };
+    throw httpError(502, subMsg || msg || 'Alipay refund query did not confirm a terminal result');
   }
 }

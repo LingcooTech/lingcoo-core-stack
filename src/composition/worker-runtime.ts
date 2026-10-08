@@ -31,6 +31,12 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
       );
       return { projected: events.length };
     })
+    .register('billing.item-refund.reconcile', async (payload) => {
+      const result = await factories
+        .createBillingService(db, env)
+        .reconcileItemRefund(String(payload.orderNo), String(payload.refundId), true);
+      return { orderNo: result.orderNo };
+    })
     .register('billing.refund.reconcile', async (payload) => {
       const result = await factories
         .createBillingService(db, env)

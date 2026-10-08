@@ -681,8 +681,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
         ? payload.transaction_id
         : (context.order.providerOrderId ?? null);
 
-    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING')
+    if (['SUCCESS', 'PROCESSING', 'CLOSED'].includes(refundStatus))
       verifyWechatRefund(context, refund, payload);
+    else throw httpError(502, 'WeChat refund state requires reconciliation');
 
     if (refundStatus === 'SUCCESS') {
       return {
@@ -797,8 +798,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
     const refundStatus =
       typeof payload.status === 'string' ? payload.status.trim().toUpperCase() : '';
 
-    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING')
+    if (['SUCCESS', 'PROCESSING', 'CLOSED'].includes(refundStatus))
       verifyWechatRefund(context, refund, payload);
+    else throw httpError(502, 'WeChat refund state requires reconciliation');
 
     if (refundStatus === 'SUCCESS') {
       return {

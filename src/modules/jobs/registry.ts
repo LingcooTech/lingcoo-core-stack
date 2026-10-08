@@ -10,6 +10,7 @@ export const jobPayloadSchemas = {
   }),
   'alert.webhook.deliver': z.object({ body: z.record(z.string(), z.unknown()) }),
   'notifications.project': z.object({ eventIds: z.array(z.uuid()).min(1).max(100) }),
+  'billing.item-refund.reconcile': z.object({ orderNo: z.string().min(1), refundId: z.uuid() }),
   'billing.refund.reconcile': z.object({ orderNo: z.string().min(1) }),
 };
 export function validateJobPayload(kind: string, payload: unknown) {
