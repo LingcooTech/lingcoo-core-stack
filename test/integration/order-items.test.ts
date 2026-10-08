@@ -138,16 +138,14 @@ test('checkout only reuses a matching purchase snapshot and sends actual offer a
     db,
     env,
   );
-  await db
-    .insert(appOffers)
-    .values({
-      appId: f.app.id,
-      planId: f.plan.id,
-      code: f.plan.code,
-      title: 'Original offer',
-      priceAmount: 100,
-      currency: 'CNY',
-    });
+  await db.insert(appOffers).values({
+    appId: f.app.id,
+    planId: f.plan.id,
+    code: f.plan.code,
+    title: 'Original offer',
+    priceAmount: 100,
+    currency: 'CNY',
+  });
   const input = {
     userId: f.user.id,
     appCode: f.app.code,
