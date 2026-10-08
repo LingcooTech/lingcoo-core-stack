@@ -5,6 +5,7 @@ export const createDeploymentSchema = z
   .object({
     appCode: z.string().trim().min(1).max(64),
     entitlementId: z.string().uuid(),
+    hostingPurchaseId: z.uuid().optional(),
     label: z.string().trim().min(1).max(120),
     environment: z.string().trim().min(1).max(32).default('production'),
     deploymentMode: deploymentModeSchema.default('self_hosted'),
@@ -18,6 +19,8 @@ export const createDeploymentSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (value.deploymentMode === 'self_hosted' && value.hostingPurchaseId)
+      ctx.addIssue({ code: 'custom', message: '自有服务器不消耗托管资格' });
     if (value.deploymentMode === 'self_hosted' && !value.serverHost) {
       ctx.addIssue({ code: 'custom', path: ['serverHost'], message: '请填写自有服务器 IP' });
     }

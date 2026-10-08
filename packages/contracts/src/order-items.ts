@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+export const HostingPurchaseTermsSchema = z
+  .object({
+    offerVersion: z.number().int().positive(),
+    description: z.string().min(5).max(2000),
+    graceDays: z.number().int().min(0).max(90),
+    retentionDays: z.number().int().min(1).max(3650),
+  })
+  .strict();
 export const OrderItemSchema = z
   .object({
     kind: z.enum(['software', 'hosting']),
@@ -12,8 +20,15 @@ export const OrderItemSchema = z
     unitAmount: z.number().int().nonnegative(),
     amount: z.number().int().nonnegative(),
     currency: z.string().min(1),
+    hostingTerms: HostingPurchaseTermsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((item, ctx) => {
+    if (item.kind === 'hosting' && (!item.hostingTerms || item.interval === 'one_time'))
+      ctx.addIssue({ code: 'custom', message: '托管明细缺少周期或服务政策' });
+    if (item.kind === 'software' && item.hostingTerms)
+      ctx.addIssue({ code: 'custom', message: '软件明细不能包含托管政策' });
+  });
 export const OrderItemsSchema = z.array(OrderItemSchema).max(2);
 export type OrderItem = z.infer<typeof OrderItemSchema>;
 

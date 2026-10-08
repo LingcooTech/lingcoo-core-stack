@@ -1,9 +1,16 @@
+vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
+vi.mock('@/api/client', () => ({ apiClient: async () => ({ items: [] }) }));
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { DeploymentWizard, type DeployableAppOption } from './DeploymentWizard';
-const mocks = vi.hoisted(() => ({ options: vi.fn(), retry: vi.fn(), error: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  options: vi.fn(),
+  retry: vi.fn(),
+  error: vi.fn(),
+  role: 'admin',
+}));
 vi.mock('@/api/user', () => ({
   getDeploymentOptions: mocks.options,
   retryManagedAllocation: mocks.retry,
@@ -63,6 +70,7 @@ const create = vi.fn(),
 beforeEach(async () => {
   Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true);
   vi.resetAllMocks();
+  mocks.role = 'admin';
   mocks.options.mockResolvedValue({
     modes: ['self_hosted', 'managed'],
     managedDomainSuffix: 'app.lingcoo.com',
@@ -174,4 +182,59 @@ test('background capacity refresh preserves the selected mode and customer draft
   );
   expect(button('提交托管申请').disabled).toBe(false);
   expect(host.querySelector<HTMLInputElement>('#wizard-label')?.value).toBe('Keep my draft');
+});
+
+test('ordinary customer must select an available hosting purchase belonging to the application', async () => {
+  mocks.role = 'user';
+  await act(async () =>
+    client.setQueryData(['hosting-purchases'], {
+      items: [
+        {
+          id: 'grant',
+          appCode: 'retail',
+          status: 'available',
+          item: { title: 'Paid monthly', interval: 'month' },
+        },
+        {
+          id: 'other',
+          appCode: 'other-app',
+          status: 'available',
+          item: { title: 'Wrong application', interval: 'month' },
+        },
+        {
+          id: 'used',
+          appCode: 'retail',
+          status: 'bound',
+          item: { title: 'Used purchase', interval: 'month' },
+        },
+      ],
+    }),
+  );
+  await act(async () => button('平台托管').click());
+  await fill('wizard-label', 'Paid instance');
+  await act(async () => button('提交托管申请').click());
+  expect(create).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Wrong application');
+  expect(host.textContent).not.toContain('Used purchase');
+  const select = host.querySelector<HTMLSelectElement>('#wizard-hosting-purchase')!;
+  await act(async () => {
+    select.value = 'grant';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  create.mockResolvedValue({
+    id: 'deployment',
+    managed: {
+      prefix: 'paid',
+      hostname: 'paid.app.lingcoo.com',
+      state: 'waiting_capacity',
+      nodeAssigned: false,
+      accessUrl: null,
+    },
+  });
+  await act(async () => button('提交托管申请').click());
+  expect(create).toHaveBeenCalledOnce();
+  expect(create.mock.calls[0]![0]).toMatchObject({
+    hostingPurchaseId: 'grant',
+    deploymentMode: 'managed',
+  });
 });

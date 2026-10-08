@@ -349,7 +349,13 @@ export function renderCheckoutPage(sessionCode: string) {
           const value = document.createElement('strong');
           value.textContent = (item.amount / 100).toFixed(2) + ' ' + item.currency + ' · ' +
             (item.interval === 'one_time' ? '一次性' : item.interval === 'month' ? '自然月' : '自然年') + ' × ' + item.quantity;
-          row.append(label, value); itemRoot.appendChild(row);
+          row.append(label, value);
+          if (item.hostingTerms) {
+            const terms = document.createElement('p'); terms.className = 'muted';
+            terms.textContent = item.hostingTerms.description + ' · 首次交付后起算，不自动扣费；宽限 ' + item.hostingTerms.graceDays + ' 天，数据保留 ' + item.hostingTerms.retentionDays + ' 天';
+            row.appendChild(terms);
+          }
+          itemRoot.appendChild(row);
         });
 
         byId('app-name').textContent = data.app.name + ' (' + data.app.code + ')';

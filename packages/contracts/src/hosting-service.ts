@@ -28,7 +28,7 @@ export type HostingServiceCommand = z.infer<typeof hostingServiceCommandSchema>;
 export const HostingServiceSchema = z.object({
   id: z.uuid(),
   deploymentId: z.uuid(),
-  source: z.enum(['trial', 'manual']),
+  source: z.enum(['trial', 'manual', 'paid']),
   interval: z.enum(['month', 'year']),
   periods: z.number().int(),
   state: z.enum(['pending_delivery', 'active', 'grace', 'expired']),

@@ -32,6 +32,7 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
     const deployment = await app.services.DeploymentService.createDeployment({
       userId: request.user.sub,
       ...payload,
+      allowUnpaidHosting: request.user.role === 'admin',
       commandId: request.idempotencyClaim?.id,
     });
 

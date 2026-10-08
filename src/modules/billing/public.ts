@@ -28,3 +28,5 @@ export type BillingServiceFactory = (db: DbExecutor, env: AppEnv) => BillingServ
 export type { PreparedPayment } from './providers/types';
 
 export { billingProviderSchema } from './schemas';
+
+export { HostingPurchases } from './hosting-purchases';

@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
-import { HostingServiceSchema, type HostingServiceCommand } from '@lingcoo/contracts';
+import {
+  HostingServiceSchema,
+  OrderItemSchema,
+  type OrderItem,
+  type HostingServiceCommand,
+} from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
 import { deployments, hostingServices, hostingServiceChanges } from '../../db/schema';
 import { billingPeriodEnd } from '../../lib/billing-period';
@@ -33,6 +38,38 @@ export class HostingServiceTerms {
     private readonly db: DbExecutor,
     private readonly clock = () => new Date(),
   ) {}
+
+  async registerPurchase(
+    deploymentId: string,
+    actorUserId: string,
+    purchase: { id: string; orderId: string; item: OrderItem },
+  ) {
+    const item = OrderItemSchema.parse(purchase.item);
+    if (item.kind !== 'hosting' || !item.hostingTerms || item.interval === 'one_time')
+      throw httpError(422, '托管购买快照无效');
+    const deployment = await this.deployment(deploymentId, actorUserId);
+    const now = this.clock();
+    const anchorAt = deployment.hostingState === 'ready' ? now : null;
+    const [saved] = await this.db
+      .insert(hostingServices)
+      .values({
+        deploymentId,
+        source: 'paid',
+        interval: item.interval,
+        periods: item.quantity,
+        graceDays: item.hostingTerms.graceDays,
+        retentionDays: item.hostingTerms.retentionDays,
+        anchorAt,
+        expiresAt: anchorAt ? billingPeriodEnd(anchorAt, item.interval, item.quantity) : null,
+      })
+      .returning();
+    if (!saved) throw new Error('Missing paid hosting service');
+    await this.recordChange(saved, null, now, {
+      kind: 'register',
+      actorUserId,
+      reason: `已支付托管订单 ${purchase.orderId}；资格 ${purchase.id}`,
+    });
+  }
 
   private async find(deploymentId: string) {
     const [row] = await this.db

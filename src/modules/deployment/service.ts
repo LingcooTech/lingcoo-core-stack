@@ -1,3 +1,5 @@
+import { HostingPurchases } from '../billing/public';
+import { HostingServiceTerms } from './hosting-service';
 import { HostingExecutionService } from './hosting-execution';
 import { hostedPrefixSchema, hostingProfileSchema, serverIpSchema } from '@lingcoo/contracts';
 import { HostingRepository } from './hosting';
@@ -41,6 +43,8 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
 
   async createDeployment(input: Parameters<DeploymentService['createDeploymentLocked']>[0]) {
     return this.db.transaction(async (tx) => {
+      if (input.hostingPurchaseId)
+        await new HostingPurchases(tx).lockForBinding(input.hostingPurchaseId, input.userId);
       await this.capabilities.createLicenseAccess(tx).lockEntitlementById(input.entitlementId);
       return new DeploymentService(this.capabilities, tx, this.env).createDeploymentLocked(input);
     });
@@ -51,6 +55,8 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     userId: string;
     appCode: string;
     entitlementId: string;
+    hostingPurchaseId?: string;
+    allowUnpaidHosting?: boolean;
     label: string;
     environment: string;
     deploymentMode?: 'self_hosted' | 'managed';
@@ -99,7 +105,11 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     let hostname: string | null = null;
     let resources: { cpuMillis: number; memoryMb: number; diskMb: number } | null = null;
     let deploymentDomainValues = normalizeDomainValueRecord(input.domainValues);
+    if (mode === 'self_hosted' && input.hostingPurchaseId)
+      throw httpError(422, '自有服务器不消耗托管资格');
     if (mode === 'managed') {
+      if (!input.hostingPurchaseId && !input.allowUnpaidHosting)
+        throw httpError(422, '请选择已购买的托管资格');
       if (input.serverHost || input.installPath || Object.keys(deploymentDomainValues).length)
         throw httpError(422, '托管地址和服务器由平台分配');
       const profile = hostingProfileSchema.safeParse(
@@ -185,6 +195,19 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       meta: deploymentMeta,
     });
 
+    if (input.hostingPurchaseId) {
+      const purchase = await new HostingPurchases(this.db).bind(
+        input.hostingPurchaseId,
+        deployment.id,
+        selection.app.id,
+        input.userId,
+      );
+      await new HostingServiceTerms(this.db).registerPurchase(
+        deployment.id,
+        input.userId,
+        purchase,
+      );
+    }
     if (mode === 'managed') await hosting.allocate(deployment, this.capabilities.now());
 
     await this.capabilities.createEventService(this.db).capture({

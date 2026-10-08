@@ -1,3 +1,5 @@
+import { apiClient } from '@/api/client';
+import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { hostedPrefixSchema, serverIpSchema, type ManagedDeployment } from '@lingcoo/contracts';
 import { getDeploymentOptions } from '@/api/user';
@@ -59,6 +61,7 @@ export interface CreateDeploymentPayload {
   label: string;
   environment: string;
   deploymentMode: 'self_hosted' | 'managed';
+  hostingPurchaseId?: string;
   hostedPrefix?: string;
   serverHost?: string;
   installPath?: string;
@@ -125,6 +128,13 @@ export function DeploymentWizard({
   creating,
   issuing,
 }: DeploymentWizardProps) {
+  const { user } = useAuth();
+  const [hostingPurchaseId, setHostingPurchaseId] = useState('');
+  const purchases = useQuery({
+    queryKey: ['hosting-purchases'],
+    queryFn: () =>
+      apiClient('GET /v1/billing/hosting-purchases/me', '/v1/billing/hosting-purchases/me'),
+  });
   const deploymentOptions = useQuery({
     queryKey: ['deployment-options'],
     queryFn: getDeploymentOptions,
@@ -208,6 +218,7 @@ export function DeploymentWizard({
     );
     setDeploymentMode('self_hosted');
     setHostedPrefix('');
+    setHostingPurchaseId('');
     setDomainValues({});
     setDeploymentDraft(createWizardDraft(selectedApp?.manifest ?? null));
     setUpdatePolicy('manual');
@@ -246,6 +257,17 @@ export function DeploymentWizard({
       return false;
     }
 
+    if (
+      deploymentMode === 'managed' &&
+      user?.role !== 'admin' &&
+      !purchases.data?.items.some(
+        (p) =>
+          p.id === hostingPurchaseId && p.appCode === selectedAppCode && p.status === 'available',
+      )
+    ) {
+      toast.error('请选择当前应用的可用托管资格');
+      return false;
+    }
     if (deploymentMode === 'self_hosted' && !serverIpSchema.safeParse(serverHost.trim()).success) {
       toast.error('请填写有效的服务器 IPv4 或 IPv6 地址');
       return false;
@@ -302,6 +324,10 @@ export function DeploymentWizard({
 
     return true;
   }, [
+    hostingPurchaseId,
+    purchases.data,
+    selectedAppCode,
+    user?.role,
     deploymentDraft,
     domainValues,
     manifest,
@@ -327,6 +353,7 @@ export function DeploymentWizard({
       label,
       environment,
       deploymentMode,
+      hostingPurchaseId: deploymentMode === 'managed' ? hostingPurchaseId || undefined : undefined,
       hostedPrefix: deploymentMode === 'managed' ? hostedPrefix.trim() || undefined : undefined,
       serverHost: deploymentMode === 'self_hosted' ? serverHost.trim() : undefined,
       installPath: deploymentMode === 'self_hosted' ? installPath || undefined : undefined,
@@ -359,6 +386,7 @@ export function DeploymentWizard({
       /* error handled by parent via toast */
     }
   }, [
+    hostingPurchaseId,
     deploymentMode,
     hostedPrefix,
     deploymentDraft,
@@ -378,6 +406,7 @@ export function DeploymentWizard({
   const handleReset = useCallback(() => {
     setDeploymentMode('self_hosted');
     setHostedPrefix('');
+    setHostingPurchaseId('');
     setManagedResult(null);
     setStep(1);
     setSelectedAppCode('');
@@ -598,6 +627,33 @@ export function DeploymentWizard({
                 </div>
               ) : (
                 <div className="space-y-2">
+                  <label className="block text-sm font-medium" htmlFor="wizard-hosting-purchase">
+                    托管资格
+                  </label>
+                  <select
+                    id="wizard-hosting-purchase"
+                    className="h-10 w-full rounded-md border bg-background px-2"
+                    value={hostingPurchaseId}
+                    onChange={(e) => setHostingPurchaseId(e.target.value)}
+                  >
+                    <option value="">
+                      {user?.role === 'admin'
+                        ? '管理员人工安排（服务期需另行登记）'
+                        : '请选择已购买的托管资格'}
+                    </option>
+                    {purchases.data?.items
+                      .filter((p) => p.status === 'available' && p.appCode === selectedAppCode)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.item.title} · {p.item.interval === 'month' ? '1 个月' : '1 年'}
+                        </option>
+                      ))}
+                  </select>
+                  {purchases.isError && (
+                    <p role="alert" className="text-sm text-destructive">
+                      托管资格读取失败，请刷新后重试。
+                    </p>
+                  )}
                   <Label htmlFor="wizard-prefix">子域名前缀</Label>
                   <div className="flex gap-2">
                     <Input

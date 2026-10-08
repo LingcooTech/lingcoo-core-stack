@@ -24,6 +24,12 @@ export function OrderItems({ items }: { items?: OrderItem[] }) {
                       : '自然年'}{' '}
                   × {item.quantity}
                 </p>
+                {item.hostingTerms && (
+                  <p className="mt-1 max-w-lg text-xs break-words text-muted-foreground">
+                    {item.hostingTerms.description} · 首次交付后起算，不自动扣费；宽限{' '}
+                    {item.hostingTerms.graceDays} 天，数据保留 {item.hostingTerms.retentionDays} 天
+                  </p>
+                )}
               </div>
               <span className="font-medium tabular-nums">
                 {formatAmount(item.amount, item.currency)}

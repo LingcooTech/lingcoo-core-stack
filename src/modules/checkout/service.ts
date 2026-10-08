@@ -225,6 +225,7 @@ export class CheckoutService {
     appCode: string;
     planCode: string;
     offerCode?: string;
+    hosting?: { offerId: string; version: number };
     providerPreference?: 'wechat_pay' | 'alipay';
     successUrl?: string;
     cancelUrl?: string;
@@ -254,6 +255,7 @@ export class CheckoutService {
 
     const provider = await this.resolveProvider(input.providerPreference);
     const reusableSession =
+      input.hosting ||
       input.offerCode ||
       offer.code !== plan.code ||
       offer.priceAmount !== plan.priceAmount ||
@@ -310,6 +312,7 @@ export class CheckoutService {
         appCode: input.appCode,
         planCode: input.planCode,
         offerCode: input.offerCode,
+        hosting: input.hosting,
         provider,
         clientIp: input.clientIp,
         commandId: input.commandId,

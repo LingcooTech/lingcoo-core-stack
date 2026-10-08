@@ -1,0 +1,1 @@
+ALTER TABLE "hosting_purchases" ADD CONSTRAINT "hosting_purchases_deployment_id_deployments_id_fk" FOREIGN KEY ("deployment_id") REFERENCES "public"."deployments"("id") ON DELETE restrict ON UPDATE no action;

@@ -246,6 +246,20 @@
       "when": 1791460991010,
       "tag": "0034_odd_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791470452692,
+      "tag": "0035_broken_sinister_six",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791471445734,
+      "tag": "0036_demonic_unicorn",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
   text,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
+import { deployments } from './deployment';
 import { plans } from './license';
 import { recordStatusEnum, paymentProviderEnum, orderStatusEnum } from './enums';
 import { apps } from './app';
@@ -126,6 +127,39 @@ export const hostingOffers = pgTable(
     status: check(
       'hosting_offers_status_check',
       sql`${t.status} IN ('draft', 'active', 'archived') AND (${t.status} <> 'active' OR ${t.priceAmount} > 0)`,
+    ),
+  }),
+);
+
+export const hostingPurchases = pgTable(
+  'hosting_purchases',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .unique()
+      .references(() => orders.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'restrict' }),
+    item: jsonb('item').$type<OrderItem>().notNull(),
+    status: varchar('status', { length: 24 })
+      .$type<'available' | 'bound' | 'refund_pending' | 'revoked'>()
+      .notNull()
+      .default('available'),
+    deploymentId: uuid('deployment_id')
+      .unique()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    state: check(
+      'hosting_purchases_state_check',
+      sql`${t.status} in ('available', 'bound', 'refund_pending', 'revoked') and ((${t.status} = 'bound' and ${t.deploymentId} is not null) or (${t.status} <> 'bound' and ${t.deploymentId} is null))`,
     ),
   }),
 );

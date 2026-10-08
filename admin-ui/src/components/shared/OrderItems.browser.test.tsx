@@ -27,6 +27,12 @@ test('purchase lines render literal titles, separate software and hosting, and i
             {
               ...item,
               kind: 'hosting',
+              hostingTerms: {
+                offerVersion: 1,
+                description: 'Managed hosting',
+                graceDays: 7,
+                retentionDays: 30,
+              },
               title: 'Hosting original',
               interval: 'month',
               unitAmount: 1990,
@@ -39,6 +45,8 @@ test('purchase lines render literal titles, separate software and hosting, and i
     expect(host.textContent).toContain('软件授权');
     expect(host.textContent).toContain('托管服务');
     expect(host.textContent).toContain('19.90');
+    expect(host.textContent).toContain('首次交付后起算');
+    expect(host.textContent).toContain('数据保留 30 天');
     expect(host.textContent).toContain(item.title);
     expect(host.querySelector('img')).toBeNull();
     await act(async () => root.render(<OrderItems items={[]} />));

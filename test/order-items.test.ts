@@ -17,6 +17,12 @@ test('order items enforce exact integer totals and distinct same-currency compon
   const hosting: OrderItem = {
     ...software,
     kind: 'hosting',
+    hostingTerms: {
+      offerVersion: 1,
+      description: 'Managed hosting',
+      graceDays: 7,
+      retentionDays: 30,
+    },
     interval: 'month',
     unitAmount: 1990,
     amount: 1990,

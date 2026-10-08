@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import {
   HostingOfferSchema,
+  hostingProfileSchema,
   type HostingOfferCreate,
   type HostingOfferWrite,
 } from '@lingcoo/contracts';
@@ -18,6 +19,45 @@ function view(row: typeof hostingOffers.$inferSelect) {
 }
 export class HostingOfferCatalog {
   constructor(private readonly db: DbExecutor) {}
+  async forApp(appCode: string) {
+    const [app] = await this.db
+      .select()
+      .from(apps)
+      .where(and(eq(apps.code, appCode), eq(apps.status, 'active')));
+    if (!app) throw httpError(404, '应用不存在');
+    const rows = await this.db
+      .select()
+      .from(hostingOffers)
+      .where(and(eq(hostingOffers.appId, app.id), eq(hostingOffers.status, 'active')))
+      .orderBy(asc(hostingOffers.priceAmount));
+    return { items: rows.map(view) };
+  }
+  async resolve(id: string, appId: string, expectedVersion: number) {
+    const [app] = await this.db.select().from(apps).where(eq(apps.id, appId));
+    const meta = app?.meta as Record<string, unknown> | undefined;
+    const profile = hostingProfileSchema.safeParse(meta?.hostingProfile);
+    if (
+      !app ||
+      app.status !== 'active' ||
+      meta?.deliveryMode !== 'one_click' ||
+      !profile.success ||
+      !profile.data.enabled
+    )
+      throw httpError(409, '应用尚未开放托管交付');
+    const [offer] = await this.db
+      .select()
+      .from(hostingOffers)
+      .where(
+        and(
+          eq(hostingOffers.id, id),
+          eq(hostingOffers.appId, appId),
+          eq(hostingOffers.status, 'active'),
+        ),
+      );
+    if (!offer || offer.priceAmount <= 0) throw httpError(409, '托管套餐不可购买');
+    if (offer.version !== expectedVersion) throw httpError(409, '托管报价已变化，请刷新后确认');
+    return view(offer);
+  }
   async list(query: { appId?: string; offset: number; limit: number }) {
     const where = query.appId ? eq(hostingOffers.appId, query.appId) : undefined;
     const items = await this.db

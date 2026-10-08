@@ -1,3 +1,5 @@
+import { apiClient } from '@/api/client';
+import { OrderItems } from '@/components/shared/OrderItems';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -68,6 +70,17 @@ export function AppPurchaseDialog({
   const [sessionCode, setSessionCode] = useState<string | null>(null);
   const [externalPaymentOpened, setExternalPaymentOpened] = useState(false);
   const [selectedOfferCode, setSelectedOfferCode] = useState<string>('');
+  const [hostingOfferId, setHostingOfferId] = useState('');
+  const hostingOffers = useQuery({
+    queryKey: ['purchasable-hosting', appCode],
+    queryFn: () =>
+      apiClient(
+        'GET /v1/billing/hosting-offers/:appCode',
+        `/v1/billing/hosting-offers/${encodeURIComponent(appCode)}`,
+      ),
+    enabled: open && deliveryMode === 'one_click',
+  });
+  const selectedHosting = hostingOffers.data?.items.find((o) => o.id === hostingOfferId);
   const [step, setStep] = useState<PurchaseStep>('plan');
 
   useEffect(() => {
@@ -84,6 +97,7 @@ export function AppPurchaseDialog({
       '';
 
     setSelectedOfferCode(nextOfferCode);
+    setHostingOfferId('');
     setProviderPreference('wechat_pay');
     setStep('plan');
     setSessionCode(null);
@@ -103,6 +117,7 @@ export function AppPurchaseDialog({
         throw new Error('请先选择一个套餐');
       }
 
+      if (hostingOfferId && !selectedHosting) throw new Error('托管套餐已变化，请重新选择');
       const postPurchaseUrl =
         deliveryMode === 'one_click'
           ? `${window.location.origin}/deploy?app=${encodeURIComponent(appCode)}`
@@ -112,6 +127,9 @@ export function AppPurchaseDialog({
         appCode,
         planCode: selectedOffer.planCode,
         offerCode: selectedOffer.code,
+        hosting: selectedHosting
+          ? { offerId: selectedHosting.id, version: selectedHosting.version }
+          : undefined,
         providerPreference,
         successUrl: postPurchaseUrl,
         cancelUrl: `${window.location.origin}/apps/${appCode}`,
@@ -222,7 +240,7 @@ export function AppPurchaseDialog({
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr),240px]">
             <div className="rounded-xl border border-border bg-muted p-5">
               <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-                当前套餐
+                软件套餐
               </p>
               <h3 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                 {selectedOffer?.title ?? '暂无可购买方案'}
@@ -251,6 +269,24 @@ export function AppPurchaseDialog({
               </p>
               <p className="mt-2 text-lg font-semibold text-foreground">{statusLabel}</p>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between gap-4">
+                  <span>本次总额</span>
+                  <span className="font-medium text-foreground">
+                    ¥
+                    {(
+                      (publicSessionQuery.data?.order.amount ??
+                        checkoutMutation.data?.order.amount ??
+                        (selectedOffer?.priceAmount ?? 0) + (selectedHosting?.priceAmount ?? 0)) /
+                      100
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                {selectedHosting && (
+                  <p className="text-xs">
+                    含托管：{selectedHosting.title}；首次交付后起算，不自动扣费。
+                  </p>
+                )}
+
                 <div className="flex items-center justify-between gap-4">
                   <span>订单号</span>
                   <span className="font-medium text-foreground">
@@ -328,6 +364,50 @@ export function AppPurchaseDialog({
                       ))}
                     </div>
                   </div>
+
+                  {deliveryMode === 'one_click' && (
+                    <div className="space-y-3 rounded-lg border p-4">
+                      <label className="block text-sm font-medium" htmlFor="purchase-hosting">
+                        部署服务
+                      </label>
+                      <select
+                        id="purchase-hosting"
+                        className="h-10 w-full rounded-md border bg-background px-2"
+                        value={hostingOfferId}
+                        onChange={(e) => setHostingOfferId(e.target.value)}
+                      >
+                        <option value="">仅购买软件，自有服务器部署</option>
+                        {hostingOffers.data?.items.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.title} · ¥{(o.priceAmount / 100).toFixed(2)}/
+                            {o.interval === 'month' ? '月' : '年'}
+                          </option>
+                        ))}
+                      </select>
+                      {hostingOffers.isError && (
+                        <p role="alert" className="text-sm text-destructive">
+                          托管报价读取失败，可稍后重试或仅购买软件。
+                        </p>
+                      )}
+                      {selectedHosting && (
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>{selectedHosting.description}</p>
+                          <p>
+                            交付成功后起算；宽限 {selectedHosting.graceDays} 天；停服后数据保留{' '}
+                            {selectedHosting.retentionDays} 天。不自动扣款。
+                          </p>
+                        </div>
+                      )}
+                      <p className="font-medium">
+                        本次合计：¥
+                        {(
+                          ((selectedOffer?.priceAmount ?? 0) +
+                            (selectedHosting?.priceAmount ?? 0)) /
+                          100
+                        ).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-3">
                     <Button
@@ -523,6 +603,9 @@ export function AppPurchaseDialog({
                 )}
               </div>
 
+              <OrderItems
+                items={publicSessionQuery.data?.order.items ?? checkoutMutation.data?.order.items}
+              />
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 <span>
                   订单号{' '}
@@ -532,7 +615,10 @@ export function AppPurchaseDialog({
                 <span>
                   实付{' '}
                   {publicSessionQuery.data?.order.amountYuan ??
-                    ((selectedOffer?.priceAmount ?? 0) / 100).toFixed(2)}{' '}
+                    (
+                      ((selectedOffer?.priceAmount ?? 0) + (selectedHosting?.priceAmount ?? 0)) /
+                      100
+                    ).toFixed(2)}{' '}
                   元
                 </span>
               </div>

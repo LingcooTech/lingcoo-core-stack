@@ -1,3 +1,4 @@
+import { HostingPurchasesSchema } from './hosting-purchase.js';
 import { HostingOfferSchema, HostingOfferListSchema } from './hosting-offer.js';
 import {
   HostingServiceResponseSchema,
@@ -21,6 +22,12 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  {
+    method: 'GET',
+    path: '/v1/billing/hosting-offers/:appCode',
+    schema: z.object({ items: z.array(HostingOfferSchema) }),
+  },
+  { method: 'GET', path: '/v1/billing/hosting-purchases/me', schema: HostingPurchasesSchema },
   { method: 'GET', path: '/v1/admin/billing/hosting-offers', schema: HostingOfferListSchema },
   { method: 'POST', path: '/v1/admin/billing/hosting-offers', schema: HostingOfferSchema },
   { method: 'PUT', path: '/v1/admin/billing/hosting-offers/:offerId', schema: HostingOfferSchema },

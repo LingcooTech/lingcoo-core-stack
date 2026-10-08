@@ -1,3 +1,6 @@
+import { HostingOfferCatalog } from './hosting-offers';
+import { HostingPurchases } from './hosting-purchases';
+import type { OrderItem } from '@lingcoo/contracts';
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
 import { createOrderNo } from '../../lib/orders';
@@ -30,6 +33,7 @@ export class BillingService extends BillingRefundUseCases {
     appCode: string;
     planCode: string;
     offerCode?: string;
+    hosting?: { offerId: string; version: number };
     provider: 'wechat_pay' | 'alipay';
     clientIp?: string;
     commandId?: string;
@@ -61,6 +65,46 @@ export class BillingService extends BillingRefundUseCases {
       throw httpError(422, 'Checkout offer price is not configured');
     }
 
+    const items: OrderItem[] = [
+      {
+        kind: 'software',
+        productId: plan.id,
+        code: offer.code,
+        title: offer.title,
+        appName: app.name,
+        interval: plan.interval,
+        quantity: 1,
+        unitAmount: offer.priceAmount,
+        amount: offer.priceAmount,
+        currency: offer.currency,
+      },
+    ];
+    if (input.hosting) {
+      const hosted = await new HostingOfferCatalog(this.db).resolve(
+        input.hosting.offerId,
+        app.id,
+        input.hosting.version,
+      );
+      if (hosted.currency !== offer.currency) throw httpError(422, '软件与托管币种不一致');
+      items.push({
+        kind: 'hosting',
+        productId: hosted.id,
+        code: hosted.code,
+        title: hosted.title,
+        appName: app.name,
+        interval: hosted.interval,
+        quantity: 1,
+        unitAmount: hosted.priceAmount,
+        amount: hosted.priceAmount,
+        currency: hosted.currency,
+        hostingTerms: {
+          offerVersion: hosted.version,
+          description: hosted.description,
+          graceDays: hosted.graceDays,
+          retentionDays: hosted.retentionDays,
+        },
+      });
+    }
     const repository = new BillingRepository(this.db);
     const order = await repository.createOrder({
       userId: input.userId,
@@ -69,22 +113,9 @@ export class BillingService extends BillingRefundUseCases {
       orderNo: createOrderNo(),
       provider: input.provider,
       subject: `${app.name} - ${offer.title}`,
-      amount: offer.priceAmount,
+      amount: items.reduce((sum, item) => sum + item.amount, 0),
       currency: offer.currency,
-      items: [
-        {
-          kind: 'software',
-          productId: plan.id,
-          code: offer.code,
-          title: offer.title,
-          appName: app.name,
-          interval: plan.interval,
-          quantity: 1,
-          unitAmount: offer.priceAmount,
-          amount: offer.priceAmount,
-          currency: offer.currency,
-        },
-      ],
+      items,
       meta: {
         commandId: input.commandId ?? null,
         appCode: input.appCode,
@@ -469,6 +500,8 @@ export class BillingService extends BillingRefundUseCases {
       sourceId: input.order.id,
       startsAt: updatedOrder.paidAt ?? this.capabilities.now(),
     });
+
+    await new HostingPurchases(tx).issue(updatedOrder);
 
     const checkoutRepository = this.capabilities.createCheckoutAccess(tx);
     await checkoutRepository.markSessionPaidByOrderId(

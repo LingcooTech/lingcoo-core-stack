@@ -19,7 +19,7 @@ const states = {
   grace: '宽限期内',
   expired: '服务期已到期',
 };
-const sourceLabels = { trial: '试用服务', manual: '人工授予' };
+const sourceLabels = { trial: '试用服务', manual: '人工授予', paid: '已支付托管' };
 export function HostingServicePanel({
   deploymentId,
   admin = false,

@@ -1,3 +1,4 @@
+import { HostingPurchases } from './hosting-purchases';
 import { pickBillingDependencies, type BillingDependencies } from './dependencies';
 import type { AppEnv } from '../../lib/env';
 
@@ -42,6 +43,12 @@ export class BillingRefundUseCases {
       throw httpError(409, `Only paid orders can be refunded (current: ${order.status})`);
     }
 
+    const reservation = await this.db.transaction((tx) =>
+      new HostingPurchases(tx).reserveRefund(order.id),
+    );
+    // Another request may have reached the provider. Query the stable refund id instead of sending twice.
+    if (reservation === 'pending') return this.reconcileRefundRecord(order);
+
     const runtimeEnv = await new PaymentSettingsService(this.db, this.env).buildRuntimeEnv();
     const providerAdapter = this.capabilities.getBillingProviderAdapter(order.provider);
     const refundResult = await providerAdapter.refundPayment({
@@ -55,10 +62,12 @@ export class BillingRefundUseCases {
     });
 
     if (refundResult.kind === 'not_found') {
+      await new HostingPurchases(this.db).settleRefund(order.id, false);
       throw httpError(404, refundResult.reason);
     }
 
     if (refundResult.kind === 'not_refundable') {
+      await new HostingPurchases(this.db).settleRefund(order.id, false);
       throw httpError(409, refundResult.reason);
     }
 
@@ -172,6 +181,7 @@ export class BillingRefundUseCases {
           lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
         },
       });
+      await new HostingPurchases(txDb).settleRefund(order.id, true);
       await this.capabilities
         .createLicenseAccess(txDb)
         .cancelEntitlementsBySource('order', order.id);
@@ -254,6 +264,9 @@ export class BillingRefundUseCases {
       };
     }
 
+    if (refundQuery.kind === 'not_found')
+      throw httpError(409, '渠道暂未确认退款记录，请稍后核对；退款资格继续保留，禁止部署');
+    await new HostingPurchases(this.db).settleRefund(order.id, false);
     const updatedOrder = await new BillingRepository(this.db).markOrderPaidIfRefunding({
       orderId: order.id,
       meta: {
@@ -307,6 +320,7 @@ export class BillingRefundUseCases {
           lastRefund: this.buildRefundMeta(refundResult, 'refunded'),
         },
       });
+      await new HostingPurchases(txDb).settleRefund(order.id, true);
       await this.capabilities
         .createLicenseAccess(txDb)
         .cancelEntitlementsBySource('order', order.id);

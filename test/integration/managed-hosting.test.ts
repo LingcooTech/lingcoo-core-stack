@@ -44,6 +44,7 @@ async function fixture() {
     label: 'Managed fixture',
     environment: 'test',
     deploymentMode: 'managed' as const,
+    allowUnpaidHosting: true,
   };
   return {
     ...seeded,
@@ -61,6 +62,21 @@ test('managed application waits without capacity; no token or fabricated readine
     environment: f.input.environment,
     deploymentMode: f.input.deploymentMode,
   };
+  const unpaid = await app.inject({
+    method: 'POST',
+    url: '/v1/deployments',
+    headers: f.headers,
+    payload,
+  });
+  assert.equal(unpaid.statusCode, 422, unpaid.body);
+  const forged = await app.inject({
+    method: 'POST',
+    url: '/v1/deployments',
+    headers: f.headers,
+    payload: { ...payload, allowUnpaidHosting: true },
+  });
+  assert.equal(forged.statusCode, 400, forged.body);
+  await db.update(users).set({ role: 'admin' }).where(eq(users.id, f.user.id));
   const response = await app.inject({
     method: 'POST',
     url: '/v1/deployments',

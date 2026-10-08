@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
-import { billingProviderSchema } from './billing.js';
+import { billingProviderSchema, hostingSelectionSchema } from './billing.js';
 
 export const createCheckoutSessionSchema = z.object({
   appCode: z.string().trim().min(1).max(64),
   planCode: z.string().trim().min(1).max(64),
   offerCode: z.string().trim().min(1).max(64).optional(),
   providerPreference: billingProviderSchema.optional(),
+  hosting: hostingSelectionSchema.optional(),
   successUrl: z.string().url().max(2048).optional(),
   cancelUrl: z.string().url().max(2048).optional(),
 });

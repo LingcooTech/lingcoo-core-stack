@@ -161,7 +161,7 @@ export const hostingServices = pgTable(
       .notNull()
       .unique()
       .references(() => deployments.id, { onDelete: 'restrict' }),
-    source: varchar('source', { length: 16 }).$type<'trial' | 'manual'>().notNull(),
+    source: varchar('source', { length: 16 }).$type<'trial' | 'manual' | 'paid'>().notNull(),
     interval: varchar('interval', { length: 16 }).$type<'month' | 'year'>().notNull(),
     periods: integer('periods').notNull(),
     anchorAt: timestamp('anchor_at', { withTimezone: true }),
@@ -175,7 +175,7 @@ export const hostingServices = pgTable(
   (t) => ({
     validity: check(
       'hosting_services_validity',
-      sql`${t.periods} between 1 and 1200 and ${t.version} > 0 and ${t.graceDays} between 0 and 90 and ${t.retentionDays} between 1 and 3650 and ${t.source} in ('trial', 'manual') and ${t.interval} in ('month', 'year') and ((${t.anchorAt} is null and ${t.expiresAt} is null) or (${t.anchorAt} is not null and ${t.expiresAt} is not null and ${t.expiresAt} > ${t.anchorAt}))`,
+      sql`${t.periods} between 1 and 1200 and ${t.version} > 0 and ${t.graceDays} between 0 and 90 and ${t.retentionDays} between 1 and 3650 and ${t.source} in ('trial', 'manual', 'paid') and ${t.interval} in ('month', 'year') and ((${t.anchorAt} is null and ${t.expiresAt} is null) or (${t.anchorAt} is not null and ${t.expiresAt} is not null and ${t.expiresAt} > ${t.anchorAt}))`,
     ),
   }),
 );
