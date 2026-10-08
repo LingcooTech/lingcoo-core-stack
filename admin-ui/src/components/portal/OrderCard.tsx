@@ -1,3 +1,4 @@
+import { HostingFulfillmentStatus } from '@/components/hosting/HostingFulfillmentStatus';
 import { OrderItems } from '@/components/shared/OrderItems';
 import { RefreshCw } from 'lucide-react';
 
@@ -51,6 +52,7 @@ export function OrderCard({
           <CardDescription className="text-sm leading-6">
             订单号 {order.orderNo} ·{' '}
             {order.items?.find((i) => i.kind === 'software')?.title ??
+              order.items?.[0]?.title ??
               order.plan?.name ??
               '未命名套餐'}{' '}
             · {paymentProviderLabel(order.provider)}
@@ -76,8 +78,13 @@ export function OrderCard({
       </CardHeader>
       <CardContent className="flex flex-wrap items-center justify-between gap-4">
         <OrderItems items={order.items} />
+        {order.items?.some((i) => i.hostingTerms?.target) && (
+          <HostingFulfillmentStatus orderNo={order.orderNo} />
+        )}
         <div className="text-sm leading-7 text-muted-foreground">
-          {orderStatusDescription(order.status)}
+          {order.status === 'paid' && order.items?.some((i) => i.hostingTerms?.target)
+            ? '支付已确认，请以托管履约结果为准。'
+            : orderStatusDescription(order.status)}
         </div>
         {canSyncOrderStatus(order.status) ? (
           <Button

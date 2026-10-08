@@ -1,3 +1,4 @@
+import type { HostingTermsFactory } from '../deployment/public';
 import type { AppServiceFactory } from '../app/public';
 import type { BillingRepositoryFactory } from '../billing/public';
 import type { BillingServiceFactory } from '../billing/public';
@@ -6,6 +7,7 @@ import type { LicenseRepositoryFactory } from '../license/public';
 import type { LicenseServiceFactory } from '../license/public';
 
 export interface CheckoutDependencies {
+  readonly createHostingTerms: HostingTermsFactory;
   readonly createAppService: (
     ...args: Parameters<AppServiceFactory>
   ) => Pick<ReturnType<AppServiceFactory>, 'resolveCheckoutOffer'>;
@@ -31,6 +33,7 @@ export interface CheckoutDependencies {
 }
 export function pickCheckoutDependencies(input: CheckoutDependencies): CheckoutDependencies {
   return {
+    createHostingTerms: input.createHostingTerms,
     createAppService: (...args) => {
       const port = input.createAppService(...args);
       return { resolveCheckoutOffer: port.resolveCheckoutOffer.bind(port) };

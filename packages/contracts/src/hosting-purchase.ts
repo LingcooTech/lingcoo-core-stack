@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { OrderItemSchema } from './order-items.js';
+import { HostingServiceSchema } from './hosting-service.js';
+import { HostingOrderTargetSchema, OrderItemSchema } from './order-items.js';
 export const HostingPurchasesSchema = z.object({
   items: z.array(
     z.object({
@@ -13,6 +14,22 @@ export const HostingPurchasesSchema = z.object({
       item: OrderItemSchema,
       createdAt: z.iso.datetime({ offset: true }),
       updatedAt: z.iso.datetime({ offset: true }),
+    }),
+  ),
+});
+
+export const HostingFulfillmentsSchema = z.object({
+  items: z.array(
+    z.object({
+      orderId: z.uuid(),
+      orderNo: z.string(),
+      appId: z.uuid(),
+      status: z.enum(['applied', 'review', 'revoked']),
+      reason: z.string(),
+      target: HostingOrderTargetSchema,
+      createdAt: z.iso.datetime({ offset: true }),
+      before: HostingServiceSchema.nullable(),
+      after: HostingServiceSchema.nullable(),
     }),
   ),
 });

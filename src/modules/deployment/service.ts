@@ -201,6 +201,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
         deployment.id,
         selection.app.id,
         input.userId,
+        input.entitlementId,
       );
       await new HostingServiceTerms(this.db).registerPurchase(
         deployment.id,

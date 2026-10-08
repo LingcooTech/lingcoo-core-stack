@@ -43,5 +43,6 @@
   "hostingServices": "deployment",
   "hostingServiceChanges": "deployment",
   "hostingOffers": "billing",
-  "hostingPurchases": "billing"
+  "hostingPurchases": "billing",
+  "hostingFulfillments": "billing"
 }

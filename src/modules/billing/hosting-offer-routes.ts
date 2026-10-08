@@ -1,3 +1,4 @@
+import { HostingFulfillments } from './hosting-fulfillments';
 import { HostingPurchases } from './hosting-purchases';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -19,6 +20,27 @@ export const hostingOfferRoutes: FastifyPluginAsync = async (app) => {
   );
   app.get('/v1/billing/hosting-purchases/me', { preHandler: app.authenticate }, async (request) =>
     new HostingPurchases(app.db).list(request.user.sub),
+  );
+  app.get(
+    '/v1/billing/hosting-fulfillments/me',
+    { preHandler: app.authenticate },
+    async (request) => new HostingFulfillments(app.db).list(request.user.sub),
+  );
+  app.get(
+    '/v1/admin/billing/hosting-fulfillments/:orderNo',
+    { preHandler: app.requirePermission('orders.view') },
+    async (request) => {
+      const { orderNo } = z.object({ orderNo: z.string().min(8).max(64) }).parse(request.params);
+      return new HostingFulfillments(app.db).list(undefined, orderNo);
+    },
+  );
+  app.get(
+    '/v1/billing/hosting-fulfillments/:orderNo',
+    { preHandler: app.authenticate },
+    async (request) => {
+      const { orderNo } = z.object({ orderNo: z.string().min(8).max(64) }).parse(request.params);
+      return new HostingFulfillments(app.db).list(request.user.sub, orderNo);
+    },
   );
   const preHandler = app.requirePermission('hosting.offers.manage');
   app.get('/v1/admin/billing/hosting-offers', { preHandler }, async (request) =>

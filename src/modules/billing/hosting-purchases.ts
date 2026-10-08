@@ -59,8 +59,17 @@ export class HostingPurchases {
       throw httpError(409, '托管资格已使用或正在退款');
     return { ...current, item: OrderItemSchema.parse(current.item) };
   }
-  async bind(id: string, deploymentId: string, appId: string, userId: string) {
+  async bind(
+    id: string,
+    deploymentId: string,
+    appId: string,
+    userId: string,
+    entitlementId?: string,
+  ) {
     const purchase = await this.lockForBinding(id, userId);
+    const target = purchase.item.hostingTerms?.target;
+    if (target && (target.kind !== 'new' || target.entitlementId !== entitlementId))
+      throw httpError(409, '托管购买与所选软件授权不匹配');
     if (purchase.appId !== appId) throw httpError(409, '托管资格与应用不匹配');
     await this.db
       .update(hostingPurchases)

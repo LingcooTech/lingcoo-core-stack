@@ -1,3 +1,4 @@
+import { HostingCheckout } from '@/components/hosting/HostingCheckout';
 import { HostingServicePanel } from '@/components/hosting/HostingServicePanel';
 import { ManagedDeploymentProgress } from './ManagedDeploymentProgress';
 import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
@@ -205,6 +206,17 @@ export function DeploymentRecordCard({
 
       <CardContent className="space-y-3.5">
         {deployment.managed && <HostingServicePanel deploymentId={deployment.id} />}
+        {deployment.managed &&
+          deployment.status === 'active' &&
+          deployment.app &&
+          deployment.entitlement?.plan && (
+            <HostingCheckout
+              appCode={deployment.app.code}
+              planCode={deployment.entitlement.plan.code}
+              entitlementId={deployment.entitlement.id}
+              deploymentId={deployment.id}
+            />
+          )}
         {deployment.managed ? (
           <ManagedDeploymentProgress
             managed={deployment.managed}

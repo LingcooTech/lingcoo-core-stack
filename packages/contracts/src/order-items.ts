@@ -1,7 +1,20 @@
 import { z } from 'zod';
 
+export const HostingOrderTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('new'), entitlementId: z.uuid() }).strict(),
+  z
+    .object({
+      kind: z.literal('renewal'),
+      entitlementId: z.uuid(),
+      deploymentId: z.uuid(),
+      serviceId: z.uuid(),
+    })
+    .strict(),
+]);
+export type HostingOrderTarget = z.infer<typeof HostingOrderTargetSchema>;
 export const HostingPurchaseTermsSchema = z
   .object({
+    target: HostingOrderTargetSchema.optional(),
     offerVersion: z.number().int().positive(),
     description: z.string().min(5).max(2000),
     graceDays: z.number().int().min(0).max(90),

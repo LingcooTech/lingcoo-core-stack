@@ -1,3 +1,5 @@
+import { HostingServiceTerms } from '../modules/deployment/hosting-service';
+import type { HostingTermsFactory } from '../modules/deployment/public';
 import {
   DeliverySettingsService,
   type DeliverySettingsFactory,
@@ -28,6 +30,7 @@ import { NotificationsService } from '../modules/notifications/service';
 import type { TicketServiceFactory } from '../modules/ticket/public';
 import { TicketService } from '../modules/ticket/service';
 export interface ServiceFactories {
+  createHostingTerms: HostingTermsFactory;
   createDeliverySettings: DeliverySettingsFactory;
   now: () => Date;
   getBillingProviderAdapter: typeof getBillingProviderAdapter;
@@ -49,6 +52,7 @@ export function createServiceFactories(
   overrides: Partial<ServiceFactories> = {},
 ): ServiceFactories {
   const factories: ServiceFactories = {
+    createHostingTerms: (db, clock) => new HostingServiceTerms(db, clock),
     createDeliverySettings: (db, env) => new DeliverySettingsService(db, env),
     now: () => new Date(),
     getBillingProviderAdapter,

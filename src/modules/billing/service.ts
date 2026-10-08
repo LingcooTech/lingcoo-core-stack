@@ -1,5 +1,6 @@
 import { HostingOfferCatalog } from './hosting-offers';
-import { HostingPurchases } from './hosting-purchases';
+import { HostingFulfillments } from './hosting-fulfillments';
+import { HostingCheckoutSelection } from './hosting-checkout';
 import type { OrderItem } from '@lingcoo/contracts';
 import { normalizeDeploymentPolicy } from '../../lib/deployment-policy';
 import { httpError } from '../../lib/errors';
@@ -34,6 +35,7 @@ export class BillingService extends BillingRefundUseCases {
     planCode: string;
     offerCode?: string;
     hosting?: { offerId: string; version: number };
+    hostingOnly?: { entitlementId: string; deploymentId?: string };
     provider: 'wechat_pay' | 'alipay';
     clientIp?: string;
     commandId?: string;
@@ -44,15 +46,29 @@ export class BillingService extends BillingRefundUseCases {
       throw httpError(422, `${input.provider} is not configured`);
     }
 
-    const { app, plan, offer } = await this.capabilities
-      .createAppService(this.db)
-      .resolveCheckoutOffer(input.appCode, {
+    const hostingSelection = input.hostingOnly
+      ? await new HostingCheckoutSelection(
+          this.db,
+          this.capabilities.createHostingTerms,
+          this.capabilities.now,
+        ).resolve({
+          ...input,
+          hostingOnly: input.hostingOnly,
+        })
+      : null;
+    const { app, plan, offer } =
+      hostingSelection ??
+      (await this.capabilities.createAppService(this.db).resolveCheckoutOffer(input.appCode, {
         planCode: input.planCode,
         offerCode: input.offerCode,
-      });
+      }));
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
-    if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
+    if (
+      !input.hostingOnly &&
+      plan.interval === 'one_time' &&
+      !deploymentPolicy.allowMultiplePurchases
+    ) {
       const ownership = await this.capabilities
         .createLicenseService(this.db)
         .findActiveOneTimeOwnership(input.userId, app.id, plan.id);
@@ -79,6 +95,7 @@ export class BillingService extends BillingRefundUseCases {
         currency: offer.currency,
       },
     ];
+    if (input.hostingOnly) items.length = 0;
     if (input.hosting) {
       const hosted = await new HostingOfferCatalog(this.db).resolve(
         input.hosting.offerId,
@@ -98,6 +115,7 @@ export class BillingService extends BillingRefundUseCases {
         amount: hosted.priceAmount,
         currency: hosted.currency,
         hostingTerms: {
+          ...(hostingSelection ? { target: hostingSelection.target } : {}),
           offerVersion: hosted.version,
           description: hosted.description,
           graceDays: hosted.graceDays,
@@ -493,15 +511,22 @@ export class BillingService extends BillingRefundUseCases {
       };
     }
 
-    const granted = await this.capabilities.createLicenseService(tx).grantEntitlementsForPlan({
-      userId: input.order.userId,
-      planId: input.order.planId,
-      sourceType: 'order',
-      sourceId: input.order.id,
-      startsAt: updatedOrder.paidAt ?? this.capabilities.now(),
-    });
+    const granted =
+      !updatedOrder.items.length || updatedOrder.items.some((i) => i.kind === 'software')
+        ? await this.capabilities.createLicenseService(tx).grantEntitlementsForPlan({
+            userId: input.order.userId,
+            planId: input.order.planId,
+            sourceType: 'order',
+            sourceId: input.order.id,
+            startsAt: updatedOrder.paidAt ?? this.capabilities.now(),
+          })
+        : undefined;
 
-    await new HostingPurchases(tx).issue(updatedOrder);
+    await new HostingFulfillments(
+      tx,
+      this.capabilities.now,
+      this.capabilities.createHostingTerms,
+    ).fulfill(updatedOrder);
 
     const checkoutRepository = this.capabilities.createCheckoutAccess(tx);
     await checkoutRepository.markSessionPaidByOrderId(

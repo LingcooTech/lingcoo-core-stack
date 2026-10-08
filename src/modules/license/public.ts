@@ -40,3 +40,5 @@ export type LicenseServicePort = Pick<
   | 'listUserEntitlementsByAppId'
 >;
 export type LicenseServiceFactory = (db: DbExecutor) => LicenseServicePort;
+
+export { hostingLicenseAccess } from './hosting-access';

@@ -21,3 +21,9 @@ export type DeliverySettingsFactory = (
 export { HostingDnsService } from './hosting-dns';
 
 export { CustomDomainService } from './custom-domains';
+
+import type { HostingServiceTerms } from './hosting-service';
+export type HostingTermsFactory = (
+  db: DbExecutor,
+  clock: () => Date,
+) => Pick<HostingServiceTerms, 'quoteRenewal' | 'applyPaidRenewal'>;

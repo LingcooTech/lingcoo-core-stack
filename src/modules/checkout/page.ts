@@ -345,14 +345,14 @@ export function renderCheckoutPage(sessionCode: string) {
         items.forEach(function(item) {
           const row = document.createElement('div'); row.className = 'fact';
           const label = document.createElement('label');
-          label.textContent = (item.kind === 'software' ? '软件授权' : '托管服务') + ' · ' + item.title;
+          label.textContent = (item.kind === 'software' ? '软件授权' : item.hostingTerms?.target?.kind === 'renewal' ? '托管续费' : '托管服务') + ' · ' + item.title;
           const value = document.createElement('strong');
           value.textContent = (item.amount / 100).toFixed(2) + ' ' + item.currency + ' · ' +
             (item.interval === 'one_time' ? '一次性' : item.interval === 'month' ? '自然月' : '自然年') + ' × ' + item.quantity;
           row.append(label, value);
           if (item.hostingTerms) {
             const terms = document.createElement('p'); terms.className = 'muted';
-            terms.textContent = item.hostingTerms.description + ' · 首次交付后起算，不自动扣费；宽限 ' + item.hostingTerms.graceDays + ' 天，数据保留 ' + item.hostingTerms.retentionDays + ' 天';
+            terms.textContent = item.hostingTerms.description + (item.hostingTerms.target?.kind === 'renewal' ? ' · 延长原服务期限，不自动扣费；宽限 ' : ' · 首次交付后起算，不自动扣费；宽限 ') + item.hostingTerms.graceDays + ' 天，数据保留 ' + item.hostingTerms.retentionDays + ' 天';
             row.appendChild(terms);
           }
           itemRoot.appendChild(row);
@@ -381,7 +381,7 @@ export function renderCheckoutPage(sessionCode: string) {
         const shell = byId('payment-content');
 
         if (data.status === 'paid') {
-          shell.innerHTML = '<div><h2 style="margin:0 0 10px;">支付已完成</h2><p class="muted">中台已经收到支付结果，可以返回应用继续使用。</p></div>';
+          shell.innerHTML = '<div><h2 style="margin:0 0 10px;">支付已完成</h2><p class="muted">平台已收到支付结果，请返回账户查看授权或托管服务的履约状态。</p></div>';
           return;
         }
 

@@ -16,7 +16,12 @@ export function OrderItems({ items }: { items?: OrderItem[] }) {
               <div className="min-w-0">
                 <p className="break-words">{item.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {item.kind === 'software' ? '软件授权' : '托管服务'} ·{' '}
+                  {item.kind === 'software'
+                    ? '软件授权'
+                    : item.hostingTerms?.target?.kind === 'renewal'
+                      ? '托管续费'
+                      : '托管服务'}{' '}
+                  ·{' '}
                   {item.interval === 'one_time'
                     ? '一次性'
                     : item.interval === 'month'
@@ -26,8 +31,12 @@ export function OrderItems({ items }: { items?: OrderItem[] }) {
                 </p>
                 {item.hostingTerms && (
                   <p className="mt-1 max-w-lg text-xs break-words text-muted-foreground">
-                    {item.hostingTerms.description} · 首次交付后起算，不自动扣费；宽限{' '}
-                    {item.hostingTerms.graceDays} 天，数据保留 {item.hostingTerms.retentionDays} 天
+                    {item.hostingTerms.description} ·{' '}
+                    {item.hostingTerms.target?.kind === 'renewal'
+                      ? '延长原服务期限'
+                      : '首次交付后起算'}
+                    ，不自动扣费；宽限 {item.hostingTerms.graceDays} 天，数据保留{' '}
+                    {item.hostingTerms.retentionDays} 天
                   </p>
                 )}
               </div>

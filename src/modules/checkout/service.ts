@@ -1,3 +1,4 @@
+import { HostingCheckoutSelection } from '../billing/public';
 import type { OrderItem } from '@lingcoo/contracts';
 import { queryBatch } from '../../db/query-batch';
 import { pickCheckoutDependencies, type CheckoutDependencies } from './dependencies';
@@ -196,11 +197,15 @@ export class CheckoutService {
       product: { code: input.app.code, name: input.order.items[0]?.appName ?? input.app.name },
       plan: {
         code: input.plan.code,
-        name: input.order.items.find((i) => i.kind === 'software')?.title ?? input.plan.name,
+        name:
+          (input.order.items.find((i) => i.kind === 'software') ?? input.order.items[0])?.title ??
+          input.plan.name,
         interval:
-          input.order.items.find((i) => i.kind === 'software')?.interval ?? input.plan.interval,
+          (input.order.items.find((i) => i.kind === 'software') ?? input.order.items[0])
+            ?.interval ?? input.plan.interval,
         priceAmount:
-          input.order.items.find((i) => i.kind === 'software')?.amount ?? input.order.amount,
+          (input.order.items.find((i) => i.kind === 'software') ?? input.order.items[0])?.amount ??
+          input.order.amount,
         currency: input.order.currency,
       },
       order: {
@@ -226,6 +231,7 @@ export class CheckoutService {
     planCode: string;
     offerCode?: string;
     hosting?: { offerId: string; version: number };
+    hostingOnly?: { entitlementId: string; deploymentId?: string };
     providerPreference?: 'wechat_pay' | 'alipay';
     successUrl?: string;
     cancelUrl?: string;
@@ -234,15 +240,28 @@ export class CheckoutService {
   }) {
     const appService = this.capabilities.createAppService(this.db);
     const licenseService = this.capabilities.createLicenseService(this.db);
-    const selection = await appService.resolveCheckoutOffer(input.appCode, {
-      planCode: input.planCode,
-      offerCode: input.offerCode,
-    });
+    const selection = input.hostingOnly
+      ? await new HostingCheckoutSelection(
+          this.db,
+          this.capabilities.createHostingTerms,
+          this.capabilities.now,
+        ).resolve({
+          ...input,
+          hostingOnly: input.hostingOnly,
+        })
+      : await appService.resolveCheckoutOffer(input.appCode, {
+          planCode: input.planCode,
+          offerCode: input.offerCode,
+        });
     const { app, plan, offer } = selection;
 
     const deploymentPolicy = normalizeDeploymentPolicy(normalizeMeta(plan.meta).deploymentPolicy);
 
-    if (plan.interval === 'one_time' && !deploymentPolicy.allowMultiplePurchases) {
+    if (
+      !input.hostingOnly &&
+      plan.interval === 'one_time' &&
+      !deploymentPolicy.allowMultiplePurchases
+    ) {
       const ownership = await licenseService.findActiveOneTimeOwnership(
         input.userId,
         app.id,
@@ -313,6 +332,7 @@ export class CheckoutService {
         planCode: input.planCode,
         offerCode: input.offerCode,
         hosting: input.hosting,
+        hostingOnly: input.hostingOnly,
         provider,
         clientIp: input.clientIp,
         commandId: input.commandId,
@@ -415,11 +435,15 @@ export class CheckoutService {
       },
       plan: {
         code: detail.plan.code,
-        name: detail.order.items.find((i) => i.kind === 'software')?.title ?? detail.plan.name,
+        name:
+          (detail.order.items.find((i) => i.kind === 'software') ?? detail.order.items[0])?.title ??
+          detail.plan.name,
         interval:
-          detail.order.items.find((i) => i.kind === 'software')?.interval ?? detail.plan.interval,
+          (detail.order.items.find((i) => i.kind === 'software') ?? detail.order.items[0])
+            ?.interval ?? detail.plan.interval,
         priceAmount:
-          detail.order.items.find((i) => i.kind === 'software')?.amount ?? detail.order.amount,
+          (detail.order.items.find((i) => i.kind === 'software') ?? detail.order.items[0])
+            ?.amount ?? detail.order.amount,
         currency: detail.order.currency,
       },
       order: {
@@ -489,9 +513,12 @@ export class CheckoutService {
       },
       plan: {
         code: detail.plan.code,
-        name: detail.order.items.find((i) => i.kind === 'software')?.title ?? detail.plan.name,
+        name:
+          (detail.order.items.find((i) => i.kind === 'software') ?? detail.order.items[0])?.title ??
+          detail.plan.name,
         interval:
-          detail.order.items.find((i) => i.kind === 'software')?.interval ?? detail.plan.interval,
+          (detail.order.items.find((i) => i.kind === 'software') ?? detail.order.items[0])
+            ?.interval ?? detail.plan.interval,
       },
       order: {
         items: detail.order.items,

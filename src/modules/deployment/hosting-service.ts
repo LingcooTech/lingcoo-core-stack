@@ -39,6 +39,98 @@ export class HostingServiceTerms {
     private readonly clock = () => new Date(),
   ) {}
 
+  async quoteRenewal(
+    deploymentId: string,
+    userId: string,
+    entitlementId: string,
+    interval: string,
+    graceDays: number,
+    retentionDays: number,
+  ) {
+    const deployment = await this.deployment(deploymentId, userId);
+    const service = await this.find(deploymentId);
+    if (
+      deployment.status !== 'active' ||
+      deployment.entitlementId !== entitlementId ||
+      !service ||
+      service.source !== 'paid'
+    )
+      throw httpError(409, '当前部署没有可续费的付费托管服务');
+    if (service.graceDays !== graceDays || service.retentionDays !== retentionDays)
+      throw httpError(409, '续费套餐的宽限和数据保留政策须与当前服务一致');
+    if (service.interval !== interval) throw httpError(409, '续费必须沿用当前月付或年付周期');
+    return service;
+  }
+
+  async applyPaidRenewal(input: {
+    deploymentId: string;
+    serviceId: string;
+    entitlementId: string;
+    userId: string;
+    orderId: string;
+    item: OrderItem;
+  }) {
+    await this.db
+      .select({ id: deployments.id })
+      .from(deployments)
+      .where(eq(deployments.id, input.deploymentId))
+      .for('update');
+    const [deployment] = await this.db
+      .select()
+      .from(deployments)
+      .where(eq(deployments.id, input.deploymentId));
+    const current = await this.find(input.deploymentId);
+    if (
+      !deployment ||
+      deployment.userId !== input.userId ||
+      deployment.status !== 'active' ||
+      deployment.deploymentMode !== 'managed' ||
+      deployment.entitlementId !== input.entitlementId ||
+      !current ||
+      current.id !== input.serviceId ||
+      current.source !== 'paid' ||
+      current.interval !== input.item.interval ||
+      current.graceDays !== input.item.hostingTerms?.graceDays ||
+      current.retentionDays !== input.item.hostingTerms?.retentionDays
+    )
+      return { status: 'review' as const, reason: '付款后目标实例或服务发生变化，请联系平台处理' };
+    const now = this.clock();
+    const expired = current.expiresAt && current.expiresAt <= now;
+    const anchorAt = expired
+      ? deployment.hostingState === 'ready'
+        ? now
+        : null
+      : current.anchorAt;
+    const periods = expired ? input.item.quantity : current.periods + input.item.quantity;
+    if (periods > 1200)
+      return { status: 'review' as const, reason: '累计服务周期超过上限，请联系平台处理' };
+    const [saved] = await this.db
+      .update(hostingServices)
+      .set({
+        periods,
+        anchorAt,
+        expiresAt: anchorAt ? billingPeriodEnd(anchorAt, current.interval, periods) : null,
+        version: current.version + 1,
+        updatedAt: now,
+      })
+      .where(eq(hostingServices.id, current.id))
+      .returning();
+    if (!saved) throw new Error('Missing paid renewal write');
+    await this.recordChange(saved, current, now, {
+      kind: 'extend',
+      actorUserId: input.userId,
+      requestKey: input.orderId,
+      fingerprint: createHash('sha256').update(JSON.stringify(input.item)).digest('hex'),
+      reason: `付费续费订单 ${input.orderId}`,
+    });
+    return {
+      status: 'applied' as const,
+      reason: '续费已应用到原托管服务',
+      before: hostingServiceView(current, now),
+      after: hostingServiceView(saved, now),
+    };
+  }
+
   async registerPurchase(
     deploymentId: string,
     actorUserId: string,

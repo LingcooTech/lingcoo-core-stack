@@ -1,3 +1,4 @@
+import { HostingFulfillments } from './hosting-fulfillments';
 import { HostingPurchases } from './hosting-purchases';
 import { pickBillingDependencies, type BillingDependencies } from './dependencies';
 import type { AppEnv } from '../../lib/env';
@@ -43,6 +44,7 @@ export class BillingRefundUseCases {
       throw httpError(409, `Only paid orders can be refunded (current: ${order.status})`);
     }
 
+    await new HostingFulfillments(this.db).assertRefundable(order.id);
     const reservation = await this.db.transaction((tx) =>
       new HostingPurchases(tx).reserveRefund(order.id),
     );
@@ -182,6 +184,7 @@ export class BillingRefundUseCases {
         },
       });
       await new HostingPurchases(txDb).settleRefund(order.id, true);
+      await new HostingFulfillments(txDb).revoke(order.id);
       await this.capabilities
         .createLicenseAccess(txDb)
         .cancelEntitlementsBySource('order', order.id);
@@ -321,6 +324,7 @@ export class BillingRefundUseCases {
         },
       });
       await new HostingPurchases(txDb).settleRefund(order.id, true);
+      await new HostingFulfillments(txDb).revoke(order.id);
       await this.capabilities
         .createLicenseAccess(txDb)
         .cancelEntitlementsBySource('order', order.id);

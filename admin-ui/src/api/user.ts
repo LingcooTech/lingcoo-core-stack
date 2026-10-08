@@ -157,6 +157,7 @@ export async function createCheckoutSession(payload: {
   planCode: string;
   offerCode?: string;
   hosting?: { offerId: string; version: number };
+  hostingOnly?: { entitlementId: string; deploymentId?: string };
   providerPreference?: 'wechat_pay' | 'alipay';
   successUrl?: string;
   cancelUrl?: string;

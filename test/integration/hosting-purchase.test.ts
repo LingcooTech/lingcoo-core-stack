@@ -21,7 +21,7 @@ import type {
 const { db, pool, env } = testDatabase();
 after(() => pool.end());
 const product = JSON.parse(readFileSync('app-products/lingcoo_retail_oms/product.json', 'utf8'));
-async function fixture() {
+async function fixture(clock = () => new Date()) {
   const f = await seedPurchase(db);
   await db
     .update(apps)
@@ -116,6 +116,7 @@ async function fixture() {
   });
   const factories = {
     ...createServiceFactories(),
+    now: clock,
     getBillingProviderAdapter: () => new FakeProvider(),
   };
   const billing = new BillingService(factories, db, env);
@@ -249,4 +250,177 @@ test('ambiguous refund holds qualification and retries query without a second ex
     db.transaction((tx) => new HostingPurchases(tx).lockForBinding(grant.id, f.user.id)),
     /正在退款/,
   );
+});
+
+test('existing software owners buy hosting alone and concurrent renewals extend one service without extra rights', async () => {
+  const f = await fixture(() => new Date('2026-01-31T12:00:00Z'));
+  const { entitlements, hostingServices } = await import('../../src/db/schema');
+  const { HostingFulfillments } = await import('../../src/modules/billing/hosting-fulfillments');
+  const initial = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: f.order.orderNo });
+  const entitlement = initial.entitlements.items[0]!;
+  await db.update(appOffers).set({ status: 'inactive' }).where(eq(appOffers.appId, f.app.id));
+  const standalone = await f.checkout.createSession({
+    ...f.input,
+    hostingOnly: { entitlementId: entitlement.id },
+  });
+  assert.equal(standalone.order.amount, 1990);
+  assert.equal(standalone.order.items.length, 1);
+  assert.equal(standalone.plan.interval, 'month');
+  assert.equal(standalone.order.items[0]?.hostingTerms?.target?.kind, 'new');
+  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: standalone.order.orderNo });
+  const grant = (await new HostingPurchases(db).list(f.user.id)).items[0]!;
+  const deployed = await f.service.createDeployment({
+    userId: f.user.id,
+    appCode: f.app.code,
+    entitlementId: entitlement.id,
+    hostingPurchaseId: grant.id,
+    label: 'Renewable service',
+    environment: 'test',
+    deploymentMode: 'managed',
+  });
+  await db
+    .update(deployments)
+    .set({ hostingState: 'ready' })
+    .where(eq(deployments.id, deployed.id));
+  const terms = new HostingServiceTerms(db, () => new Date('2026-01-31T12:00:00Z'));
+  await terms.activateDelivered(deployed.id);
+  const renewalInput = {
+    ...f.input,
+    hostingOnly: { entitlementId: entitlement.id, deploymentId: deployed.id },
+  };
+  const sessions = await Promise.all([
+    f.checkout.createSession(renewalInput),
+    f.checkout.createSession(renewalInput),
+  ]);
+  assert(sessions.every((s) => s.order.items[0]?.hostingTerms?.target?.kind === 'renewal'));
+  await Promise.all(
+    sessions.map((s) => f.billing.mockPayOrder({ userId: f.user.id, orderNo: s.order.orderNo })),
+  );
+  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: sessions[0]!.order.orderNo });
+  const service = (await terms.read(deployed.id)).service!;
+  assert.equal(service.periods, 3);
+  assert.equal(service.anchorAt, '2026-01-31T12:00:00.000Z');
+  assert.equal(service.expiresAt, '2026-04-30T12:00:00.000Z');
+  assert.equal(
+    (await db.select().from(entitlements).where(eq(entitlements.userId, f.user.id))).length,
+    1,
+  );
+  assert.equal((await new HostingPurchases(db).list(f.user.id)).items.length, 1);
+  const receipts = await new HostingFulfillments(db).list(f.user.id);
+  assert.equal(receipts.items.length, 3);
+  assert(receipts.items.every((r) => r.status === 'applied'));
+  await assert.rejects(f.billing.refundOrderByOrderNo(sessions[0]!.order.orderNo), /已履约续费/);
+  assert.equal(f.refunds(), 0);
+  await db
+    .update(hostingServices)
+    .set({ interval: 'year' })
+    .where(eq(hostingServices.deploymentId, deployed.id));
+  await assert.rejects(f.checkout.createSession(renewalInput), /沿用当前/);
+});
+
+test('payment after software withdrawal remains paid with a review receipt and no hosting qualification', async () => {
+  const f = await fixture();
+  const { entitlements, orders } = await import('../../src/db/schema');
+  const { HostingFulfillments } = await import('../../src/modules/billing/hosting-fulfillments');
+  const rights = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: f.order.orderNo });
+  const entitlement = rights.entitlements.items[0]!;
+  await assert.rejects(
+    f.checkout.createSession({ ...f.input, hostingOnly: { entitlementId: randomUUID() } }),
+    /未找到/,
+  );
+  const session = await f.checkout.createSession({
+    ...f.input,
+    hostingOnly: { entitlementId: entitlement.id },
+  });
+  await assert.rejects(
+    db
+      .update(orders)
+      .set({
+        items: [
+          {
+            ...session.order.items[0]!,
+            hostingTerms: {
+              ...session.order.items[0]!.hostingTerms!,
+              target: { kind: 'new', entitlementId: randomUUID() },
+            },
+          },
+        ],
+      })
+      .where(eq(orders.orderNo, session.order.orderNo)),
+  );
+  await db
+    .update(entitlements)
+    .set({ status: 'cancelled' })
+    .where(eq(entitlements.id, entitlement.id));
+  const paid = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: session.order.orderNo });
+  assert.equal(paid.order.status, 'paid');
+  assert.equal((await new HostingPurchases(db).list(f.user.id)).items.length, 0);
+  const receipts = new HostingFulfillments(db);
+  assert.equal((await receipts.list(f.user.id)).items[0]?.status, 'review');
+  assert.equal((await receipts.list(randomUUID(), session.order.orderNo)).items.length, 0);
+  const { buildApp } = await import('../../src/app');
+  const app = await buildApp(env);
+  try {
+    const headers = { authorization: `Bearer ${app.jwt.sign({ sub: f.user.id, kind: 'user' })}` };
+    const result = await app.inject({
+      method: 'GET',
+      url: `/v1/billing/hosting-fulfillments/${session.order.orderNo}`,
+      headers,
+    });
+    assert.equal(result.statusCode, 200, result.body);
+    assert.equal(result.json().items[0]?.status, 'review');
+    const denied = await app.inject({
+      method: 'GET',
+      url: `/v1/admin/billing/hosting-fulfillments/${session.order.orderNo}`,
+      headers,
+    });
+    assert.equal(denied.statusCode, 403);
+  } finally {
+    await app.close();
+  }
+  await f.billing.refundOrderByOrderNo(session.order.orderNo);
+  assert.equal((await receipts.list(f.user.id)).items[0]?.status, 'revoked');
+});
+
+test('expired hosting renewal starts a new delivered term; target cancellation after checkout is reviewed', async () => {
+  let now = new Date('2026-01-31T12:00:00Z');
+  const f = await fixture(() => now);
+  const { HostingFulfillments } = await import('../../src/modules/billing/hosting-fulfillments');
+  const combo = await f.checkout.createSession(f.input);
+  const paid = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: combo.order.orderNo });
+  const entitlement = paid.entitlements.items[0]!;
+  const grant = (await new HostingPurchases(db).list(f.user.id)).items[0]!;
+  const deployed = await f.service.createDeployment({
+    userId: f.user.id,
+    appCode: f.app.code,
+    entitlementId: entitlement.id,
+    hostingPurchaseId: grant.id,
+    label: 'Expired renewal',
+    environment: 'test',
+    deploymentMode: 'managed',
+  });
+  await db
+    .update(deployments)
+    .set({ hostingState: 'ready' })
+    .where(eq(deployments.id, deployed.id));
+  const terms = new HostingServiceTerms(db, () => now);
+  await terms.activateDelivered(deployed.id);
+  now = new Date('2026-03-05T12:00:00Z');
+  const input = {
+    ...f.input,
+    hostingOnly: { entitlementId: entitlement.id, deploymentId: deployed.id },
+  };
+  const renewal = await f.checkout.createSession(input);
+  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: renewal.order.orderNo });
+  const service = (await terms.read(deployed.id)).service!;
+  assert.equal(service.anchorAt, '2026-03-05T12:00:00.000Z');
+  assert.equal(service.expiresAt, '2026-04-05T12:00:00.000Z');
+  const second = await f.checkout.createSession(input);
+  await db.update(deployments).set({ status: 'cancelled' }).where(eq(deployments.id, deployed.id));
+  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: second.order.orderNo });
+  assert.equal(
+    (await new HostingFulfillments(db).list(f.user.id, second.order.orderNo)).items[0]?.status,
+    'review',
+  );
+  assert.equal((await terms.read(deployed.id)).service?.expiresAt, service.expiresAt);
 });

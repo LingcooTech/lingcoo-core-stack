@@ -163,3 +163,24 @@ export const hostingPurchases = pgTable(
     ),
   }),
 );
+
+// Payment fulfillment evidence; immutable target remains in orders.items.
+export const hostingFulfillments = pgTable(
+  'hosting_fulfillments',
+  {
+    orderId: uuid('order_id')
+      .primaryKey()
+      .references(() => orders.id, { onDelete: 'restrict' }),
+    status: varchar('status', { length: 16 }).$type<'applied' | 'review' | 'revoked'>().notNull(),
+    reason: text('reason').notNull(),
+    before: jsonb('before'),
+    after: jsonb('after'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    status: check(
+      'hosting_fulfillments_status_check',
+      sql`${t.status} in ('applied', 'review', 'revoked')`,
+    ),
+  }),
+);

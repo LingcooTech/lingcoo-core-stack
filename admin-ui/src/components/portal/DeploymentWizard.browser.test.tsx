@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   role: 'admin',
 }));
 vi.mock('@/api/user', () => ({
+  createCheckoutSession: vi.fn(),
   getDeploymentOptions: mocks.options,
   retryManagedAllocation: mocks.retry,
 }));

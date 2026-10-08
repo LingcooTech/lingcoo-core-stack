@@ -1,3 +1,4 @@
+import { HostingCheckout } from '@/components/hosting/HostingCheckout';
 import { apiClient } from '@/api/client';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
@@ -262,7 +263,11 @@ export function DeploymentWizard({
       user?.role !== 'admin' &&
       !purchases.data?.items.some(
         (p) =>
-          p.id === hostingPurchaseId && p.appCode === selectedAppCode && p.status === 'available',
+          p.id === hostingPurchaseId &&
+          p.appCode === selectedAppCode &&
+          p.status === 'available' &&
+          (!p.item.hostingTerms?.target ||
+            p.item.hostingTerms.target.entitlementId === selectedEntitlementId),
       )
     ) {
       toast.error('请选择当前应用的可用托管资格');
@@ -327,6 +332,7 @@ export function DeploymentWizard({
     hostingPurchaseId,
     purchases.data,
     selectedAppCode,
+    selectedEntitlementId,
     user?.role,
     deploymentDraft,
     domainValues,
@@ -642,7 +648,13 @@ export function DeploymentWizard({
                         : '请选择已购买的托管资格'}
                     </option>
                     {purchases.data?.items
-                      .filter((p) => p.status === 'available' && p.appCode === selectedAppCode)
+                      .filter(
+                        (p) =>
+                          p.status === 'available' &&
+                          p.appCode === selectedAppCode &&
+                          (!p.item.hostingTerms?.target ||
+                            p.item.hostingTerms.target.entitlementId === selectedEntitlementId),
+                      )
                       .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.item.title} · {p.item.interval === 'month' ? '1 个月' : '1 年'}
@@ -653,6 +665,13 @@ export function DeploymentWizard({
                     <p role="alert" className="text-sm text-destructive">
                       托管资格读取失败，请刷新后重试。
                     </p>
+                  )}
+                  {selectedAppCode && selectedEntitlement && (
+                    <HostingCheckout
+                      appCode={selectedAppCode}
+                      planCode={selectedEntitlement.planCode}
+                      entitlementId={selectedEntitlement.id}
+                    />
                   )}
                   <Label htmlFor="wizard-prefix">子域名前缀</Label>
                   <div className="flex gap-2">
