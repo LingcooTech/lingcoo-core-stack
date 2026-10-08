@@ -1,3 +1,4 @@
+import { hostingServiceRoutes } from './hosting-service-routes';
 import { adminDeploymentRoutes } from './admin-ledger';
 import { hostingOperationRoutes } from './hosting-operation-routes';
 import type { FastifyPluginAsync } from 'fastify';
@@ -18,6 +19,7 @@ import {
 
 export const deploymentRoutes: FastifyPluginAsync = async (app) => {
   await app.register(adminDeploymentRoutes);
+  await app.register(hostingServiceRoutes);
   await app.register(hostingRoutes);
   await app.register(hostingOperationRoutes);
   await app.register(domainRoutes);

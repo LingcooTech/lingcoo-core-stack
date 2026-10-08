@@ -1,3 +1,4 @@
+import { HostingServiceTerms } from './hosting-service';
 import { probeHostedHttps } from './https-probe';
 import { resolve4, resolve6 } from 'node:dns/promises';
 import { dnspod } from 'tencentcloud-sdk-nodejs-dnspod';
@@ -171,6 +172,7 @@ export class HostingDnsService {
         hostingState: 'ready',
         lastDeployedAt: current.lastDeployedAt ?? new Date(),
       });
+      await new HostingServiceTerms(tx).activateDelivered(row.id);
     });
     return { ok: true };
   }

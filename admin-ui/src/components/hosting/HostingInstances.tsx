@@ -1,3 +1,4 @@
+import { HostingServicePanel } from './HostingServicePanel';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, RotateCw, Archive, Box, Search } from 'lucide-react';
@@ -272,6 +273,9 @@ export function HostingInstances({
                       );
                     })}
                   </div>
+                </div>
+                <div className="px-5 pb-4">
+                  <HostingServicePanel deploymentId={instance.id} admin />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
                   <span className="text-xs text-muted-foreground">

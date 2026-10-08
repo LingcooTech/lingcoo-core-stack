@@ -225,6 +225,13 @@
       "when": 1791422505279,
       "tag": "0031_hosting_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791449605193,
+      "tag": "0032_hosting_service_terms",
+      "breakpoints": true
     }
   ]
 }

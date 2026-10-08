@@ -1,3 +1,4 @@
+import { HostingServicePanel } from '@/components/hosting/HostingServicePanel';
 import { useDeferredValue, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -236,7 +237,7 @@ export function AdminDeploymentsPage() {
           if (!open) setSelected(null);
         }}
       >
-        <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{selected?.label ?? '部署详情'}</SheetTitle>
             <SheetDescription>交付信息与关联记录；不显示安装凭据或初始化密码。</SheetDescription>
@@ -270,8 +271,14 @@ export function AdminDeploymentsPage() {
                       : '未关联',
                   ],
                   ['创建时间', formatTime(selected.createdAt)],
-                  ['最近部署回报', formatTime(selected.lastDeployedAt)],
-                  ['最近实例上报', formatTime(selected.lastReportedAt)],
+                  [
+                    '最近部署回报',
+                    selected.lastDeployedAt ? formatTime(selected.lastDeployedAt) : '尚无部署回报',
+                  ],
+                  [
+                    '最近实例上报',
+                    selected.lastReportedAt ? formatTime(selected.lastReportedAt) : '尚无上报',
+                  ],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -279,6 +286,9 @@ export function AdminDeploymentsPage() {
                   </div>
                 ))}
               </dl>
+              {selected.mode === 'managed' && (
+                <HostingServicePanel deploymentId={selected.id} admin />
+              )}
               <div className="flex flex-wrap gap-2">
                 {can('users.view') && (
                   <Button variant="outline" asChild>

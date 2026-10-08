@@ -1,3 +1,7 @@
+import {
+  HostingServiceResponseSchema,
+  AdminHostingServiceResponseSchema,
+} from './hosting-service.js';
 import { AdminDeploymentsSchema } from './admin-deployments.js';
 import { externalResponseContracts, nonJsonResponseRoutes } from './external-responses.js';
 import { z } from 'zod';
@@ -17,6 +21,21 @@ import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
   { method: 'GET', path: '/v1/admin/deployments', schema: AdminDeploymentsSchema },
+  {
+    method: 'GET',
+    path: '/v1/deployments/:deploymentId/hosting-service',
+    schema: HostingServiceResponseSchema,
+  },
+  {
+    method: 'GET',
+    path: '/v1/admin/deployments/:deploymentId/hosting-service',
+    schema: AdminHostingServiceResponseSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/deployments/:deploymentId/hosting-service',
+    schema: AdminHostingServiceResponseSchema,
+  },
   { method: 'GET', path: '/v1/admin/hosting/overview', schema: HostingOverviewSchema },
   {
     method: 'POST',

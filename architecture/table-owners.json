@@ -39,5 +39,7 @@
   "authSessions": "auth",
   "hostingNodes": "deployment",
   "deploymentDomains": "deployment",
-  "hostingOperations": "deployment"
+  "hostingOperations": "deployment",
+  "hostingServices": "deployment",
+  "hostingServiceChanges": "deployment"
 }

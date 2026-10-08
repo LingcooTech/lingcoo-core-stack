@@ -17,3 +17,5 @@ export function isIdempotentCommand(method: string, path: string) {
 export * from './hosting.js';
 
 export * from './admin-deployments.js';
+
+export * from './hosting-service.js';

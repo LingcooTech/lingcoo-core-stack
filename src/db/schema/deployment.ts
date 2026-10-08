@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
   integer,
+  check,
 } from 'drizzle-orm/pg-core';
 import { apps } from './app';
 import { sql } from 'drizzle-orm';
@@ -148,5 +149,55 @@ export const hostingOperations = pgTable(
     activeInstanceKey: uniqueIndex('hosting_operations_active_instance_key')
       .on(t.deploymentId)
       .where(sql`${t.state} in ('pending', 'running')`),
+  }),
+);
+
+// Commercial service terms are independent of software entitlements and runtime state.
+export const hostingServices = pgTable(
+  'hosting_services',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .unique()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    source: varchar('source', { length: 16 }).$type<'trial' | 'manual'>().notNull(),
+    interval: varchar('interval', { length: 16 }).$type<'month' | 'year'>().notNull(),
+    periods: integer('periods').notNull(),
+    anchorAt: timestamp('anchor_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    graceDays: integer('grace_days').notNull(),
+    retentionDays: integer('retention_days').notNull(),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    validity: check(
+      'hosting_services_validity',
+      sql`${t.periods} between 1 and 1200 and ${t.version} > 0 and ${t.graceDays} between 0 and 90 and ${t.retentionDays} between 1 and 3650 and ${t.source} in ('trial', 'manual') and ${t.interval} in ('month', 'year') and ((${t.anchorAt} is null and ${t.expiresAt} is null) or (${t.anchorAt} is not null and ${t.expiresAt} is not null and ${t.expiresAt} > ${t.anchorAt}))`,
+    ),
+  }),
+);
+export const hostingServiceChanges = pgTable(
+  'hosting_service_changes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    requestKey: uuid('request_key'),
+    fingerprint: varchar('fingerprint', { length: 64 }),
+    kind: varchar('kind', { length: 16 }).$type<'register' | 'extend' | 'activate'>().notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    reason: varchar('reason', { length: 500 }).notNull(),
+    version: integer('version').notNull(),
+    before: jsonb('before'),
+    after: jsonb('after').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    requestKey: uniqueIndex('hosting_service_changes_request_key').on(t.deploymentId, t.requestKey),
+    versionKey: uniqueIndex('hosting_service_changes_version_key').on(t.deploymentId, t.version),
   }),
 );

@@ -1,3 +1,4 @@
+import { HostingServicePanel } from '@/components/hosting/HostingServicePanel';
 import { ManagedDeploymentProgress } from './ManagedDeploymentProgress';
 import type { DeploymentSummary, IssueDeploymentTokenResult } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
@@ -203,6 +204,7 @@ export function DeploymentRecordCard({
       </CardHeader>
 
       <CardContent className="space-y-3.5">
+        {deployment.managed && <HostingServicePanel deploymentId={deployment.id} />}
         {deployment.managed ? (
           <ManagedDeploymentProgress
             managed={deployment.managed}

@@ -5,6 +5,7 @@ import { expect, test, vi } from 'vitest';
 import { HostingInstances } from './HostingInstances';
 const mocks = vi.hoisted(() => ({ api: vi.fn() }));
 vi.mock('@/api/client', () => ({ apiClient: mocks.api }));
+vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: 'operator' } }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 test('restart confirmation creates a typed task and disables duplicate operations while pending', async () => {
   let pending = false;

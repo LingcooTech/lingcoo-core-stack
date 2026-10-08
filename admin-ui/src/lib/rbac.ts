@@ -18,6 +18,7 @@ export type AppPermission =
   | 'users.reset_password'
   | 'licenses.manage'
   | 'deployments.view'
+  | 'hosting.terms.manage'
   | 'installs.view'
   | 'tickets.manage'
   | 'notifications.manage'
@@ -44,6 +45,7 @@ const allPermissions: AppPermission[] = [
   'licenses.manage',
   'installs.view',
   'deployments.view',
+  'hosting.terms.manage',
   'tickets.manage',
   'notifications.manage',
   'observability.view',
