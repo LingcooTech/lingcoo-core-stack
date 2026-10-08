@@ -1,3 +1,6 @@
+import { HostingOffers } from '@/components/hosting/HostingOffers';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -12,8 +15,15 @@ import { AddHostingNode } from '@/components/hosting/AddHostingNode';
 import { useHostingOverview } from '@/components/hosting/useHostingOverview';
 import { HostingEmpty, HostingLoading } from '@/components/hosting/HostingVisuals';
 export function HostingPage() {
+  const { user } = useAuth();
+  const canManageOffers = hasPermission(normalizeRole(user?.role), 'hosting.offers.manage');
   const [params, setParams] = useSearchParams();
-  const tab = ['servers', 'instances', 'operations'].includes(params.get('tab') ?? '')
+  const tab = [
+    'servers',
+    'instances',
+    'operations',
+    ...(canManageOffers ? ['offers'] : []),
+  ].includes(params.get('tab') ?? '')
     ? params.get('tab')!
     : 'servers';
   const [search, setSearch] = useState('');
@@ -152,8 +162,14 @@ export function HostingPage() {
             <TabsTrigger value="servers">服务器资源</TabsTrigger>
             <TabsTrigger value="instances">托管实例</TabsTrigger>
             <TabsTrigger value="operations">运维记录</TabsTrigger>
+            {canManageOffers && <TabsTrigger value="offers">托管套餐</TabsTrigger>}
           </TabsList>
         </div>
+        {canManageOffers && (
+          <TabsContent value="offers">
+            <HostingOffers />
+          </TabsContent>
+        )}
         <TabsContent value="servers" className="space-y-4">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>

@@ -1,3 +1,4 @@
+import { hostingOfferRoutes } from './hosting-offer-routes';
 import type { FastifyPluginAsync } from 'fastify';
 
 import { PaymentSettingsService } from '../settings/public';
@@ -5,6 +6,7 @@ import { getBillingProviderAdapter } from './providers';
 import { createOrderSchema, orderNoParamsSchema } from './schemas';
 
 export const billingRoutes: FastifyPluginAsync = async (app) => {
+  await app.register(hostingOfferRoutes);
   app.get('/v1/billing/providers', async () => {
     return {
       items: await app.services.BillingService.listProviders(),

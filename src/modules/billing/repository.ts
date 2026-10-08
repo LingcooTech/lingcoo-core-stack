@@ -1,5 +1,5 @@
 import { queryBatch } from '../../db/query-batch';
-import { and, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
 import { apps, billingWebhookEvents, orders, plans, users } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -195,7 +195,12 @@ export class BillingRepository {
         updatedAt: new Date(),
         meta: input.meta ?? {},
       })
-      .where(and(eq(orders.id, input.orderId), ne(orders.status, 'paid')))
+      .where(
+        and(
+          eq(orders.id, input.orderId),
+          inArray(orders.status, ['pending', 'failed', 'cancelled']),
+        ),
+      )
       .returning();
 
     return order ?? null;

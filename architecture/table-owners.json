@@ -41,5 +41,6 @@
   "deploymentDomains": "deployment",
   "hostingOperations": "deployment",
   "hostingServices": "deployment",
-  "hostingServiceChanges": "deployment"
+  "hostingServiceChanges": "deployment",
+  "hostingOffers": "billing"
 }

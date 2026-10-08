@@ -232,6 +232,13 @@
       "when": 1791449605193,
       "tag": "0032_hosting_service_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791455585575,
+      "tag": "0033_fair_tattoo",
+      "breakpoints": true
     }
   ]
 }

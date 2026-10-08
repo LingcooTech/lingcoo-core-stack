@@ -187,3 +187,28 @@ test('partial or mismatched refund results cannot revoke a full software order',
   assert.equal(order?.status, 'paid');
   assert.equal(entitlement?.status, 'active');
 });
+
+for (const status of ['refunding', 'refunded'] as const) {
+  test(`late distinct payment callback cannot resurrect ${status} orders`, async () => {
+    const fixture = await paymentFixture();
+    const service = new BillingService(createServiceFactories(), db, env);
+    await service.handlePaymentNotification(fixture.notification);
+    await db.update(orders).set({ status }).where(eq(orders.id, fixture.order.id));
+    await db
+      .update(entitlements)
+      .set({ status: 'inactive' })
+      .where(eq(entitlements.sourceId, fixture.order.id));
+    await service.handlePaymentNotification({
+      ...fixture.notification,
+      providerEventId: randomUUID(),
+    });
+    const [order] = await db.select().from(orders).where(eq(orders.id, fixture.order.id));
+    assert.equal(order?.status, status);
+    const granted = await db
+      .select()
+      .from(entitlements)
+      .where(eq(entitlements.sourceId, fixture.order.id));
+    assert.equal(granted.length, 1);
+    assert.equal(granted[0]?.status, 'inactive');
+  });
+}

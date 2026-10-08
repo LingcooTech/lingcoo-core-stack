@@ -19,6 +19,7 @@ export type AppPermission =
   | 'licenses.manage'
   | 'deployments.view'
   | 'hosting.terms.manage'
+  | 'hosting.offers.manage'
   | 'installs.view'
   | 'tickets.manage'
   | 'notifications.manage'
@@ -46,6 +47,7 @@ const allPermissions: AppPermission[] = [
   'installs.view',
   'deployments.view',
   'hosting.terms.manage',
+  'hosting.offers.manage',
   'tickets.manage',
   'notifications.manage',
   'observability.view',

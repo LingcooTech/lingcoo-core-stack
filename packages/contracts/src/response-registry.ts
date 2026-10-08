@@ -1,3 +1,4 @@
+import { HostingOfferSchema, HostingOfferListSchema } from './hosting-offer.js';
 import {
   HostingServiceResponseSchema,
   AdminHostingServiceResponseSchema,
@@ -20,6 +21,9 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  { method: 'GET', path: '/v1/admin/billing/hosting-offers', schema: HostingOfferListSchema },
+  { method: 'POST', path: '/v1/admin/billing/hosting-offers', schema: HostingOfferSchema },
+  { method: 'PUT', path: '/v1/admin/billing/hosting-offers/:offerId', schema: HostingOfferSchema },
   { method: 'GET', path: '/v1/admin/deployments', schema: AdminDeploymentsSchema },
   {
     method: 'GET',
