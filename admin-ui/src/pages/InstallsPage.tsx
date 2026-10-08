@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Monitor, Info } from 'lucide-react';
 import { useDeferredValue, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { listInstalls } from '@/api/admin';
@@ -12,6 +12,8 @@ import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
 import { useTableState } from '@/hooks/useTableState';
 import { recordStatusLabel } from '@/lib/portal-labels';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -29,6 +31,8 @@ function userDetailHref(userId: string) {
 }
 
 export function InstallsPage() {
+  const { user } = useAuth();
+  const canManageHosting = hasPermission(normalizeRole(user?.role), 'settings.manage');
   const { page, search, setPage, setSearch } = useTableState({ defaultPageSize: PAGE_SIZE });
   const deferredSearch = useDeferredValue(search);
 
@@ -50,7 +54,7 @@ export function InstallsPage() {
   const installColumns: Column<HydratedInstall>[] = [
     {
       key: 'install',
-      header: '安装实例',
+      header: '客户端安装',
       cell: (row) => (
         <div>
           <p className="font-mono text-xs font-bold">{row.extensionInstallId}</p>
@@ -85,7 +89,7 @@ export function InstallsPage() {
     },
     {
       key: 'status',
-      header: '状态',
+      header: '登记状态',
       cell: (row) => (
         <div className="flex flex-col gap-1">
           <StatusPill tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
@@ -95,7 +99,7 @@ export function InstallsPage() {
     },
     {
       key: 'lastSeen',
-      header: '最近活跃',
+      header: '最近上报',
       cell: (row) => (
         <div>
           <p className="text-xs">{formatTime(row.lastSeenAt)}</p>
@@ -124,11 +128,44 @@ export function InstallsPage() {
   return (
     <div>
       <SectionHeader sectionKey="installs" />
-      <div className="space-y-4 p-6">
+      <div className="space-y-5 p-4 sm:p-6 lg:p-8">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <Monitor className="size-6 text-muted-foreground" />
+              客户端安装
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              查看应用客户端的安装登记、版本和用户绑定，处理接入与授权问题。
+            </p>
+          </div>
+          {canManageHosting ? (
+            <Button variant="outline" asChild>
+              <Link to="/admin/hosting?tab=instances">
+                前往托管实例
+                <ArrowUpRight className="size-4" />
+              </Link>
+            </Button>
+          ) : null}
+        </header>
+        <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          <p>
+            这里记录通过安装协议登记的客户端。“最近上报”反映客户端最后一次联系平台的时间，不代表服务器健康。服务器、容器、证书和备份统一在“托管运维”管理。
+          </p>
+        </div>
+        {installsQuery.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            加载客户端安装记录失败：{installsQuery.error.message}
+            <Button variant="ghost" size="sm" onClick={() => void installsQuery.refetch()}>
+              重试
+            </Button>
+          </p>
+        ) : null}
         <FilterChipBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="搜索安装 ID、用户、应用..."
+          searchPlaceholder="搜索客户端安装 ID、用户、应用..."
         />
 
         <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -136,7 +173,7 @@ export function InstallsPage() {
             columns={installColumns}
             data={installs}
             isLoading={installsQuery.isLoading}
-            emptyMessage="暂无安装记录"
+            emptyMessage="暂无客户端登记记录"
             getRowId={(row) => row.id}
           />
         </div>
@@ -147,7 +184,7 @@ export function InstallsPage() {
             page={page}
             pageSize={PAGE_SIZE}
             isLoading={installsQuery.isLoading}
-            itemLabel="条安装记录"
+            itemLabel="条客户端安装记录"
             onPageChange={setPage}
           />
         </div>

@@ -43,7 +43,6 @@ test('restart confirmation creates a typed task and disables duplicate operation
         : [],
     };
   });
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -61,8 +60,15 @@ test('restart confirmation creates a typed task and disables duplicate operation
       (b) => b.textContent === '重启应用',
     )!;
     await act(async () => button.click());
+    expect(mocks.api.mock.calls.filter((c) => String(c[0]).startsWith('POST'))).toHaveLength(0);
+    const dialog = document.querySelector('[role=dialog]')!;
+    expect(dialog.textContent).toContain('数据库继续运行');
+    await act(async () =>
+      Array.from(dialog.querySelectorAll('button'))
+        .find((b) => b.textContent === '确认执行')!
+        .click(),
+    );
     await vi.waitFor(() => expect(host.textContent).toContain('等待执行'));
-    expect(confirm).toHaveBeenCalled();
     expect(button.disabled).toBe(true);
     const call = mocks.api.mock.calls.find((c) => String(c[0]).startsWith('POST'))!;
     expect(JSON.parse(call[2].body).kind).toBe('restart');
@@ -71,6 +77,5 @@ test('restart confirmation creates a typed task and disables duplicate operation
     await act(async () => root.unmount());
     client.clear();
     host.remove();
-    confirm.mockRestore();
   }
 });

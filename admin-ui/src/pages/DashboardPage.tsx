@@ -150,7 +150,7 @@ export function DashboardPage() {
     { label: '订单管理', href: '/admin/orders', icon: Zap },
     { label: '工单管理', href: '/admin/tickets', icon: LifeBuoy },
     { label: '用户管理', href: '/admin/users', icon: Users },
-    { label: '安装实例', href: '/admin/installs', icon: Boxes },
+    { label: '客户端安装', href: '/admin/installs', icon: Boxes },
     { label: '通知管理', href: '/admin/notifications', icon: Bell },
   ];
 

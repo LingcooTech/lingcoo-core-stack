@@ -233,7 +233,7 @@ export function NotificationDetailDialog({
                       mono
                     />
                     <MetaField
-                      label="安装实例"
+                      label="客户端安装"
                       value={ticketDetail.ticket.install?.extensionInstallId ?? '未关联'}
                       mono
                     />

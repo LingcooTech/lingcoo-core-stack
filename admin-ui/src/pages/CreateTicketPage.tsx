@@ -76,7 +76,7 @@ export function CreateTicketPage() {
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground">提交新工单</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            请把关联应用、订单号、安装实例
+            请把关联应用、订单号、客户端安装
             ID、复现步骤和已尝试过的排查动作写完整，这样后续处理更高效。
           </p>
         </section>
@@ -124,7 +124,7 @@ export function CreateTicketPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>安装实例 ID</Label>
+              <Label>客户端安装 ID</Label>
               <Input
                 value={form.extensionInstallId}
                 onChange={(event) =>

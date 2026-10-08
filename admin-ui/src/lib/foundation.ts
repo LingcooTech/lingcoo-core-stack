@@ -110,13 +110,13 @@ export function listAllowedAdminSectionKeys(
 
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   hosting: {
-    groupLabel: '平台',
-    navTitle: '托管服务器',
-    navNote: '容量与健康',
+    groupLabel: '运维',
+    navTitle: '托管运维',
+    navNote: '资源、实例与备份',
     icon: 'Server',
     permission: 'settings.manage',
-    title: '托管服务器',
-    lead: '管理平台托管节点与资源预留',
+    title: '托管运维',
+    lead: '集中管理服务器资源、托管实例、证书与备份任务',
     href: '/admin/hosting',
     contextCards: [
       { label: '节点', value: '健康上报', note: '超过 5 分钟的报告不参与分配' },
@@ -341,23 +341,27 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
   },
   installs: {
     groupLabel: '客户管理',
-    navTitle: '安装实例',
+    navTitle: '客户端安装',
     navNote: '',
     icon: 'Boxes',
     permission: 'installs.view',
-    title: '安装实例',
-    lead: '',
+    title: '客户端安装',
+    lead: '查看客户端登记、用户绑定与最近上报；服务器运行管理请前往托管运维。',
     href: '/admin/installs',
     contextCards: [
-      { label: '用途', value: '实例追踪', note: '跟踪应用的实际安装和使用情况。' },
+      {
+        label: '用途',
+        value: '客户端登记',
+        note: '记录通过安装接入协议登记的客户端，用于客户支持和授权关联。',
+      },
       { label: '数据', value: '设备指纹', note: '记录设备信息用于安装去重和统计。' },
     ],
     heroActions: [
-      { label: '安装实例', href: '/admin/installs', tone: 'primary' },
+      { label: '客户端安装', href: '/admin/installs', tone: 'primary' },
       { label: '授权管理', href: '/admin/licenses', tone: 'secondary' },
     ],
     pageDataScopes: ['operations'],
-    commandAliases: ['installs', 'installations', '安装', '安装实例'],
+    commandAliases: ['installs', 'installations', '安装', '安装实例', '客户端安装'],
   },
   tickets: {
     groupLabel: '客户管理',

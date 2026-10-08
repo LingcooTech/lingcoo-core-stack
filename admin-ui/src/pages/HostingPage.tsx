@@ -1,139 +1,212 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { Server, Boxes, ShieldCheck, Activity, RefreshCw, Search, CircleCheck } from 'lucide-react';
 import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HostingNodeCard } from '@/components/hosting/HostingNodeCard';
 import { HostingInstances } from '@/components/hosting/HostingInstances';
-
+import { AddHostingNode } from '@/components/hosting/AddHostingNode';
+import { useHostingOverview } from '@/components/hosting/useHostingOverview';
+import { HostingEmpty, HostingLoading } from '@/components/hosting/HostingVisuals';
 export function HostingPage() {
-  const qc = useQueryClient();
-  const [name, setName] = useState('');
-  const [serverIp, setServerIp] = useState('');
-  const [cpu, setCpu] = useState('2');
-  const [memory, setMemory] = useState('4096');
-  const [disk, setDisk] = useState('20480');
-  const [credential, setCredential] = useState<{ id: string; token: string } | null>(null);
+  const [params, setParams] = useSearchParams();
+  const tab = ['servers', 'instances', 'operations'].includes(params.get('tab') ?? '')
+    ? params.get('tab')!
+    : 'servers';
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
   const nodes = useQuery({
     queryKey: ['hosting-nodes'],
     queryFn: () => apiClient('GET /v1/admin/hosting/nodes', '/v1/admin/hosting/nodes'),
     refetchInterval: 15000,
   });
-  const create = useMutation({
-    mutationFn: () =>
-      apiClient('POST /v1/admin/hosting/nodes', '/v1/admin/hosting/nodes', {
-        body: JSON.stringify({
-          name,
-          serverIp,
-          capacity: {
-            cpuMillis: Number(cpu) * 1000,
-            memoryMb: Number(memory),
-            diskMb: Number(disk),
-          },
-        }),
-      }),
-    onSuccess: (result) => {
-      setCredential({ id: result.node.id, token: result.reportToken });
-      void qc.invalidateQueries({ queryKey: ['hosting-nodes'] });
-      toast.success('节点已登记，默认暂停分配');
-    },
-    onError: (error) => toast.error(error.message),
-  });
+  const overview = useHostingOverview();
+  const items = nodes.data?.items ?? [];
+  const alerts = items.reduce((sum, n) => sum + n.alerts.length, 0);
+  const filtered = items.filter(
+    (n) =>
+      `${n.name} ${n.serverIp} ${n.asset.provider}`.toLowerCase().includes(search.toLowerCase()) &&
+      (filter === 'all' ||
+        (filter === 'deploy' && n.telemetry?.canDeploy) ||
+        (filter === 'attention' && (!n.healthy || n.alerts.length > 0))),
+  );
+  const instances = overview.data?.instances ?? [];
+  const protectedCount = instances.filter(
+    (i) =>
+      i.telemetryFresh &&
+      i.backup?.status === 'success' &&
+      i.backup.offsiteStatus === 'success' &&
+      !!i.backup.offsiteAt &&
+      Date.now() - Date.parse(i.backup.offsiteAt) < 36 * 3600000,
+  ).length;
+  const refresh = () => {
+    void nodes.refetch();
+    void overview.refetch();
+  };
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">托管资源与运维</h1>
-        <p className="text-muted-foreground">
-          集中查看服务器资源、托管实例、备份和证书状态，执行可追踪的运维任务。
-        </p>
-      </div>
-      <details>
-        <summary className="cursor-pointer font-medium">添加服务器资源</summary>
-        <Card>
-          <CardHeader>
-            <CardTitle>登记节点</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              填写扣除系统与现有应用占用后的可分配预算。每个节点只登记一次；接入执行器并启用分配后，平台可以自动部署。
-            </p>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <Label htmlFor="hosting-name">节点名称</Label>
-                <Input id="hosting-name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="hosting-ip">服务器 IP</Label>
-                <Input
-                  id="hosting-ip"
-                  value={serverIp}
-                  onChange={(e) => setServerIp(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="hosting-cpu">可分配 CPU 核数</Label>
-                <Input
-                  id="hosting-cpu"
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={cpu}
-                  onChange={(e) => setCpu(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="hosting-memory">可分配内存 MiB</Label>
-                <Input
-                  id="hosting-memory"
-                  type="number"
-                  value={memory}
-                  onChange={(e) => setMemory(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="hosting-disk">可分配磁盘 MiB</Label>
-                <Input
-                  id="hosting-disk"
-                  type="number"
-                  value={disk}
-                  onChange={(e) => setDisk(e.target.value)}
-                />
-              </div>
+    <div className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">运维 / HOSTING</p>
+          <h1 className="text-2xl font-semibold tracking-tight">托管运维</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            掌握服务器资源，管理托管应用与数据保护。
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={refresh}
+            disabled={nodes.isFetching || overview.isFetching}
+          >
+            <RefreshCw className="size-4" />
+            刷新
+          </Button>
+          <AddHostingNode />
+        </div>
+      </header>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          {
+            title: '服务器在线',
+            value: nodes.data ? `${items.filter((n) => n.healthy).length} / ${items.length}` : '—',
+            note: '节点健康与资源上报',
+            icon: Server,
+          },
+          {
+            title: '托管实例',
+            value: overview.data ? String(instances.length) : '—',
+            note: overview.data
+              ? `${instances.filter((i) => i.state === 'ready' && i.telemetryFresh).length} 个已就绪且报告正常`
+              : '正在读取实例',
+            icon: Boxes,
+          },
+          {
+            title: '异机备份正常',
+            value: overview.data ? `${protectedCount} / ${instances.length}` : '—',
+            note: '36 小时内的成功副本',
+            icon: ShieldCheck,
+          },
+          {
+            title: '待关注提醒',
+            value: nodes.data ? String(alerts) : '—',
+            note: '资源、证书与备份异常',
+            icon: Activity,
+          },
+        ].map((m) => (
+          <div key={m.title} className="rounded-xl border bg-card px-4 py-4 sm:px-5">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>{m.title}</span>
+              <m.icon className="size-4" />
             </div>
-            <Button
-              disabled={create.isPending || !name.trim() || !serverIp.trim()}
-              onClick={() => create.mutate()}
-            >
-              登记服务器
-            </Button>
-            {credential ? (
-              <div className="space-y-2 rounded border p-3">
-                <p>健康上报凭据仅显示一次，请保存到节点上权限为 600 的探针配置文件。</p>
-                <p className="font-mono break-all">节点 ID：{credential.id}</p>
-                <p className="font-mono break-all">reportToken：{credential.token}</p>
-                <p className="text-sm">
-                  使用仓库 scripts/hosting-node-report.py 定时上报，确认报告正常后启用分配。
-                </p>
-                <Button variant="outline" onClick={() => setCredential(null)}>
-                  已保存，隐藏凭据
-                </Button>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      </details>
-      {nodes.isError ? <p role="alert">{nodes.error.message}</p> : null}
-      {nodes.isPending ? <p>正在读取节点…</p> : null}
-      {nodes.data?.items.length === 0 ? (
-        <p>尚未登记托管服务器。客户申请会保留为等待资源。</p>
+            <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{m.value}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">{m.note}</p>
+          </div>
+        ))}
+      </div>
+      {nodes.data && !nodes.isError ? (
+        <div className="flex items-start gap-2 rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+          <CircleCheck className="size-4 shrink-0" />
+          <span>
+            {items.length === 0
+              ? '添加第一台服务器，开始建立托管资源池。'
+              : alerts
+                ? `有 ${alerts} 项提醒需要处理，可筛选“需要关注”查看。`
+                : '节点当前无告警。运行数据每 15 秒刷新，实际采样由节点上报。'}
+          </span>
+        </div>
       ) : null}
-      {nodes.data?.items.map((node) => (
-        <HostingNodeCard key={node.id} node={node} />
-      ))}
-      <HostingInstances />
+      <Tabs
+        value={tab}
+        onValueChange={(value) =>
+          setParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              next.set('tab', value);
+              return next;
+            },
+            { replace: true },
+          )
+        }
+        className="space-y-5"
+      >
+        <div className="overflow-x-auto border-b pb-3">
+          <TabsList aria-label="托管管理分类">
+            <TabsTrigger value="servers">服务器资源</TabsTrigger>
+            <TabsTrigger value="instances">托管实例</TabsTrigger>
+            <TabsTrigger value="operations">运维记录</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="servers" className="space-y-4">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="font-semibold">服务器资源</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                资源预算与实际占用独立展示，暂停分配不影响已有应用。
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative min-w-0 flex-1 sm:w-56">
+                <Search className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  aria-label="搜索服务器"
+                  placeholder="搜索名称或 IP"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <select
+                aria-label="筛选服务器"
+                className="h-9 rounded-md border bg-background px-2 text-xs"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              >
+                <option value="all">全部节点</option>
+                <option value="deploy">托管节点</option>
+                <option value="attention">需要关注</option>
+              </select>
+            </div>
+          </div>
+          {nodes.isError ? (
+            <p
+              role="alert"
+              className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive"
+            >
+              {nodes.error.message}
+              <Button variant="ghost" size="sm" onClick={() => void nodes.refetch()}>
+                重试
+              </Button>
+            </p>
+          ) : nodes.isPending ? (
+            <HostingLoading />
+          ) : filtered.length ? (
+            <div className="grid items-stretch gap-4 xl:grid-cols-2">
+              {filtered.map((n) => (
+                <HostingNodeCard key={n.id} node={n} />
+              ))}
+            </div>
+          ) : (
+            <HostingEmpty
+              title={items.length ? '没有匹配的服务器' : '尚未添加服务器'}
+              description={
+                items.length
+                  ? '调整搜索条件，或切换节点筛选。'
+                  : '登记服务器并接入节点上报后，即可在这里查看资源和运行状态。'
+              }
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="instances">
+          <HostingInstances nodeNames={Object.fromEntries(items.map((n) => [n.id, n.name]))} />
+        </TabsContent>
+        <TabsContent value="operations">
+          <HostingInstances view="operations" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

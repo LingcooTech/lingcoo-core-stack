@@ -251,7 +251,11 @@ function TicketDetailPanel({
           <MetaField label="用户" value={ticket.user?.email ?? '—'} />
           <MetaField label="应用" value={ticket.app?.name ?? '未关联'} />
           <MetaField label="订单号" value={ticket.order?.orderNo ?? '未关联'} mono />
-          <MetaField label="安装实例" value={ticket.install?.extensionInstallId ?? '未关联'} mono />
+          <MetaField
+            label="客户端安装"
+            value={ticket.install?.extensionInstallId ?? '未关联'}
+            mono
+          />
           <MetaField label="部署" value={ticket.deployment?.label ?? '未关联'} />
           <MetaField
             label="当前指派"

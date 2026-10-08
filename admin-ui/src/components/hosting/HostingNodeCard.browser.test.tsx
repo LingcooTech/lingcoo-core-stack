@@ -36,16 +36,27 @@ test('monitor-only server cannot allocate and expiry editing preserves China cal
         </QueryClientProvider>,
       ),
     );
+    await act(async () =>
+      Array.from(host.querySelectorAll('button'))
+        .find((b) => b.textContent === '查看详情')!
+        .click(),
+    );
     expect(
-      Array.from(host.querySelectorAll('button')).find((b) => b.textContent === '启用分配')
-        ?.disabled,
+      Array.from(document.querySelectorAll<HTMLButtonElement>('[role=dialog] button')).find(
+        (b) => b.textContent === '启用分配',
+      )?.disabled,
     ).toBe(true);
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[data-slot=sheet-content] > button')!.click(),
+    );
     await act(async () =>
       Array.from(host.querySelectorAll('button'))
         .find((b) => b.textContent === '编辑资产与预算')!
         .click(),
     );
-    expect(host.querySelector<HTMLInputElement>('input[type=date]')?.value).toBe('2026-11-08');
+    expect(document.querySelector<HTMLInputElement>('[role=dialog] input[type=date]')?.value).toBe(
+      '2026-11-08',
+    );
   } finally {
     await act(async () => root.unmount());
     client.clear();

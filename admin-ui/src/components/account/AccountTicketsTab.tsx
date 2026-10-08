@@ -205,7 +205,11 @@ function TicketDetailPanel({
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <MetaField label="应用" value={ticket.app?.name ?? '未关联'} />
           <MetaField label="订单号" value={ticket.order?.orderNo ?? '未关联'} mono />
-          <MetaField label="安装实例" value={ticket.install?.extensionInstallId ?? '未关联'} mono />
+          <MetaField
+            label="客户端安装"
+            value={ticket.install?.extensionInstallId ?? '未关联'}
+            mono
+          />
           <MetaField label="部署" value={ticket.deployment?.label ?? '未关联'} />
         </div>
 

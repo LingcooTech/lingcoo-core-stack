@@ -715,7 +715,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
   const installColumns: Column<HydratedInstall>[] = [
     {
       key: 'install',
-      header: '安装实例',
+      header: '客户端安装',
       cell: (row) => <span className="font-mono text-[11px]">{row.extensionInstallId}</span>,
     },
     {
@@ -936,7 +936,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <MetricCard label="最近订单" value={activity.summary.recentOrders} />
         <MetricCard label="活跃授权" value={activity.summary.activeEntitlements} />
-        <MetricCard label="安装实例" value={activity.summary.installs} />
+        <MetricCard label="客户端安装" value={activity.summary.installs} />
         <MetricCard label="工单" value={activity.summary.tickets} />
         <MetricCard label="审计日志" value={activity.summary.auditLogs} />
         <MetricCard label="产品事件" value={activity.summary.events} />
@@ -956,7 +956,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
           <ActionLink to={adminSearchHref('/admin/licenses', detail.email)} label="授权明细" />
           <ActionLink to={grantHref} label="发放授权" />
           <ActionLink to={adminSearchHref('/admin/tickets', detail.email)} label="工单管理" />
-          <ActionLink to={adminSearchHref('/admin/installs', detail.email)} label="安装实例" />
+          <ActionLink to={adminSearchHref('/admin/installs', detail.email)} label="客户端安装" />
           <ActionLink to={observabilityHref('events', detail.email)} label="事件流" />
           <ActionLink to={observabilityHref('audits', detail.id)} label="审计日志" />
         </div>
@@ -980,12 +980,12 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         />
       </DetailSection>
 
-      <DetailSection title={`安装实例 (${activity.installs.length})`}>
+      <DetailSection title={`客户端安装 (${activity.installs.length})`}>
         <DataTable
           columns={installColumns}
           data={activity.installs}
           getRowKey={(row) => row.id}
-          emptyMessage="暂无安装实例"
+          emptyMessage="暂无客户端安装"
         />
       </DetailSection>
 
