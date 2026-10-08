@@ -163,3 +163,27 @@ test('refund reconciliation enqueue failure rolls back order and event changes',
   if (!order) throw new Error('Missing test fixture: order');
   assert.equal(order.status, 'paid');
 });
+
+test('partial or mismatched refund results cannot revoke a full software order', async (t) => {
+  const fixture = await paymentFixture();
+  const service = new BillingService(createServiceFactories(), db, env);
+  await service.handlePaymentNotification(fixture.notification);
+  t.mock.method(WechatPayProvider.prototype, 'refundPayment', async () => ({
+    kind: 'refunded' as const,
+    provider: 'wechat_pay' as const,
+    orderNo: fixture.order.orderNo,
+    amount: 50,
+    currency: 'CNY',
+    refundedAt: new Date(),
+    payload: {},
+    reason: 'Only part of the payment was refunded',
+  }));
+  await assert.rejects(service.refundOrderByOrderNo(fixture.order.orderNo), /does not match/);
+  const [order] = await db.select().from(orders).where(eq(orders.id, fixture.order.id));
+  const [entitlement] = await db
+    .select()
+    .from(entitlements)
+    .where(eq(entitlements.sourceId, fixture.order.id));
+  assert.equal(order?.status, 'paid');
+  assert.equal(entitlement?.status, 'active');
+});

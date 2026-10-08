@@ -1,3 +1,4 @@
+import { resolveRefund, verifyWechatRefund, verifyWechatRefundSignature } from './refunds';
 import { createHash, createHmac, createSign, randomBytes } from 'node:crypto';
 
 import { httpError } from '../../../lib/errors';
@@ -12,6 +13,7 @@ import type {
   ProviderContext,
   ProviderNotificationContext,
   ProviderRefundQueryContext,
+  ProviderRefundContext,
   ProviderQueryContext,
 } from './types';
 
@@ -598,7 +600,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
     };
   }
 
-  async refundPayment(context: ProviderQueryContext): Promise<PaymentRefundResult> {
+  async refundPayment(context: ProviderRefundContext): Promise<PaymentRefundResult> {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'WeChat Pay is not configured');
     }
@@ -607,14 +609,20 @@ export class WechatPayProvider implements BillingProviderAdapter {
       throw httpError(422, 'WeChat Pay only supports CNY refunds in this build');
     }
 
-    const outRefundNo = `${context.order.orderNo}_refund`;
+    const verificationKey = readSecretValue({
+      inlineValue: context.env.WECHAT_PAY_PLATFORM_CERT,
+      filePath: context.env.WECHAT_PAY_PLATFORM_CERT_PATH,
+      label: 'WECHAT_PAY_PLATFORM_CERT',
+    });
+    const refund = resolveRefund(context);
+    const outRefundNo = refund.refundRequestNo;
     const requestBody = JSON.stringify({
       out_trade_no: context.order.orderNo,
       out_refund_no: outRefundNo,
       reason: `Refund for ${context.order.orderNo}`,
       notify_url: this.getNotifyUrl(context.env),
       amount: {
-        refund: context.order.amount,
+        refund: refund.amount,
         total: context.order.amount,
         currency: context.order.currency,
       },
@@ -637,6 +645,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
     });
 
     const rawText = await response.text();
+    verifyWechatRefundSignature(response.headers, rawText, verificationKey);
     let payload: Record<string, unknown> = {};
     if (rawText) {
       try {
@@ -672,6 +681,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
         ? payload.transaction_id
         : (context.order.providerOrderId ?? null);
 
+    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING')
+      verifyWechatRefund(context, refund, payload);
+
     if (refundStatus === 'SUCCESS') {
       return {
         kind: 'refunded',
@@ -680,7 +692,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         providerOrderId,
         refundId,
         refundRequestNo: outRefundNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
         payload,
@@ -696,7 +708,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         providerOrderId,
         refundId,
         refundRequestNo: outRefundNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         payload,
         reason: 'Refund accepted by WeChat Pay and is processing',
@@ -719,8 +731,16 @@ export class WechatPayProvider implements BillingProviderAdapter {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'WeChat Pay is not configured');
     }
+    if (context.order.currency !== 'CNY')
+      throw httpError(422, 'WeChat Pay only supports CNY refunds in this build');
 
-    const outRefundNo = context.refund.refundRequestNo?.trim() || `${context.order.orderNo}_refund`;
+    const verificationKey = readSecretValue({
+      inlineValue: context.env.WECHAT_PAY_PLATFORM_CERT,
+      filePath: context.env.WECHAT_PAY_PLATFORM_CERT_PATH,
+      label: 'WECHAT_PAY_PLATFORM_CERT',
+    });
+    const refund = resolveRefund(context);
+    const outRefundNo = refund.refundRequestNo;
     const pathname = `${WECHAT_REFUND_QUERY_API_PATH}/${encodeURIComponent(outRefundNo)}`;
     const response = await fetch(new URL(pathname, this.getApiBaseUrl(context.env)), {
       method: 'GET',
@@ -737,6 +757,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
     });
 
     const rawText = await response.text();
+    verifyWechatRefundSignature(response.headers, rawText, verificationKey);
     let payload: Record<string, unknown> = {};
     if (rawText) {
       try {
@@ -776,6 +797,9 @@ export class WechatPayProvider implements BillingProviderAdapter {
     const refundStatus =
       typeof payload.status === 'string' ? payload.status.trim().toUpperCase() : '';
 
+    if (refundStatus === 'SUCCESS' || refundStatus === 'PROCESSING')
+      verifyWechatRefund(context, refund, payload);
+
     if (refundStatus === 'SUCCESS') {
       return {
         kind: 'refunded',
@@ -784,7 +808,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         providerOrderId,
         refundId,
         refundRequestNo: outRefundNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
         payload,
@@ -800,7 +824,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
         providerOrderId,
         refundId,
         refundRequestNo: outRefundNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         payload,
         reason: 'WeChat Pay refund is still processing',

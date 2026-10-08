@@ -1,3 +1,4 @@
+import { resolveRefund, verifyAlipayRefund } from './refunds';
 import { AlipaySdk } from 'alipay-sdk';
 
 import { httpError } from '../../../lib/errors';
@@ -18,6 +19,7 @@ import type {
   ProviderContext,
   ProviderNotificationContext,
   ProviderRefundQueryContext,
+  ProviderRefundContext,
   ProviderQueryContext,
 } from './types';
 
@@ -398,20 +400,27 @@ export class AlipayProvider implements BillingProviderAdapter {
     };
   }
 
-  async refundPayment(context: ProviderQueryContext) {
+  async refundPayment(context: ProviderRefundContext) {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'Alipay is not configured');
     }
+    if (context.order.currency !== 'CNY')
+      throw httpError(422, 'Alipay only supports CNY refunds in this build');
 
-    const outRequestNo = `${context.order.orderNo}_refund`;
-    const result = await this.getSdk(context.env).exec('alipay.trade.refund', {
-      bizContent: {
-        outTradeNo: context.order.orderNo,
-        tradeNo: context.order.providerOrderId?.trim() || undefined,
-        refundAmount: amountFenToYuanString(context.order.amount),
-        outRequestNo,
+    const refund = resolveRefund(context);
+    const outRequestNo = refund.refundRequestNo;
+    const result = await this.getSdk(context.env).exec(
+      'alipay.trade.refund',
+      {
+        bizContent: {
+          outTradeNo: context.order.orderNo,
+          tradeNo: context.order.providerOrderId?.trim() || undefined,
+          refundAmount: amountFenToYuanString(refund.amount),
+          outRequestNo,
+        },
       },
-    });
+      { validateSign: true },
+    );
     const payload = result as Record<string, unknown>;
     const tradeNo =
       typeof result.tradeNo === 'string'
@@ -428,6 +437,7 @@ export class AlipayProvider implements BillingProviderAdapter {
     const msg = typeof result.msg === 'string' ? result.msg : '';
 
     if (result.code === '10000') {
+      verifyAlipayRefund(context, refund, payload, false);
       return {
         kind: 'refunded' as const,
         provider: this.code,
@@ -435,7 +445,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         providerOrderId: tradeNo,
         refundId: outRequestNo,
         refundRequestNo: outRequestNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
         payload,
@@ -472,16 +482,22 @@ export class AlipayProvider implements BillingProviderAdapter {
     if (!this.isConfigured(context.env)) {
       throw httpError(422, 'Alipay is not configured');
     }
+    if (context.order.currency !== 'CNY')
+      throw httpError(422, 'Alipay only supports CNY refunds in this build');
 
-    const outRequestNo =
-      context.refund.refundRequestNo?.trim() || `${context.order.orderNo}_refund`;
-    const result = await this.getSdk(context.env).exec('alipay.trade.fastpay.refund.query', {
-      bizContent: {
-        outTradeNo: context.order.orderNo,
-        tradeNo: context.order.providerOrderId?.trim() || undefined,
-        outRequestNo,
+    const refund = resolveRefund(context);
+    const outRequestNo = refund.refundRequestNo;
+    const result = await this.getSdk(context.env).exec(
+      'alipay.trade.fastpay.refund.query',
+      {
+        bizContent: {
+          outTradeNo: context.order.orderNo,
+          tradeNo: context.order.providerOrderId?.trim() || undefined,
+          outRequestNo,
+        },
       },
-    });
+      { validateSign: true },
+    );
     const payload = result as Record<string, unknown>;
     const tradeNo =
       typeof result.tradeNo === 'string'
@@ -498,6 +514,21 @@ export class AlipayProvider implements BillingProviderAdapter {
     const msg = typeof result.msg === 'string' ? result.msg : '';
 
     if (result.code === '10000') {
+      if ((payload.refundStatus ?? payload.refund_status) !== 'REFUND_SUCCESS') {
+        return {
+          kind: 'processing',
+          provider: this.code,
+          orderNo: context.order.orderNo,
+          providerOrderId: tradeNo,
+          refundId: outRequestNo,
+          refundRequestNo: outRequestNo,
+          amount: refund.amount,
+          currency: context.order.currency,
+          payload,
+          reason: 'Alipay has not confirmed refund success',
+        };
+      }
+      verifyAlipayRefund(context, refund, payload, true);
       return {
         kind: 'refunded',
         provider: this.code,
@@ -505,7 +536,7 @@ export class AlipayProvider implements BillingProviderAdapter {
         providerOrderId: tradeNo,
         refundId: outRequestNo,
         refundRequestNo: outRequestNo,
-        amount: context.order.amount,
+        amount: refund.amount,
         currency: context.order.currency,
         refundedAt: new Date(),
         payload,

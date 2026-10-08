@@ -43,10 +43,15 @@ export type ProviderQueryContext = {
   };
 };
 
+export type ProviderRefundContext = ProviderQueryContext & {
+  refund?: { refundRequestNo: string; amount: number };
+};
+
 export type ProviderRefundQueryContext = ProviderQueryContext & {
   refund: {
     refundId?: string | null;
     refundRequestNo?: string | null;
+    amount?: number;
   };
 };
 
@@ -176,6 +181,6 @@ export interface BillingProviderAdapter {
   parseNotification(context: ProviderNotificationContext): Promise<PaymentNotificationResult>;
   queryPayment(context: ProviderQueryContext): Promise<PaymentQueryResult>;
   closePayment(context: ProviderQueryContext): Promise<PaymentCloseResult>;
-  refundPayment(context: ProviderQueryContext): Promise<PaymentRefundResult>;
+  refundPayment(context: ProviderRefundContext): Promise<PaymentRefundResult>;
   queryRefundPayment(context: ProviderRefundQueryContext): Promise<PaymentRefundQueryResult>;
 }

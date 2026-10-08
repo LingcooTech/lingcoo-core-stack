@@ -66,6 +66,7 @@ export class BillingRefundUseCases {
       throw httpError(500, 'Unexpected refund result');
     }
 
+    this.assertFullOrderRefund(order, refundResult);
     return this.applyRefundResult(order, refundResult);
   }
 
@@ -97,6 +98,22 @@ export class BillingRefundUseCases {
       throw httpError(409, result.action.reason);
     }
     return result;
+  }
+
+  private assertFullOrderRefund(
+    order: BillingOrder,
+    result: Extract<PaymentRefundResult, { kind: 'refunded' | 'processing' }>,
+  ) {
+    if (
+      result.orderNo !== order.orderNo ||
+      result.provider !== order.provider ||
+      result.amount !== order.amount ||
+      result.currency !== order.currency ||
+      (result.providerOrderId &&
+        order.providerOrderId &&
+        result.providerOrderId !== order.providerOrderId)
+    )
+      throw httpError(409, 'Refund result does not match the full order; entitlements unchanged');
   }
 
   protected async applyRefundResult(order: BillingOrder, refundResult: PaymentRefundResult) {
@@ -203,6 +220,9 @@ export class BillingRefundUseCases {
         refundRequestNo: refundMeta.refundRequestNo,
       },
     });
+
+    if (refundQuery.kind === 'refunded' || refundQuery.kind === 'processing')
+      this.assertFullOrderRefund(order, refundQuery);
 
     if (refundQuery.kind === 'refunded') {
       return this.applyRefundQueryResult(order, refundQuery);
