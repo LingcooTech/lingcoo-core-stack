@@ -454,6 +454,7 @@ export class TicketService {
   }
 
   async listAdminTickets(query: {
+    deploymentId?: string;
     limit: number;
     offset: number;
     search?: string;

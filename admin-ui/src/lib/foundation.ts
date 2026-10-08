@@ -9,6 +9,7 @@ export type AdminSectionKey =
   | 'settings'
   | 'users'
   | 'licenses'
+  | 'deployments'
   | 'hosting'
   | 'installs'
   | 'tickets'
@@ -34,6 +35,7 @@ export type AdminSectionPermission =
   | 'settings.manage'
   | 'users.view'
   | 'licenses.manage'
+  | 'deployments.view'
   | 'installs.view'
   | 'tickets.manage'
   | 'notifications.manage'
@@ -109,6 +111,23 @@ export function listAllowedAdminSectionKeys(
 }
 
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
+  deployments: {
+    groupLabel: '客户管理',
+    navTitle: '应用部署',
+    navNote: '交付台账',
+    icon: 'Boxes',
+    permission: 'deployments.view',
+    title: '应用部署',
+    lead: '统一追踪客户自有服务器与平台托管的交付记录',
+    href: '/admin/deployments',
+    contextCards: [
+      { label: '自有服务器', value: '交付追踪', note: '客户自行维护服务器' },
+      { label: '平台托管', value: '托管运维', note: '由平台管理运行服务' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['deployments', '应用部署', '交付台账'],
+  },
   hosting: {
     groupLabel: '运维',
     navTitle: '托管运维',
@@ -431,7 +450,10 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '内容管理', items: ['content'] },
   { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
-  { label: '客户管理', items: ['users', 'licenses', 'installs', 'tickets', 'notifications'] },
+  {
+    label: '客户管理',
+    items: ['users', 'licenses', 'deployments', 'installs', 'tickets', 'notifications'],
+  },
   { label: '运维', items: ['hosting', 'settings', 'observability'] },
 ];
 

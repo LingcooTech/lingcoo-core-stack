@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -347,6 +347,8 @@ function TicketDetailPanel({
 }
 
 export function TicketsPage() {
+  const [contextParams, setContextParams] = useSearchParams();
+  const deploymentId = contextParams.get('deploymentId') ?? undefined;
   const qc = useQueryClient();
   const { user } = useAuth();
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
@@ -368,12 +370,13 @@ export function TicketsPage() {
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
+      deploymentId,
       // 后端 status/category/priority 当前为单值；多选时取首项
       status: statusValues[0] as HydratedSupportTicket['status'] | undefined,
       category: categoryValues[0] as HydratedSupportTicket['category'] | undefined,
       priority: priorityValues[0] as HydratedSupportTicket['priority'] | undefined,
     }),
-    [categoryValues, deferredSearch, page, priorityValues, statusValues],
+    [categoryValues, deferredSearch, page, priorityValues, statusValues, deploymentId],
   );
 
   const ticketsQuery = useQuery({
@@ -574,6 +577,25 @@ export function TicketsPage() {
     <div>
       <SectionHeader sectionKey="tickets" />
       <div className="space-y-4 p-6">
+        {deploymentId && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+            <span className="break-all">关联部署：{deploymentId}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setContextParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.delete('deploymentId');
+                  next.delete('page');
+                  return next;
+                })
+              }
+            >
+              清除部署筛选
+            </Button>
+          </div>
+        )}
         <FilterChipBar
           searchValue={search}
           onSearchChange={setSearch}

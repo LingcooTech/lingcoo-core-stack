@@ -289,6 +289,7 @@ export class TicketRepository {
   }
 
   async listAdminTickets(query: {
+    deploymentId?: string;
     limit: number;
     offset: number;
     search?: string;
@@ -305,6 +306,7 @@ export class TicketRepository {
     priority?: SupportTicketPriority;
   }) {
     const conditions: SQL[] = [];
+    if (query.deploymentId) conditions.push(eq(supportTickets.deploymentId, query.deploymentId));
 
     if (query.status) {
       conditions.push(eq(supportTickets.status, query.status));

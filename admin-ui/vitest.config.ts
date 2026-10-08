@@ -4,7 +4,7 @@ import viteConfig from './vite.config';
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    optimizeDeps: { include: ['@radix-ui/react-dialog', 'radix-ui'] },
+    optimizeDeps: { include: ['@radix-ui/react-dialog', 'radix-ui', 'react-router-dom'] },
     test: {
       include: ['src/**/*.browser.test.{ts,tsx}'],
       browser: {

@@ -32,7 +32,7 @@ function userDetailHref(userId: string) {
 
 export function InstallsPage() {
   const { user } = useAuth();
-  const canManageHosting = hasPermission(normalizeRole(user?.role), 'settings.manage');
+  const canViewDeployments = hasPermission(normalizeRole(user?.role), 'deployments.view');
   const { page, search, setPage, setSearch } = useTableState({ defaultPageSize: PAGE_SIZE });
   const deferredSearch = useDeferredValue(search);
 
@@ -136,13 +136,13 @@ export function InstallsPage() {
               客户端安装
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              查看应用客户端的安装登记、版本和用户绑定，处理接入与授权问题。
+              查看插件等客户端主动登记的安装、版本和用户绑定，处理接入与授权问题。
             </p>
           </div>
-          {canManageHosting ? (
+          {canViewDeployments ? (
             <Button variant="outline" asChild>
-              <Link to="/admin/hosting?tab=instances">
-                前往托管实例
+              <Link to="/admin/deployments">
+                查看应用部署
                 <ArrowUpRight className="size-4" />
               </Link>
             </Button>
@@ -151,7 +151,8 @@ export function InstallsPage() {
         <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
           <Info className="mt-0.5 size-4 shrink-0" />
           <p>
-            这里记录通过安装协议登记的客户端。“最近上报”反映客户端最后一次联系平台的时间，不代表服务器健康。服务器、容器、证书和备份统一在“托管运维”管理。
+            这里记录客户端主动调用登记接口产生的安装。客户使用 deploy token
+            安装到服务器的记录位于“应用部署”。“最近上报”反映客户端最后一次联系平台的时间，不代表服务器健康。服务器、容器、证书和备份统一在“托管运维”管理。
           </p>
         </div>
         {installsQuery.isError ? (

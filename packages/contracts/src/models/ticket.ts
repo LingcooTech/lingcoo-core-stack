@@ -121,6 +121,7 @@ export type SupportTicketsResponse = z.infer<typeof SupportTicketsResponseSchema
 export const AdminTicketListParamsSchema = z.intersection(
   AdminListParamsSchema,
   z.object({
+    deploymentId: z.uuid().optional(),
     status: z
       .union([
         z.literal('waiting_staff'),

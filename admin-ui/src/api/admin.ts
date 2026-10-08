@@ -59,6 +59,7 @@ export interface AdminNotificationListParams extends AdminListParams {
 }
 
 export interface AdminTicketListParams extends AdminListParams {
+  deploymentId?: string;
   status?: 'waiting_staff' | 'waiting_user' | 'resolved' | 'closed';
   category?:
     | 'account'

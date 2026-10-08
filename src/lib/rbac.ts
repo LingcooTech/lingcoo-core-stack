@@ -17,6 +17,7 @@ export type AppPermission =
   | 'users.suspend'
   | 'users.reset_password'
   | 'licenses.manage'
+  | 'deployments.view'
   | 'installs.view'
   | 'tickets.manage'
   | 'notifications.manage'
@@ -42,6 +43,7 @@ const allPermissions: AppPermission[] = [
   'users.reset_password',
   'licenses.manage',
   'installs.view',
+  'deployments.view',
   'tickets.manage',
   'notifications.manage',
   'observability.view',
@@ -66,6 +68,7 @@ export const rolePermissions: Record<AppRole, AppPermission[]> = {
     'users.view',
     'licenses.manage',
     'installs.view',
+    'deployments.view',
     'tickets.manage',
     'notifications.manage',
     'observability.view',
@@ -87,6 +90,7 @@ export const rolePermissions: Record<AppRole, AppPermission[]> = {
     'payments.manage',
     'settings.manage',
     'installs.view',
+    'deployments.view',
     'observability.view',
     'ai.manage',
   ],

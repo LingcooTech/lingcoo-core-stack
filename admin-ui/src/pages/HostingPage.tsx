@@ -119,6 +119,20 @@ export function HostingPage() {
           </span>
         </div>
       ) : null}
+      {params.get('deploymentId') && (
+        <Button
+          variant="outline"
+          onClick={() =>
+            setParams((current) => {
+              const next = new URLSearchParams(current);
+              next.delete('deploymentId');
+              return next;
+            })
+          }
+        >
+          清除实例筛选，查看全部
+        </Button>
+      )}
       <Tabs
         value={tab}
         onValueChange={(value) =>
@@ -201,7 +215,10 @@ export function HostingPage() {
           )}
         </TabsContent>
         <TabsContent value="instances">
-          <HostingInstances nodeNames={Object.fromEntries(items.map((n) => [n.id, n.name]))} />
+          <HostingInstances
+            deploymentId={params.get('deploymentId') ?? undefined}
+            nodeNames={Object.fromEntries(items.map((n) => [n.id, n.name]))}
+          />
         </TabsContent>
         <TabsContent value="operations">
           <HostingInstances view="operations" />

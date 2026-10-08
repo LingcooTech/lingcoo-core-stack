@@ -17,3 +17,5 @@ export * from './models/settings.js';
 export * from './models/summaries.js';
 export * from './models/ticket.js';
 export * from './hosting.js';
+
+export * from './admin-deployments.js';

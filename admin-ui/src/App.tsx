@@ -70,6 +70,10 @@ const ForgotPasswordPage = lazyNamed(
   'ForgotPasswordPage',
 );
 const HomePage = lazyNamed(() => import('@/pages/HomePage'), 'HomePage');
+const AdminDeploymentsPage = lazyNamed(
+  () => import('@/pages/AdminDeploymentsPage'),
+  'AdminDeploymentsPage',
+);
 const HostingPage = lazyNamed(() => import('@/pages/HostingPage'), 'HostingPage');
 const InstallsPage = lazyNamed(() => import('@/pages/InstallsPage'), 'InstallsPage');
 const LicensesPage = lazyNamed(() => import('@/pages/LicensesPage'), 'LicensesPage');
@@ -404,6 +408,14 @@ const router = createBrowserRouter(
             element={
               <ProtectedAdminSectionRoute sectionKey="hosting">
                 <HostingPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/deployments"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="deployments">
+                <AdminDeploymentsPage />
               </ProtectedAdminSectionRoute>
             }
           />

@@ -1,3 +1,4 @@
+import { AdminDeploymentsSchema } from './admin-deployments.js';
 import { externalResponseContracts, nonJsonResponseRoutes } from './external-responses.js';
 import { z } from 'zod';
 import {
@@ -15,6 +16,7 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  { method: 'GET', path: '/v1/admin/deployments', schema: AdminDeploymentsSchema },
   { method: 'GET', path: '/v1/admin/hosting/overview', schema: HostingOverviewSchema },
   {
     method: 'POST',

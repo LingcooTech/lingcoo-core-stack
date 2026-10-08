@@ -36,8 +36,10 @@ const deploymentStates: Record<string, string> = {
 export function HostingInstances({
   view = 'instances',
   nodeNames = {},
+  deploymentId,
 }: {
   view?: 'instances' | 'operations';
+  deploymentId?: string;
   nodeNames?: Record<string, string>;
 }) {
   const qc = useQueryClient();
@@ -70,10 +72,12 @@ export function HostingInstances({
     },
     onError: (e) => toast.error(e.message),
   });
-  const instances = (overview.data?.instances ?? []).filter((i) =>
-    `${i.label} ${i.customerEmail} ${i.hostname ?? ''}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
+  const instances = (overview.data?.instances ?? []).filter(
+    (i) =>
+      (!deploymentId || i.id === deploymentId) &&
+      `${i.label} ${i.customerEmail} ${i.hostname ?? ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
   const operations = (overview.data?.operations ?? []).filter((o) =>
     `${overview.data?.instances.find((i) => i.id === o.deploymentId)?.label ?? o.deploymentId} ${states[o.state]}`
