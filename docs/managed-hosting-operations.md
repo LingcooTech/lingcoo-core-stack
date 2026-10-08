@@ -100,3 +100,16 @@ systemctl start lingcoo-hosting-certificate.service
 4. 清理仅本次演练创建且标签匹配的容器/卷/网络；不得使用全局 Docker prune。
 
 每日备份的目标 RPO 约 24 小时，不能保证零数据丢失；跨机器副本减少单机故障风险，但两台同属腾讯云，仍非跨云/不可变备份。后续有正式客户时应补充独立存储或第三故障域、恢复演练周期与主动告警通知。本期不提供一键跨节点迁移、版本升级或破坏性在线恢复。
+
+## 本轮生产验收结果
+
+2026-10-08 已发布运行版本 `8c93a049bb9a5896362186776621f1946b25bc37`。[CI](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37714943243) 和 [生产发布](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37715468897) 成功，线上 `/ready` 版本一致。CI 通过 56 项单元、70 项集成、12 项管理界面及 4 项浏览器端到端测试。
+
+- 两台节点在线、无管理告警，82 仅监控，118 启用托管执行器；已完成线上页面、资产编辑入口和运维结果显示验证。
+- `retail-demo-20261008.app.lingcoo.com` 公网使用 `*.app.lingcoo.com`，到期时间为北京时间 2027-01-06 08:41:14；无效证书包被接收器拒绝，当前有效证书保持不变；重复检查复用同一证书。
+- `retail-demo.lingcoo.com` 继续使用独立证书。两个域名的 Web、Admin、API readiness、Worker health 均为 HTTP 200。
+- 正式管理员接口创建的重启与备份任务均成功。重复请求复用同一任务；最新备份本地完成于北京时间 10:06:15，异机完成于 10:06:46。核对 15 个非目标运行容器及 Retail 数据库的启动时间，未受托管操作影响。
+- 从异机加密快照恢复 79 张业务表，核对账号、商品、订单、客户、存储对象表记录数量与文件哈希；restic 全数据检查、备份 SHA256 校验均通过。演练容器、卷、网络和临时明文恢复文件已清理。
+- Retail 五个服务在本次验收采样时合计约 285 MiB，预算上限仍为 1024 MiB。该数字是当前空闲采样，不是峰值或可承载客户数量的容量承诺；本轮未进行内存压缩改造或负载容量测试。
+
+结构化证据见 [managed-hosting-operations-acceptance.json](./managed-hosting-operations-acceptance.json)。验收后的文档提交不重复发布同一运行代码。

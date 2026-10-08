@@ -1,0 +1,86 @@
+{
+  "verifiedAt": "2026-10-08T02:07:30.491301+00:00",
+  "runtimeCommit": "8c93a049bb9a5896362186776621f1946b25bc37",
+  "ci": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37714943243",
+  "deploy": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37715468897",
+  "tests": {
+    "unit": 56,
+    "integration": 70,
+    "adminBrowser": 12,
+    "browserE2E": 4
+  },
+  "nodes": [
+    {
+      "ip": "82.157.22.93",
+      "healthy": true,
+      "canDeploy": false,
+      "containers": 34,
+      "alerts": []
+    },
+    {
+      "ip": "118.25.36.15",
+      "healthy": true,
+      "canDeploy": true,
+      "containers": 27,
+      "alerts": []
+    }
+  ],
+  "certificateChecks": [
+    {
+      "host": "retail-demo-20261008.app.lingcoo.com",
+      "sans": ["*.app.lingcoo.com", "app.lingcoo.com"],
+      "fingerprint": "ab0b7a98ed4e4e2b7a56133118c0105c98ac9a4d2ca1121a45a482e0952cc8da"
+    },
+    {
+      "host": "retail-demo.lingcoo.com",
+      "sans": ["retail-demo.lingcoo.com"],
+      "fingerprint": "a85902b2e90883fc83114c55cf0b4864d1f49f2d09174615574fd61b1344bb4d"
+    }
+  ],
+  "deploymentId": "c000d1a7-f0ab-4350-9d89-cad20831651f",
+  "instanceMemoryMiB": 285.0,
+  "backup": {
+    "deploymentId": "c000d1a7-f0ab-4350-9d89-cad20831651f",
+    "completedAt": "2026-10-08T02:06:15.511134+00:00",
+    "status": "success",
+    "offsiteAt": "2026-10-08T02:06:46.030201+00:00",
+    "offsiteStatus": "success"
+  },
+  "operations": [
+    {
+      "id": "fd45aaa9-91bf-4e29-8757-bc7f4a4975e4",
+      "kind": "backup",
+      "state": "succeeded",
+      "result": "verified"
+    },
+    {
+      "id": "06c93f64-7682-4366-b778-4a5c25bab6d6",
+      "kind": "restart",
+      "state": "succeeded",
+      "result": "verified"
+    }
+  ],
+  "unchangedOtherContainersAndDatabase": 15,
+  "restore": {
+    "snapshot": "36fee26ab4a24e91de2174518cd958483163bc2cb0ccbab7538560ca066a9e8b",
+    "deploymentId": "c000d1a7-f0ab-4350-9d89-cad20831651f",
+    "resticCheck": "passed",
+    "sha256": "passed",
+    "postgresRestore": "passed",
+    "publicTables": 79,
+    "userCountMatches": true,
+    "storageHashesMatch": true,
+    "verifiedAt": "2026-10-08T01:48:57.583294+00:00"
+  },
+  "liveBrowser": {
+    "bothNodesVisible": true,
+    "assetEditorVerified": true,
+    "completedOperationsVisible": true,
+    "browserErrors": 0
+  },
+  "certificateSafety": {
+    "malformedPayloadRejected": true,
+    "existingCertificatePreserved": true,
+    "repeatRenewalReusedCertificate": true
+  }
+}
