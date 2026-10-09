@@ -8,6 +8,7 @@ import { apps, deployments, hostingNodes, hostingOperations, users } from '../..
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { HostingRepository, HOSTING_REPORT_MAX_AGE_MS } from './hosting';
+import { monitorProfile } from './hosting-monitor-checks';
 
 const view = (row: typeof hostingOperations.$inferSelect) =>
   HostingOperationSchema.parse({
@@ -25,6 +26,7 @@ export class HostingOperations {
           deployment: deployments,
           node: hostingNodes,
           appCode: apps.code,
+          appMeta: apps.meta,
           customerEmail: users.email,
         })
         .from(deployments)
@@ -41,8 +43,9 @@ export class HostingOperations {
         .limit(100),
     ]);
     return {
-      instances: instances.map(({ deployment: d, node, appCode, customerEmail }) => {
+      instances: instances.map(({ deployment: d, node, appCode, appMeta, customerEmail }) => {
         const report = hostingNodeReportSchema.safeParse(node?.report);
+        const profile = monitorProfile(appCode, appMeta);
         return {
           id: d.id,
           label: d.label,
@@ -54,11 +57,12 @@ export class HostingOperations {
           resources: hostingResourcesSchema.safeParse(d.hostingResources).success
             ? hostingResourcesSchema.parse(d.hostingResources)
             : null,
-          services: report.success
-            ? (report.data.containers ?? []).filter(
-                (c) => c.project === 'retail-' + d.id.replaceAll('-', ''),
-              )
-            : [],
+          services:
+            report.success && profile
+              ? (report.data.containers ?? []).filter(
+                  (c) => c.project === profile.projectPrefix + '-' + d.id.replaceAll('-', ''),
+                )
+              : [],
           backup: report.success
             ? (report.data.backups?.find((b) => b.deploymentId === d.id) ?? null)
             : null,

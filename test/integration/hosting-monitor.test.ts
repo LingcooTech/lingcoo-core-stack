@@ -12,6 +12,7 @@ import {
 import { seedPurchase, testDatabase } from './helpers';
 import { HostingRepository } from '../../src/modules/deployment/hosting';
 import { HostingMonitor } from '../../src/modules/deployment/hosting-monitor';
+import { HostingOperations } from '../../src/modules/deployment/hosting-operations';
 import { AlertDeliveryService } from '../../src/modules/admin/alert-delivery';
 import { buildApp } from '../../src/app';
 const { db, pool, env } = testDatabase();
@@ -117,6 +118,12 @@ test('registered instances missing entirely from node report are detected; concu
     .set({ report: f.report(true) })
     .where(eq(hostingNodes.id, f.n.node.id));
   await f.monitor.reconcile(new Date(f.now.getTime() + 1000));
+  const overview = await new HostingOperations(db).overview(f.now);
+  assert.deepEqual(
+    overview.instances.find((item) => item.id === f.d.id)?.services.map((item) => item.service),
+    ['backend', 'database'],
+    'operations must use the registered application prefix rather than Retail naming',
+  );
   rows = await f.rows();
   assert.ok(rows.every((r) => r.state === 'resolved'));
   assert.equal((await f.monitor.history(incident.id)).items.length, 2);

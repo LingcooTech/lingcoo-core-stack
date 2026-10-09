@@ -8,9 +8,10 @@ import re
 import subprocess
 import tempfile
 import uuid
+from hosting_adapter import instance_adapter
 
 
-def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None):
+def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None, project=None):
     uuid.UUID(deployment_id)
     if not re.fullmatch(r'[a-z][a-z0-9-]*\.[a-z0-9.-]+', hostname) or '..' in hostname:
         raise ValueError('Invalid ingress hostname')
@@ -18,7 +19,10 @@ def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None):
     for name in names:
         if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', name):
             raise ValueError('Invalid alias')
-    upstream = 'retail-' + deployment_id.replace('-', '') + '-ingress'
+    project = project or 'retail-' + deployment_id.replace('-', '')
+    if not re.fullmatch(r'[a-z][a-z0-9-]{0,31}-[a-f0-9]{32}', project):
+        raise ValueError('Invalid ingress project')
+    upstream = project + '-ingress'
     def site(hosts, tls=False):
         return (', '.join(hosts) + ' {\n'
                 + ('  tls /data/lingcoo-platform-tls/current/fullchain.pem /data/lingcoo-platform-tls/current/privkey.pem\n' if tls else '')
@@ -39,6 +43,7 @@ def publish(config, workspace, item):
     journal = json.loads((workspace / deployment_id / 'execution.json').read_text())
     if journal['phase'] != 'runtime_ready':
         raise ValueError('Instance is not locally ready')
+    _, project = instance_adapter(config, workspace / deployment_id)
     path = Path(config['gatewayConfigPath'])
     gateway = config['gatewayContainer']
     if not path.is_absolute() or not re.fullmatch(r'[a-zA-Z0-9_-]+', gateway):
@@ -47,7 +52,7 @@ def publish(config, workspace, item):
     start = '# BEGIN LINGCOO ' + deployment_id + '\n'
     end = '# END LINGCOO ' + deployment_id + '\n'
     aliases = [entry['hostname'] for entry in item.get('aliases', [])]
-    block = route_block(deployment_id, item['hostname'], aliases, config.get('wildcardDomain'))
+    block = route_block(deployment_id, item['hostname'], aliases, config.get('wildcardDomain'), project)
     if start in old:
         left = old.index(start)
         right = old.index(end, left) + len(end)
@@ -62,14 +67,14 @@ def publish(config, workspace, item):
         outside = old[:old.index(start)] + old[old.index(end, old.index(start)) + len(end):]
     if any(name in outside for name in [item['hostname']] + aliases):
         raise ValueError('Hostname exists outside owned block')
-    network = 'retail-' + deployment_id.replace('-', '') + '-ingress'
+    network = project + '-ingress'
     networks = json.loads(subprocess.check_output(['docker', 'inspect', '-f', '{{json .NetworkSettings.Networks}}', gateway]))
     if network not in networks:
         subprocess.run(['docker', 'network', 'connect', network, gateway], check=True, capture_output=True)
     # Identical desired routes need no reload or application restart.
     if candidate == old:
         return
-    sync_origins(workspace / deployment_id, deployment_id, [item['hostname']] + aliases)
+    sync_origins(workspace / deployment_id, deployment_id, [item['hostname']] + aliases, project)
     # Validate before touching the host's live config or performing a graceful reload.
     with tempfile.TemporaryDirectory(prefix='lingcoo-ingress-') as temporary:
         source = Path(temporary) / 'Caddyfile'
@@ -100,8 +105,8 @@ def publish(config, workspace, item):
             subprocess.run(['docker', 'exec', gateway, 'rm', '-f', container_path], capture_output=True)
 
 
-def sync_origins(directory, deployment_id, hostnames):
-    """Keep Retail browser API requests working on all verified aliases."""
+def sync_origins(directory, deployment_id, hostnames, project=None):
+    """Keep application browser API requests working on all verified aliases."""
     path = directory / '.env'
     old = path.read_text()
     value = "CORS_ORIGIN='" + ','.join('https://' + name for name in hostnames) + "'"
@@ -114,7 +119,7 @@ def sync_origins(directory, deployment_id, hostnames):
     path.write_text(updated)
     os.chmod(path, 0o600)
     prefix = ['docker', 'compose'] if subprocess.run(['docker', 'compose', 'version'], capture_output=True).returncode == 0 else ['docker-compose']
-    command = prefix + ['-p', 'retail-' + deployment_id.replace('-', ''), '--env-file', str(path), '-f', str(directory / 'docker-compose.prod.yml'), '-f', str(directory / 'limits.json')]
+    command = prefix + ['-p', project or 'retail-' + deployment_id.replace('-', ''), '--env-file', str(path), '-f', str(directory / 'docker-compose.prod.yml'), '-f', str(directory / 'limits.json')]
     try:
         subprocess.run(command + ['up', '-d', '--no-deps', 'api'], cwd=directory, capture_output=True, check=True, timeout=180)
     except Exception:

@@ -161,9 +161,32 @@ test('two purchases cannot oversubscribe one node; authenticated reports allocat
     );
     assert(pending.every((item) => item.managed?.state === 'waiting_capacity'));
     const url = `/v1/hosting/nodes/${node.node.id}/report`;
-    const payload = { dockerReady: true, available: resources };
+    const payload = {
+      dockerReady: true,
+      available: resources,
+      supportedApps: [first.app.code, second.app.code],
+    };
     const unauth = await app.inject({ method: 'POST', url, payload });
     assert.equal(unauth.statusCode, 401);
+    const unsupported = await app.inject({
+      method: 'POST',
+      url,
+      headers: { authorization: `Bearer ${node.reportToken}` },
+      payload: { ...payload, supportedApps: [] },
+    });
+    assert.equal(unsupported.statusCode, 200);
+    for (const [i, item] of pending.entries()) {
+      const queued = await app.services.DeploymentService.retryManagedAllocation({
+        deploymentId: item.id,
+        userId: [first, second][i]!.user.id,
+      });
+      assert(queued);
+      assert.equal(
+        queued.managed?.state,
+        'waiting_capacity',
+        'a healthy node without the adapter must not receive the app',
+      );
+    }
     const report = await app.inject({
       method: 'POST',
       url,
@@ -305,7 +328,7 @@ test('node execution is scoped, replayable, encrypted and never implies public r
     await repository.report(
       node.node.id,
       node.reportToken,
-      { dockerReady: true, available: resources },
+      { dockerReady: true, available: resources, supportedApps: [f.app.code] },
       new Date(),
     );
     const deployment = await app.services.DeploymentService.createDeployment(f.input);

@@ -1,7 +1,8 @@
-import importlib.util,tempfile,json,uuid
+import importlib.util,tempfile,json,uuid,sys
 from pathlib import Path
 from unittest.mock import patch
 root=Path(__file__).resolve().parents[1] / 'scripts'
+sys.path.insert(0,str(root))
 spec=importlib.util.spec_from_file_location('ingress',root/'hosting-node-ingress.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 id=str(uuid.uuid4())
 block=m.route_block(id,'foo.app.lingcoo.com',['shop.example.com'])
@@ -58,3 +59,42 @@ with patch.object(cert,'run',side_effect=[b'DNS:*.app.lingcoo.com, DNS:app.lingc
     try:cert.inspect_certificate(Path('cert'),Path('key'),'app.lingcoo.com');raise AssertionError('Mismatched key accepted')
     except ValueError:pass
 print('Certificate scope and key mismatch rejection verified')
+
+from hosting_adapter import resolve_adapter, instance_adapter
+import hashlib
+with tempfile.TemporaryDirectory() as tmp:
+    bundle=Path(tmp)/'bundle';bundle.mkdir()
+    files=['stack-delivery.py','docker-compose.prod.yml','docker/Caddyfile','deploy/scripts/backup.sh','deploy/scripts/backup-metadata.mjs']
+    hashes={}
+    for name in files:
+        p=bundle/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('trusted')
+        hashes[name]=hashlib.sha256(p.read_bytes()).hexdigest()
+    descriptor={'bundle':str(bundle),'hashes':hashes,'projectPrefix':'edu','weights':{'postgres':3,'api':5,'worker':5,'caddy':1},'appServices':['api','worker'],'healthyServices':['api'],'httpChecks':['/health/ready','/','/admin/'],'minMemoryMb':1024}
+    config={'adapters':{'lingcoo_edu_oms':descriptor}}
+    assert resolve_adapter(config,'lingcoo_edu_oms',True)['appServices']==['api','worker']
+    directory=Path(tmp)/id;directory.mkdir()
+    (directory/'execution.json').write_text(json.dumps({'appCode':'lingcoo_edu_oms','project':'edu-'+id.replace('-',''),'phase':'runtime_ready'}))
+    assert instance_adapter(config,directory)[1].startswith('edu-')
+    block=m.route_block(id,'edu.app.lingcoo.com',project=instance_adapter(config,directory)[1])
+    assert 'reverse_proxy edu-' in block and 'retail-' not in block
+    try:resolve_adapter(config,'unknown');raise AssertionError('unknown adapter accepted')
+    except ValueError:pass
+    config['adapters']['other']={**descriptor}
+    try:resolve_adapter(config,'lingcoo_edu_oms');raise AssertionError('prefix collision accepted')
+    except ValueError:pass
+    del config['adapters']['other']
+    (bundle/'stack-delivery.py').write_text('tampered')
+    try:resolve_adapter(config,'lingcoo_edu_oms',True);raise AssertionError('tampered code accepted')
+    except ValueError:pass
+    (directory/'execution.json').write_text(json.dumps({'appCode':'lingcoo_edu_oms','project':'retail-'+id.replace('-','')}))
+    try:instance_adapter(config,directory);raise AssertionError('foreign ownership accepted')
+    except ValueError:pass
+spec=importlib.util.spec_from_file_location('agent',root/'hosting-node-agent.py');agent=importlib.util.module_from_spec(spec);spec.loader.exec_module(agent)
+limits=agent.render_limits({'memoryMb':1024,'cpuMillis':1000},descriptor['weights'])
+assert 'web' not in limits['services'] and sum(int(v['mem_limit'][:-1]) for v in limits['services'].values()) <= 1024
+print('Trusted second adapter, ownership, injection and weighted resource checks passed')
+# A failed application deployment must not adopt the Retail project or accept a smaller budget.
+job={'id':str(uuid.uuid4()),'deploymentId':id,'appCode':'lingcoo_edu_oms','hostname':'edu.app.lingcoo.com','env':{'APP_IMAGE':'registry.example.test/edu@sha256:'+'a'*64},'resources':{'memoryMb':1024,'cpuMillis':1000}}
+agent.validate_job(job,{'adapters':{'lingcoo_edu_oms':descriptor}})
+try:agent.validate_job({**job,'resources':{'memoryMb':128}}, {'adapters':{'lingcoo_edu_oms':descriptor}});raise AssertionError('Under-budget job accepted')
+except ValueError:pass

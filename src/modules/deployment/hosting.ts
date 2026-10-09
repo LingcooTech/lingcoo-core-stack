@@ -8,7 +8,7 @@ import {
   hostingResourcesSchema,
   type HostingResources,
 } from '@lingcoo/contracts';
-import { deployments, hostingNodes } from '../../db/schema';
+import { apps, deployments, hostingNodes } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 import { acquireTransactionLock } from '../../db/locks';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -218,7 +218,19 @@ export class HostingRepository {
     const requested = hostingResourcesSchema.parse(deployment.hostingResources);
     const nodes = await this.listNodes();
     const reserved = await this.reservations();
+    const [application] = await this.db
+      .select({ code: apps.code })
+      .from(apps)
+      .where(eq(apps.id, deployment.appId));
+    if (!application) return;
     const candidate = nodes
+      .filter((node) => {
+        const report = hostingNodeReportSchema.safeParse(node.report);
+        return (
+          report.success &&
+          (report.data.supportedApps ?? ['lingcoo_retail_oms']).includes(application.code)
+        );
+      })
       .map((node) => ({
         node,
         score: evaluateHostingNode(node, reserved.get(node.id) ?? emptyResources(), requested, now),

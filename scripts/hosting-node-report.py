@@ -9,6 +9,7 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
+from hosting_adapter import resolve_adapter, LEGACY_CODE
 
 
 def memory_mb(value):
@@ -85,7 +86,15 @@ def collect(data_path, config=None):
         except (ValueError, OSError):
             continue
     containers = inventory() if ready else []
-    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True),
+    supported = []
+    if not config.get('monitorOnly', True):
+        for code in sorted(set(config.get('adapters', {})) | ({LEGACY_CODE} if config.get('retailBundle') else set())):
+            try:
+                resolve_adapter(config, code, verify=True)
+                supported.append(code)
+            except (ValueError, OSError, KeyError, TypeError):
+                continue
+    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported,
         'totals': {'cpuMillis': (os.cpu_count() or 1)*1000, 'memoryMb':mem['MemTotal']//1024, 'diskMb':total_disk//1048576},
         'certificateAutomation':automation, 'load1':os.getloadavg()[0], 'containers':containers, 'certificate':certificate, 'backups':backups,
         'available': {

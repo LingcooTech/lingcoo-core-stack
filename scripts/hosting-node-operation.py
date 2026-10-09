@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import time
 import uuid
+from hosting_adapter import instance_adapter
 
 
 def store(path, value):
@@ -32,7 +33,7 @@ def execute(config, workspace, operation):
         return state == 'succeeded'
     store(journal, {'state':'running', 'kind':operation['kind']})
     try:
-        project = 'retail-' + deployment_id.replace('-', '')
+        descriptor, project = instance_adapter(config, directory, verify=True)
         if operation['kind'] == 'backup':
             spec=importlib.util.spec_from_file_location('backup',Path(__file__).with_name('hosting-node-backup.py'))
             module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
@@ -41,7 +42,7 @@ def execute(config, workspace, operation):
             ids = subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project='+project],text=True).split()
             containers=json.loads(subprocess.check_output(['docker','inspect',*ids])) if ids else []
             targets=[]
-            for service in ('api','worker','web'):
+            for service in descriptor['appServices']:
                 matches=[c for c in containers if c['Config']['Labels'].get('com.docker.compose.service')==service and c['Config']['Labels'].get('com.docker.compose.oneoff','False').lower()=='false']
                 if len(matches)!=1:
                     raise ValueError('Service ownership mismatch')
@@ -49,7 +50,7 @@ def execute(config, workspace, operation):
             subprocess.run(['docker','restart','--time','45',*targets],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=180)
             for _ in range(60):
                 states=json.loads(subprocess.check_output(['docker','inspect',*targets]))
-                if all(c['State'].get('Health',{}).get('Status')=='healthy' for c in states):
+                if all(c['State']['Running'] and (c['Config']['Labels'].get('com.docker.compose.service') not in descriptor['healthyServices'] or c['State'].get('Health',{}).get('Status')=='healthy') for c in states):
                     break
                 time.sleep(2)
             else:

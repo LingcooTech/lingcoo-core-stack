@@ -16,6 +16,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from hosting_adapter import resolve_adapter, project_name, instance_adapter
 
 
 def private_json(path, value):
@@ -31,17 +32,16 @@ def private_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def validate_job(job):
+def validate_job(job, config=None):
+    descriptor = resolve_adapter(config or {}, job['appCode'])
     for key in ('id', 'deploymentId'):
         uuid.UUID(job[key])
-    if job['appCode'] != 'lingcoo_retail_oms':
-        raise ValueError('Adapter not installed')
     if not re.fullmatch(r'[a-z0-9]+(?:[-.][a-z0-9]+)*', job['hostname']):
         raise ValueError('Invalid hostname')
     if not re.fullmatch(r'[a-zA-Z0-9./:_-]+@sha256:[a-f0-9]{64}', job['env']['APP_IMAGE']):
         raise ValueError('Immutable image required')
-    if int(job['resources']['memoryMb']) < 1024:
-        raise ValueError('Retail pilot requires at least 1024 MiB')
+    if int(job['resources']['memoryMb']) < descriptor['minMemoryMb']:
+        raise ValueError('Adapter minimum memory not met')
 
 
 def run(command, directory, environment=None):
@@ -54,27 +54,26 @@ def run(command, directory, environment=None):
             raise RuntimeError('Execution step failed')
 
 
-def render_limits(resources):
-    weights = {'postgres': 3, 'api': 3, 'worker': 5, 'web': 4, 'caddy': 1}
-    return {'services': {name: {'mem_limit': str(int(resources['memoryMb']) * weight // 16) + 'm',
-                               'memswap_limit': str(int(resources['memoryMb']) * weight // 16) + 'm',
-                               'cpus': max(0.01, int(resources['cpuMillis']) * weight / 16000),
+def render_limits(resources, weights=None):
+    weights = weights or {'postgres': 3, 'api': 3, 'worker': 5, 'web': 4, 'caddy': 1}
+    total = sum(weights.values())
+    return {'services': {name: {'mem_limit': str(int(resources['memoryMb']) * weight // total) + 'm',
+                               'memswap_limit': str(int(resources['memoryMb']) * weight // total) + 'm',
+                               'cpus': max(0.01, int(resources['cpuMillis']) * weight / (total * 1000)),
                                'pids_limit': 128}
                          for name, weight in weights.items()}}
 
 
 def execute(job, config, workspace):
-    validate_job(job)
-    bundle = Path(config['retailBundle']).resolve()
-    # Trust root is the operator's private config, not filenames supplied by a customer/task.
-    hashes = config['bundleHashes']
-    for name in ('stack-delivery.py', 'docker-compose.prod.yml', 'docker/Caddyfile'):
-        if hashlib.sha256((bundle / name).read_bytes()).hexdigest() != hashes[name]:
-            raise ValueError('Adapter checksum mismatch')
-    spec = importlib.util.spec_from_file_location('retail_delivery', bundle / 'stack-delivery.py')
+    validate_job(job, config)
+    descriptor = resolve_adapter(config, job['appCode'], verify=True)
+    bundle = Path(descriptor['bundle']).resolve()
+    spec = importlib.util.spec_from_file_location('application_delivery', bundle / 'stack-delivery.py')
     adapter = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(adapter)
-    project = 'retail-' + job['deploymentId'].replace('-', '')
+    if adapter.APP_CODE != job['appCode']:
+        raise ValueError('Application adapter identity mismatch')
+    project = project_name(descriptor, job['deploymentId'])
     directory = workspace / job['deploymentId']
     directory.mkdir(mode=0o700, exist_ok=True)
     if directory.is_symlink():
@@ -82,7 +81,8 @@ def execute(job, config, workspace):
     journal = directory / 'execution.json'
     if journal.exists():
         previous = json.loads(journal.read_text())
-        if previous['jobId'] != job['id']:
+        instance_adapter(config, directory)
+        if previous['jobId'] != job['id'] or previous.get('appCode', 'lingcoo_retail_oms') != job['appCode']:
             raise ValueError('Different task cannot adopt existing data')
         port = previous['port']
     else:
@@ -108,7 +108,7 @@ def execute(job, config, workspace):
         if port is None:
             raise ValueError('No free loopback port')
         # Write ownership first; configuration initialization is repeatable after a crash.
-        private_json(journal, {'jobId': job['id'], 'port': port, 'phase': 'initializing'})
+        private_json(journal, {'jobId': job['id'], 'appCode': job['appCode'], 'project': project, 'port': port, 'phase': 'initializing'})
     values_file = directory / '.env'
     if not values_file.exists():
         values = adapter.prepare_configuration(job['env'], project)
@@ -125,7 +125,7 @@ def execute(job, config, workspace):
     shutil.copyfile(bundle / 'docker/Caddyfile', directory / 'docker/Caddyfile')
     compose_text = (bundle / 'docker-compose.prod.yml').read_text().replace("      - '${HTTPS_PORT:-443}:443'\n", '')
     (directory / 'docker-compose.prod.yml').write_text(compose_text)
-    limits = render_limits(job['resources'])
+    limits = render_limits(job['resources'], descriptor['weights'])
     limits['networks'] = {'ingress': {'name': project + '-ingress'}}
     limits['services']['caddy']['networks'] = {'default': {}, 'ingress': {'aliases': [project + '-ingress']}}
     private_json(directory / 'limits.json', limits)
@@ -145,12 +145,12 @@ def execute(job, config, workspace):
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
             if result.returncode:
                 raise RuntimeError('Registry login failed')
-            run(command + ['pull', 'api', 'worker', 'web'], directory, registry_env)
+            run(command + ['pull', *descriptor['appServices']], directory, registry_env)
             for base_image in (values['POSTGRES_IMAGE'], values['CADDY_IMAGE']):
                 if subprocess.run(['docker', 'image', 'inspect', base_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
                     run(['docker', 'pull', base_image], directory, registry_env)
     # No runtime/migration overlap beyond the reserved instance budget during recovery.
-    run(command + ['stop', 'api', 'worker', 'web', 'caddy'], directory)
+    run(command + ['stop', *descriptor['appServices'], 'caddy'], directory)
     print('STEP postgres', flush=True)
     run(command + ['up', '-d', 'postgres'], directory)
     def healthy(services):
@@ -171,10 +171,14 @@ def execute(job, config, workspace):
     run(command + ['run', '--rm', '--no-deps', 'api', 'node', 'apps/server/dist/entrypoints/bootstrap.js'], directory,
         {'BOOTSTRAP_OWNER_EMAIL': job['env']['INITIAL_ADMIN_EMAIL'], 'BOOTSTRAP_OWNER_PASSWORD': job['env']['INITIAL_ADMIN_PASSWORD']})
     print('STEP runtime', flush=True)
-    run(command + ['up', '-d', 'api', 'worker', 'web'], directory)
-    healthy(['api', 'worker', 'web'])
+    run(command + ['up', '-d', *descriptor['appServices']], directory)
+    healthy(descriptor['healthyServices'])
+    for name in descriptor['appServices']:
+        cid = subprocess.check_output(command + ['ps', '-q', name], cwd=directory).decode().strip()
+        if not cid or subprocess.check_output(['docker', 'inspect', '-f', '{{.State.Running}}', cid]).strip() != b'true':
+            raise RuntimeError('Application service not running')
     run(command + ['up', '-d', 'caddy'], directory)
-    for endpoint in ('/health/ready', '/health/worker', '/', '/admin/'):
+    for endpoint in descriptor['httpChecks']:
         for attempt in range(30):
             try:
                 with urllib.request.urlopen('http://127.0.0.1:' + str(port) + endpoint, timeout=5) as response:
@@ -185,7 +189,7 @@ def execute(job, config, workspace):
                 if attempt == 29:
                     raise
                 time.sleep(2)
-    private_json(journal, {'jobId': job['id'], 'port': port, 'phase': 'runtime_ready'})
+    private_json(journal, {'jobId': job['id'], 'appCode': job['appCode'], 'project': project, 'port': port, 'phase': 'runtime_ready'})
     return {'image': values['APP_IMAGE']}
 
 
@@ -242,13 +246,13 @@ def main():
             publish_ingress(config, workspace, api)
             return
         try:
-            validate_job(job)
+            validate_job(job, config)
             result = execute(job, config, workspace)
         except Exception:
             # Stop only this task's owned project, retaining all data and capacity.
             journal = workspace / job['deploymentId'] / 'execution.json'
             if journal.is_file() and json.loads(journal.read_text()).get('jobId') == job['id']:
-                project = 'retail-' + str(uuid.UUID(job['deploymentId'])).replace('-', '')
+                _, project = instance_adapter(config, journal.parent)
                 ids = subprocess.check_output(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + project]).decode().split()
                 if ids:
                     subprocess.run(['docker', 'stop', *ids], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)

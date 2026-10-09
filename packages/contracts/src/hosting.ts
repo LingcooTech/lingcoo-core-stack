@@ -88,6 +88,10 @@ export const hostingNodeReportSchema = z
   .object({
     dockerReady: z.boolean(),
     canDeploy: z.boolean().optional(),
+    supportedApps: z
+      .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
+      .max(100)
+      .optional(),
     totals: hostingResourcesSchema.optional(),
     load1: z.number().min(0).max(10000).optional(),
     containers: z.array(hostingContainerSchema).max(1000).optional(),
