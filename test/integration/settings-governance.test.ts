@@ -231,6 +231,35 @@ test('Wechat partial drafts survive later updates, secrets stay encrypted, and i
   };
   try {
     await db.delete(systemSettings).where(eq(systemSettings.key, key));
+    const legacyValue = encryptJson(
+      {
+        appId: 'wx0123456789abcdef',
+        mchId: '1234567890',
+        notifyUrl: 'http://192.0.2.1/v1/billing/providers/wechat/notify',
+      },
+      getEncryptionKeys(env),
+    );
+    await db.insert(systemSettings).values({ key, isEncrypted: true, value: legacyValue });
+    const legacy = new PaymentSettingsService(db, {
+      ...env,
+      PUBLIC_BASE_URL: 'https://stack.example.test',
+    });
+    const legacyRuntime = await legacy.buildRuntimeEnv();
+    assert.equal(legacyRuntime.WECHAT_PAY_NOTIFY_URL, undefined);
+    assert.equal(legacyRuntime.WECHAT_PAY_ENABLED, true);
+    const legacyOverview = (await legacy.getOverview()).items.find(
+      (item) => item.code === 'wechat_pay',
+    )!;
+    assert.equal(
+      legacyOverview.values.notifyUrl,
+      'https://stack.example.test/v1/billing/providers/wechat/notify',
+    );
+    const [unchangedLegacy] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key));
+    assert.deepEqual(unchangedLegacy!.value, legacyValue); // normalization is read-only
+    await db.delete(systemSettings).where(eq(systemSettings.key, key));
     const first = await write({ privateKeyPem: keys.privateKey });
     assert.equal(first.statusCode, 200, first.body);
     assert.equal(first.json().values.enabled, false);

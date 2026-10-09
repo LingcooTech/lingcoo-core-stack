@@ -1,3 +1,4 @@
+import { WechatPaySettingsSchema } from '@lingcoo/contracts';
 import fs from 'node:fs';
 import { createPrivateKey, createPublicKey } from 'node:crypto';
 import path from 'node:path';
@@ -233,7 +234,11 @@ export class PaymentSettingsService {
     const mchId = normalizeString(String(raw.mchId ?? raw.mchid ?? ''));
     const apiKey = normalizeString(String(raw.apiKey ?? raw.key ?? ''));
     const disableH5 = normalizeBoolean(raw.disableH5 ?? raw.disable_h5, false);
-    const notifyUrl = normalizeUrlLikeValue(String(raw.notifyUrl ?? ''));
+    // Older versions ignored this field; do not activate a legacy HTTP/IP callback.
+    const callback = WechatPaySettingsSchema.shape.notifyUrl.safeParse(
+      normalizeUrlLikeValue(String(raw.notifyUrl ?? '')),
+    );
+    const notifyUrl = callback.success ? (callback.data ?? '') : '';
 
     if (Object.keys(raw).length === 0) {
       return null;
