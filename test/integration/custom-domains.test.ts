@@ -3,7 +3,7 @@ import { after, before, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../../src/app';
-import { deployments, deploymentDomains } from '../../src/db/schema';
+import { apps, deployments, deploymentDomains } from '../../src/db/schema';
 import { CustomDomainService } from '../../src/modules/deployment/custom-domains';
 import { HostingRepository } from '../../src/modules/deployment/hosting';
 import { testDatabase, seedPurchase } from './helpers';
@@ -91,6 +91,20 @@ test('custom domain routes enforce ownership, uniqueness and platform reservatio
 });
 test('ownership TXT and exact DNS target are mandatory before ingress and HTTPS readiness', async () => {
   const f = await fixture();
+  const paths = ['/', '/admin/', '/health/ready'];
+  await db
+    .update(apps)
+    .set({
+      meta: {
+        hostingProfile: {
+          enabled: true,
+          domainField: 'domain',
+          resources: { cpuMillis: 1000, memoryMb: 1024, diskMb: 10240 },
+          httpChecks: paths,
+        },
+      },
+    })
+    .where(eq(apps.id, f.app.id));
   let token = 'wrong';
   let ip = '192.0.2.250';
   let tls = false;
@@ -103,7 +117,8 @@ test('ownership TXT and exact DNS target are mandatory before ingress and HTTPS 
       resolveCname: async () => [f.deployment.hostedDomain!],
       resolveTxt: async () => [[token]],
     },
-    async () => {
+    async (_hostname, _ip, _deploymentId, checks) => {
+      assert.deepEqual(checks, paths, 'custom domains use the application health contract');
       if (!tls) throw new Error('TLS not ready');
     },
   );

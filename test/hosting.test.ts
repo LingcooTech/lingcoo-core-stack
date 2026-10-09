@@ -115,6 +115,6 @@ test('certificate automation failures and stale backups remain visible on paused
   assert.ok(alerts.some((a) => a.code === 'certificate_automation'));
   assert.ok(alerts.some((a) => a.code === 'backup_' + node.id));
   assert.ok(alerts.some((a) => a.code === 'offsite_' + node.id));
-  assert.ok(alerts.some((a) => a.code === 'instance_unavailable_' + node.id));
+  assert.ok(!alerts.some((a) => a.code.startsWith('instance_unavailable_')));
   assert.ok(!alerts.some((a) => a.code === 'node_offline'));
 });

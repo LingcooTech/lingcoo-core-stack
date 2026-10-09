@@ -1,4 +1,4 @@
-import { probeHostedHttps } from './https-probe';
+import { probeHostedHttps, loadHostedProbePaths } from './https-probe';
 import { randomBytes } from 'node:crypto';
 import { Resolver } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -192,7 +192,12 @@ export class CustomDomainService {
     if (removed) throw httpError(409, '域名尚未请求删除');
     if (!['pending_tls', 'ready'].includes(row.state)) throw httpError(409, '域名尚未完成归属验证');
     await this.verify(deploymentId, deployment.userId, domainId);
-    await this.request(row.hostname, deployment.serverHost!, deploymentId);
+    await this.request(
+      row.hostname,
+      deployment.serverHost!,
+      deploymentId,
+      await loadHostedProbePaths(this.db, deployment.appId),
+    );
     await this.db
       .update(deploymentDomains)
       .set({ state: 'ready', updatedAt: new Date() })

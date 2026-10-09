@@ -26,7 +26,8 @@
           "services": ["api", "worker", "postgres", "caddy"],
           "backupRequired": true,
           "offsiteRequired": true
-        }
+        },
+        "httpChecks": ["/", "/admin/", "/health/ready"]
       }
     }
   },

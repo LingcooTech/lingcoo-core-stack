@@ -57,23 +57,7 @@ export function hostingAlerts(node: typeof hostingNodes.$inferSelect, now: Date)
       message: `${bad.length} 个容器健康检查失败`,
     });
   for (const b of r.backups ?? []) {
-    const owned = (r.containers ?? []).filter(
-      (c) => c.project === 'retail-' + b.deploymentId.replaceAll('-', ''),
-    );
-    if (
-      r.containers &&
-      ['api', 'worker', 'web', 'postgres', 'caddy'].some(
-        (service) =>
-          !owned.some(
-            (c) => c.service === service && c.state === 'running' && c.health !== 'unhealthy',
-          ),
-      )
-    )
-      alerts.push({
-        code: 'instance_unavailable_' + b.deploymentId,
-        severity: 'critical',
-        message: `实例 ${b.deploymentId.slice(0, 8)} 有服务停止、缺失或不健康`,
-      });
+    // Registered-instance monitoring owns service completeness; node reports do not define application topology.
     if (
       b.status !== 'success' ||
       !b.completedAt ||

@@ -33,6 +33,17 @@ export const hostingProfileSchema = z
     enabled: z.literal(true),
     domainField: z.string().min(1).max(64),
     monitoring: hostingMonitorProfileSchema.optional(),
+    httpChecks: z
+      .array(
+        z
+          .string()
+          .max(160)
+          .regex(/^\/[a-zA-Z0-9/_-]*$/),
+      )
+      .min(1)
+      .max(20)
+      .refine((paths) => paths.includes('/health/ready'), '必须检查应用 readiness')
+      .optional(),
     resources: hostingResourcesSchema,
   })
   .strict();

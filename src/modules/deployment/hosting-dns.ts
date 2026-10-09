@@ -1,5 +1,5 @@
 import { HostingServiceTerms } from './hosting-service';
-import { probeHostedHttps } from './https-probe';
+import { probeHostedHttps, loadHostedProbePaths } from './https-probe';
 import { resolve4, resolve6 } from 'node:dns/promises';
 import { dnspod } from 'tencentcloud-sdk-nodejs-dnspod';
 import { isIP } from 'node:net';
@@ -157,7 +157,12 @@ export class HostingDnsService {
     const hostname = row.hostedDomain!;
     const resolved = await (isIP(row.serverHost!) === 6 ? resolve6(hostname) : resolve4(hostname));
     if (!resolved.includes(row.serverHost!)) throw httpError(409, 'DNS 尚未指向所属节点');
-    await probeHostedHttps(hostname, row.serverHost!, row.id);
+    await probeHostedHttps(
+      hostname,
+      row.serverHost!,
+      row.id,
+      await loadHostedProbePaths(this.db, row.appId),
+    );
     await this.db.transaction(async (tx) => {
       const locked = new DeploymentRepository(tx);
       await locked.lockById(row.id);
