@@ -37,6 +37,7 @@ class ArchiveGuards(unittest.TestCase):
         entries, size = self.archive([('data', 'file', b'customer-data'), ('alias', 'symlink', 'data'), ('copy', 'hardlink', 'data')])
         self.assertEqual(size, 13)
         self.assertEqual(recover.normalized_inventory(entries)['copy']['sha256'], hashlib.sha256(b'customer-data').hexdigest())
+        self.assertEqual(recover.normalized_inventory(entries)['copy']['links'], ['copy', 'data'])
 
     def test_rejects_unsafe_archives(self):
         for members in [

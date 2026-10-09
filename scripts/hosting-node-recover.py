@@ -130,12 +130,19 @@ def inventory(path, limit):
 
 def normalized_inventory(entries):
     # tar may select a different first name for the same hard-linked inode.
+    groups = {}
+    for name, entry in entries.items():
+        if entry['type'] in ('file', 'hardlink'):
+            groups.setdefault(entry.get('target', name), []).append(name)
     result = {}
     for name, entry in entries.items():
+        group = entry.get('target', name)
         if entry['type'] == 'hardlink':
             target = entries[entry['target']]
             entry = {**entry, 'type': 'file', 'size': target['size'], 'sha256': target['sha256']}
             entry.pop('target')
+        if entry['type'] == 'file':
+            entry = {**entry, 'links': sorted(groups[group])}
         result[name] = entry
     return result
 
