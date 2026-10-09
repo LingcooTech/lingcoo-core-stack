@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory() as tmp:
   pgcontainer=project+'-db'
   subprocess.run(['docker','run','-d','--name',pgcontainer,'--label','com.docker.compose.project='+project,'--label','com.docker.compose.service=db','--label','com.docker.compose.oneoff=False','-e','POSTGRES_PASSWORD=disposable-test-only','-v',pgvolume+':/var/lib/postgresql/data',pgimage],check=True)
   for attempt in range(60):
-   if subprocess.run(['docker','exec',pgcontainer,'pg_isready','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   if subprocess.run(['docker','exec',pgcontainer,'pg_isready','-h','127.0.0.1','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
    time.sleep(1)
   subprocess.run(['docker','exec',pgcontainer,'psql','-U','postgres','-v','ON_ERROR_STOP=1','-c',"CREATE TABLE exit_proof(value text); INSERT INTO exit_proof VALUES ('cold-database-proof');"],check=True)
   descriptor['weights']['db']=1;descriptor['infrastructureServices']=['db'];descriptor['volumes'].append('pgdata')
@@ -74,7 +74,7 @@ with tempfile.TemporaryDirectory() as tmp:
   restored=project+'-db-restored'
   subprocess.run(['docker','run','-d','--name',restored,'--label','com.docker.compose.project='+project,'-v',pgrestore+':/var/lib/postgresql/data',pgimage],check=True)
   for attempt in range(60):
-   if subprocess.run(['docker','exec',restored,'pg_isready','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   if subprocess.run(['docker','exec',restored,'pg_isready','-h','127.0.0.1','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
    time.sleep(1)
   assert b'cold-database-proof' in subprocess.check_output(['docker','exec',restored,'psql','-U','postgres','-Atc','SELECT value FROM exit_proof'])
   assert json.loads((workspace/did/'execution.json').read_text())['phase']=='retained' 
