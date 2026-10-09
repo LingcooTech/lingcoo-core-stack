@@ -53,8 +53,13 @@ def execute(config, directory, operation):
         for mount in container['Mounts']:
             if mount['Type']=='volume' and mount['Name'] not in [project+'_'+v for v in descriptor['volumes']]:
                 raise ValueError('Undeclared data volume')
-            if mount['Type']=='bind' and directory.resolve() not in Path(mount['Source']).resolve().parents:
-                raise ValueError('External bind mount cannot be handed over')
+            if mount['Type']=='bind':
+                source=Path(mount['Source']).resolve()
+                if directory.resolve() not in source.parents:
+                    raise ValueError('External bind mount cannot be handed over')
+                relative=str(source.relative_to(directory.resolve()))
+                if mount.get('RW',True) or relative not in descriptor['files']:
+                    raise ValueError('Writable or undeclared bind mount cannot be snapshotted safely')
     if set(found)!=expected:
         raise ValueError('Missing project service')
     for volume in descriptor['volumes']:

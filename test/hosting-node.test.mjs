@@ -14,3 +14,7 @@ test(
     execFileSync('python3', ['test/hosting-static-docker.py'], { stdio: 'pipe', timeout: 290_000 });
   },
 );
+
+test('retirement preflight refuses unsafe data mounts before stopping services', () => {
+  execFileSync('python3', ['test/hosting-retire.py'], { stdio: 'pipe' });
+});
