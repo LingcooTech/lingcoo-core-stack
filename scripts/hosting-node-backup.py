@@ -49,7 +49,7 @@ def backup_one(config, directory):
     stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     backup=root/(deployment_id+'-'+stamp)
     try:
-        subprocess.run(['sh',str(Path(descriptor['bundle'])/'deploy/scripts/backup.sh'),str(directory),project,str(backup)],check=True,timeout=900,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        subprocess.run(['sh',str(Path(descriptor['bundle'])/descriptor['backupScript']),str(directory),project,str(backup)],check=True,timeout=900,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         for name in ('limits.json','execution.json'):
             shutil.copyfile(directory/name,backup/name);os.chmod(backup/name,0o600)
             with (backup/'SHA256SUMS').open('a') as stream:
@@ -87,8 +87,8 @@ def main():
         failures=0
         for journal in workspace.glob('*/execution.json'):
             if json.loads(journal.read_text()).get('phase')!='runtime_ready':continue
-            _, project = instance_adapter(config, journal.parent)
-            if not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project,'--filter','label=com.docker.compose.service=api']).strip():continue
+            descriptor, project = instance_adapter(config, journal.parent)
+            if not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project,'--filter','label=com.docker.compose.service='+descriptor['appServices'][0]]).strip():continue
             try:backup_one(config,journal.parent)
             except Exception:failures+=1
         if failures:raise RuntimeError('One or more managed backups failed')

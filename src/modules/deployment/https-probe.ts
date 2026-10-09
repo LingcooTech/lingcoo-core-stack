@@ -5,14 +5,14 @@ import { hostingProfileSchema } from '@lingcoo/contracts';
 import { eq } from 'drizzle-orm';
 import { apps } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
-const legacyPaths = ['/', '/admin/', '/health/ready', '/health/worker'];
+const defaultPaths = ['/'];
 export function hostedProbePaths(meta: unknown): string[] {
   const raw =
     meta && typeof meta === 'object' ? (meta as Record<string, unknown>).hostingProfile : undefined;
-  if (raw === undefined) return legacyPaths;
+  if (raw === undefined) return defaultPaths;
   const profile = hostingProfileSchema.safeParse(raw);
   if (!profile.success) throw httpError(409, '应用托管健康检查配置无效');
-  return profile.data.httpChecks ?? legacyPaths;
+  return profile.data.httpChecks ?? defaultPaths;
 }
 export async function loadHostedProbePaths(db: DbExecutor, appId: string) {
   const [app] = await db.select({ meta: apps.meta }).from(apps).where(eq(apps.id, appId));
@@ -24,7 +24,7 @@ export async function probeHostedHttps(
   hostname: string,
   ip: string,
   deploymentId: string,
-  paths = legacyPaths,
+  paths = defaultPaths,
 ) {
   if (!isIP(ip)) throw httpError(409, '托管节点地址无效');
   for (const path of paths) {

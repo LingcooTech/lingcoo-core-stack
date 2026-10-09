@@ -11,7 +11,7 @@ import uuid
 from hosting_adapter import instance_adapter
 
 
-def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None, project=None):
+def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None, project=None, ingress_port=80):
     uuid.UUID(deployment_id)
     if not re.fullmatch(r'[a-z][a-z0-9-]*\.[a-z0-9.-]+', hostname) or '..' in hostname:
         raise ValueError('Invalid ingress hostname')
@@ -19,7 +19,8 @@ def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None, proje
     for name in names:
         if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', name):
             raise ValueError('Invalid alias')
-    project = project or 'retail-' + deployment_id.replace('-', '')
+    if not project:
+        raise ValueError('Explicit adapter project required')
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,31}-[a-f0-9]{32}', project):
         raise ValueError('Invalid ingress project')
     upstream = project + '-ingress'
@@ -27,7 +28,7 @@ def route_block(deployment_id, hostname, aliases=(), wildcard_domain=None, proje
         return (', '.join(hosts) + ' {\n'
                 + ('  tls /data/lingcoo-platform-tls/current/fullchain.pem /data/lingcoo-platform-tls/current/privkey.pem\n' if tls else '')
                 + '  header X-Lingcoo-Deployment ' + deployment_id + '\n'
-                + '  reverse_proxy ' + upstream + ':80\n}\n')
+                + '  reverse_proxy ' + upstream + ':' + str(ingress_port) + '\n}\n')
     if wildcard_domain:
         if not hostname.endswith('.' + wildcard_domain) or '.' in hostname[:-(len(wildcard_domain) + 1)]:
             raise ValueError('Default hostname outside wildcard certificate')
@@ -43,7 +44,7 @@ def publish(config, workspace, item):
     journal = json.loads((workspace / deployment_id / 'execution.json').read_text())
     if journal['phase'] != 'runtime_ready':
         raise ValueError('Instance is not locally ready')
-    _, project = instance_adapter(config, workspace / deployment_id)
+    descriptor, project = instance_adapter(config, workspace / deployment_id, verify=True)
     path = Path(config['gatewayConfigPath'])
     gateway = config['gatewayContainer']
     if not path.is_absolute() or not re.fullmatch(r'[a-zA-Z0-9_-]+', gateway):
@@ -52,7 +53,7 @@ def publish(config, workspace, item):
     start = '# BEGIN LINGCOO ' + deployment_id + '\n'
     end = '# END LINGCOO ' + deployment_id + '\n'
     aliases = [entry['hostname'] for entry in item.get('aliases', [])]
-    block = route_block(deployment_id, item['hostname'], aliases, config.get('wildcardDomain'), project)
+    block = route_block(deployment_id, item['hostname'], aliases, config.get('wildcardDomain'), project, descriptor['ingressPort'])
     if start in old:
         left = old.index(start)
         right = old.index(end, left) + len(end)
@@ -74,7 +75,7 @@ def publish(config, workspace, item):
     # Identical desired routes need no reload or application restart.
     if candidate == old:
         return
-    sync_origins(workspace / deployment_id, deployment_id, [item['hostname']] + aliases, project)
+    sync_origins(workspace / deployment_id, deployment_id, [item['hostname']] + aliases, project, descriptor)
     # Validate before touching the host's live config or performing a graceful reload.
     with tempfile.TemporaryDirectory(prefix='lingcoo-ingress-') as temporary:
         source = Path(temporary) / 'Caddyfile'
@@ -105,23 +106,26 @@ def publish(config, workspace, item):
             subprocess.run(['docker', 'exec', gateway, 'rm', '-f', container_path], capture_output=True)
 
 
-def sync_origins(directory, deployment_id, hostnames, project=None):
+def sync_origins(directory, deployment_id, hostnames, project, descriptor):
     """Keep application browser API requests working on all verified aliases."""
+    variable = descriptor['originVariable']
+    if variable is None:
+        return
     path = directory / '.env'
     old = path.read_text()
-    value = "CORS_ORIGIN='" + ','.join('https://' + name for name in hostnames) + "'"
+    value = variable + "='" + ','.join('https://' + name for name in hostnames) + "'"
     lines = old.splitlines()
-    updated = '\n'.join(value if line.startswith('CORS_ORIGIN=') else line for line in lines) + '\n'
+    updated = '\n'.join(value if line.startswith(variable + '=') else line for line in lines) + '\n'
     if updated == old:
         return
-    if not any(line.startswith('CORS_ORIGIN=') for line in lines):
+    if not any(line.startswith(variable + '=') for line in lines):
         raise ValueError('Missing original CORS setting')
     path.write_text(updated)
     os.chmod(path, 0o600)
     prefix = ['docker', 'compose'] if subprocess.run(['docker', 'compose', 'version'], capture_output=True).returncode == 0 else ['docker-compose']
-    command = prefix + ['-p', project or 'retail-' + deployment_id.replace('-', ''), '--env-file', str(path), '-f', str(directory / 'docker-compose.prod.yml'), '-f', str(directory / 'limits.json')]
+    command = prefix + ['-p', project, '--env-file', str(path), '-f', str(directory / 'docker-compose.prod.yml'), '-f', str(directory / 'limits.json')]
     try:
-        subprocess.run(command + ['up', '-d', '--no-deps', 'api'], cwd=directory, capture_output=True, check=True, timeout=180)
+        subprocess.run(command + ['up', '-d', '--no-deps', *descriptor['originServices']], cwd=directory, capture_output=True, check=True, timeout=180)
     except Exception:
         path.write_text(old)
         raise

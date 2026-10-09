@@ -43,6 +43,8 @@ for (const [source, destination] of [
   ['delivery/stack-delivery.py', 'stack-delivery.py'],
   ['docker-compose.prod.yml', 'docker-compose.prod.yml'],
   ['docker/Caddyfile', 'docker/Caddyfile'],
+  ['deploy/scripts/backup.sh', 'deploy/scripts/backup.sh'],
+  ['deploy/scripts/backup-metadata.mjs', 'deploy/scripts/backup-metadata.mjs'],
 ]) {
   await mkdir(resolve(bundle, destination, '..'), { recursive: true });
   await cp(join(retail, source), join(bundle, destination));
@@ -161,8 +163,13 @@ try {
     reportToken: node.reportToken,
     testLoopback: true,
     useCachedImagesOnly: true,
-    retailBundle: remote + '/bundle',
-    bundleHashes: hashes,
+    adapters: {
+      lingcoo_retail_oms: {
+        ...JSON.parse(await readFile(join(retail, 'delivery/hosting-adapter.json'), 'utf8')),
+        bundle: remote + '/bundle',
+        hashes,
+      },
+    },
     workspace: remote + '/instances',
     portStart: 23451,
     portEnd: 23460,

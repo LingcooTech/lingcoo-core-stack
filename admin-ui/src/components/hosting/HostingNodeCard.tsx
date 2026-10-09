@@ -131,7 +131,9 @@ export function HostingNodeCard({ node }: { node: HostingNode }) {
           <p className="text-xs break-words text-muted-foreground">
             应用适配：
             {node.telemetry?.supportedApps?.join('、') ||
-              (node.telemetry?.supportedApps ? '尚无已验证适配器' : '旧节点协议，仅兼容 Retail')}
+              (node.telemetry?.supportedApps
+                ? '尚无已验证适配器'
+                : '节点尚未报告适配能力，暂停分配')}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <ResourceMeter

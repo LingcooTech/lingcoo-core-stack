@@ -226,10 +226,7 @@ export class HostingRepository {
     const candidate = nodes
       .filter((node) => {
         const report = hostingNodeReportSchema.safeParse(node.report);
-        return (
-          report.success &&
-          (report.data.supportedApps ?? ['lingcoo_retail_oms']).includes(application.code)
-        );
+        return report.success && (report.data.supportedApps ?? []).includes(application.code);
       })
       .map((node) => ({
         node,

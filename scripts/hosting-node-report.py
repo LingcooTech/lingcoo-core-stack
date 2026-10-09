@@ -9,7 +9,7 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
-from hosting_adapter import resolve_adapter, LEGACY_CODE
+from hosting_adapter import resolve_adapter
 
 
 def memory_mb(value):
@@ -88,7 +88,7 @@ def collect(data_path, config=None):
     containers = inventory() if ready else []
     supported = []
     if not config.get('monitorOnly', True):
-        for code in sorted(set(config.get('adapters', {})) | ({LEGACY_CODE} if config.get('retailBundle') else set())):
+        for code in sorted(config.get('adapters', {})):
             try:
                 resolve_adapter(config, code, verify=True)
                 supported.append(code)

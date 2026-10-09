@@ -42,7 +42,6 @@ export const hostingProfileSchema = z
       )
       .min(1)
       .max(20)
-      .refine((paths) => paths.includes('/health/ready'), '必须检查应用 readiness')
       .optional(),
     resources: hostingResourcesSchema,
   })

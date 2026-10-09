@@ -1,8 +1,4 @@
-import {
-  hostingMonitorProfileSchema,
-  hostingNodeReportSchema,
-  hostingProfileSchema,
-} from '@lingcoo/contracts';
+import { hostingNodeReportSchema, hostingProfileSchema } from '@lingcoo/contracts';
 import type { hostingNodes, deployments, hostingServices } from '../../db/schema';
 import { hostingAlerts } from './hosting-alerts';
 export type HealthObservation = {
@@ -45,20 +41,12 @@ export function nodeObservations(
     };
   });
 }
-export function monitorProfile(appCode: string, meta: unknown) {
+export function monitorProfile(_appCode: string, meta: unknown) {
   const raw =
     meta && typeof meta === 'object' ? (meta as Record<string, unknown>).hostingProfile : undefined;
   const profile = hostingProfileSchema.safeParse(raw);
   if (profile.success && profile.data.monitoring) return profile.data.monitoring;
   if (raw && typeof raw === 'object' && 'monitoring' in raw && !profile.success) return null;
-  // Compatibility only for the already-deployed Retail adapter, not a default for every app.
-  if (appCode === 'lingcoo_retail_oms')
-    return hostingMonitorProfileSchema.parse({
-      projectPrefix: 'retail',
-      services: ['api', 'worker', 'web', 'postgres', 'caddy'],
-      backupRequired: true,
-      offsiteRequired: true,
-    });
   return null;
 }
 export function deploymentObservations(

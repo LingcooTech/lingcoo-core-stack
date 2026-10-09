@@ -1,0 +1,10 @@
+services:
+  site:
+    image: ${APP_IMAGE}
+    ports:
+      - '127.0.0.1:${HTTP_PORT}:80'
+    volumes:
+      - pages:/usr/share/nginx/html
+    restart: unless-stopped
+volumes:
+  pages:

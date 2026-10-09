@@ -54,8 +54,7 @@ def run(command, directory, environment=None):
             raise RuntimeError('Execution step failed')
 
 
-def render_limits(resources, weights=None):
-    weights = weights or {'postgres': 3, 'api': 3, 'worker': 5, 'web': 4, 'caddy': 1}
+def render_limits(resources, weights):
     total = sum(weights.values())
     return {'services': {name: {'mem_limit': str(int(resources['memoryMb']) * weight // total) + 'm',
                                'memswap_limit': str(int(resources['memoryMb']) * weight // total) + 'm',
@@ -82,7 +81,7 @@ def execute(job, config, workspace):
     if journal.exists():
         previous = json.loads(journal.read_text())
         instance_adapter(config, directory)
-        if previous['jobId'] != job['id'] or previous.get('appCode', 'lingcoo_retail_oms') != job['appCode']:
+        if previous['jobId'] != job['id'] or previous['appCode'] != job['appCode']:
             raise ValueError('Different task cannot adopt existing data')
         port = previous['port']
     else:
@@ -93,7 +92,7 @@ def execute(job, config, workspace):
             raise ValueError('Non-empty unowned installation directory')
         if subprocess.check_output(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=' + project]).strip():
             raise ValueError('Project already exists')
-        for volume in ('postgres_data', 'storage_data', 'caddy_data', 'caddy_config'):
+        for volume in descriptor['volumes']:
             if subprocess.run(['docker', 'volume', 'inspect', project + '_' + volume], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
                 raise ValueError('Unowned volume already exists')
         port = None
@@ -112,22 +111,25 @@ def execute(job, config, workspace):
     values_file = directory / '.env'
     if not values_file.exists():
         values = adapter.prepare_configuration(job['env'], project)
-        values.update({'HTTP_PORT': '127.0.0.1:' + str(port), 'CADDY_SITE_ADDRESS': ':80'})
+        values = adapter.hosting_configuration(values, port)
         adapter.write_private(values_file, adapter.encode_env(values))
     values = adapter.read_env(values_file)
     if values['APP_IMAGE'] != job['env']['APP_IMAGE']:
         raise ValueError('Pinned image changed')
-    for volume in ('postgres_data', 'storage_data', 'caddy_data', 'caddy_config'):
+    for volume in descriptor['volumes']:
         inspection = subprocess.run(['docker', 'volume', 'inspect', '-f', '{{index .Labels "com.docker.compose.project"}}', project + '_' + volume], capture_output=True, text=True)
         if inspection.returncode == 0 and inspection.stdout.strip() != project:
             raise ValueError('Volume ownership mismatch')
-    (directory / 'docker').mkdir(exist_ok=True)
-    shutil.copyfile(bundle / 'docker/Caddyfile', directory / 'docker/Caddyfile')
-    compose_text = (bundle / 'docker-compose.prod.yml').read_text().replace("      - '${HTTPS_PORT:-443}:443'\n", '')
-    (directory / 'docker-compose.prod.yml').write_text(compose_text)
+    for name in descriptor['files']:
+        destination = directory / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(bundle / name, destination)
+    # Port 443 belongs exclusively to the platform gateway. Override published ports
+    # through the application's prepare_hosting hook, never edit arbitrary YAML here.
+    adapter.prepare_hosting(directory, port)
     limits = render_limits(job['resources'], descriptor['weights'])
     limits['networks'] = {'ingress': {'name': project + '-ingress'}}
-    limits['services']['caddy']['networks'] = {'default': {}, 'ingress': {'aliases': [project + '-ingress']}}
+    limits['services'][descriptor['ingressService']]['networks'] = {'default': {}, 'ingress': {'aliases': [project + '-ingress']}}
     private_json(directory / 'limits.json', limits)
     prefix = ['docker', 'compose']
     if subprocess.run(prefix + ['version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
@@ -135,7 +137,7 @@ def execute(job, config, workspace):
     command = prefix + ['-p', project, '--env-file', str(values_file), '-f', str(directory / 'docker-compose.prod.yml'), '-f', str(directory / 'limits.json')]
     run(command + ['config', '--quiet'], directory)
     if config.get('useCachedImagesOnly', False):
-        for image in (values['APP_IMAGE'], values['POSTGRES_IMAGE'], values['CADDY_IMAGE']):
+        for image in [values[key] for key in descriptor['imageVariables']]:
             run(['docker', 'image', 'inspect', image], directory)
     else:
         with tempfile.TemporaryDirectory(prefix='lingcoo-registry-') as auth_dir:
@@ -146,13 +148,14 @@ def execute(job, config, workspace):
             if result.returncode:
                 raise RuntimeError('Registry login failed')
             run(command + ['pull', *descriptor['appServices']], directory, registry_env)
-            for base_image in (values['POSTGRES_IMAGE'], values['CADDY_IMAGE']):
+            for base_image in [values[key] for key in descriptor['imageVariables'] if key != 'APP_IMAGE']:
                 if subprocess.run(['docker', 'image', 'inspect', base_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
                     run(['docker', 'pull', base_image], directory, registry_env)
     # No runtime/migration overlap beyond the reserved instance budget during recovery.
-    run(command + ['stop', *descriptor['appServices'], 'caddy'], directory)
-    print('STEP postgres', flush=True)
-    run(command + ['up', '-d', 'postgres'], directory)
+    run(command + ['stop', *descriptor['appServices'], descriptor['ingressService']], directory)
+    print('STEP infrastructure', flush=True)
+    if descriptor['infrastructureServices']:
+        run(command + ['up', '-d', *descriptor['infrastructureServices']], directory)
     def healthy(services):
         for _ in range(90):
             good = True
@@ -164,12 +167,11 @@ def execute(job, config, workspace):
                 return
             time.sleep(2)
         raise RuntimeError('Health deadline exceeded')
-    healthy(['postgres'])
-    # Migrations and bootstrap are idempotent. Initial credentials are one-off process inputs.
-    print('STEP migrate', flush=True)
-    run(command + ['run', '--rm', '--no-deps', 'api', 'node', 'apps/server/dist/entrypoints/migrate.js'], directory)
-    run(command + ['run', '--rm', '--no-deps', 'api', 'node', 'apps/server/dist/entrypoints/bootstrap.js'], directory,
-        {'BOOTSTRAP_OWNER_EMAIL': job['env']['INITIAL_ADMIN_EMAIL'], 'BOOTSTRAP_OWNER_PASSWORD': job['env']['INITIAL_ADMIN_PASSWORD']})
+    healthy(descriptor['infrastructureHealthyServices'])
+    print('STEP initialize', flush=True)
+    for step in descriptor['initialization']:
+        environment = {target: job['env'][source] for target, source in step.get('environment', {}).items()}
+        run(command + ['run', '--rm', '--no-deps', step['service'], *step['command']], directory, environment)
     print('STEP runtime', flush=True)
     run(command + ['up', '-d', *descriptor['appServices']], directory)
     healthy(descriptor['healthyServices'])
@@ -177,7 +179,7 @@ def execute(job, config, workspace):
         cid = subprocess.check_output(command + ['ps', '-q', name], cwd=directory).decode().strip()
         if not cid or subprocess.check_output(['docker', 'inspect', '-f', '{{.State.Running}}', cid]).strip() != b'true':
             raise RuntimeError('Application service not running')
-    run(command + ['up', '-d', 'caddy'], directory)
+    run(command + ['up', '-d', descriptor['ingressService']], directory)
     for endpoint in descriptor['httpChecks']:
         for attempt in range(30):
             try:
