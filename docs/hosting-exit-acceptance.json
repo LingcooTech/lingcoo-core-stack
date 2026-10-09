@@ -1,0 +1,97 @@
+{
+  "verifiedAt": "2026-10-09T04:03:12.124375+00:00",
+  "commit": "72d4f9a0e51472828d09bdb06c3d483f5d6e264e",
+  "ci": {
+    "runId": 37881158425,
+    "conclusion": "success",
+    "unitTests": 90,
+    "databaseIntegrationTests": 107,
+    "adminComponentTests": 29,
+    "browserCriticalPaths": 4,
+    "productionAuditVulnerabilities": 0,
+    "allAuditVulnerabilities": 0
+  },
+  "deploy": {
+    "runId": 37881588266,
+    "conclusion": "success"
+  },
+  "live": {
+    "version": "72d4f9a0e51472828d09bdb06c3d483f5d6e264e",
+    "nodeCapabilities": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "operations": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "operations": ["retire"]
+      }
+    ],
+    "retailExitNotRequested": true,
+    "desktopMobileVerified": true,
+    "productionRetirementExecuted": false,
+    "realPayment": false
+  },
+  "existingApplicationRegression": {
+    "ready": {
+      "status": "ready",
+      "version": "72d4f9a0e51472828d09bdb06c3d483f5d6e264e"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "supportedApps": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "supportedApps": ["lingcoo_edu_oms", "lingcoo_retail_oms"]
+      }
+    ],
+    "retail": {
+      "services": 5,
+      "backup": "success",
+      "offsite": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ],
+    "desktopMobileVerified": true,
+    "newEduPublicInstance": false,
+    "realPayment": false
+  },
+  "disposableNodePilot": {
+    "disposableDeploymentId": "6ae7a1de-7997-47f6-b2ef-3f2928cdde41",
+    "coldSnapshot": true,
+    "stopped": true,
+    "replayIdempotent": true,
+    "encryptedOffsiteRoundTrip": true,
+    "isolatedVolumeRestore": true,
+    "existingCustomerContainersStopped": false
+  },
+  "realPayment": false,
+  "realRefund": false,
+  "currentCustomerTermination": false,
+  "remaining": [
+    "time-limited customer data download and independent key handover",
+    "exit request withdrawal",
+    "audited retained-resource cleanup",
+    "controlled upgrade and cross-node failover",
+    "new Edu customer public delivery",
+    "real merchant acceptance and external notification delivery"
+  ]
+}
