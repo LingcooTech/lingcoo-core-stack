@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-09",
+  "runtimeCommit": "977ae641b6cefe98dea580215e2fd6f8294af14e",
+  "status": "verified",
+  "local": {
+    "engineeringCheck": true,
+    "integrationPassed": 113,
+    "unitPassed": 92,
+    "dockerTestsDeferredToCI": 2,
+    "componentPassed": 32
+  },
+  "realNodePilot": {
+    "realDockerUpgrade": true,
+    "completionReplay": true,
+    "failedLaunchRollback": true,
+    "interruptedRollback": true,
+    "unapprovedReleaseRejected": true,
+    "persistentDataVerified": true,
+    "realEncryptedOffsiteRoundTrip": true,
+    "productionCustomerModified": false
+  },
+  "isolatedApiAndRealNodePilot": {
+    "realDockerUpgrade": true,
+    "completionReplay": true,
+    "failedLaunchRollback": true,
+    "interruptedRollback": true,
+    "realStackHttpApi": true,
+    "isolatedDatabase": true,
+    "sshEncryptedTunnel": true,
+    "persistentDataVerified": true,
+    "realEncryptedOffsiteRoundTrip": true,
+    "productionCustomerModified": false
+  },
+  "boundaries": {
+    "runtimeImageOnly": true,
+    "schemaMigrationSupported": false,
+    "crossNodeRecoverySupported": false,
+    "existingRetailEduUpgraded": false,
+    "productionReleaseCatalogPopulated": false,
+    "realPaymentOrRefund": false
+  },
+  "ci": {
+    "runId": 37901169544,
+    "conclusion": "success",
+    "unitPassed": 94,
+    "integrationPassed": 113,
+    "componentPassed": 32,
+    "browserCriticalPathsPassed": 4,
+    "productionDependencyVulnerabilities": 0,
+    "allDependencyVulnerabilities": 0
+  },
+  "deploy": {
+    "runId": 37901948077,
+    "conclusion": "success",
+    "acrPublished": true,
+    "ghcrPublished": true
+  },
+  "productionReadOnly": {
+    "version": "977ae641b6cefe98dea580215e2fd6f8294af14e",
+    "nodeCapabilities": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "operations": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "operations": ["retire", "export", "reclaim", "upgrade"]
+      }
+    ],
+    "retailExitNotRequested": true,
+    "retailUpgradeNotRequested": true,
+    "currentImageReported": true,
+    "unreviewedUpgradeDisabled": true,
+    "retailHandoverNotRequested": true,
+    "desktopMobileVerified": true,
+    "productionRetirementExecuted": false,
+    "realPayment": false
+  },
+  "existingApplicationRegression": {
+    "ready": {
+      "status": "ready",
+      "version": "977ae641b6cefe98dea580215e2fd6f8294af14e"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "supportedApps": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "supportedApps": ["lingcoo_edu_oms", "lingcoo_retail_oms"]
+      }
+    ],
+    "retail": {
+      "services": 5,
+      "backup": "success",
+      "offsite": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ],
+    "desktopMobileVerified": true,
+    "newEduPublicInstance": false,
+    "realPayment": false
+  }
+}
