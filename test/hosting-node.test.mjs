@@ -1,5 +1,18 @@
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
+test('recovery rejects unsafe archives, ambiguous manifests and wrong target bindings', () => {
+  execFileSync('python3', ['test/hosting-recovery.py'], { stdio: 'pipe' });
+});
+test(
+  'cold PostgreSQL snapshot recovers from encrypted Restic into quarantined volumes',
+  { skip: process.env.CI !== 'true', timeout: 300_000 },
+  () => {
+    execFileSync('python3', ['test/hosting-recovery-docker.py'], {
+      stdio: 'pipe',
+      timeout: 290_000,
+    });
+  },
+);
 test('hosting ingress validates aliases, preserves existing routes and removes detached domains', () => {
   execFileSync('python3', ['test/hosting-node.py'], { stdio: 'pipe' });
 });
