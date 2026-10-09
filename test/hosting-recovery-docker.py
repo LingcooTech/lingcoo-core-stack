@@ -175,6 +175,24 @@ def verify(stage):
         assert recover.volume_exists(foreign_name)
     finally:
         docker(['volume', 'rm', foreign_name])
+    race_plan = {**plan, 'id': str(uuid.uuid4())}
+    race_name = recover.volume_name(race_plan, 'data')
+    def concurrent_create(args, **kwargs):
+        if args[:2] == ['volume', 'create'] and args[-1] == race_name:
+            original_docker(['volume', 'create', '--label', 'recovery-test-sentinel=true', race_name])
+        return original_docker(args, **kwargs)
+    try:
+        with patch.object(recover, 'docker', side_effect=concurrent_create):
+            try:
+                recover.restore(config, race_plan, backup, work)
+                raise AssertionError('Concurrent foreign volume creation was adopted')
+            except ValueError:
+                pass
+        contents = docker(['run', '--rm', '--network', 'none', '-v', race_name + ':/fixture:ro', '--entrypoint', 'sh', config['snapshotImage'], '-c', 'ls -A /fixture'])
+        assert contents == b'', 'Foreign volume was written before ownership validation'
+    finally:
+        docker(['volume', 'rm', race_name])
+        recover.cleanup(race_plan, config, work)
     original = (backup / '.env').read_bytes()
     (backup / '.env').write_bytes(original + b'corrupt')
     try:
@@ -204,7 +222,7 @@ def verify(stage):
     assert all(not recover.volume_exists(name) for name in proof['volumes'].values())
     evidence = {**proof, 'postgresRows': 50, 'postgresAmountSum': 16575, 'unicodeVerified': True, 'fileVerified': True,
                 'snapshotCorruptionRejected': True, 'frozenPlanProtected': True, 'completionReplayVerified': True,
-                'incompleteRestoreBlocked': True, 'foreignVolumeProtected': True, 'inUseVolumeProtected': True, 'cleanupReplayVerified': True, 'isolatedDatabaseValidation': True,
+                'concurrentForeignVolumeProtected': True, 'incompleteRestoreBlocked': True, 'foreignVolumeProtected': True, 'inUseVolumeProtected': True, 'cleanupReplayVerified': True, 'isolatedDatabaseValidation': True,
                 'productionCustomerModified': False, 'productionRepositoryUsed': False, 'encryptedRepositoryReadOnTarget': True}
     recover.store(stage / 'target-evidence.json', evidence)
     print(json.dumps(evidence))

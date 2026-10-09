@@ -211,6 +211,18 @@ def volume_exists(name):
     return name in docker(['volume', 'ls', '-q'], text=True).splitlines()
 
 
+def recovery_root(config, root):
+    for key in ('workspace', 'backupRoot'):
+        if config.get(key):
+            protected = Path(config[key]).resolve()
+            resolved = root.resolve()
+            if resolved == protected or resolved in protected.parents or protected in resolved.parents:
+                raise ValueError('Recovery root must be separate from live instances and backups')
+    private_directory(root)
+    if (root / '.lock').is_symlink():
+        raise ValueError('Symlink recovery lock')
+
+
 def owned_volume(name, plan):
     meta = json.loads(docker(['volume', 'inspect', name]))[0]
     labels = meta.get('Labels') or {}
@@ -222,9 +234,7 @@ def owned_volume(name, plan):
 
 def restore(config, plan, backup, root):
     validate_plan(plan, config)
-    private_directory(root)
-    if (root / '.lock').is_symlink():
-        raise ValueError('Symlink recovery lock')
+    recovery_root(config, root)
     with (root / '.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         return restore_locked(config, plan, backup, root)
@@ -273,6 +283,8 @@ def restore_locked(config, plan, backup, root):
     for volume, name in names.items():
         if state['phase'] == 'restoring':
             docker(['volume', 'create', '--label', LABEL + '=' + plan['id'], '--label', LABEL + '.deployment=' + plan['deploymentId'], '--label', LABEL + '.target=' + plan['targetNodeId'], name])
+            # Docker create also returns success for an existing volume; check again before writing.
+            owned_volume(name, plan)
             with (backup / (volume + '.tar')).open('rb') as stream:
                 docker(helper + ['-i', '-v', name + ':/restore', '--entrypoint', 'tar', image, '-C', '/restore', '-xpf', '-'], stdin=stream)
         owned_volume(name, plan)
@@ -298,9 +310,7 @@ def restore_locked(config, plan, backup, root):
 
 def cleanup(plan, config, root):
     validate_plan(plan, config)
-    private_directory(root)
-    if (root / '.lock').is_symlink():
-        raise ValueError('Symlink recovery lock')
+    recovery_root(config, root)
     with (root / '.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         directory = root / plan['id']

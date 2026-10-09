@@ -76,5 +76,14 @@ class ArchiveGuards(unittest.TestCase):
             with self.assertRaises(ValueError):
                 recover.private_directory(path / 'link' / 'new')
 
+    def test_restore_root_cannot_overlap_live_resources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            config = {'workspace': str(base / 'instances'), 'backupRoot': str(base / 'backups')}
+            for path in [base, base / 'instances', base / 'instances' / 'child', base / 'backups']:
+                with self.subTest(path=path), self.assertRaises(ValueError):
+                    recover.recovery_root(config, path)
+            recover.recovery_root(config, base / 'recovery')
+
 
 unittest.main()
