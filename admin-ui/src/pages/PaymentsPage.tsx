@@ -32,11 +32,20 @@ import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
 
 const wechatSchema = z.object({
-  appId: z.string().optional(),
-  appSecret: z.string().optional(),
-  mchId: z.string().optional(),
-  apiKey: z.string().optional(),
-  disableH5: z.boolean().optional(),
+  appId: z.string().trim().optional(),
+  mchId: z.string().trim().optional(),
+  apiV3Key: z
+    .string()
+    .trim()
+    .refine(
+      (value) => !value || /^[\x20-\x7E]{32}$/.test(value),
+      'API v3 密钥须为 32 位 ASCII 字符',
+    )
+    .optional(),
+  merchantSerial: z.string().trim().optional(),
+  privateKeyPem: z.string().trim().optional(),
+  publicKeyPem: z.string().trim().optional(),
+  publicKeyId: z.string().trim().optional(),
 });
 
 const alipaySchema = z.object({
@@ -65,6 +74,12 @@ export function PaymentsPage() {
   const wechatMutation = useMutation({
     mutationFn: upsertWechatSettings,
     onSuccess: () => {
+      wechatForm.reset({
+        ...wechatForm.getValues(),
+        apiV3Key: '',
+        privateKeyPem: '',
+        publicKeyPem: '',
+      });
       toast.success('微信支付配置已保存');
       void qc.invalidateQueries({ queryKey: ['payment-settings'] });
     },
@@ -91,12 +106,15 @@ export function PaymentsPage() {
 
   const wechatForm = useForm<WechatValues>({
     resolver: zodResolver(wechatSchema),
-    defaultValues: {
+    resetOptions: { keepDirtyValues: true },
+    values: {
       appId: (wechat?.values.appId as string) ?? '',
       mchId: (wechat?.values.mchId as string) ?? '',
-      appSecret: '',
-      apiKey: '',
-      disableH5: Boolean(wechat?.values.disableH5),
+      apiV3Key: '',
+      privateKeyPem: '',
+      publicKeyPem: '',
+      merchantSerial: String(wechat?.values.merchantSerial ?? ''),
+      publicKeyId: String(wechat?.values.publicKeyId ?? ''),
     },
   });
   const alipayForm = useForm<AlipayValues>({
@@ -154,7 +172,7 @@ export function PaymentsPage() {
                     onSubmit={handleAsync(wechatForm.handleSubmit((v) => wechatMutation.mutate(v)))}
                     className="space-y-4"
                   >
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <FormField
                         control={wechatForm.control}
                         name="appId"
@@ -181,66 +199,56 @@ export function PaymentsPage() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={wechatForm.control}
-                        name="appSecret"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>AppSecret</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder={
-                                  wechat?.secrets.appSecret?.configured
-                                    ? '已保存，留空保持不变'
-                                    : '当前未保存'
-                                }
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={wechatForm.control}
-                        name="apiKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>API 密钥 v3</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder={
-                                  wechat?.secrets.apiKey?.configured
-                                    ? '已保存，留空保持不变'
-                                    : '当前未保存'
-                                }
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {(
+                        [
+                          ['merchantSerial', '商户 API 证书序列号', false],
+                          ['publicKeyId', '微信支付公钥 ID / 平台证书序列号', false],
+                          ['apiV3Key', 'API v3 密钥（32 字节）', true],
+                          ['privateKeyPem', '商户 API 私钥 PEM', true],
+                          ['publicKeyPem', '微信支付公钥 / 平台证书 PEM', true],
+                        ] as const
+                      ).map(([name, label, secret]) => (
+                        <FormField
+                          key={name}
+                          control={wechatForm.control}
+                          name={name}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{label}</FormLabel>
+                              <FormControl>
+                                {name.endsWith('Pem') ? (
+                                  <Textarea
+                                    autoComplete="off"
+                                    placeholder={
+                                      wechat?.secrets[name]?.configured
+                                        ? '已保存，留空保持不变'
+                                        : '粘贴 PEM 内容'
+                                    }
+                                    {...field}
+                                  />
+                                ) : (
+                                  <Input
+                                    type={secret ? 'password' : 'text'}
+                                    autoComplete="off"
+                                    placeholder={
+                                      secret && wechat?.secrets[name]?.configured
+                                        ? '已保存，留空保持不变'
+                                        : ''
+                                    }
+                                    {...field}
+                                  />
+                                )}
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
                     </div>
-                    <FormField
-                      control={wechatForm.control}
-                      name="disableH5"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-md border border-border bg-card p-4">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                          <div>
-                            <FormLabel className="cursor-pointer">禁用 H5 支付</FormLabel>
-                            <FormDescription>
-                              禁用微信 H5 跳转支付，仅保留 Native/JSAPI。
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
+                    <p className="text-sm text-muted-foreground">
+                      使用微信支付 V3 Native 扫码支付。回调地址由平台自动生成。旧版 API 密钥不能代替
+                      API v3 密钥。
+                    </p>
                     <div className="flex gap-2">
                       <Button
                         type="submit"

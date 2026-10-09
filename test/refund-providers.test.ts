@@ -25,7 +25,8 @@ const env = validateEnv({
   WECHAT_PAY_APP_ID: 'test_app',
   WECHAT_PAY_APP_SECRET: 'test_secret',
   WECHAT_PAY_MCH_ID: 'test_mch',
-  WECHAT_PAY_KEY: 'test_key',
+  WECHAT_PAY_API_V3_KEY: '12345678901234567890123456789012',
+  WECHAT_PAY_PUBLIC_KEY_ID: 'PUB_KEY_ID_test',
   WECHAT_PAY_PRIVATE_KEY: keys.privateKey,
   WECHAT_PAY_PLATFORM_CERT: keys.publicKey,
   WECHAT_PAY_CERT_SERIAL_NO: 'test_serial',
@@ -66,6 +67,7 @@ function signedResponse(payload: unknown) {
   return new Response(body, {
     status: 200,
     headers: {
+      'wechatpay-serial': 'PUB_KEY_ID_test',
       'wechatpay-timestamp': timestamp,
       'wechatpay-nonce': nonce,
       'wechatpay-signature': signer.sign(keys.privateKey, 'base64'),

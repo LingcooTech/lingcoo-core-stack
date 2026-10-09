@@ -12,7 +12,13 @@ export type PaymentSettingsSource = 'database' | 'env' | 'none';
 
 export type WechatPaymentSettings = {
   appId: string;
-  appSecret?: string;
+  appSecret?: string; // retained only for reading legacy settings
+  apiV3Key?: string;
+  merchantSerial?: string;
+  privateKeyPem?: string;
+  publicKeyPem?: string;
+  publicKeyId?: string;
+
   mchId: string;
   apiKey?: string;
   disableH5: boolean;
@@ -39,10 +45,16 @@ export type PaymentSettingsOverviewItem =
       code: 'wechat_pay';
       source: PaymentSettingsSource;
       configured: boolean;
-      values: Pick<WechatPaymentSettings, 'appId' | 'mchId' | 'disableH5'>;
+      values: Pick<
+        WechatPaymentSettings,
+        'appId' | 'mchId' | 'disableH5' | 'merchantSerial' | 'publicKeyId'
+      >;
       secrets: {
         appSecret: SecretStatus;
         apiKey: SecretStatus;
+        apiV3Key: SecretStatus;
+        privateKeyPem: SecretStatus;
+        publicKeyPem: SecretStatus;
       };
     }
   | {
@@ -146,6 +158,16 @@ export function readSecretValue(input: { inlineValue?: string; fileValue?: strin
   return '';
 }
 
+function configuredPem(inline: string | undefined, filePath: string | undefined) {
+  if (inline?.trim()) return normalizePem(inline);
+  if (!filePath?.trim()) return '';
+  try {
+    return normalizePem(fs.readFileSync(resolvePath(filePath.trim()), 'utf8'));
+  } catch {
+    return '';
+  }
+}
+
 export class PaymentSettingsService {
   constructor(
     private readonly db: DbExecutor,
@@ -206,7 +228,7 @@ export class PaymentSettingsService {
     const appId = normalizeString(String(raw.appId ?? raw.appid ?? ''));
     const appSecret = normalizeString(String(raw.appSecret ?? raw.secret ?? ''));
     const mchId = normalizeString(String(raw.mchId ?? raw.mchid ?? ''));
-    const apiKey = normalizeString(String(raw.apiKey ?? raw.apiV3Key ?? raw.key ?? ''));
+    const apiKey = normalizeString(String(raw.apiKey ?? raw.key ?? ''));
     const disableH5 = normalizeBoolean(raw.disableH5 ?? raw.disable_h5, false);
     const notifyUrl = '';
 
@@ -215,6 +237,11 @@ export class PaymentSettingsService {
     }
 
     return {
+      apiV3Key: normalizeString(String(raw.apiV3Key ?? '')),
+      merchantSerial: normalizeString(String(raw.merchantSerial ?? '')),
+      privateKeyPem: normalizeString(String(raw.privateKeyPem ?? '')),
+      publicKeyPem: normalizeString(String(raw.publicKeyPem ?? '')),
+      publicKeyId: normalizeString(String(raw.publicKeyId ?? '')),
       appId,
       appSecret,
       mchId,
@@ -266,8 +293,18 @@ export class PaymentSettingsService {
       appId: normalizeString(this.env.WECHAT_PAY_APP_ID),
       appSecret: normalizeString(this.env.WECHAT_PAY_APP_SECRET),
       mchId: normalizeString(this.env.WECHAT_PAY_MCH_ID),
-      apiKey:
-        normalizeString(this.env.WECHAT_PAY_KEY) || normalizeString(this.env.WECHAT_PAY_API_V3_KEY),
+      apiKey: normalizeString(this.env.WECHAT_PAY_KEY),
+      apiV3Key: normalizeString(this.env.WECHAT_PAY_API_V3_KEY),
+      merchantSerial: normalizeString(this.env.WECHAT_PAY_CERT_SERIAL_NO),
+      privateKeyPem: configuredPem(
+        this.env.WECHAT_PAY_PRIVATE_KEY,
+        this.env.WECHAT_PAY_PRIVATE_KEY_PATH,
+      ),
+      publicKeyPem: configuredPem(
+        this.env.WECHAT_PAY_PLATFORM_CERT,
+        this.env.WECHAT_PAY_PLATFORM_CERT_PATH,
+      ),
+      publicKeyId: normalizeString(this.env.WECHAT_PAY_PUBLIC_KEY_ID),
       disableH5: normalizeBoolean(this.env.WECHAT_PAY_DISABLE_H5, false),
       notifyUrl: normalizeUrlLikeValue(this.env.WECHAT_PAY_NOTIFY_URL),
     };
@@ -331,7 +368,14 @@ export class PaymentSettingsService {
       runtimeEnv.WECHAT_PAY_MCH_ID = wechat.mchId;
       runtimeEnv.WECHAT_PAY_APP_ID = wechat.appId;
       runtimeEnv.WECHAT_PAY_APP_SECRET = wechat.appSecret;
-      runtimeEnv.WECHAT_PAY_KEY = wechat.apiKey;
+      runtimeEnv.WECHAT_PAY_KEY = undefined;
+      runtimeEnv.WECHAT_PAY_API_V3_KEY = wechat.apiV3Key;
+      runtimeEnv.WECHAT_PAY_CERT_SERIAL_NO = wechat.merchantSerial;
+      runtimeEnv.WECHAT_PAY_PRIVATE_KEY = wechat.privateKeyPem;
+      runtimeEnv.WECHAT_PAY_PLATFORM_CERT = wechat.publicKeyPem;
+      runtimeEnv.WECHAT_PAY_PUBLIC_KEY_ID = wechat.publicKeyId;
+      runtimeEnv.WECHAT_PAY_PRIVATE_KEY_PATH = undefined;
+      runtimeEnv.WECHAT_PAY_PLATFORM_CERT_PATH = undefined;
       runtimeEnv.WECHAT_PAY_DISABLE_H5 = wechat.disableH5;
       runtimeEnv.WECHAT_PAY_NOTIFY_URL = wechat.notifyUrl || undefined;
     }
@@ -365,6 +409,15 @@ export class PaymentSettingsService {
       };
 
     const next: WechatPaymentSettings = {
+      apiV3Key: input.apiV3Key ? normalizeString(input.apiV3Key) : current.apiV3Key,
+      merchantSerial: input.merchantSerial
+        ? normalizeString(input.merchantSerial)
+        : current.merchantSerial,
+      privateKeyPem: input.privateKeyPem
+        ? normalizeString(input.privateKeyPem)
+        : current.privateKeyPem,
+      publicKeyPem: input.publicKeyPem ? normalizeString(input.publicKeyPem) : current.publicKeyPem,
+      publicKeyId: input.publicKeyId ? normalizeString(input.publicKeyId) : current.publicKeyId,
       appId: input.appId !== undefined ? normalizeString(input.appId) : current.appId,
       appSecret: input.appSecret ? normalizeString(input.appSecret) : current.appSecret,
       mchId: input.mchId !== undefined ? normalizeString(input.mchId) : current.mchId,
@@ -439,15 +492,37 @@ export class PaymentSettingsService {
           configured: Boolean(
             wechat?.mchId &&
             wechat.appId &&
-            secretConfigured(wechat.appSecret) &&
-            secretConfigured(wechat.apiKey),
+            Buffer.byteLength(wechat.apiV3Key ?? '') === 32 &&
+            wechat.merchantSerial &&
+            (wechat.privateKeyPem ||
+              (wechatSource === 'env' &&
+                fileSecretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH))) &&
+            (wechat.publicKeyPem ||
+              (wechatSource === 'env' &&
+                fileSecretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH))) &&
+            wechat.publicKeyId,
           ),
           values: {
             appId: wechat?.appId ?? '',
             mchId: wechat?.mchId ?? '',
+            merchantSerial: wechat?.merchantSerial ?? '',
+            publicKeyId: wechat?.publicKeyId ?? '',
             disableH5: wechat?.disableH5 ?? false,
           },
           secrets: {
+            apiV3Key: { configured: secretConfigured(wechat?.apiV3Key) },
+            privateKeyPem: {
+              configured:
+                secretConfigured(wechat?.privateKeyPem) ||
+                (wechatSource === 'env' &&
+                  fileSecretConfigured(this.env.WECHAT_PAY_PRIVATE_KEY_PATH)),
+            },
+            publicKeyPem: {
+              configured:
+                secretConfigured(wechat?.publicKeyPem) ||
+                (wechatSource === 'env' &&
+                  fileSecretConfigured(this.env.WECHAT_PAY_PLATFORM_CERT_PATH)),
+            },
             appSecret: {
               configured: secretConfigured(wechat?.appSecret),
             },

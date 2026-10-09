@@ -7,10 +7,12 @@ export async function getPaymentSettings(): Promise<PaymentSettingsOverview> {
 
 export interface WechatPaySettings {
   appId?: string;
-  appSecret?: string;
   mchId?: string;
-  apiKey?: string;
-  disableH5?: boolean;
+  apiV3Key?: string;
+  merchantSerial?: string;
+  privateKeyPem?: string;
+  publicKeyPem?: string;
+  publicKeyId?: string;
 }
 
 export interface AlipaySettings {

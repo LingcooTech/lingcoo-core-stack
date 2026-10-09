@@ -170,8 +170,11 @@ test('Wechat setting writes use the same optimistic version as the payment overv
       payload: {
         appId: 'fixture-app',
         mchId: 'fixture-merchant',
-        appSecret: 'fixture-private-app-secret',
-        apiKey: 'fixture-private-api-key',
+        apiV3Key: '12345678901234567890123456789012',
+        merchantSerial: 'fixture-serial',
+        publicKeyId: 'fixture-public-id',
+        privateKeyPem: 'fixture-private-key',
+        publicKeyPem: 'fixture-private-public-key',
       },
     });
     assert.equal(saved.statusCode, 200, saved.body);

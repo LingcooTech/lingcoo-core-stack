@@ -86,20 +86,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
           );
         }
 
-        return reply
-          .status(200)
-          .type('text/xml; charset=utf-8')
-          .send(
-            '<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>',
-          );
+        return reply.status(204).send();
       } catch (error) {
         request.log.error({ err: error }, 'wechat pay notification failed');
-        return reply
-          .status(200)
-          .type('text/xml; charset=utf-8')
-          .send(
-            '<xml><return_code><![CDATA[FAIL]]></return_code><return_msg><![CDATA[FAIL]]></return_msg></xml>',
-          );
+        return reply.status(500).send({ code: 'FAIL', message: 'Notification processing failed' });
       }
     },
   );
