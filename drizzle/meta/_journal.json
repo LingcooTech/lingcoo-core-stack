@@ -330,6 +330,13 @@
       "when": 1791520384242,
       "tag": "0046_protect_handover_records",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791530707627,
+      "tag": "0047_magical_solo",
+      "breakpoints": true
     }
   ]
 }

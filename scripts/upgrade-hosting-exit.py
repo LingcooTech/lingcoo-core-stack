@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Install reviewed exit runtime on an enrolled node; no instance is stopped by this upgrade."""
+"""Install reviewed hosting lifecycle runtime on an enrolled node; no instance is stopped by this upgrade."""
 import datetime,fcntl,hashlib,json,os,py_compile,shutil,subprocess,sys
 from pathlib import Path
-allowed={'hosting-node-agent.py','hosting-node-report.py','hosting-node-operation.py','hosting-node-retire.py','hosting-node-handover.py','hosting-node-reclaim.py'}
+allowed={'hosting-node-agent.py','hosting-node-report.py','hosting-node-operation.py','hosting-node-retire.py','hosting-node-handover.py','hosting-node-reclaim.py','hosting-node-upgrade.py','hosting_upgrade.py'}
 config_path=Path(sys.argv[1]);stage=Path(sys.argv[2])
 if config_path.stat().st_mode & 0o077:raise ValueError('Private config required')
 config=json.loads(config_path.read_text());destination=config_path.parent

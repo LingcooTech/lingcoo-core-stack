@@ -10,6 +10,7 @@ import sys
 import urllib.parse
 import urllib.request
 from hosting_adapter import resolve_adapter
+from hosting_upgrade import catalog,runtime_images
 
 
 def memory_mb(value):
@@ -94,7 +95,9 @@ def collect(data_path, config=None):
                 supported.append(code)
             except (ValueError, OSError, KeyError, TypeError):
                 continue
-    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': (['retire','export','reclaim'] if config.get('ageBinary') and config.get('ageKeygenBinary') else ['retire']) if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
+    upgrades=catalog(config) if ready else []
+    images=runtime_images(config,workspace) if ready and not config.get('monitorOnly',True) else []
+    return {'upgradeReleases':upgrades, 'runtimeImages':images, 'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': (['retire','export','reclaim','upgrade'] if config.get('ageBinary') and config.get('ageKeygenBinary') else ['retire','upgrade']) if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
         'totals': {'cpuMillis': (os.cpu_count() or 1)*1000, 'memoryMb':mem['MemTotal']//1024, 'diskMb':total_disk//1048576},
         'certificateAutomation':automation, 'load1':os.getloadavg()[0], 'containers':containers, 'certificate':certificate, 'backups':backups,
         'available': {

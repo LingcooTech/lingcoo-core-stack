@@ -1,3 +1,4 @@
+import { hostingUpgradeRoutes } from './hosting-upgrade-routes';
 import { hostingHandoverRoutes } from './hosting-handover-routes';
 import { hostingExitRoutes } from './hosting-exit-routes';
 import { hostingServiceRoutes } from './hosting-service-routes';
@@ -26,6 +27,7 @@ export const deploymentRoutes: FastifyPluginAsync = async (app) => {
   await app.register(hostingHandoverRoutes);
   await app.register(hostingRoutes);
   await app.register(hostingOperationRoutes);
+  await app.register(hostingUpgradeRoutes);
   await app.register(domainRoutes);
   app.get('/v1/deployments/me', { preHandler: app.authenticate }, async (request) => {
     return app.services.DeploymentService.listUserDeployments(request.user.sub);

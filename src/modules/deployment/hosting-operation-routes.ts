@@ -63,6 +63,7 @@ export const hostingOperationRoutes: FastifyPluginAsync = async (app) => {
           new Date(),
           payload.evidence,
           payload.reclamationEvidence,
+          payload.upgradeEvidence,
         );
         await new AuditLogService(tx).record({
           actorType: 'system',

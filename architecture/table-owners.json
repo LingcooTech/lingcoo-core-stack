@@ -53,5 +53,6 @@
   "hostingExitEvents": "deployment",
   "hostingHandovers": "deployment",
   "hostingHandoverGrants": "deployment",
-  "hostingReclamations": "deployment"
+  "hostingReclamations": "deployment",
+  "hostingUpgrades": "deployment"
 }

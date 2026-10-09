@@ -1,3 +1,4 @@
+import { HostingUpgradePanel } from './HostingUpgradePanel';
 import { HostingExitPanel } from '@/components/hosting/HostingExitPanel';
 import { HostingServicePanel } from './HostingServicePanel';
 import { useState } from 'react';
@@ -27,6 +28,7 @@ const states: Record<string, string> = {
 };
 const deploymentStates: Record<string, string> = {
   ready: '运行就绪',
+  maintenance: '维护升级中',
   exit_requested: '退出待处理',
   stopping: '停服备份中',
   retained: '已停服·保留数据',
@@ -293,6 +295,7 @@ export function HostingInstances({
                 <div className="px-5 pb-4">
                   <HostingServicePanel deploymentId={instance.id} admin />
                   <HostingExitPanel deploymentId={instance.id} admin />
+                  <HostingUpgradePanel deploymentId={instance.id} />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
                   <span className="text-xs text-muted-foreground">
@@ -354,11 +357,16 @@ export function HostingInstances({
                       o.deploymentId}
                   </td>
                   <td className="px-5 py-4 text-xs">
-                    {o.kind === 'restart'
-                      ? '重启应用'
-                      : o.kind === 'retire'
-                        ? '停服并保留数据'
-                        : '备份'}
+                    {
+                      {
+                        restart: '重启应用',
+                        backup: '备份',
+                        retire: '停服并保留数据',
+                        export: '制作加密交付包',
+                        reclaim: '回收实例资源',
+                        upgrade: '受控镜像升级',
+                      }[o.kind]
+                    }
                   </td>
                   <td className="px-5 py-4">
                     <StatusPill
@@ -369,13 +377,17 @@ export function HostingInstances({
                     />
                   </td>
                   <td className="px-5 py-4 text-xs text-muted-foreground">
-                    {o.result === 'verified'
-                      ? '节点验证通过'
-                      : o.result === 'lease_expired'
-                        ? '执行超时，请检查节点'
-                        : o.result === 'execution_failed'
-                          ? '执行失败，请检查节点'
-                          : '等待节点回报'}
+                    {o.result === 'upgrade_rolled_back'
+                      ? '新版本未通过，已回退并验证旧版本'
+                      : o.result === 'upgrade_rejected'
+                        ? '预检拒绝，原版本保持运行'
+                        : o.result === 'verified'
+                          ? '节点验证通过'
+                          : o.result === 'lease_expired'
+                            ? '执行超时，请检查节点'
+                            : o.result === 'execution_failed'
+                              ? '执行失败，请检查节点'
+                              : '等待节点回报'}
                   </td>
                 </tr>
               ))}

@@ -1,3 +1,4 @@
+import { HostingUpgradeService } from './hosting-upgrade';
 import { completeReclamation } from './hosting-handover';
 import { and, desc, eq, inArray, lt, notInArray } from 'drizzle-orm';
 import {
@@ -158,7 +159,7 @@ export class HostingOperations {
         and(
           eq(hostingOperations.nodeId, nodeId),
           eq(hostingOperations.state, 'running'),
-          notInArray(hostingOperations.kind, ['retire', 'export', 'reclaim']),
+          notInArray(hostingOperations.kind, ['retire', 'export', 'reclaim', 'upgrade']),
           lt(hostingOperations.startedAt, new Date(now.getTime() - 60 * 60 * 1000)),
         ),
       );
@@ -169,14 +170,14 @@ export class HostingOperations {
       .orderBy(hostingOperations.createdAt);
     const running = runningRows.find(
       (row) =>
-        !['retire', 'export', 'reclaim'].includes(row.kind) ||
+        !['retire', 'export', 'reclaim', 'upgrade'].includes(row.kind) ||
         row.result !== 'execution_failed' ||
         !row.startedAt ||
         now.getTime() - row.startedAt.getTime() >= 5 * 60000,
     );
     if (running) {
       if (
-        ['retire', 'export', 'reclaim'].includes(running.kind) &&
+        ['retire', 'export', 'reclaim', 'upgrade'].includes(running.kind) &&
         running.result === 'execution_failed'
       ) {
         const [retry] = await this.db
@@ -211,6 +212,7 @@ export class HostingOperations {
     now = new Date(),
     evidence?: HostingExitEvidence,
     reclamationEvidence?: unknown,
+    upgradeEvidence?: unknown,
   ) {
     const repository = new HostingRepository(this.db);
     await repository.authenticate(nodeId, token);
@@ -222,7 +224,7 @@ export class HostingOperations {
     if (!row) throw httpError(404, '操作不存在');
     if (['succeeded', 'failed'].includes(row.state)) return { ok: true };
     if (row.state !== 'running') throw httpError(409, '操作未领取');
-    if (['retire', 'export', 'reclaim'].includes(row.kind) && !success) {
+    if (['retire', 'export', 'reclaim', 'upgrade'].includes(row.kind) && !success) {
       const [handover] =
         row.kind === 'export'
           ? await this.db
@@ -241,6 +243,10 @@ export class HostingOperations {
         .where(eq(hostingOperations.id, id));
       return { ok: true };
     }
+    const upgradeResult =
+      row.kind === 'upgrade'
+        ? await new HostingUpgradeService(this.db).complete(id, upgradeEvidence, now)
+        : null;
     if (row.kind === 'export') {
       const [h] = await this.db
         .select()
@@ -263,8 +269,8 @@ export class HostingOperations {
     await this.db
       .update(hostingOperations)
       .set({
-        state: success ? 'succeeded' : 'failed',
-        result: success ? 'verified' : 'execution_failed',
+        state: success && (!upgradeResult || upgradeResult === 'verified') ? 'succeeded' : 'failed',
+        result: upgradeResult ?? (success ? 'verified' : 'execution_failed'),
         completedAt: now,
       })
       .where(eq(hostingOperations.id, id));

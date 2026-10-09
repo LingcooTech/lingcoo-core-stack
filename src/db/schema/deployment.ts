@@ -351,3 +351,15 @@ export const hostingReclamations = pgTable('hosting_reclamations', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
   evidence: jsonb('evidence'),
 });
+
+export const hostingUpgrades = pgTable('hosting_upgrades', {
+  operationId: uuid('operation_id')
+    .primaryKey()
+    .references(() => hostingOperations.id, { onDelete: 'restrict' }),
+  deploymentId: uuid('deployment_id')
+    .notNull()
+    .references(() => deployments.id, { onDelete: 'restrict' }),
+  plan: jsonb('plan').notNull(),
+  evidence: jsonb('evidence'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

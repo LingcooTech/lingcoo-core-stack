@@ -1,3 +1,8 @@
+import {
+  upgradeReleaseSchema,
+  upgradeEvidenceSchema,
+  upgradeImageSchema,
+} from './hosting-upgrade.js';
 import { reclamationEvidenceSchema } from './hosting-handover.js';
 import { hostingMonitorProfileSchema } from './hosting-monitor.js';
 import { z } from 'zod';
@@ -100,10 +105,15 @@ export const hostingNodeReportSchema = z
   .object({
     dockerReady: z.boolean(),
     canDeploy: z.boolean().optional(),
-    supportedOperations: z.array(z.enum(['retire', 'export', 'reclaim'])).optional(),
+    supportedOperations: z.array(z.enum(['retire', 'export', 'reclaim', 'upgrade'])).optional(),
     supportedApps: z
       .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
       .max(100)
+      .optional(),
+    upgradeReleases: z.array(upgradeReleaseSchema).max(100).optional(),
+    runtimeImages: z
+      .array(z.object({ deploymentId: z.uuid(), image: upgradeImageSchema }))
+      .max(500)
       .optional(),
     totals: hostingResourcesSchema.optional(),
     load1: z.number().min(0).max(10000).optional(),
@@ -150,6 +160,7 @@ export const ManagedDeploymentSchema = z.object({
     'stopping',
     'retained',
     'terminated',
+    'maintenance',
   ]),
   nodeAssigned: z.boolean(),
   accessUrl: z.string().nullable(),
@@ -237,6 +248,7 @@ export const hostingOperationKindSchema = z.enum([
   'retire',
   'export',
   'reclaim',
+  'upgrade',
 ]);
 export const hostingOperationRequestSchema = z
   .object({
@@ -254,7 +266,15 @@ export const HostingOperationSchema = z.object({
   createdAt: z.iso.datetime({ offset: true }),
   startedAt: z.iso.datetime({ offset: true }).nullable(),
   completedAt: z.iso.datetime({ offset: true }).nullable(),
-  result: z.enum(['verified', 'execution_failed', 'lease_expired']).nullable(),
+  result: z
+    .enum([
+      'verified',
+      'execution_failed',
+      'lease_expired',
+      'upgrade_rolled_back',
+      'upgrade_rejected',
+    ])
+    .nullable(),
 });
 export const hostingOperationCompletionSchema = z
   .object({
@@ -262,6 +282,7 @@ export const hostingOperationCompletionSchema = z
     success: z.boolean(),
     evidence: hostingExitEvidenceSchema.optional(),
     reclamationEvidence: reclamationEvidenceSchema.optional(),
+    upgradeEvidence: upgradeEvidenceSchema.optional(),
   })
   .strict();
 export const HostingOperationClaimSchema = z.object({

@@ -1,3 +1,4 @@
+import { UpgradeOptionsSchema, upgradeReleaseSchema } from './hosting-upgrade.js';
 import { HandoverListSchema, HandoverResultSchema } from './hosting-handover.js';
 import { AppReadinessSchema } from './app-readiness.js';
 import { HostingIncidentsSchema, HostingIncidentEventsSchema } from './hosting-monitor.js';
@@ -27,6 +28,21 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  {
+    method: 'GET',
+    path: '/v1/admin/deployments/:deploymentId/upgrades',
+    schema: UpgradeOptionsSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/deployments/:deploymentId/upgrades',
+    schema: z.object({ operationId: z.uuid() }),
+  },
+  {
+    method: 'GET',
+    path: '/v1/hosting/nodes/:nodeId/operations/:operationId/upgrade',
+    schema: upgradeReleaseSchema,
+  },
   { method: 'GET', path: '/v1/deployments/:deploymentId/handover', schema: HandoverListSchema },
   { method: 'POST', path: '/v1/deployments/:deploymentId/handover', schema: HandoverResultSchema },
   {

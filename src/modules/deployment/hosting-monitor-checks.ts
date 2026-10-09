@@ -95,6 +95,20 @@ export function deploymentObservations(
         'warning',
       ),
     ];
+  if (d.hostingState === 'maintenance')
+    return [
+      make(
+        'maintenance_stalled',
+        '托管维护超过一小时，请检查升级与回退状态',
+        now.getTime() - d.updatedAt.getTime() > 3600000 ? 'active' : 'clear',
+        'warning',
+      ),
+      make(
+        'node_report_missing',
+        '维护期间节点失联',
+        !node || !fresh(node.lastReportedAt, now) ? 'active' : 'clear',
+      ),
+    ];
   const report = hostingNodeReportSchema.safeParse(node?.report);
   const reliable = !!node && fresh(node.lastReportedAt, now) && report.success;
   const age = now.getTime() - d.updatedAt.getTime();
@@ -102,6 +116,7 @@ export function deploymentObservations(
     !!d.lastDeployedAt || ['runtime_ready', 'pending_tls', 'ready'].includes(d.hostingState ?? '');
   const profile = monitorProfile(app.code, app.meta);
   const observations = [
+    make('maintenance_stalled', '托管维护超过一小时，请检查升级与回退状态', 'clear', 'warning'),
     make('delivery_failed', '托管交付失败', d.hostingState === 'failed' ? 'active' : 'clear'),
     make(
       'delivery_stalled',

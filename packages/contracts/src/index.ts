@@ -1,3 +1,4 @@
+export * from './hosting-upgrade.js';
 export * from './auth.js';
 export * from './billing.js';
 export * from './checkout.js';

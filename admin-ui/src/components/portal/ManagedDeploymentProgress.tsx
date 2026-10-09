@@ -21,6 +21,7 @@ export function ManagedDeploymentProgress({
     onError: (error) => toast.error(error.message),
   });
   const exitLabels: Record<string, string> = {
+    maintenance: '维护升级中',
     exit_requested: '退出申请已提交，等待运维确认',
     stopping: '正在停服并保存数据',
     retained: '已停服，数据保留中',
@@ -32,7 +33,9 @@ export function ManagedDeploymentProgress({
         <p className="text-sm font-semibold">{exitLabels[managed.state]}</p>
         <p className="font-mono text-sm break-all">{managed.hostname}</p>
         <p className="text-sm text-muted-foreground">
-          请在下方查看退出与交接进度。数据保留期内不会自动删除；退款独立审核。
+          {managed.state === 'maintenance'
+            ? '应用正在维护升级，期间可能暂时无法访问。平台会先保存备份，并在新版本验证失败时回退；完成后恢复访问入口。'
+            : '请在下方查看退出与交接进度。数据保留期内不会自动删除；退款独立审核。'}
         </p>
       </div>
     );

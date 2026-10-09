@@ -20,9 +20,14 @@ def store(path, value):
 
 def execute(config, workspace, operation, api=None):
     operation_id, deployment_id = str(uuid.UUID(operation['id'])), str(uuid.UUID(operation['deploymentId']))
-    if operation['kind'] not in ('restart', 'backup', 'retire', 'export', 'reclaim') or operation['nodeId'] != config['nodeId']:
+    if operation['kind'] not in ('restart', 'backup', 'retire', 'export', 'reclaim', 'upgrade') or operation['nodeId'] != config['nodeId']:
         raise ValueError('Unsupported operation')
     directory = workspace / deployment_id
+    if operation['kind']=='upgrade':
+        if api is None:raise ValueError('Authenticated callback required')
+        spec=importlib.util.spec_from_file_location('upgrade',Path(__file__).with_name('hosting-node-upgrade.py'));module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        try:return module.execute(config,directory,operation,api)
+        except Exception:return False
     if operation['kind'] in ('export','reclaim'):
         if api is None:raise ValueError('Authenticated API callback required')
         name='hosting-node-handover.py' if operation['kind']=='export' else 'hosting-node-reclaim.py'

@@ -245,6 +245,7 @@ def main():
             if result and operation['kind']=='retire':
                 evidence={'evidence':json.loads((workspace/operation['deploymentId']/'exit-status.json').read_text())}
             if result and operation['kind']=='reclaim':evidence={'reclamationEvidence':result}
+            if result and operation['kind']=='upgrade':evidence={'upgradeEvidence':result}
             api('operations/complete', {'operationId':operation['id'], 'success':bool(result), **evidence})
             api('report', report.collect(str(workspace), config))
             print('Managed operation completed' if result else 'Managed operation failed')
