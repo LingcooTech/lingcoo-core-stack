@@ -59,3 +59,7 @@
   "preservedContainers": 20
 }
 ```
+
+## 后续清理核验
+
+另确认无任何保留容器引用后，删除 `mariadb:10.11`、`redis:latest` 两个旧项目遗留镜像标签。核验 Nginx 无引用、证书 SAN 只含对应旧域名后，删除 `frame.lingcoo.com`、`retail.lingcoo.com` 的 Certbot 证书及续期配置。未删除共享或当前通配符证书，未修改 DNS 记录。清理后磁盘约 50GB，总使用约 23GB，可用约 27GB。

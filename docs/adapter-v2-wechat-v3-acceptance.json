@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-09",
+  "stackRuntime": "1569855427b06f0928c41d423445ecd26df73d5f",
+  "ci": {
+    "unit": 89,
+    "integration": 102,
+    "adminComponents": 26,
+    "browserCriticalPaths": 4,
+    "dependencyVulnerabilities": 0
+  },
+  "payment": {
+    "version": "1569855427b06f0928c41d423445ecd26df73d5f",
+    "v3ConfigurationUI": true,
+    "desktopMobileVerified": true,
+    "legacyConfigurationNotReady": true,
+    "secretFieldsEmpty": true,
+    "realPayment": false
+  },
+  "hosting": {
+    "ready": {
+      "status": "ready",
+      "version": "1569855427b06f0928c41d423445ecd26df73d5f"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "supportedApps": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "supportedApps": ["lingcoo_edu_oms", "lingcoo_retail_oms"]
+      }
+    ],
+    "retail": {
+      "services": 5,
+      "backup": "success",
+      "offsite": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ],
+    "desktopMobileVerified": true,
+    "newEduPublicInstance": false,
+    "realPayment": false
+  },
+  "retail": {
+    "revision": "442fb36cdc0057882e14e85b976d1739e9752f50",
+    "deployRun": 37877189617,
+    "conclusion": "success",
+    "apiWorkerWebHealthy": true
+  },
+  "edu": {
+    "revision": "7c593a9706d5f87cc696bd1d4aeee8af34fb5fef",
+    "deployRun": 37876314968,
+    "conclusion": "success"
+  },
+  "realPayment": false,
+  "realRefund": false,
+  "newEduPublicInstance": false
+}
