@@ -1,0 +1,193 @@
+{
+  "date": "2026-10-09",
+  "application": "lingcoo_edu_oms",
+  "platformRevision": "dda7b5c94d9cf4ca61b582c842d92f9e6761d423",
+  "applicationRevision": "761bda2d1a2e031acf64b54509f5eaae8498cab7",
+  "platformCi": {
+    "run": 37868949124,
+    "status": "success",
+    "unitTests": 85,
+    "databaseTests": 101,
+    "browserComponents": 26,
+    "criticalPaths": 4,
+    "productionAuditVulnerabilities": 0,
+    "allAuditVulnerabilities": 0
+  },
+  "applicationDelivery": {
+    "run": 37869454769,
+    "status": "success",
+    "sourceFreeInstall": true,
+    "readyReport": true,
+    "databaseRestoredTables": 94,
+    "storageRestoreVerified": true
+  },
+  "platformDeploy": {
+    "run": 37869605178,
+    "status": "success"
+  },
+  "newEduPublicInstance": false,
+  "realPayment": false,
+  "limits": [
+    "Education worker validated as running, no business queue HTTP probe",
+    "Existing VM spare memory insufficient for another guaranteed 1024 MiB instance",
+    "Installer public release and customer read-only image credentials pending",
+    "Service exit/refund linkage and cross-node recovery remain separate unfinished work"
+  ],
+  "applicationSecurity": {
+    "revision": "761bda2d1a2e031acf64b54509f5eaae8498cab7",
+    "productionAuditVulnerabilities": 0,
+    "previousModerateFindings": 9,
+    "ciAuditThreshold": "moderate",
+    "localServerTests": 374,
+    "localServerSkipped": 170,
+    "mainCiRun": 37869454793,
+    "mainCiStatus": "success",
+    "ciTests": {
+      "contracts": 101,
+      "apiClient": 60,
+      "server": 464,
+      "serverSkippedInGeneralSuite": 80,
+      "admin": 70,
+      "dedicatedDatabaseSuites": [7, 19, 54],
+      "e2e": 53
+    }
+  },
+  "platformSecurity": {
+    "fastJwt": "6.3.4",
+    "regression": "cached token without iat rejected after exp",
+    "advisory": "https://github.com/advisories/GHSA-x937-hj6v-793p"
+  },
+  "live": {
+    "ready": {
+      "status": "ready",
+      "version": "dda7b5c94d9cf4ca61b582c842d92f9e6761d423"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "supportedApps": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "supportedApps": ["lingcoo_edu_oms", "lingcoo_retail_oms"]
+      }
+    ],
+    "retail": {
+      "services": 5,
+      "backup": "success",
+      "offsite": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ],
+    "desktopMobileVerified": true,
+    "newEduPublicInstance": false,
+    "realPayment": false
+  },
+  "nodeAdapterRevision": "4412de3ec0e1e3072140719f48c4fca1df6d4501",
+  "catalogDraft": {
+    "code": "lingcoo_edu_oms",
+    "status": "inactive",
+    "checks": [
+      {
+        "code": "offers",
+        "status": "blocked"
+      },
+      {
+        "code": "plans",
+        "status": "blocked"
+      },
+      {
+        "code": "manifest",
+        "status": "passed"
+      },
+      {
+        "code": "installer",
+        "status": "blocked"
+      },
+      {
+        "code": "field_keys",
+        "status": "passed"
+      },
+      {
+        "code": "presets",
+        "status": "blocked"
+      },
+      {
+        "code": "secrets",
+        "status": "blocked"
+      },
+      {
+        "code": "assets",
+        "status": "passed"
+      },
+      {
+        "code": "image_digest",
+        "status": "blocked"
+      },
+      {
+        "code": "asset_bindings",
+        "status": "passed"
+      },
+      {
+        "code": "hosting_profile",
+        "status": "passed"
+      },
+      {
+        "code": "registry_live",
+        "status": "unverified"
+      },
+      {
+        "code": "delivery_live",
+        "status": "unverified"
+      },
+      {
+        "code": "commerce_live",
+        "status": "unverified"
+      }
+    ]
+  },
+  "applicationDeploy": {
+    "run": 37870431285,
+    "status": "success",
+    "services": [
+      {
+        "service": "caddy",
+        "image": "caddy:2-alpine",
+        "state": "running",
+        "health": "none"
+      },
+      {
+        "service": "worker",
+        "image": "crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com/futuredecade/lingcoo-edu-oms:761bda2d1a2e031acf64b54509f5eaae8498cab7",
+        "state": "running",
+        "health": "none"
+      },
+      {
+        "service": "api",
+        "image": "crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com/futuredecade/lingcoo-edu-oms:761bda2d1a2e031acf64b54509f5eaae8498cab7",
+        "state": "running",
+        "health": "healthy"
+      },
+      {
+        "service": "postgres",
+        "image": "postgres:17-alpine",
+        "state": "running",
+        "health": "healthy"
+      }
+    ]
+  }
+}

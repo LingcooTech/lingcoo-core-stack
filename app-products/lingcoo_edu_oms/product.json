@@ -166,7 +166,7 @@
         "ACR_USERNAME": "PENDING_SCOPED_REGISTRY_USER"
       },
       "secretsFromEnv": {
-        "ACR_PASSWORD": "RETAIL_OMS_ACR_PASSWORD"
+        "ACR_PASSWORD": "EDU_OMS_ACR_PASSWORD"
       },
       "installer": {
         "repoUrl": "https://downloads.lingcoo.com/apps/lingcoo_edu_oms/pending/",
