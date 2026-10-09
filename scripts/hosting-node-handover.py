@@ -32,6 +32,39 @@ def snapshot(config,directory,proof):
     return backup,files+['SHA256SUMS']
 
 
+def delivery_payload(backup,files,target):
+    if target.is_symlink():raise ValueError('Symlink delivery payload')
+    if target.exists():shutil.rmtree(target)
+    target.mkdir(mode=0o700)
+    environment=[]
+    for line in (backup/'.env').read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):continue
+        match=re.fullmatch(r'\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)',line)
+        if not match:raise ValueError('Multiline or unsupported environment format')
+        key,value=match.groups()
+        if value.rstrip().endswith('\\'):raise ValueError('Continued environment value refused')
+        if value.startswith(('"',"'")):
+            quote=value[0];escaped=False;closed=False
+            for char in value[1:]:
+                if escaped:escaped=False;continue
+                if char=='\\':escaped=True;continue
+                if char==quote:closed=True;break
+            if not closed:raise ValueError('Multiline environment value refused')
+        if key.upper().startswith(('ACR_','REGISTRY_','FD_STACK_')):continue
+        environment.append(line)
+    path=target/'.env'
+    with os.fdopen(os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:f.write('\n'.join(environment)+'\n')
+    for name in files:
+        if name in ('.env','SHA256SUMS'):continue
+        destination=target/name;destination.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+        try:os.link(backup/name,destination)
+        except OSError:shutil.copyfile(backup/name,destination);os.chmod(destination,0o600)
+    names=[name for name in files if name!='SHA256SUMS']
+    checksums=''.join(digest(target/name)+'  '+name+'\n' for name in sorted(names))
+    with os.fdopen(os.open(target/'SHA256SUMS',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:f.write(checksums)
+    return target
+
+
 def execute(config,directory,operation,api):
     route='operations/'+operation['id']+'/data'
     remote=api(route)
@@ -46,13 +79,14 @@ def execute(config,directory,operation,api):
     maximum=remote['maxBytes']
     if not receipt.exists():
         estimate=sum((backup/f).stat().st_size+1024 for f in files)+65536
-        if estimate>maximum or shutil.disk_usage(transfer).free<estimate+256*1024*1024:raise ValueError('Transfer size or disk budget exceeded')
+        if estimate>maximum or shutil.disk_usage(transfer).free<2*estimate+256*1024*1024:raise ValueError('Transfer size or disk budget exceeded')
+        payload=delivery_payload(backup,files,transfer/'export-config')
         if not identity.exists():subprocess.run([config['ageKeygenBinary'],'-o',str(identity)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         os.chmod(identity,0o600)
         recipient=subprocess.check_output([config['ageKeygenBinary'],'-y',str(identity)],text=True).strip()
         temp=encrypted.with_suffix('.tmp')
         with os.fdopen(os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_TRUNC|os.O_NOFOLLOW,0o600),'wb') as out:
-            tar=subprocess.Popen(['tar','-C',str(backup),'-cf','-','--',*files],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+            tar=subprocess.Popen(['tar','-C',str(payload),'-cf','-','--',*files],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
             try:
                 subprocess.run([config['ageBinary'],'-r',recipient],stdin=tar.stdout,stdout=out,stderr=subprocess.DEVNULL,check=True,timeout=1800)
                 tar.stdout.close()
@@ -87,6 +121,6 @@ def cleanup_transfers(workspace):
             if not directory.is_dir() or directory.stat().st_mtime>time.time()-86400:continue
             state=json.loads((directory.parent.parent/'execution.json').read_text())
             if state.get('phase')!='retained':continue
-            if set(p.name for p in directory.iterdir())-{'identity.txt','data.tar.age','data.tar.tmp','receipt.json'}:continue
+            if set(p.name for p in directory.iterdir())-{'identity.txt','data.tar.age','data.tar.tmp','receipt.json','export-config'}:continue
             shutil.rmtree(directory)
         except (ValueError,OSError):continue

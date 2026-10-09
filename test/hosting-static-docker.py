@@ -59,6 +59,7 @@ with tempfile.TemporaryDirectory() as tmp:
    assert json.loads((workspace/did/'execution.json').read_text())['phase']=='retiring'
    assert not json.loads(subprocess.check_output(['docker','inspect',cid]))[0]['State']['Running']
   fake_restic.write_text('#!/bin/sh\nexit 0\n')
+  with (workspace/did/'.env').open('a') as env_file:env_file.write('ACR_PASSWORD=platform-secret-fixture\nFD_STACK_STATUS_REPORT_TOKEN=platform-token-fixture\n')
   evidence=retire.execute(config,workspace/did,operation)
   assert evidence==retire.execute(config,workspace/did,operation)
   state=json.loads(subprocess.check_output(['docker','inspect',cid]))[0]
@@ -102,6 +103,7 @@ with tempfile.TemporaryDirectory() as tmp:
   encrypted=workspace/'customer.tar.age';encrypted.write_bytes(received)
   decrypted=workspace/'customer.tar'
   with decrypted.open('wb') as out:subprocess.run([config['ageBinary'],'-d','-i',str(identity),str(encrypted)],stdout=out,check=True)
+  delivered_env=subprocess.check_output(['tar','-xOf',str(decrypted),'.env']);assert b'platform-secret-fixture' not in delivered_env and b'FD_STACK_STATUS_REPORT_TOKEN' not in delivered_env
   delivered_pages=workspace/'delivered-pages.tar';delivered_pages.write_bytes(subprocess.check_output(['tar','-xOf',str(decrypted),'pages.tar']))
   assert b'persistent-proof' in subprocess.check_output(['tar','-xOf',str(delivered_pages),'./proof.txt'])
   assert not (workspace/did/'handover'/export_op['id']).exists()

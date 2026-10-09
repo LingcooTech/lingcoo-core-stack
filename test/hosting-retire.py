@@ -38,3 +38,14 @@ with tempfile.TemporaryDirectory() as tmp:
  handover.cleanup_transfers(workspace)
  assert not expired.exists() and unknown.exists() and fresh.exists() and linked.is_symlink() and (foreign/'identity.txt').read_text()=='preserve'
 print('Handover expiration cleanup preserves active, unknown and foreign data')
+
+with tempfile.TemporaryDirectory() as tmp:
+ base=Path(tmp);backup=base/'backup';backup.mkdir();original='APP_IMAGE=example\nACR_PASSWORD="platform-registry-secret"\nFD_STACK_STATUS_REPORT_TOKEN="platform-report-secret"\nDB_PASSWORD="customer-data-secret"\n'
+ (backup/'.env').write_text(original);(backup/'pages.tar').write_bytes(b'customer-data');(backup/'SHA256SUMS').write_text('unused')
+ target=handover.delivery_payload(backup,['.env','pages.tar','SHA256SUMS'],base/'delivery')
+ sanitized=(target/'.env').read_text();assert 'platform-' not in sanitized and 'customer-data-secret' in sanitized and (backup/'.env').read_text()==original
+ assert handover.digest(target/'.env') in (target/'SHA256SUMS').read_text()
+ (backup/'.env').write_text('ACR_PASSWORD="secret\ncontinued"\n')
+ try:handover.delivery_payload(backup,['.env','pages.tar','SHA256SUMS'],base/'bad');raise AssertionError('Multiline secret accepted')
+ except ValueError:pass
+print('Customer delivery removes platform credentials and regenerates checksums without altering cold backup')
