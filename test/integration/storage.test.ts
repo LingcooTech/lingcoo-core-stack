@@ -65,6 +65,12 @@ async function uploaded(visibility: 'public' | 'private' = 'public') {
   );
   return service.upload(grant.objectId, Buffer.from('hello'), userId);
 }
+test('asset manager deep link serves the browser application before authentication', async () => {
+  const response = await app.inject({ method: 'GET', url: '/admin/storage' });
+  assert.equal(response.statusCode, 200);
+  assert.match(String(response.headers['content-type']), /text\/html/);
+  assert.match(response.body, /<!doctype html>/i);
+});
 test('private files are unreadable publicly; admin binary upload and JSON contracts work', async () => {
   const grant = await app.inject({
     method: 'POST',

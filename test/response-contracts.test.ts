@@ -154,3 +154,59 @@ test('route registration rejects a new v1 endpoint without a response contract',
   );
   await app.close();
 });
+
+test('browser document routes have server SPA entries for deep links and refresh', () => {
+  const entries = new Set<string>();
+  const normalize = (path: string) => path.replace(/:[^/]+/g, ':param');
+  const server = ts.createSourceFile(
+    'routes.ts',
+    readFileSync('src/modules/admin/routes.ts', 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  function readServer(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'get'
+    ) {
+      const [path, handler] = node.arguments;
+      if (
+        path &&
+        ts.isStringLiteral(path) &&
+        handler &&
+        ts.isIdentifier(handler) &&
+        handler.text === 'sendSPA'
+      )
+        entries.add(normalize(path.text));
+    }
+    ts.forEachChild(node, readServer);
+  }
+  readServer(server);
+  const browser = ts.createSourceFile(
+    'App.tsx',
+    readFileSync('admin-ui/src/App.tsx', 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  let count = 0;
+  function readBrowser(node: ts.Node) {
+    if (
+      ts.isJsxAttribute(node) &&
+      node.name.getText(browser) === 'path' &&
+      node.initializer &&
+      ts.isStringLiteral(node.initializer) &&
+      node.initializer.text.startsWith('/')
+    ) {
+      count++;
+      assert(
+        entries.has(normalize(node.initializer.text)),
+        `Missing server HTML entry for ${node.initializer.text}`,
+      );
+    }
+    ts.forEachChild(node, readBrowser);
+  }
+  readBrowser(browser);
+  assert(count > 30, 'All document routes must be checked');
+});

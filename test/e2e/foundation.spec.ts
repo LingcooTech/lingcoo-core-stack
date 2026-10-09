@@ -86,6 +86,10 @@ test('admin settings numeric inputs use Zod output and optimistic version on sav
 }) => {
   await login(page, '/admin/login', adminEmail);
   await expect(page).toHaveURL(/\/admin$/);
+  await page.goto('/admin/storage');
+  await expect(page.getByRole('button', { name: '新建文件夹', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: '新建文件夹', exact: true })).toBeVisible();
   await page.goto('/admin/settings');
   await page.getByRole('tab', { name: 'SMTP', exact: true }).click();
   await page.getByLabel('SMTP Host', { exact: true }).fill('smtp.example.test');
