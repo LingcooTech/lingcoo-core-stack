@@ -19,11 +19,11 @@ export const createFolder = (name: string) =>
     body: JSON.stringify({ name }),
   });
 export const renameFolder = (id: string, name: string) =>
-  apiClient('PATCH /v1/admin/storage/folders/:id', `/v1/admin/storage/folders/${id}`, {
+  apiClient('PATCH /v1/admin/storage/folders/:param', `/v1/admin/storage/folders/${id}`, {
     body: JSON.stringify({ name }),
   });
 export const deleteFolder = (id: string) =>
-  apiClient('DELETE /v1/admin/storage/folders/:id', `/v1/admin/storage/folders/${id}`);
+  apiClient('DELETE /v1/admin/storage/folders/:param', `/v1/admin/storage/folders/${id}`);
 export const listAssets = (input: {
   page: number;
   search?: string;
@@ -36,7 +36,7 @@ export const listAssets = (input: {
   return apiClient('GET /v1/admin/storage/assets', `/v1/admin/storage/assets?${query}`);
 };
 export const getAsset = (id: string) =>
-  apiClient('GET /v1/admin/storage/assets/:id', `/v1/admin/storage/assets/${id}`);
+  apiClient('GET /v1/admin/storage/assets/:param', `/v1/admin/storage/assets/${id}`);
 export const updateAsset = (
   asset: AssetDetail,
   values: {
@@ -46,11 +46,11 @@ export const updateAsset = (
     folderId: string | null;
   },
 ) =>
-  apiClient('PATCH /v1/admin/storage/assets/:id', `/v1/admin/storage/assets/${asset.id}`, {
+  apiClient('PATCH /v1/admin/storage/assets/:param', `/v1/admin/storage/assets/${asset.id}`, {
     body: JSON.stringify({ ...values, expectedRevision: asset.revision }),
   });
 export const deleteAsset = (asset: { id: string; revision: number }) =>
-  apiClient('DELETE /v1/admin/storage/assets/:id', `/v1/admin/storage/assets/${asset.id}`, {
+  apiClient('DELETE /v1/admin/storage/assets/:param', `/v1/admin/storage/assets/${asset.id}`, {
     body: JSON.stringify({ expectedRevision: asset.revision }),
   });
 export async function uploadAsset(
@@ -70,13 +70,13 @@ export async function uploadAsset(
   });
   const grant = replace
     ? await apiClient(
-        'POST /v1/admin/storage/assets/:id/replacements',
+        'POST /v1/admin/storage/assets/:param/replacements',
         `/v1/admin/storage/assets/${replace.id}/replacements`,
         { body },
       )
     : await apiClient('POST /v1/admin/storage/uploads', '/v1/admin/storage/uploads', { body });
   return apiClient(
-    'PUT /v1/admin/storage/uploads/:id/content',
+    'PUT /v1/admin/storage/uploads/:param/content',
     `/v1/admin/storage/uploads/${grant.objectId}/content`,
     { body: file, headers: { 'content-type': 'application/octet-stream' } },
   );

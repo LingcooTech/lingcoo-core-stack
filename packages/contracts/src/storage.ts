@@ -133,14 +133,14 @@ export const storageResponseContracts = [
     schema: z.object({ items: z.array(assetFolderSchema) }),
   },
   { method: 'POST', path: '/v1/admin/storage/folders', schema: assetFolderSchema },
-  { method: 'PATCH', path: '/v1/admin/storage/folders/:id', schema: assetFolderSchema },
+  { method: 'PATCH', path: '/v1/admin/storage/folders/:param', schema: assetFolderSchema },
   {
     method: 'DELETE',
-    path: '/v1/admin/storage/folders/:id',
+    path: '/v1/admin/storage/folders/:param',
     schema: z.object({ ok: z.literal(true) }),
   },
   { method: 'GET', path: '/v1/admin/storage/assets', schema: assetListSchema },
-  { method: 'GET', path: '/v1/admin/storage/assets/:id', schema: assetDetailSchema },
+  { method: 'GET', path: '/v1/admin/storage/assets/:param', schema: assetDetailSchema },
   {
     method: 'POST',
     path: '/v1/admin/storage/uploads',
@@ -148,14 +148,14 @@ export const storageResponseContracts = [
   },
   {
     method: 'POST',
-    path: '/v1/admin/storage/assets/:id/replacements',
+    path: '/v1/admin/storage/assets/:param/replacements',
     schema: z.object({ assetId: z.uuid(), objectId: z.uuid() }),
   },
-  { method: 'PUT', path: '/v1/admin/storage/uploads/:id/content', schema: assetDetailSchema },
-  { method: 'PATCH', path: '/v1/admin/storage/assets/:id', schema: assetDetailSchema },
+  { method: 'PUT', path: '/v1/admin/storage/uploads/:param/content', schema: assetDetailSchema },
+  { method: 'PATCH', path: '/v1/admin/storage/assets/:param', schema: assetDetailSchema },
   {
     method: 'DELETE',
-    path: '/v1/admin/storage/assets/:id',
+    path: '/v1/admin/storage/assets/:param',
     schema: z.object({ ok: z.literal(true) }),
   },
 ] as const;

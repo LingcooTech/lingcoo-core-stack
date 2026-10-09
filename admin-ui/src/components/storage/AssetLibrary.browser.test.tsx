@@ -99,10 +99,10 @@ test('Edu-style folder creation, upload, detail editing and replacement use the 
       }
       if (id === 'GET /v1/admin/storage/assets')
         return { items: asset ? [asset] : [], total: asset ? 1 : 0, page: 1, pageSize: 20 };
-      if (id === 'GET /v1/admin/storage/assets/:id') return asset;
+      if (id === 'GET /v1/admin/storage/assets/:param') return asset;
       if (id.includes('POST') && (id.includes('/uploads') || id.includes('/replacements')))
         return { assetId, objectId: assetId };
-      if (id === 'PUT /v1/admin/storage/uploads/:id/content') {
+      if (id === 'PUT /v1/admin/storage/uploads/:param/content') {
         const old = asset;
         asset = {
           ...fixture(),
@@ -114,7 +114,7 @@ test('Edu-style folder creation, upload, detail editing and replacement use the 
         };
         return asset;
       }
-      if (id === 'PATCH /v1/admin/storage/assets/:id') {
+      if (id === 'PATCH /v1/admin/storage/assets/:param') {
         asset = { ...asset!, ...JSON.parse(String(options!.body)), revision: asset!.revision + 1 };
         return asset;
       }
