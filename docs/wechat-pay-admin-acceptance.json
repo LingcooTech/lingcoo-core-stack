@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-09",
+  "runtimeCommit": "00a1a7ddefd44661b3122bf937a00e94a06167cc",
+  "implementationCommits": [
+    "bd49878a5e948042fd932313e130a14713624a12",
+    "00a1a7ddefd44661b3122bf937a00e94a06167cc"
+  ],
+  "ci": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37947864885",
+    "conclusion": "success",
+    "unitAndNodeTests": 99,
+    "databaseIntegrationTests": 114,
+    "adminComponentTests": 36,
+    "browserCriticalPaths": 4,
+    "productionVulnerabilities": 0,
+    "allVulnerabilities": 0
+  },
+  "deployment": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/37949003753",
+    "conclusion": "success"
+  },
+  "payment": {
+    "source": "database",
+    "enabled": true,
+    "credentialsComplete": false,
+    "publicProviderAvailable": false,
+    "notifyUrl": "https://stack.lingcoo.com/v1/billing/providers/wechat/notify",
+    "secretStatus": {
+      "apiV3Key": false,
+      "privateKeyPem": false,
+      "publicKeyPem": false
+    },
+    "secretPlaintextReturned": false,
+    "productionWrites": 0,
+    "realPayment": false
+  },
+  "ui": {
+    "mode": "production",
+    "nineSettings": true,
+    "pemUploadControls": 2,
+    "secretNotEchoed": true,
+    "unchangedSaveDisabled": true,
+    "desktopMobileVerified": true,
+    "productionWrites": 0
+  },
+  "hostingRegression": {
+    "ready": {
+      "status": "ready",
+      "version": "00a1a7ddefd44661b3122bf937a00e94a06167cc"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "canDeploy": false,
+        "enabled": false
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "canDeploy": true,
+        "enabled": true
+      }
+    ],
+    "retail": {
+      "state": "ready",
+      "services": 5,
+      "localBackup": "success",
+      "offsiteBackup": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ]
+  },
+  "pending": [
+    "Valid merchant APIv3 credentials entered by operator",
+    "Real Native QR payment, callback and refund acceptance"
+  ]
+}
