@@ -133,6 +133,7 @@ test('Edu-style folder creation, upload, detail editing and replacement use the 
     await act(async () => button('示例素材').click());
     await vi.waitFor(() => expect(document.body.textContent).toContain('素材详情'));
     await vi.waitFor(() => expect(document.querySelector('#asset-name')).not.toBeNull());
+    expect(document.querySelector('a[download]')?.getAttribute('href')).toBe('/fixture.txt');
     await act(async () => value('#asset-name', '新名称'));
     await act(async () => button('保存信息').click());
     await vi.waitFor(() => expect(view.host.textContent).toContain('新名称'));

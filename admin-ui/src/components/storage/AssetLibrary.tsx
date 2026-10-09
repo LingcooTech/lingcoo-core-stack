@@ -507,6 +507,11 @@ function AssetEditor({
   return (
     <div className="space-y-5 px-6 pb-8">
       <AssetPreview asset={asset} />
+      <Button variant="outline" asChild>
+        <a href={asset.contentUrl} download={asset.originalName}>
+          下载文件
+        </a>
+      </Button>
       <dl className="grid grid-cols-[auto_1fr] gap-2 text-sm">
         <dt>素材标识</dt>
         <dd className="break-all">{asset.id}</dd>
