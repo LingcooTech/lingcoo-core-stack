@@ -7,7 +7,7 @@ sys.path.insert(0,str(stage/'scripts'))
 from hosting_adapter import resolve_adapter,project_name
 path=root/'node.json';config=json.loads(path.read_text())
 mapping=json.loads((stage/'migration.json').read_text())
-version=hashlib.sha256((stage/'migration.json').read_bytes()+b''.join(p.read_bytes() for p in sorted((stage/'scripts').glob('*.py')))).hexdigest()[:16]
+version=hashlib.sha256(b''.join(p.read_bytes() for p in sorted(stage.rglob('*')) if p.is_file() and not p.name.startswith('.') and '__pycache__' not in p.parts)).hexdigest()[:16]
 active=[t for t in ['lingcoo-hosting.timer','lingcoo-hosting-backup.timer'] if subprocess.run(['systemctl','is-active','--quiet',t]).returncode==0]
 try:
  if active:subprocess.run(['systemctl','stop',*active],check=True)
@@ -43,14 +43,14 @@ try:
     if not ids:raise ValueError('Existing instance containers required')
     data.update(appCode=code,project=project);journals.append((journal,data))
   config.pop('retailBundle',None);config.pop('bundleHashes',None)
-  for source in (stage/'scripts').glob('*.py'):compile(source.read_text(),str(source),'exec')
+  for source in (stage/'scripts').glob('hosting*.py'):compile(source.read_text(),str(source),'exec')
   backup=root/'agent-backups'/('v2-'+time.strftime('%Y%m%dT%H%M%S'));backup.mkdir(parents=True,mode=0o700)
   changed=[]
   try:
    for dest,value in [(path,json.dumps(config)),*[(j,json.dumps(v)) for j,v in journals]]:
     saved=backup/(hashlib.sha256(str(dest).encode()).hexdigest()+'.json');shutil.copy2(dest,saved);changed.append((dest,saved))
     temp=dest.with_suffix('.v2-new');temp.write_text(value);temp.chmod(0o600);os.replace(temp,dest)
-   for source in (stage/'scripts').glob('*.py'):
+   for source in (stage/'scripts').glob('hosting*.py'):
     dest=root/source.name;saved=backup/source.name
     if dest.exists():shutil.copy2(dest,saved);changed.append((dest,saved))
     temp=dest.with_suffix('.v2-new');shutil.copyfile(source,temp);temp.chmod(0o700);os.replace(temp,dest)
