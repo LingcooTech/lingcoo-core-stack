@@ -1,0 +1,188 @@
+{
+  "ready": {
+    "status": "ready",
+    "version": "70307e70f28e798bba0a81b39355cfcba90e72f6"
+  },
+  "report": {
+    "appCode": "lingcoo_retail_oms",
+    "appStatus": "active",
+    "configurationReady": false,
+    "scope": "configuration",
+    "checks": [
+      {
+        "code": "offers",
+        "title": "有效售价",
+        "status": "blocked",
+        "detail": "需要至少一个启用的正式人民币报价；零价或验收价格请保留草稿。",
+        "blocking": true
+      },
+      {
+        "code": "plans",
+        "title": "套餐与权益映射",
+        "status": "blocked",
+        "detail": "每个报价需关联有效套餐及有效权益；验收用途套餐不能作为正式售价。",
+        "blocking": true
+      },
+      {
+        "code": "manifest",
+        "title": "标准交付清单",
+        "status": "passed",
+        "detail": "使用受支持的 Manifest 版本，密钥字段不能带默认值。",
+        "blocking": true
+      },
+      {
+        "code": "installer",
+        "title": "安装入口",
+        "status": "passed",
+        "detail": "安装脚本需使用有效 HTTPS 发布地址；此检查不会下载或执行脚本。",
+        "blocking": true
+      },
+      {
+        "code": "field_keys",
+        "title": "参数定义",
+        "status": "passed",
+        "detail": "配置与密钥的环境变量名称不能重复。",
+        "blocking": true
+      },
+      {
+        "code": "presets",
+        "title": "平台必填配置",
+        "status": "passed",
+        "detail": "所有平台必填配置必须填写；不会在报告中返回配置值。",
+        "blocking": true
+      },
+      {
+        "code": "secrets",
+        "title": "交付凭据已配置",
+        "status": "passed",
+        "detail": "只检查必填凭据是否存在，不代表权限范围和在线拉取已验证。",
+        "blocking": true
+      },
+      {
+        "code": "assets",
+        "title": "交付资源声明",
+        "status": "passed",
+        "detail": "至少声明一项必需交付资源，资源标识不能重复。",
+        "blocking": true
+      },
+      {
+        "code": "image_digest",
+        "title": "不可变镜像版本",
+        "status": "passed",
+        "detail": "必需 Docker 镜像应固定到完整 sha256 digest，不能使用浮动标签。",
+        "blocking": true
+      },
+      {
+        "code": "asset_bindings",
+        "title": "资源参数引用",
+        "status": "passed",
+        "detail": "镜像参数与凭据引用必须能在清单字段中找到。",
+        "blocking": true
+      },
+      {
+        "code": "hosting_profile",
+        "title": "托管资源和运行清单",
+        "status": "passed",
+        "detail": "支持托管的应用需声明资源预算、运行服务与备份要求。",
+        "blocking": true
+      },
+      {
+        "code": "registry_live",
+        "title": "镜像在线拉取与只读权限",
+        "status": "unverified",
+        "blocking": false,
+        "detail": "需用专用只读凭据在干净环境拉取固定镜像；配置检查不代替在线验收。"
+      },
+      {
+        "code": "delivery_live",
+        "title": "真实交付和恢复验证",
+        "status": "unverified",
+        "blocking": false,
+        "detail": "需记录安装、健康、备份与恢复的版本对应证据。"
+      },
+      {
+        "code": "commerce_live",
+        "title": "真实付款退款",
+        "status": "unverified",
+        "blocking": false,
+        "detail": "模拟支付不代替真实渠道验收；正式售价与资金操作需单独确认。"
+      }
+    ],
+    "checkedAt": "2026-10-09T00:11:08.968Z"
+  },
+  "desktopMobileVerified": true,
+  "readOnly": true,
+  "health": {
+    "ready": {
+      "status": "ready",
+      "version": "70307e70f28e798bba0a81b39355cfcba90e72f6"
+    },
+    "hostingOfferCount": 0,
+    "operatorPurchaseCount": 0,
+    "pilotServiceUnchanged": true,
+    "instances": 1,
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "enabled": false
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "enabled": true
+      }
+    ],
+    "backups": [
+      {
+        "status": "success",
+        "offsiteStatus": "success",
+        "telemetryFresh": true
+      }
+    ],
+    "domains": [
+      {
+        "host": "retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "host": "retail-demo.lingcoo.com",
+        "status": 200
+      }
+    ]
+  },
+  "retailMonitoringConfiguration": {
+    "changed": true,
+    "appCode": "lingcoo_retail_oms",
+    "updatedField": "meta.hostingProfile.monitoring",
+    "catalogPreserved": true,
+    "monitoring": {
+      "projectPrefix": "retail",
+      "services": ["api", "worker", "web", "postgres", "caddy"],
+      "backupRequired": true,
+      "offsiteRequired": true
+    },
+    "remainingBlocked": ["offers", "plans"]
+  },
+  "ciRun": 37862344503,
+  "deployRun": 37862904997,
+  "tests": {
+    "unit": 83,
+    "databaseIntegration": 101,
+    "browserComponents": 26,
+    "browserCriticalPaths": 4
+  },
+  "validatedAt": "2026-10-09T00:12:06.321912+00:00",
+  "monitor": {
+    "ready": {
+      "status": "ready",
+      "version": "70307e70f28e798bba0a81b39355cfcba90e72f6"
+    },
+    "lastScanAt": "2026-10-09T00:11:15.616Z",
+    "activeCount": 0,
+    "incidents": [],
+    "externalNotificationsEnabled": false,
+    "desktopMobileVerified": true,
+    "readOnly": true
+  }
+}
