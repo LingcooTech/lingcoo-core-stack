@@ -10,12 +10,7 @@
   "nodeId": "实际节点 UUID",
   "reportToken": "本节点专用密钥",
   "workspace": "/opt/lingcoo-hosting/instances",
-  "retailBundle": "/opt/lingcoo-hosting/bundle",
-  "bundleHashes": {
-    "stack-delivery.py": "SHA256",
-    "docker-compose.prod.yml": "SHA256",
-    "docker/Caddyfile": "SHA256"
-  },
+  "adapters": {},
   "gatewayConfigPath": "/opt/lingcoo-gateway/Caddyfile",
   "gatewayContainer": "lingcoo-gateway",
   "backupRoot": "/opt/lingcoo-hosting/backups",
@@ -25,7 +20,9 @@
 }
 ```
 
-分发 `hosting-node-agent.py`、`hosting-node-report.py`、`hosting-node-ingress.py`、`hosting-node-backup.py`、`hosting-node-operation.py` 与已验证部署包。后台启用节点后，执行：
+将应用构建产物 `hosting-adapter.json` 的完整描述写入 `adapters[appCode]`，额外设置绝对 `bundle` 路径；描述必须包含 `protocolVersion: 2` 和全部受信文件 `hashes`。空注册表不会接收应用任务。禁止继续使用 `retailBundle` / `bundleHashes` 隐式配置。协议见 [应用适配 v2](../specs/adapter-v2-wechat-v3/design.md)。
+
+分发 `hosting_adapter.py`、`hosting-node-agent.py`、`hosting-node-report.py`、`hosting-node-ingress.py`、`hosting-node-backup.py`、`hosting-node-operation.py` 与已验证部署包。后台启用节点后，执行：
 
 ```sh
 HOSTING_AGENT_DIR=/opt/lingcoo-hosting \
