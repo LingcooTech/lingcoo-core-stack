@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-import { QiniuImagePickerDialog } from './QiniuImagePickerDialog';
+import { AssetImagePickerDialog } from './AssetImagePickerDialog';
 
-interface QiniuImageFieldProps {
+interface AssetImageFieldProps {
   value: string;
   onChange: (value: string) => void;
   defaultPrefix?: string;
@@ -17,7 +17,7 @@ interface QiniuImageFieldProps {
   dialogDescription?: string;
 }
 
-export function QiniuImageField({
+export function AssetImageField({
   value,
   onChange,
   defaultPrefix,
@@ -26,7 +26,7 @@ export function QiniuImageField({
   previewClassName = 'h-20 w-full rounded-md border object-cover',
   dialogTitle,
   dialogDescription,
-}: QiniuImageFieldProps) {
+}: AssetImageFieldProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
@@ -56,7 +56,7 @@ export function QiniuImageField({
         />
       ) : null}
 
-      <QiniuImagePickerDialog
+      <AssetImagePickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         onSelect={onChange}

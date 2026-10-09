@@ -1,3 +1,4 @@
+import { storageModule } from './storage';
 import { adminModule } from './admin';
 import { aiModule } from './ai';
 import { appModule } from './app';
@@ -24,6 +25,7 @@ export const appModules: AppModule[] = [
   appModule,
   contentModule,
   docsModule,
+  storageModule,
   notificationsModule,
   ticketModule,
   installModule,

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID, createHmac } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { after, before, test } from 'node:test';
@@ -358,34 +358,14 @@ test('AI validates identity, request budgets, quotas and records upstream failur
   assert.equal(exhausted.statusCode, 429, exhausted.body);
 });
 
-test('storage upload credentials require administrator access and bind a short-lived signature to one object', async () => {
+test('legacy Qiniu upload stays admin-only and directs callers to the S3 asset workflow', async () => {
   const path = '/v1/admin/media/qiniu/upload-token';
   assert.equal((await call('POST', path, user, { filename: 'photo.png' })).statusCode, 403);
-  const response = await call('POST', path, admin, {
-    filename: '../../photo.png',
-    prefix: 'article',
-  });
-  success(response);
-  const body = response.json() as { uploadToken: string; key: string; expiresIn: number };
-  assert.ok(body.key.startsWith('media/article/'));
-  assert.equal(body.key.includes('..'), false);
-  const [access, signature, encoded] = body.uploadToken.split(':');
-  assert.ok(encoded);
-  assert.equal(access, 'fixture-access');
-  const expected = createHmac('sha1', 'fixture-secret')
-    .update(encoded)
-    .digest('base64')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_');
-  assert.equal(signature, expected);
-  const policy = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as {
-    scope: string;
-    deadline: number;
-  };
-  assert.equal(policy.scope, `fixture-bucket:${body.key}`);
-  assert.equal(body.expiresIn, 3600);
-  assert.ok(policy.deadline * 1000 > Date.now());
-  assert.ok(policy.deadline * 1000 < Date.now() + 3601000);
+  const response = await call('POST', path, admin, { filename: 'photo.png' });
+  assert.equal(response.statusCode, 410, response.body);
+  assert.match(response.json().message, /云存储/);
+  assert.equal(response.body.includes('uploadToken'), false);
+  assert.equal(response.body.includes('fixture-secret'), false);
 });
 
 test('AI reserves the final quota slot once across concurrent requests and releases failed protocol reservations', async () => {

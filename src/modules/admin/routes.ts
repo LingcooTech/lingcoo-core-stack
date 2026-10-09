@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import fastifyStatic from '@fastify/static';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
+import { httpError } from '../../lib/errors';
 
 import { AlertingSettingsService } from '../settings/public';
 import { AuditLogService } from '../../lib/audit-logs';
@@ -39,7 +40,6 @@ import {
   siteSettingsSchema,
   publicPagesSettingsSchema,
   qiniuTestConnectionSchema,
-  qiniuUploadTokenSchema,
   smtpSettingsSchema,
   smtpTestEmailSchema,
   wechatPaymentSettingsSchema,
@@ -713,9 +713,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     '/v1/admin/media/qiniu/upload-token',
     { preHandler: requireSettingsManage },
-    async (request) => {
-      const payload = qiniuUploadTokenSchema.parse(request.body);
-      return new QiniuSettingsService(app.db, app.appEnv).createUploadToken(payload);
+    async () => {
+      throw httpError(410, '七牛专用上传已停用，请使用云存储营销素材页面');
     },
   );
 

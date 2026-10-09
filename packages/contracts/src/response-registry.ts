@@ -1,3 +1,4 @@
+import { storageResponseContracts } from './storage.js';
 import { UpgradeOptionsSchema, upgradeReleaseSchema } from './hosting-upgrade.js';
 import { HandoverListSchema, HandoverResultSchema } from './hosting-handover.js';
 import { AppReadinessSchema } from './app-readiness.js';
@@ -633,6 +634,7 @@ const clientResponseContracts = [
 ] as const satisfies readonly { method: string; path: string; schema: z.ZodType }[];
 export const responseContracts = [
   ...clientResponseContracts,
+  ...storageResponseContracts,
   ...externalResponseContracts,
 ] as const;
 export function isNonJsonResponseRoute(method: string, path: string) {

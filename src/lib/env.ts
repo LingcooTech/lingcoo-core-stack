@@ -114,6 +114,17 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  STORAGE_S3_REGION: z.string().default(''),
+  STORAGE_S3_ENDPOINT: z.string().default(''),
+  STORAGE_S3_BUCKET: z.string().default(''),
+  STORAGE_S3_ACCESS_KEY: z.string().optional(),
+  STORAGE_S3_SECRET_KEY: z.string().optional(),
+  STORAGE_S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  STORAGE_DEFAULT_PREFIX: z.string().default('stack/assets'),
+  STORAGE_PUBLIC_BASE_URL: z.string().default(''),
   QINIU_ACCESS_KEY: z.string().optional(),
   QINIU_SECRET_KEY: z.string().optional(),
   QINIU_BUCKET_NAME: z.string().optional(),

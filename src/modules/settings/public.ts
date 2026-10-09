@@ -55,3 +55,5 @@ export * from './infrastructure/content-import-settings';
 export * from './infrastructure/site-settings';
 
 export * from './infrastructure/smtp-settings';
+
+export * from './infrastructure/storage-settings';

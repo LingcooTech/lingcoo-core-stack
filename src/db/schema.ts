@@ -17,3 +17,4 @@ export * from './schema/license';
 export * from './schema/notifications';
 export * from './schema/settings';
 export * from './schema/ticket';
+export * from './schema/storage';

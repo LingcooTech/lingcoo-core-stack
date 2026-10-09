@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
-import { QiniuImageField } from '@/components/shared/QiniuImageField';
+import { AssetImageField } from '@/components/storage/AssetImageField';
 
 import { AppEditSaveBar } from './AppEditSaveBar';
 import { slugify, type AppEditFieldSetter, type FormState } from './model';
@@ -144,20 +144,20 @@ export function AppEditBasicsTab({
 
           <div>
             <Label>图标 URL</Label>
-            <QiniuImageField
+            <AssetImageField
               value={form.iconUrl}
               onChange={(value) => setField('iconUrl', value)}
               defaultPrefix={`${appAssetPrefix}/icon`}
               previewAlt="icon"
               previewClassName="h-16 w-16 rounded-md border object-cover"
               dialogTitle="选择应用图标"
-              dialogDescription="支持从七牛云已有图片中选择，或直接上传新的图标素材。"
+              dialogDescription="从营销素材选择公开图片，或直接上传新的图标素材。"
             />
           </div>
 
           <div>
             <Label>封面图 URL</Label>
-            <QiniuImageField
+            <AssetImageField
               value={form.coverUrl}
               onChange={(value) => setField('coverUrl', value)}
               defaultPrefix={`${appAssetPrefix}/cover`}

@@ -1,4 +1,5 @@
 export type AdminSectionKey =
+  | 'storage'
   | 'dashboard'
   | 'apps'
   | 'content'
@@ -26,6 +27,7 @@ export type AdminSectionDataScope =
   | 'observability';
 
 export type AdminSectionPermission =
+  | 'storage.read'
   | 'dashboard.view'
   | 'apps.manage'
   | 'content.manage'
@@ -111,6 +113,23 @@ export function listAllowedAdminSectionKeys(
 }
 
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
+  storage: {
+    groupLabel: '内容管理',
+    navTitle: '云存储',
+    navNote: '营销素材',
+    icon: 'FolderOpen',
+    permission: 'storage.read',
+    title: '云存储 · 营销素材',
+    lead: '统一管理图片、文档和文本，支持文件夹、版本与引用保护',
+    href: '/admin/storage',
+    contextCards: [
+      { label: '存储', value: 'S3 兼容', note: '七牛等对象存储' },
+      { label: '素材', value: '统一管理', note: '稳定地址与内容版本' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['storage', '云存储', '营销素材'],
+  },
   deployments: {
     groupLabel: '客户管理',
     navTitle: '应用部署',
@@ -447,7 +466,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
   { label: '应用管理', items: ['apps'] },
-  { label: '内容管理', items: ['content'] },
+  { label: '内容管理', items: ['content', 'storage'] },
   { label: '文档管理', items: ['docs'] },
   { label: '交易管理', items: ['orders', 'payments'] },
   {

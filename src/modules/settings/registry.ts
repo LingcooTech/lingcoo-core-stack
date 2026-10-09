@@ -1,3 +1,4 @@
+import { storageSettingsSchema } from '@lingcoo/contracts';
 import {
   wechatPaymentSettingsSchema,
   smtpSettingsSchema,
@@ -17,6 +18,13 @@ import { settingsRevisions } from '../../db/schema';
 import { httpError } from '../../lib/errors';
 import { AuditLogService, auditContext } from '../audit/public';
 export const settingDefinitions = {
+  storage: {
+    schema: storageSettingsSchema,
+    connectionTest: true,
+    scope: 'system',
+    visibility: 'secret',
+    precedence: ['database', 'env', 'legacy', 'default'],
+  },
   payment: {
     schema: wechatPaymentSettingsSchema,
     connectionTest: false,

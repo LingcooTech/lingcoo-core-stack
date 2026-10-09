@@ -85,6 +85,7 @@ const NotificationsPage = lazyNamed(() => import('@/pages/NotificationsPage'), '
 const OrdersPage = lazyNamed(() => import('@/pages/OrdersPage'), 'OrdersPage');
 const PaymentsPage = lazyNamed(() => import('@/pages/PaymentsPage'), 'PaymentsPage');
 const SecretsPage = lazyNamed(() => import('@/pages/SecretsPage'), 'SecretsPage');
+const StoragePage = lazyNamed(() => import('@/pages/StoragePage'), 'StoragePage');
 const SettingsPage = lazyNamed(() => import('@/pages/SettingsPage'), 'SettingsPage');
 const TicketsPage = lazyNamed(() => import('@/pages/TicketsPage'), 'TicketsPage');
 const UsersPage = lazyNamed(() => import('@/pages/UsersPage'), 'UsersPage');
@@ -320,6 +321,14 @@ const router = createBrowserRouter(
             element={
               <ProtectedAdminSectionRoute sectionKey="content">
                 <ContentEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/storage"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="storage">
+                <StoragePage />
               </ProtectedAdminSectionRoute>
             }
           />

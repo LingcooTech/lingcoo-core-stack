@@ -1,3 +1,4 @@
+import { StorageService } from '../modules/storage/public';
 import {
   CustomDomainService,
   HostingDnsService,
@@ -52,6 +53,7 @@ export function createWorkerRuntime(env: AppEnv, factories = createServiceFactor
     db,
     redis,
     registry,
+    storage: new StorageService(db, env),
     customDomains: new CustomDomainService(db, env),
     hostingDns: new HostingDnsService(db, env),
     jobs: new JobRunService(db, env),

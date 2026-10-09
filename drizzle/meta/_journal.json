@@ -337,6 +337,13 @@
       "when": 1791530707627,
       "tag": "0047_magical_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791587391133,
+      "tag": "0048_watery_retro_girl",
+      "breakpoints": true
     }
   ]
 }

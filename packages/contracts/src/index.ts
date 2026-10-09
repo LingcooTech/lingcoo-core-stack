@@ -10,9 +10,15 @@ export function isIdempotentCommand(method: string, path: string) {
   if (method.toUpperCase() !== 'POST') return false;
   const clean = path.split('?')[0] ?? '';
   return (
-    ['/v1/billing/orders', '/v1/checkout/sessions', '/v1/deployments'].includes(clean) ||
+    [
+      '/v1/billing/orders',
+      '/v1/checkout/sessions',
+      '/v1/deployments',
+      '/v1/admin/storage/uploads',
+    ].includes(clean) ||
     /^\/v1\/admin\/orders\/[^/]+\/refund$/.test(clean) ||
-    /^\/v1\/deployments\/[^/]+\/actions$/.test(clean)
+    /^\/v1\/deployments\/[^/]+\/actions$/.test(clean) ||
+    /^\/v1\/admin\/storage\/assets\/[^/]+\/replacements$/.test(clean)
   );
 }
 export * from './hosting.js';
@@ -34,3 +40,5 @@ export * from './hosting-exit.js';
 export * from './hosting-handover.js';
 
 export { WechatPaySettingsSchema } from './models/settings.js';
+
+export * from './storage.js';

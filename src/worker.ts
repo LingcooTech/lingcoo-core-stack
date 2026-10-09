@@ -47,6 +47,11 @@ export async function runWorker(
         await jobs.pruneCompleted(env.JOB_RETENTION_DAYS);
         await pruneIdempotencyResults(runtime.db);
         try {
+          await runtime.storage.cleanup();
+        } catch {
+          console.error('[worker] storage cleanup failed; pending objects retained for retry');
+        }
+        try {
           await runtime.hostingDns.reconcile();
           await runtime.customDomains.reconcile();
         } catch {

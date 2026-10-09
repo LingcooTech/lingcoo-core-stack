@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 
-import { QiniuImageField } from '@/components/shared/QiniuImageField';
+import { AssetImageField } from '@/components/storage/AssetImageField';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,7 @@ export function AppEditScreenshotsCard({
         {screenshots.map((item, index) => (
           <div key={index} className="flex items-start gap-3 rounded-md border p-3">
             <div className="flex-1 space-y-2">
-              <QiniuImageField
+              <AssetImageField
                 value={item.url}
                 onChange={(value) => updateScreenshot(index, { url: value })}
                 placeholder="图片 URL"

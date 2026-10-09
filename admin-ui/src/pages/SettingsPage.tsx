@@ -1,3 +1,4 @@
+import { StorageSettingsPanel } from '@/components/storage/StorageSettingsPanel';
 import { handleAsync } from '@/lib/async-events';
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,14 +12,12 @@ import {
   clearContentImportSettings,
   clearOpenRouterSettings,
   clearPublicPagesSettings,
-  clearQiniuSettings,
   clearSiteSettings,
   clearSmtpSettings,
   getContentImportSettings,
   getAiProviders,
   getOpenRouterSettings,
   getPublicPagesSettings,
-  getQiniuSettings,
   getSiteSettings,
   getSmtpSettings,
   previewOpenRouterChatCompletion,
@@ -27,11 +26,9 @@ import {
   testNotionImportSettings,
   testWordPressImportSettings,
   testOpenRouterSettings,
-  testQiniuSettings,
   upsertContentImportSettings,
   upsertOpenRouterSettings,
   upsertPublicPagesSettings,
-  upsertQiniuSettings,
   upsertSiteSettings,
   upsertSmtpSettings,
 } from '@/api/settings';
@@ -43,7 +40,7 @@ import type {
   OpenRouterTestConnectionResult,
 } from '@/api/types';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
-import { QiniuImageField } from '@/components/shared/QiniuImageField';
+import { AssetImageField } from '@/components/storage/AssetImageField';
 import { SectionHeader } from '@/components/shared/SectionHeader';
 import { StatusPill } from '@/components/shared/StatusPill';
 import { Button } from '@/components/ui/button';
@@ -82,15 +79,6 @@ const optionalUrlField = z.preprocess(
   (value: string) => (typeof value === 'string' ? value.trim() : value),
   z.union([z.string().url('请输入有效链接'), z.literal('')]),
 );
-
-const qiniuSchema = z.object({
-  accessKey: z.string().optional(),
-  secretKey: z.string().optional(),
-  bucketName: z.string().optional(),
-  publicBaseUrl: optionalUrlField,
-  uploadHost: optionalUrlField,
-  defaultPrefix: z.string().optional(),
-});
 
 const optionalSiteLinkField = z.preprocess(
   (value: string) => (typeof value === 'string' ? value.trim() : value),
@@ -182,7 +170,6 @@ const testBodySchema = z
   .max(10_000, '正文不能超过 10000 个字符');
 
 type SmtpValues = z.infer<typeof smtpSchema>;
-type QiniuValues = z.infer<typeof qiniuSchema>;
 type SiteValues = z.infer<typeof siteSchema>;
 type OpenRouterValues = z.infer<typeof openrouterSchema>;
 type ContentImportValues = z.infer<typeof contentImportSchema>;
@@ -201,24 +188,6 @@ function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolea
     ...(user ? { user } : {}),
     ...(options.includePassword && password ? { password } : {}),
     ...(from ? { from } : {}),
-  };
-}
-
-function buildQiniuPayload(values: QiniuValues, options: { includeSecretKey: boolean }) {
-  const accessKey = values.accessKey?.trim();
-  const secretKey = values.secretKey?.trim();
-  const bucketName = values.bucketName?.trim();
-  const publicBaseUrl = values.publicBaseUrl?.trim();
-  const uploadHost = values.uploadHost?.trim();
-  const defaultPrefix = values.defaultPrefix?.trim();
-
-  return {
-    ...(accessKey ? { accessKey } : {}),
-    ...(options.includeSecretKey && secretKey ? { secretKey } : {}),
-    ...(bucketName ? { bucketName } : {}),
-    ...(publicBaseUrl ? { publicBaseUrl } : {}),
-    ...(uploadHost ? { uploadHost } : {}),
-    ...(defaultPrefix ? { defaultPrefix } : {}),
   };
 }
 
@@ -335,11 +304,12 @@ const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function SettingsPage() {
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState('site');
+  const [activeTab, setActiveTab] = useState(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'storage' ? 'storage' : 'site',
+  );
   const [settingsQuery, setSettingsQuery] = useState('');
   const [clearSiteOpen, setClearSiteOpen] = useState(false);
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
-  const [clearQiniuOpen, setClearQiniuOpen] = useState(false);
   const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
   const [clearContentImportOpen, setClearContentImportOpen] = useState(false);
   const [clearPublicPagesOpen, setClearPublicPagesOpen] = useState(false);
@@ -387,11 +357,6 @@ export function SettingsPage() {
     queryFn: getContentImportSettings,
   });
 
-  const { data: qiniuData, isLoading: qiniuLoading } = useQuery({
-    queryKey: ['system-settings', 'qiniu'],
-    queryFn: getQiniuSettings,
-  });
-
   const { data: openrouterData, isLoading: openrouterLoading } = useQuery({
     queryKey: ['system-settings', 'ai', 'openrouter'],
     queryFn: getOpenRouterSettings,
@@ -411,18 +376,6 @@ export function SettingsPage() {
       user: '',
       password: '',
       from: '',
-    },
-  });
-
-  const qiniuForm = useForm<QiniuValues>({
-    resolver: zodResolver(qiniuSchema),
-    defaultValues: {
-      accessKey: '',
-      secretKey: '',
-      bucketName: '',
-      publicBaseUrl: '',
-      uploadHost: 'https://upload.qiniup.com',
-      defaultPrefix: '',
     },
   });
 
@@ -541,21 +494,6 @@ export function SettingsPage() {
       from: smtpData.values.from,
     });
   }, [smtpData, smtpForm]);
-
-  useEffect(() => {
-    if (!qiniuData) {
-      return;
-    }
-
-    qiniuForm.reset({
-      accessKey: qiniuData.values.accessKey,
-      secretKey: '',
-      bucketName: qiniuData.values.bucketName,
-      publicBaseUrl: qiniuData.values.publicBaseUrl,
-      uploadHost: qiniuData.values.uploadHost,
-      defaultPrefix: qiniuData.values.defaultPrefix,
-    });
-  }, [qiniuData, qiniuForm]);
 
   useEffect(() => {
     if (!siteData) {
@@ -778,41 +716,6 @@ export function SettingsPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
   });
 
-  const saveQiniuMutation = useMutation({
-    mutationFn: upsertQiniuSettings,
-    onSuccess: (result) => {
-      toast.success('七牛云配置已保存');
-      qc.setQueryData(['system-settings', 'qiniu'], result);
-      qiniuForm.reset({
-        accessKey: result.values.accessKey,
-        secretKey: '',
-        bucketName: result.values.bucketName,
-        publicBaseUrl: result.values.publicBaseUrl,
-        uploadHost: result.values.uploadHost,
-        defaultPrefix: result.values.defaultPrefix,
-      });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
-  });
-
-  const clearQiniuMutation = useMutation({
-    mutationFn: clearQiniuSettings,
-    onSuccess: async () => {
-      toast.success('数据库中的七牛云配置已清空');
-      setClearQiniuOpen(false);
-      await qc.invalidateQueries({ queryKey: ['system-settings', 'qiniu'] });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
-  });
-
-  const testQiniuMutation = useMutation({
-    mutationFn: testQiniuSettings,
-    onSuccess: (result) => {
-      toast.success(`七牛云连接成功，Bucket: ${result.bucketName}`);
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '测试连接失败'),
-  });
-
   const saveOpenRouterMutation = useMutation({
     mutationFn: upsertOpenRouterSettings,
     onSuccess: async (result) => {
@@ -954,14 +857,6 @@ export function SettingsPage() {
     });
   });
 
-  const handleTestQiniu = qiniuForm.handleSubmit((values) => {
-    testQiniuMutation.mutate(
-      buildQiniuPayload(values, {
-        includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
-      }),
-    );
-  });
-
   const handleTestOpenRouter = openrouterForm.handleSubmit((values) => {
     testOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values));
   });
@@ -1042,8 +937,8 @@ export function SettingsPage() {
                 <TabsTrigger value="smtp" className="min-w-[108px] rounded-md">
                   SMTP
                 </TabsTrigger>
-                <TabsTrigger value="qiniu" className="min-w-[108px] rounded-md">
-                  七牛云
+                <TabsTrigger value="storage" className="min-w-[108px] rounded-md">
+                  文件存储
                 </TabsTrigger>
                 <TabsTrigger value="content" className="min-w-[108px] rounded-md">
                   内容导入
@@ -1142,14 +1037,14 @@ export function SettingsPage() {
                           <FormItem>
                             <FormLabel>Logo</FormLabel>
                             <FormControl>
-                              <QiniuImageField
+                              <AssetImageField
                                 value={field.value}
                                 onChange={field.onChange}
                                 defaultPrefix="site-assets/logo"
                                 previewAlt="site logo"
                                 previewClassName="h-20 w-40 rounded-md border bg-card object-contain p-2"
                                 dialogTitle="选择站点 Logo"
-                                dialogDescription="支持从七牛云已有图片中选择，或直接上传新的站点 Logo。"
+                                dialogDescription="从营销素材选择图片，或直接上传新的站点 Logo。"
                               />
                             </FormControl>
                             <FormMessage />
@@ -1164,7 +1059,7 @@ export function SettingsPage() {
                           <FormItem>
                             <FormLabel>Favicon</FormLabel>
                             <FormControl>
-                              <QiniuImageField
+                              <AssetImageField
                                 value={field.value}
                                 onChange={field.onChange}
                                 defaultPrefix="site-assets/favicon"
@@ -1892,165 +1787,8 @@ export function SettingsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="qiniu" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill
-                    tone={qiniuData?.configured ? 'ok' : 'neutral'}
-                    label={qiniuData?.configured ? '七牛云已配置' : '七牛云未配置'}
-                  />
-                  <StatusPill
-                    tone={
-                      qiniuData?.source === 'database'
-                        ? 'ok'
-                        : qiniuData?.source === 'env'
-                          ? 'warn'
-                          : 'neutral'
-                    }
-                    label={`来源: ${sourceLabel(qiniuData?.source ?? 'none')}`}
-                  />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">七牛云存储</h2>
-              </div>
-
-              {qiniuLoading ? (
-                <div className="space-y-3">
-                  {[...Array(4)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
-                  ))}
-                </div>
-              ) : (
-                <Form {...qiniuForm}>
-                  <form
-                    onSubmit={handleAsync(
-                      qiniuForm.handleSubmit((values) =>
-                        saveQiniuMutation.mutate(
-                          buildQiniuPayload(values, {
-                            includeSecretKey: Boolean(qiniuForm.formState.dirtyFields.secretKey),
-                          }),
-                        ),
-                      ),
-                    )}
-                    className="space-y-5"
-                  >
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={qiniuForm.control}
-                        name="accessKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Access Key</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Qiniu Access Key" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={qiniuForm.control}
-                        name="bucketName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Bucket</FormLabel>
-                            <FormControl>
-                              <Input placeholder="bucket-name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={qiniuForm.control}
-                        name="publicBaseUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>公共访问域名</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://cdn.example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={qiniuForm.control}
-                        name="uploadHost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>上传域名</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://upload.qiniup.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={qiniuForm.control}
-                      name="defaultPrefix"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>默认目录前缀</FormLabel>
-                          <FormControl>
-                            <Input placeholder="apps" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={qiniuForm.control}
-                      name="secretKey"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Secret Key</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              autoComplete="new-password"
-                              placeholder={
-                                qiniuData?.secrets.secretKey.configured
-                                  ? '已保存，留空保持不变'
-                                  : '请输入 Secret Key'
-                              }
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="submit" disabled={saveQiniuMutation.isPending}>
-                        {saveQiniuMutation.isPending ? '保存中...' : '保存七牛云配置'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={testQiniuMutation.isPending}
-                        onClick={handleAsync(handleTestQiniu)}
-                      >
-                        {testQiniuMutation.isPending ? '测试中...' : '测试连接'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={clearQiniuMutation.isPending}
-                        onClick={() => setClearQiniuOpen(true)}
-                      >
-                        清空数据库配置
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              )}
-            </div>
+          <TabsContent value="storage" className="mt-0">
+            <StorageSettingsPanel />
           </TabsContent>
 
           <TabsContent value="content" className="mt-0">
@@ -2552,17 +2290,6 @@ export function SettingsPage() {
       />
 
       <ConfirmActionDialog
-        open={clearQiniuOpen}
-        onOpenChange={setClearQiniuOpen}
-        title="清空七牛云数据库配置？"
-        description="这会删除数据库中的七牛云设置。清空后应用编辑页里的云存储上传和图片选择会失效，并回退到手动 URL 方式。"
-        confirmText={clearQiniuMutation.isPending ? '清空中...' : '确认清空'}
-        confirmVariant="destructive"
-        isConfirming={clearQiniuMutation.isPending}
-        onConfirm={() => clearQiniuMutation.mutate()}
-      />
-
-      <ConfirmActionDialog
         open={clearOpenRouterOpen}
         onOpenChange={setClearOpenRouterOpen}
         title="清空 OpenRouter 数据库配置？"
@@ -2642,9 +2369,9 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchHit[] = [
     keywords: ['测试邮件', 'test', '发件人'],
   },
   {
-    tab: 'qiniu',
-    tabLabel: '七牛云',
-    field: '七牛存储',
+    tab: 'storage',
+    tabLabel: '文件存储',
+    field: 'S3 兼容存储',
     keywords: ['七牛', 'qiniu', '存储', '媒体', 'oss', '上传'],
   },
   {

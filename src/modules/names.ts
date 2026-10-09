@@ -6,6 +6,7 @@ export const moduleNames = [
   'app',
   'content',
   'docs',
+  'storage',
   'notifications',
   'ticket',
   'install',

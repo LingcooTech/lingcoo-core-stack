@@ -280,6 +280,8 @@ export const externalResponseContracts = [
 ] as const satisfies readonly { method: string; path: string; schema: z.ZodType }[];
 // These payment callbacks deliberately use provider-defined XML/plain text, never SDK JSON.
 export const nonJsonResponseRoutes = [
+  { method: 'GET', path: '/v1/assets/:id/content' },
+  { method: 'GET', path: '/v1/admin/storage/assets/:id/content' },
   { method: 'GET', path: '/v1/deployments/:deploymentId/handover/:handoverId/download/:grantId' },
   { method: 'POST', path: '/v1/billing/providers/wechat/notify' },
   { method: 'POST', path: '/v1/billing/providers/alipay/notify' },

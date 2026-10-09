@@ -1,6 +1,8 @@
 export type AppRole = 'user' | 'support' | 'finance' | 'editor' | 'operator' | 'admin';
 
 export type AppPermission =
+  | 'storage.read'
+  | 'storage.manage'
   | 'dashboard.view'
   | 'apps.manage'
   | 'content.manage'
@@ -28,6 +30,8 @@ export type AppPermission =
   | 'ai.manage';
 
 const allPermissions: AppPermission[] = [
+  'storage.read',
+  'storage.manage',
   'dashboard.view',
   'apps.manage',
   'content.manage',
@@ -87,8 +91,17 @@ export const rolePermissions: Record<AppRole, AppPermission[]> = {
     'licenses.manage',
     'observability.view',
   ],
-  editor: ['dashboard.view', 'content.manage', 'docs.manage', 'notifications.manage'],
+  editor: [
+    'storage.read',
+    'storage.manage',
+    'dashboard.view',
+    'content.manage',
+    'docs.manage',
+    'notifications.manage',
+  ],
   operator: [
+    'storage.read',
+    'storage.manage',
     'dashboard.view',
     'apps.manage',
     'payments.manage',

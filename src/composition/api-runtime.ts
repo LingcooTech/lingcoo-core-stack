@@ -1,3 +1,4 @@
+import { StorageService } from '../modules/storage/public';
 import type { DbExecutor } from '../db/types';
 import type { AppEnv } from '../lib/env';
 import { createServiceFactories } from './service-factories';
@@ -21,6 +22,7 @@ export function createApiServices(
   factories = createServiceFactories(),
 ) {
   return {
+    StorageService: new StorageService(db, env),
     AdminService: new AdminService(factories, db, env),
     AiService: new AiService(factories, db, env),
     AppService: new AppService(factories, db, env),
