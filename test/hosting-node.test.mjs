@@ -8,9 +8,9 @@ test(
   'heterogeneous Docker adapter installs, replays, backs up and restores',
   {
     skip: process.env.CI !== 'true',
-    timeout: 180_000,
+    timeout: 300_000,
   },
   () => {
-    execFileSync('python3', ['test/hosting-static-docker.py'], { stdio: 'pipe', timeout: 170_000 });
+    execFileSync('python3', ['test/hosting-static-docker.py'], { stdio: 'pipe', timeout: 290_000 });
   },
 );

@@ -10,6 +10,7 @@ import {
 import { AdminDeploymentsSchema } from './admin-deployments.js';
 import { externalResponseContracts, nonJsonResponseRoutes } from './external-responses.js';
 import { z } from 'zod';
+import { HostingExitResponseSchema } from './hosting-exit.js';
 import {
   HostingClaimSchema,
   HostingOverviewSchema,
@@ -25,6 +26,26 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  {
+    method: 'GET',
+    path: '/v1/deployments/:deploymentId/hosting-exit',
+    schema: HostingExitResponseSchema,
+  },
+  {
+    method: 'GET',
+    path: '/v1/admin/deployments/:deploymentId/hosting-exit',
+    schema: HostingExitResponseSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/deployments/:deploymentId/hosting-exit',
+    schema: HostingExitResponseSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/deployments/:deploymentId/hosting-exit',
+    schema: HostingExitResponseSchema,
+  },
   {
     method: 'GET',
     path: '/v1/billing/hosting-offers/:appCode',

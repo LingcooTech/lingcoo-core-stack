@@ -160,7 +160,7 @@ export const hostingPurchases = pgTable(
   (t) => ({
     state: check(
       'hosting_purchases_state_check',
-      sql`${t.status} in ('available', 'bound', 'refund_pending', 'revoked') and ((${t.status} = 'bound' and ${t.deploymentId} is not null) or (${t.status} <> 'bound' and ${t.deploymentId} is null))`,
+      sql`${t.status} in ('available', 'bound', 'refund_pending', 'revoked') and ((${t.status} = 'bound' and ${t.deploymentId} is not null) or (${t.status} in ('available','refund_pending') and ${t.deploymentId} is null) or ${t.status} = 'revoked')`,
     ),
   }),
 );

@@ -1,5 +1,5 @@
 """Real Docker acceptance: a static nginx application, no API, worker or database."""
-import hashlib,importlib.util,json,os,subprocess,sys,tempfile,uuid
+import hashlib,importlib.util,json,os,subprocess,sys,tempfile,time,uuid
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root/'scripts'))
@@ -16,7 +16,7 @@ descriptor={'protocolVersion':2,'projectPrefix':'static','weights':{'site':1},'a
  'backupScript':'backup.sh','initialization':[],'bundle':str(bundle),'hashes':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in bundle.iterdir() if p.is_file()}}
 with tempfile.TemporaryDirectory() as tmp:
  workspace=Path(tmp);did=str(uuid.uuid4());project='static-'+did.replace('-','')
- config={'adapters':{'static_sample':descriptor},'useCachedImagesOnly':True,'backupRoot':str(workspace/'backups')}
+ config={'nodeId':str(uuid.uuid4()),'snapshotImage':image,'adapters':{'static_sample':descriptor},'useCachedImagesOnly':True,'backupRoot':str(workspace/'backups')}
  job={'id':str(uuid.uuid4()),'deploymentId':did,'appCode':'static_sample','hostname':'static.example.test','env':{'APP_IMAGE':image},'resources':{'memoryMb':128,'cpuMillis':250}}
  try:
   agent.execute(job,config,workspace)
@@ -31,9 +31,55 @@ with tempfile.TemporaryDirectory() as tmp:
   subprocess.run(['docker','volume','create',restore],check=True)
   subprocess.run(['docker','run','--rm','-i','-v',restore+':/data','--entrypoint','tar',image,'-C','/data','-xf','-'],input=archive.read_bytes(),check=True)
   assert b'persistent-proof' in subprocess.check_output(['docker','run','--rm','-v',restore+':/data:ro','--entrypoint','cat',image,'/data/proof.txt'])
-  print('Static adapter install, replay, backup and isolated restore passed')
+  # Add a real PostgreSQL volume to exercise safe database shutdown and physical recovery.
+  subprocess.run(['docker','pull','postgres:17-alpine'],check=True)
+  pgimage=json.loads(subprocess.check_output(['docker','image','inspect','postgres:17-alpine']))[0]['RepoDigests'][0]
+  pgvolume=project+'_pgdata'
+  subprocess.run(['docker','volume','create','--label','com.docker.compose.project='+project,'--label','com.docker.compose.volume=pgdata',pgvolume],check=True)
+  pgcontainer=project+'-db'
+  subprocess.run(['docker','run','-d','--name',pgcontainer,'--label','com.docker.compose.project='+project,'--label','com.docker.compose.service=db','--label','com.docker.compose.oneoff=False','-e','POSTGRES_PASSWORD=disposable-test-only','-v',pgvolume+':/var/lib/postgresql/data',pgimage],check=True)
+  for attempt in range(60):
+   if subprocess.run(['docker','exec',pgcontainer,'pg_isready','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   time.sleep(1)
+  subprocess.run(['docker','exec',pgcontainer,'psql','-U','postgres','-v','ON_ERROR_STOP=1','-c',"CREATE TABLE exit_proof(value text); INSERT INTO exit_proof VALUES ('cold-database-proof');"],check=True)
+  descriptor['weights']['db']=1;descriptor['infrastructureServices']=['db'];descriptor['volumes'].append('pgdata')
+  # Real cold snapshot, stop and replay. Restic invocation is stubbed here; production validates offsite separately.
+  spec=importlib.util.spec_from_file_location('retire',root/'scripts/hosting-node-retire.py')
+  retire=importlib.util.module_from_spec(spec);spec.loader.exec_module(retire)
+  fake_restic=workspace/'restic-test'
+  fake_restic.write_text('#!/bin/sh\nexit 0\n');fake_restic.chmod(0o700)
+  password=workspace/'password';password.write_text('disposable-test-only');password.chmod(0o600)
+  config['offsite']={'binary':str(fake_restic),'passwordFile':str(password),'repository':str(workspace/'restic'),'sftpCommand':'false'}
+  operation={'id':str(uuid.uuid4()),'deploymentId':did,'nodeId':config['nodeId'],'kind':'retire'}
+  fake_restic.write_text('#!/bin/sh\nexit 1\n')
+  try:
+   retire.execute(config,workspace/did,operation)
+   raise AssertionError('Failed offsite must not acknowledge completion')
+  except subprocess.CalledProcessError:
+   assert json.loads((workspace/did/'execution.json').read_text())['phase']=='retiring'
+   assert not json.loads(subprocess.check_output(['docker','inspect',cid]))[0]['State']['Running']
+  fake_restic.write_text('#!/bin/sh\nexit 0\n')
+  evidence=retire.execute(config,workspace/did,operation)
+  assert evidence==retire.execute(config,workspace/did,operation)
+  state=json.loads(subprocess.check_output(['docker','inspect',cid]))[0]
+  assert not state['State']['Running'] and state['HostConfig']['RestartPolicy']['Name']=='no'
+  cold=workspace/'backups'/evidence['backupId']/'pages.tar'
+  subprocess.run(['docker','run','--rm','-i','-v',restore+':/data','--entrypoint','tar',image,'-C','/data','-xf','-'],input=cold.read_bytes(),check=True)
+  assert b'persistent-proof' in subprocess.check_output(['docker','run','--rm','-v',restore+':/data:ro','--entrypoint','cat',image,'/data/proof.txt'])
+  pgrestore=project+'_pgrestore'
+  subprocess.run(['docker','volume','create',pgrestore],check=True)
+  coldpg=workspace/'backups'/evidence['backupId']/'pgdata.tar'
+  subprocess.run(['docker','run','--rm','-i','--user','0:0','-v',pgrestore+':/data','--entrypoint','tar',image,'-C','/data','-xpf','-'],input=coldpg.read_bytes(),check=True)
+  restored=project+'-db-restored'
+  subprocess.run(['docker','run','-d','--name',restored,'--label','com.docker.compose.project='+project,'-v',pgrestore+':/var/lib/postgresql/data',pgimage],check=True)
+  for attempt in range(60):
+   if subprocess.run(['docker','exec',restored,'pg_isready','-U','postgres'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:break
+   time.sleep(1)
+  assert b'cold-database-proof' in subprocess.check_output(['docker','exec',restored,'psql','-U','postgres','-Atc','SELECT value FROM exit_proof'])
+  assert json.loads((workspace/did/'execution.json').read_text())['phase']=='retained' 
+  print('Static adapter install, replay, backup, cold stop and isolated restore passed')
  finally:
   ids=subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project='+project],text=True).split()
   if ids:subprocess.run(['docker','rm','-f',*ids],check=True)
   for n in (project+'_default',project+'-ingress'):subprocess.run(['docker','network','rm',n],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-  for v in (project+'_pages',project+'_restore'):subprocess.run(['docker','volume','rm',v],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+  for v in (project+'_pages',project+'_restore',project+'_pgdata',project+'_pgrestore'):subprocess.run(['docker','volume','rm',v],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

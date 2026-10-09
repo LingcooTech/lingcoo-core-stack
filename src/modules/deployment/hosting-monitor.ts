@@ -1,5 +1,5 @@
 import { acquireTransactionLock } from '../../db/locks';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql, notInArray } from 'drizzle-orm';
 import { hostingIncidentQuerySchema } from '@lingcoo/contracts';
 import {
   apps,
@@ -32,7 +32,13 @@ export class HostingMonitor {
         .select({ service: hostingServices })
         .from(hostingServices)
         .innerJoin(deployments, eq(deployments.id, hostingServices.deploymentId))
-        .where(and(eq(deployments.status, 'active'), eq(deployments.deploymentMode, 'managed')));
+        .where(
+          and(
+            eq(deployments.status, 'active'),
+            eq(deployments.deploymentMode, 'managed'),
+            notInArray(deployments.hostingState, ['retained', 'terminated']),
+          ),
+        );
       const now = at ?? new Date();
       const resources = new Set([
         ...nodes.map((n) => 'node:' + n.id),

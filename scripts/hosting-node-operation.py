@@ -20,9 +20,17 @@ def store(path, value):
 
 def execute(config, workspace, operation):
     operation_id, deployment_id = str(uuid.UUID(operation['id'])), str(uuid.UUID(operation['deploymentId']))
-    if operation['kind'] not in ('restart', 'backup') or operation['nodeId'] != config['nodeId']:
+    if operation['kind'] not in ('restart', 'backup', 'retire') or operation['nodeId'] != config['nodeId']:
         raise ValueError('Unsupported operation')
     directory = workspace / deployment_id
+    if operation['kind']=='retire':
+        spec=importlib.util.spec_from_file_location('retire',Path(__file__).with_name('hosting-node-retire.py'))
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        try:
+            module.execute(config,directory,operation)
+            return True
+        except Exception:
+            return False
     if directory.is_symlink() or json.loads((directory / 'execution.json').read_text())['phase'] != 'runtime_ready':
         raise ValueError('Instance is not owned and ready')
     records = directory / 'operations'; records.mkdir(mode=0o700, exist_ok=True)

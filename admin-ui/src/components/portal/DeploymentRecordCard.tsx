@@ -1,3 +1,4 @@
+import { HostingExitPanel } from '@/components/hosting/HostingExitPanel';
 import { HostingCheckout } from '@/components/hosting/HostingCheckout';
 import { HostingServicePanel } from '@/components/hosting/HostingServicePanel';
 import { ManagedDeploymentProgress } from './ManagedDeploymentProgress';
@@ -206,6 +207,7 @@ export function DeploymentRecordCard({
 
       <CardContent className="space-y-3.5">
         {deployment.managed && <HostingServicePanel deploymentId={deployment.id} />}
+        {deployment.managed && <HostingExitPanel deploymentId={deployment.id} />}
         {deployment.managed &&
           deployment.status === 'active' &&
           deployment.app &&

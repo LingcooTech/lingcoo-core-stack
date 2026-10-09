@@ -14,6 +14,7 @@ import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { formatTime } from '@/lib/utils';
 
 const states = {
+  terminated: '已结束（保留原服务期限）',
   pending_delivery: '等待交付起算',
   active: '服务期内',
   grace: '宽限期内',
@@ -114,7 +115,7 @@ function ServiceContent({ deploymentId, admin }: { deploymentId: string; admin: 
       ) : (
         <p className="text-muted-foreground">尚未登记托管服务期限，请联系平台确认服务安排。</p>
       )}
-      {canManage && (
+      {canManage && service?.state !== 'terminated' && (
         <ServiceForm key={service?.version ?? 0} deploymentId={deploymentId} service={service} />
       )}
       {admin && changes.length > 0 && (

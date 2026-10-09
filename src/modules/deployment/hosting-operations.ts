@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, ne } from 'drizzle-orm';
 import {
   HostingOperationSchema,
   hostingNodeReportSchema,
@@ -8,6 +8,8 @@ import { apps, deployments, hostingNodes, hostingOperations, users } from '../..
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { HostingRepository, HOSTING_REPORT_MAX_AGE_MS } from './hosting';
+import type { HostingExitEvidence } from '@lingcoo/contracts';
+import { HostingExitService } from './hosting-exit';
 import { monitorProfile } from './hosting-monitor-checks';
 
 const view = (row: typeof hostingOperations.$inferSelect) =>
@@ -148,15 +150,33 @@ export class HostingOperations {
         and(
           eq(hostingOperations.nodeId, nodeId),
           eq(hostingOperations.state, 'running'),
+          ne(hostingOperations.kind, 'retire'),
           lt(hostingOperations.startedAt, new Date(now.getTime() - 60 * 60 * 1000)),
         ),
       );
-    const [running] = await this.db
+    const runningRows = await this.db
       .select()
       .from(hostingOperations)
       .where(and(eq(hostingOperations.nodeId, nodeId), eq(hostingOperations.state, 'running')))
-      .limit(1);
-    if (running) return { operation: view(running) };
+      .orderBy(hostingOperations.createdAt);
+    const running = runningRows.find(
+      (row) =>
+        row.kind !== 'retire' ||
+        row.result !== 'execution_failed' ||
+        !row.startedAt ||
+        now.getTime() - row.startedAt.getTime() >= 5 * 60000,
+    );
+    if (running) {
+      if (running.kind === 'retire' && running.result === 'execution_failed') {
+        const [retry] = await this.db
+          .update(hostingOperations)
+          .set({ result: null, startedAt: now })
+          .where(eq(hostingOperations.id, running.id))
+          .returning();
+        return { operation: view(retry!) };
+      }
+      return { operation: view(running) };
+    }
     const [row] = await this.db
       .select()
       .from(hostingOperations)
@@ -172,7 +192,14 @@ export class HostingOperations {
       .returning();
     return { operation: view(updated!) };
   }
-  async complete(nodeId: string, token: string, id: string, success: boolean, now = new Date()) {
+  async complete(
+    nodeId: string,
+    token: string,
+    id: string,
+    success: boolean,
+    now = new Date(),
+    evidence?: HostingExitEvidence,
+  ) {
     const repository = new HostingRepository(this.db);
     await repository.authenticate(nodeId, token);
     await repository.lockPool();
@@ -183,6 +210,17 @@ export class HostingOperations {
     if (!row) throw httpError(404, '操作不存在');
     if (['succeeded', 'failed'].includes(row.state)) return { ok: true };
     if (row.state !== 'running') throw httpError(409, '操作未领取');
+    if (row.kind === 'retire') {
+      if (!success) {
+        await this.db
+          .update(hostingOperations)
+          .set({ result: 'execution_failed', startedAt: now })
+          .where(eq(hostingOperations.id, id));
+        return { ok: true }; // Unknown/partial stop retains capacity and the same retryable operation.
+      }
+      if (!evidence) throw httpError(409, '缺少已停服及异机备份证据');
+      await new HostingExitService(this.db).complete(id, evidence, now);
+    }
     await this.db
       .update(hostingOperations)
       .set({

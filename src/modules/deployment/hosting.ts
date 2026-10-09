@@ -72,7 +72,11 @@ export class HostingRepository {
       const parsed = hostingResourcesSchema.safeParse(row.hostingResources);
       if (!parsed.success) throw httpError(503, '托管资源记录异常，暂停分配');
       const used = result.get(row.hostingNodeId) ?? emptyResources();
-      for (const key of resourceKeys) used[key] += parsed.data[key];
+      for (const key of resourceKeys) {
+        if (key !== 'diskMb' && ['retained', 'terminated'].includes(row.hostingState ?? ''))
+          continue;
+        used[key] += parsed.data[key];
+      }
       result.set(row.hostingNodeId, used);
     }
     return result;

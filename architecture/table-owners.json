@@ -48,5 +48,7 @@
   "orderItemRefunds": "billing",
   "hostingIncidents": "deployment",
   "hostingIncidentEvents": "deployment",
-  "hostingMonitorState": "deployment"
+  "hostingMonitorState": "deployment",
+  "hostingExits": "deployment",
+  "hostingExitEvents": "deployment"
 }

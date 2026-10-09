@@ -1,0 +1,3 @@
+ALTER TABLE "hosting_purchases" DROP CONSTRAINT "hosting_purchases_state_check";--> statement-breakpoint
+CREATE INDEX "hosting_exit_events_deployment_idx" ON "hosting_exit_events" USING btree ("deployment_id","created_at");--> statement-breakpoint
+ALTER TABLE "hosting_purchases" ADD CONSTRAINT "hosting_purchases_state_check" CHECK ("hosting_purchases"."status" in ('available', 'bound', 'refund_pending', 'revoked') and (("hosting_purchases"."status" = 'bound' and "hosting_purchases"."deployment_id" is not null) or ("hosting_purchases"."status" in ('available','refund_pending') and "hosting_purchases"."deployment_id" is null) or "hosting_purchases"."status" = 'revoked'));

@@ -1,3 +1,4 @@
+import { HostingExitPanel } from '@/components/hosting/HostingExitPanel';
 import { HostingServicePanel } from './HostingServicePanel';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +27,10 @@ const states: Record<string, string> = {
 };
 const deploymentStates: Record<string, string> = {
   ready: '运行就绪',
+  exit_requested: '退出待处理',
+  stopping: '停服备份中',
+  retained: '已停服·保留数据',
+  terminated: '已结束·保留数据',
   waiting_capacity: '等待资源',
   pending_infrastructure: '准备环境',
   deploying: '部署中',
@@ -140,9 +145,9 @@ export function HostingInstances({
               operation.isPending ||
               !instance.telemetryFresh ||
               instance.state !== 'ready';
-            const bad = instance.services.some(
-              (c) => c.state !== 'running' || c.health === 'unhealthy',
-            );
+            const bad =
+              !['retained', 'terminated', 'stopping'].includes(instance.state ?? '') &&
+              instance.services.some((c) => c.state !== 'running' || c.health === 'unhealthy');
             return (
               <article key={instance.id} className="overflow-hidden rounded-xl border bg-card">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4">
@@ -180,7 +185,8 @@ export function HostingInstances({
                   <div className="space-y-4">
                     <div>
                       <p className="mb-1 text-xs text-muted-foreground">应用入口</p>
-                      {instance.hostname ? (
+                      {instance.hostname &&
+                      ['ready', 'exit_requested'].includes(instance.state ?? '') ? (
                         <a
                           className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium break-all text-primary hover:underline"
                           href={'https://' + instance.hostname}
@@ -191,7 +197,9 @@ export function HostingInstances({
                           <ExternalLink className="size-3.5 shrink-0" />
                         </a>
                       ) : (
-                        <p className="text-sm">等待分配访问地址</p>
+                        <p className="text-sm break-all">
+                          {instance.hostname ?? '等待分配访问地址'}
+                        </p>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -276,6 +284,7 @@ export function HostingInstances({
                 </div>
                 <div className="px-5 pb-4">
                   <HostingServicePanel deploymentId={instance.id} admin />
+                  <HostingExitPanel deploymentId={instance.id} admin />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3">
                   <span className="text-xs text-muted-foreground">
@@ -337,7 +346,11 @@ export function HostingInstances({
                       o.deploymentId}
                   </td>
                   <td className="px-5 py-4 text-xs">
-                    {o.kind === 'restart' ? '重启应用' : '备份'}
+                    {o.kind === 'restart'
+                      ? '重启应用'
+                      : o.kind === 'retire'
+                        ? '停服并保留数据'
+                        : '备份'}
                   </td>
                   <td className="px-5 py-4">
                     <StatusPill

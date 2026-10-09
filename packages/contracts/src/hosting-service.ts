@@ -31,7 +31,7 @@ export const HostingServiceSchema = z.object({
   source: z.enum(['trial', 'manual', 'paid']),
   interval: z.enum(['month', 'year']),
   periods: z.number().int(),
-  state: z.enum(['pending_delivery', 'active', 'grace', 'expired']),
+  state: z.enum(['pending_delivery', 'active', 'grace', 'expired', 'terminated']),
   anchorAt: z.iso.datetime({ offset: true }).nullable(),
   expiresAt: z.iso.datetime({ offset: true }).nullable(),
   graceEndsAt: z.iso.datetime({ offset: true }).nullable(),

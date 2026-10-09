@@ -1,5 +1,6 @@
 import { hostingMonitorProfileSchema } from './hosting-monitor.js';
 import { z } from 'zod';
+import { hostingExitEvidenceSchema } from './hosting-exit.js';
 
 export const deploymentModeSchema = z.enum(['self_hosted', 'managed']);
 export const serverIpSchema = z.union([z.ipv4(), z.ipv6()]);
@@ -98,6 +99,7 @@ export const hostingNodeReportSchema = z
   .object({
     dockerReady: z.boolean(),
     canDeploy: z.boolean().optional(),
+    supportedOperations: z.array(z.enum(['retire'])).optional(),
     supportedApps: z
       .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
       .max(100)
@@ -143,6 +145,10 @@ export const ManagedDeploymentSchema = z.object({
     'ready',
     'failed',
     'cancelled',
+    'exit_requested',
+    'stopping',
+    'retained',
+    'terminated',
   ]),
   nodeAssigned: z.boolean(),
   accessUrl: z.string().nullable(),
@@ -224,10 +230,10 @@ export const HostingIngressItemSchema = z.object({
   removals: z.array(z.object({ id: z.uuid(), hostname: z.string() })).default([]),
 });
 
-export const hostingOperationKindSchema = z.enum(['restart', 'backup']);
+export const hostingOperationKindSchema = z.enum(['restart', 'backup', 'retire']);
 export const hostingOperationRequestSchema = z
   .object({
-    kind: hostingOperationKindSchema,
+    kind: z.enum(['restart', 'backup']),
     requestKey: z.uuid(),
   })
   .strict();
@@ -247,6 +253,7 @@ export const hostingOperationCompletionSchema = z
   .object({
     operationId: z.uuid(),
     success: z.boolean(),
+    evidence: hostingExitEvidenceSchema.optional(),
   })
   .strict();
 export const HostingOperationClaimSchema = z.object({

@@ -38,7 +38,11 @@ export class CustomDomainService {
       .from(deployments)
       .where(and(eq(deployments.id, deploymentId), eq(deployments.userId, userId)));
     if (!row) throw httpError(404, '部署不存在');
-    if (row.deploymentMode !== 'managed' || row.status !== 'active')
+    if (
+      row.deploymentMode !== 'managed' ||
+      row.status !== 'active' ||
+      ['exit_requested', 'stopping', 'retained', 'terminated'].includes(row.hostingState ?? '')
+    )
       throw httpError(409, '仅有效托管实例支持域名管理');
     return row;
   }

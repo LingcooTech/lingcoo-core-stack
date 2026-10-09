@@ -1,3 +1,4 @@
+import { HostingExitPanel } from '@/components/hosting/HostingExitPanel';
 import { HostingServicePanel } from '@/components/hosting/HostingServicePanel';
 import { useDeferredValue, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -287,7 +288,10 @@ export function AdminDeploymentsPage() {
                 ))}
               </dl>
               {selected.mode === 'managed' && (
-                <HostingServicePanel deploymentId={selected.id} admin />
+                <>
+                  <HostingServicePanel deploymentId={selected.id} admin />
+                  <HostingExitPanel deploymentId={selected.id} admin />
+                </>
               )}
               <div className="flex flex-wrap gap-2">
                 {can('users.view') && (

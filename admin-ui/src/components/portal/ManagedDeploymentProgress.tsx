@@ -20,6 +20,22 @@ export function ManagedDeploymentProgress({
     },
     onError: (error) => toast.error(error.message),
   });
+  const exitLabels: Record<string, string> = {
+    exit_requested: '退出申请已提交，等待运维确认',
+    stopping: '正在停服并保存数据',
+    retained: '已停服，数据保留中',
+    terminated: '托管服务已结束',
+  };
+  if (exitLabels[managed.state])
+    return (
+      <div className="space-y-2 rounded-lg border bg-muted/50 p-4" role="status">
+        <p className="text-sm font-semibold">{exitLabels[managed.state]}</p>
+        <p className="font-mono text-sm break-all">{managed.hostname}</p>
+        <p className="text-sm text-muted-foreground">
+          请在下方查看退出与交接进度。数据保留期内不会自动删除；退款独立审核。
+        </p>
+      </div>
+    );
   return (
     <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-4" role="status">
       <p className="text-sm font-semibold">

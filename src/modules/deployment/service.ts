@@ -263,6 +263,13 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     )
       throw httpError(422, '托管实例的服务器和域名由平台管理');
 
+    if (
+      ['exit_requested', 'stopping', 'retained', 'terminated'].includes(
+        deployment.hostingState ?? '',
+      )
+    )
+      throw httpError(409, '退出中的托管实例不能修改部署配置');
+
     const appRow = await createAppAccess(this.db).findAppById(deployment.appId);
     if (!appRow) {
       throw httpError(404, 'App not found');

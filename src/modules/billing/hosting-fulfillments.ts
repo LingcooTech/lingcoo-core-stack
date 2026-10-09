@@ -63,8 +63,15 @@ export class HostingFulfillments {
     if (
       row?.status === 'applied' &&
       row.items.some((i) => i.hostingTerms?.target?.kind === 'renewal')
-    )
-      throw httpError(409, '已履约续费须通过服务终止与分项退款流程处理');
+    ) {
+      const target = row.items.find((i) => i.hostingTerms?.target?.kind === 'renewal')?.hostingTerms
+        ?.target;
+      if (!this.createHostingTerms || target?.kind !== 'renewal')
+        throw httpError(409, '已履约续费须通过服务终止与分项退款流程处理');
+      await this.createHostingTerms(this.db, this.clock).assertHostingRefundable(
+        target.deploymentId,
+      );
+    }
   }
   async revoke(orderId: string) {
     await this.db

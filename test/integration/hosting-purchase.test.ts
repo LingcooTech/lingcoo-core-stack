@@ -382,45 +382,50 @@ test('payment after software withdrawal remains paid with a review receipt and n
   assert.equal((await receipts.list(f.user.id)).items[0]?.status, 'revoked');
 });
 
-test('expired hosting renewal starts a new delivered term; target cancellation after checkout is reviewed', async () => {
-  let now = new Date('2026-01-31T12:00:00Z');
-  const f = await fixture(() => now);
-  const { HostingFulfillments } = await import('../../src/modules/billing/hosting-fulfillments');
-  const combo = await f.checkout.createSession(f.input);
-  const paid = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: combo.order.orderNo });
-  const entitlement = paid.entitlements.items[0]!;
-  const grant = (await new HostingPurchases(db).list(f.user.id)).items[0]!;
-  const deployed = await f.service.createDeployment({
-    userId: f.user.id,
-    appCode: f.app.code,
-    entitlementId: entitlement.id,
-    hostingPurchaseId: grant.id,
-    label: 'Expired renewal',
-    environment: 'test',
-    deploymentMode: 'managed',
+for (const closing of ['cancelled', 'exit_requested'] as const) {
+  test(`expired hosting renewal preserves terms; payment after ${closing} is reviewed`, async () => {
+    let now = new Date('2026-01-31T12:00:00Z');
+    const f = await fixture(() => now);
+    const { HostingFulfillments } = await import('../../src/modules/billing/hosting-fulfillments');
+    const combo = await f.checkout.createSession(f.input);
+    const paid = await f.billing.mockPayOrder({ userId: f.user.id, orderNo: combo.order.orderNo });
+    const entitlement = paid.entitlements.items[0]!;
+    const grant = (await new HostingPurchases(db).list(f.user.id)).items[0]!;
+    const deployed = await f.service.createDeployment({
+      userId: f.user.id,
+      appCode: f.app.code,
+      entitlementId: entitlement.id,
+      hostingPurchaseId: grant.id,
+      label: 'Expired renewal',
+      environment: 'test',
+      deploymentMode: 'managed',
+    });
+    await db
+      .update(deployments)
+      .set({ hostingState: 'ready' })
+      .where(eq(deployments.id, deployed.id));
+    const terms = new HostingServiceTerms(db, () => now);
+    await terms.activateDelivered(deployed.id);
+    now = new Date('2026-03-05T12:00:00Z');
+    const input = {
+      ...f.input,
+      hostingOnly: { entitlementId: entitlement.id, deploymentId: deployed.id },
+    };
+    const renewal = await f.checkout.createSession(input);
+    await f.billing.mockPayOrder({ userId: f.user.id, orderNo: renewal.order.orderNo });
+    const service = (await terms.read(deployed.id)).service!;
+    assert.equal(service.anchorAt, '2026-03-05T12:00:00.000Z');
+    assert.equal(service.expiresAt, '2026-04-05T12:00:00.000Z');
+    const second = await f.checkout.createSession(input);
+    await db
+      .update(deployments)
+      .set(closing === 'cancelled' ? { status: 'cancelled' } : { hostingState: 'exit_requested' })
+      .where(eq(deployments.id, deployed.id));
+    await f.billing.mockPayOrder({ userId: f.user.id, orderNo: second.order.orderNo });
+    assert.equal(
+      (await new HostingFulfillments(db).list(f.user.id, second.order.orderNo)).items[0]?.status,
+      'review',
+    );
+    assert.equal((await terms.read(deployed.id)).service?.expiresAt, service.expiresAt);
   });
-  await db
-    .update(deployments)
-    .set({ hostingState: 'ready' })
-    .where(eq(deployments.id, deployed.id));
-  const terms = new HostingServiceTerms(db, () => now);
-  await terms.activateDelivered(deployed.id);
-  now = new Date('2026-03-05T12:00:00Z');
-  const input = {
-    ...f.input,
-    hostingOnly: { entitlementId: entitlement.id, deploymentId: deployed.id },
-  };
-  const renewal = await f.checkout.createSession(input);
-  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: renewal.order.orderNo });
-  const service = (await terms.read(deployed.id)).service!;
-  assert.equal(service.anchorAt, '2026-03-05T12:00:00.000Z');
-  assert.equal(service.expiresAt, '2026-04-05T12:00:00.000Z');
-  const second = await f.checkout.createSession(input);
-  await db.update(deployments).set({ status: 'cancelled' }).where(eq(deployments.id, deployed.id));
-  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: second.order.orderNo });
-  assert.equal(
-    (await new HostingFulfillments(db).list(f.user.id, second.order.orderNo)).items[0]?.status,
-    'review',
-  );
-  assert.equal((await terms.read(deployed.id)).service?.expiresAt, service.expiresAt);
-});
+}

@@ -105,15 +105,24 @@ export class ItemRefunds {
         throw httpError(409, '该明细仍有待确认退款，请先对账');
       const full = occupied + input.amount === item.amount;
       if (input.kind === 'hosting') {
-        if (full) await new HostingFulfillments(tx).assertRefundable(current.id);
+        if (full)
+          await new HostingFulfillments(
+            tx,
+            this.capabilities.now,
+            this.capabilities.createHostingTerms,
+          ).assertRefundable(current.id);
         const [grant] = await tx
           .select()
           .from(hostingPurchases)
           .where(eq(hostingPurchases.orderId, current.id))
           .for('update');
         if (grant?.status === 'refund_pending') throw httpError(409, '托管资格正在其他退款中');
-        if (full && grant?.status === 'bound')
-          throw httpError(409, '托管已绑定部署，请先完成服务终止与交接');
+        if (full && grant?.status === 'bound') {
+          if (!grant.deploymentId) throw httpError(409, '托管归属不完整');
+          await this.capabilities
+            .createHostingTerms(tx, this.capabilities.now)
+            .assertHostingRefundable(grant.deploymentId);
+        }
         if (grant?.status === 'available')
           await tx
             .update(hostingPurchases)
@@ -276,7 +285,15 @@ export class ItemRefunds {
               eq(hostingPurchases.status, 'refund_pending'),
             ),
           );
-        if (full) await new HostingFulfillments(tx).revoke(order.id);
+        if (full) {
+          await tx
+            .update(hostingPurchases)
+            .set({ status: 'revoked', updatedAt: new Date() })
+            .where(
+              and(eq(hostingPurchases.orderId, order.id), eq(hostingPurchases.status, 'bound')),
+            );
+          await new HostingFulfillments(tx).revoke(order.id);
+        }
       } else if (full) {
         await this.capabilities
           .createLicenseAccess(tx)

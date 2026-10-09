@@ -288,6 +288,20 @@
       "when": 1791502063795,
       "tag": "0040_simple_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791515572350,
+      "tag": "0041_outgoing_eternals",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791516550731,
+      "tag": "0042_little_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

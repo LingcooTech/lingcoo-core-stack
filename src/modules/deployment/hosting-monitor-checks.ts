@@ -61,6 +61,40 @@ export function deploymentObservations(
     state: HealthObservation['state'],
     severity: HealthObservation['severity'] = 'critical',
   ): HealthObservation => ({ scope: 'deployment', resourceId: d.id, code, title, state, severity });
+  if (['retained', 'terminated'].includes(d.hostingState ?? '')) {
+    const profile = monitorProfile(app.code, app.meta);
+    const parsed = hostingNodeReportSchema.safeParse(node?.report);
+    const running =
+      profile &&
+      parsed.success &&
+      parsed.data.containers?.some(
+        (c) =>
+          c.project === profile.projectPrefix + '-' + d.id.replaceAll('-', '') &&
+          c.state === 'running',
+      );
+    return [
+      ...[
+        'delivery_failed',
+        'delivery_stalled',
+        'node_report_missing',
+        'monitoring_configuration',
+        'services_missing',
+        'backup_missing',
+        'offsite_missing',
+        'exit_stalled',
+      ].map((code) => make(code, code, 'clear')),
+      make('retained_runtime_running', '已停服实例意外运行', running ? 'active' : 'clear'),
+    ];
+  }
+  if (['exit_requested', 'stopping'].includes(d.hostingState ?? ''))
+    return [
+      make(
+        'exit_stalled',
+        '托管退出等待超过一小时',
+        now.getTime() - d.updatedAt.getTime() > 3600000 ? 'active' : 'clear',
+        'warning',
+      ),
+    ];
   const report = hostingNodeReportSchema.safeParse(node?.report);
   const reliable = !!node && fresh(node.lastReportedAt, now) && report.success;
   const age = now.getTime() - d.updatedAt.getTime();

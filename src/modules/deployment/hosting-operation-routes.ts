@@ -60,6 +60,8 @@ export const hostingOperationRoutes: FastifyPluginAsync = async (app) => {
           (request.headers.authorization ?? '').replace(/^Bearer /, ''),
           payload.operationId,
           payload.success,
+          new Date(),
+          payload.evidence,
         );
         await new AuditLogService(tx).record({
           actorType: 'system',

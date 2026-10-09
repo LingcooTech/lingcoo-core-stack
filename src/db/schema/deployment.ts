@@ -245,3 +245,51 @@ export const hostingMonitorState = pgTable('hosting_monitor_state', {
   id: integer('id').primaryKey(),
   checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
 });
+
+export const hostingExits = pgTable(
+  'hosting_exits',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .unique()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    state: varchar('state', { length: 24 })
+      .$type<'requested' | 'stopping' | 'retained' | 'completed'>()
+      .notNull(),
+    version: integer('version').notNull().default(1),
+    reason: varchar('reason', { length: 500 }).notNull(),
+    retentionDays: integer('retention_days'),
+    retainUntil: timestamp('retain_until', { withTimezone: true }),
+    operationId: uuid('operation_id').references(() => hostingOperations.id, {
+      onDelete: 'restrict',
+    }),
+    evidence: jsonb('evidence'),
+    handoverReference: varchar('handover_reference', { length: 500 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    validity: check(
+      'hosting_exits_valid',
+      sql`${t.version}>0 and ${t.state} in ('requested','stopping','retained','completed') and (${t.retentionDays} is null or ${t.retentionDays} between 1 and 3650)`,
+    ),
+  }),
+);
+export const hostingExitEvents = pgTable(
+  'hosting_exit_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    requestKey: uuid('request_key').unique(),
+    fingerprint: varchar('fingerprint', { length: 64 }),
+    kind: varchar('kind', { length: 32 }).notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    deployment: index('hosting_exit_events_deployment_idx').on(t.deploymentId, t.createdAt),
+  }),
+);

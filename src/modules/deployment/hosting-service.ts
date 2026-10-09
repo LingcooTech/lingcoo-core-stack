@@ -7,7 +7,7 @@ import {
   type HostingServiceCommand,
 } from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
-import { deployments, hostingServices, hostingServiceChanges } from '../../db/schema';
+import { deployments, hostingServices, hostingServiceChanges, hostingExits } from '../../db/schema';
 import { billingPeriodEnd } from '../../lib/billing-period';
 import { AuditLogService } from '../../lib/audit-logs';
 import { httpError } from '../../lib/errors';
@@ -36,14 +36,30 @@ export function hostingServiceView(row: ServiceRow, now: Date) {
 export class HostingServiceTerms {
   async assertSoftwareRefundable(entitlementIds: string[]) {
     if (!entitlementIds.length) return;
-    const [row] = await this.db
-      .select({ id: deployments.id })
+    const rows = await this.db
+      .select()
       .from(deployments)
       .where(
         and(inArray(deployments.entitlementId, entitlementIds), eq(deployments.status, 'active')),
-      )
-      .limit(1);
-    if (row) throw httpError(409, '软件已有有效部署，请先完成服务终止和数据交接');
+      );
+    for (const deployment of rows) await this.assertHostingRefundable(deployment.id);
+  }
+
+  async assertHostingRefundable(deploymentId: string) {
+    const [exit] = await this.db
+      .select()
+      .from(hostingExits)
+      .where(eq(hostingExits.deploymentId, deploymentId));
+    const [d] = await this.db.select().from(deployments).where(eq(deployments.id, deploymentId));
+    if (
+      !d ||
+      d.deploymentMode !== 'managed' ||
+      d.hostingState !== 'terminated' ||
+      exit?.state !== 'completed' ||
+      !exit.evidence ||
+      !exit.handoverReference
+    )
+      throw httpError(409, '请先完成服务终止和客户数据交接确认');
   }
 
   constructor(
@@ -63,6 +79,9 @@ export class HostingServiceTerms {
     const service = await this.find(deploymentId);
     if (
       deployment.status !== 'active' ||
+      ['exit_requested', 'stopping', 'retained', 'terminated'].includes(
+        deployment.hostingState ?? '',
+      ) ||
       deployment.entitlementId !== entitlementId ||
       !service ||
       service.source !== 'paid'
@@ -96,6 +115,9 @@ export class HostingServiceTerms {
       !deployment ||
       deployment.userId !== input.userId ||
       deployment.status !== 'active' ||
+      ['exit_requested', 'stopping', 'retained', 'terminated'].includes(
+        deployment.hostingState ?? '',
+      ) ||
       deployment.deploymentMode !== 'managed' ||
       deployment.entitlementId !== input.entitlementId ||
       !current ||
@@ -196,9 +218,18 @@ export class HostingServiceTerms {
     return row;
   }
   async read(deploymentId: string, ownerId?: string) {
-    await this.deployment(deploymentId, ownerId);
+    const deployment = await this.deployment(deploymentId, ownerId);
     const row = await this.find(deploymentId);
-    return { service: row ? hostingServiceView(row, this.clock()) : null };
+    return {
+      service: row
+        ? {
+            ...hostingServiceView(row, this.clock()),
+            ...(['retained', 'terminated'].includes(deployment.hostingState ?? '')
+              ? { state: 'terminated' as const }
+              : {}),
+          }
+        : null,
+    };
   }
   async adminRead(deploymentId: string) {
     const result = await this.read(deploymentId);
@@ -247,7 +278,13 @@ export class HostingServiceTerms {
           throw httpError(409, '请求标识已用于其他操作，请刷新后重试');
         return service.adminRead(deploymentId);
       }
-      if (deployment.status !== 'active') throw httpError(409, '已停用部署不能登记或延长服务');
+      if (
+        deployment.status !== 'active' ||
+        ['exit_requested', 'stopping', 'retained', 'terminated'].includes(
+          deployment.hostingState ?? '',
+        )
+      )
+        throw httpError(409, '已停用或退出中的部署不能登记或延长服务');
       const current = await service.find(deploymentId);
       if ((current?.version ?? 0) !== input.expectedVersion)
         throw httpError(409, '服务记录已变化，请刷新后重试');

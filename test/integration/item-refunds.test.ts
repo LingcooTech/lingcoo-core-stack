@@ -10,6 +10,7 @@ import {
   orderItemRefunds,
   hostingPurchases,
   deployments,
+  hostingExits,
 } from '../../src/db/schema';
 import { seedPurchase, testDatabase } from './helpers';
 import { createServiceFactories } from '../../src/composition/service-factories';
@@ -381,4 +382,66 @@ test('refund API enforces ownership and finance permission; safe projection omit
   } finally {
     await app.close();
   }
+});
+
+// Financial settlement consumes verified exit state, never invents it or restarts service.
+test('completed hosting exit permits full refund, refuses resurrecting a bound grant on failed refund', async () => {
+  const f = await fixture();
+  const [d] = await db
+    .insert(deployments)
+    .values({
+      userId: f.user.id,
+      appId: f.app.id,
+      entitlementId: f.entitlement.id,
+      label: 'Exited fixture',
+      deploymentMode: 'managed',
+      hostingState: 'terminated',
+    })
+    .returning();
+  assert.ok(d);
+  await db
+    .update(hostingPurchases)
+    .set({ status: 'bound', deploymentId: d.id })
+    .where(eq(hostingPurchases.id, f.grant.id));
+  await assert.rejects(
+    f.billing.requestItemRefund(f.order.orderNo, f.user.id, f.command('hosting', 200)),
+  );
+  await db.insert(hostingExits).values({
+    deploymentId: d.id,
+    state: 'completed',
+    reason: 'Verified integration fixture only',
+    retentionDays: 30,
+    retainUntil: new Date(Date.now() + 30 * 86400000),
+    handoverReference: 'Customer confirmed isolated fixture',
+    evidence: {
+      backupId: d.id + '-exit-' + randomUUID(),
+      manifestSha256: 'b'.repeat(64),
+      stoppedAt: new Date().toISOString(),
+      offsiteAt: new Date().toISOString(),
+    },
+  });
+  f.setMode('refused');
+  await f.billing.requestItemRefund(f.order.orderNo, f.user.id, f.command('hosting', 200));
+  assert.equal(
+    (await db.select().from(hostingPurchases).where(eq(hostingPurchases.id, f.grant.id)))[0]!
+      .status,
+    'bound',
+  );
+  f.setMode('success');
+  const ledger = await f.billing.requestItemRefund(
+    f.order.orderNo,
+    f.user.id,
+    f.command('hosting', 200),
+  );
+  assert.equal(ledger.lines.find((l) => l.kind === 'hosting')!.refunded, 200);
+  assert.equal(
+    (await db.select().from(hostingPurchases).where(eq(hostingPurchases.id, f.grant.id)))[0]!
+      .status,
+    'revoked',
+  );
+  await f.billing.requestItemRefund(f.order.orderNo, f.user.id, f.command('software', 100));
+  assert.equal(
+    (await db.select().from(deployments).where(eq(deployments.id, d.id)))[0]!.hostingState,
+    'terminated',
+  );
 });

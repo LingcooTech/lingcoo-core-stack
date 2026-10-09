@@ -26,6 +26,9 @@ import type { HostingServiceTerms } from './hosting-service';
 export type HostingTermsFactory = (
   db: DbExecutor,
   clock: () => Date,
-) => Pick<HostingServiceTerms, 'quoteRenewal' | 'applyPaidRenewal' | 'assertSoftwareRefundable'>;
+) => Pick<
+  HostingServiceTerms,
+  'quoteRenewal' | 'applyPaidRenewal' | 'assertSoftwareRefundable' | 'assertHostingRefundable'
+>;
 
 export { HostingMonitor } from './hosting-monitor';
