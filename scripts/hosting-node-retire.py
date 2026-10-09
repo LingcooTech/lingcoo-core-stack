@@ -112,7 +112,10 @@ def execute(config, directory, operation):
     manifest={'format':'lingcoo-cold-volumes-v1','deploymentId':deployment_id,'operationId':operation_id,'project':project,'appCode':execution['appCode'],'stoppedAt':state['stoppedAt'],'volumes':descriptor['volumes'],'images':{s:{'id':c['Image'],'digests':json.loads(subprocess.check_output(['docker','image','inspect',c['Image']]))[0].get('RepoDigests',[])} for s,c in found.items()}}
     store(backup/'manifest.json',manifest);checksums.append('manifest.json')
     def digest(path):
-        with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+        checksum=hashlib.sha256()
+        with path.open('rb') as stream:
+            for chunk in iter(lambda:stream.read(1024*1024),b''):checksum.update(chunk)
+        return checksum.hexdigest()
     (backup/'SHA256SUMS').write_text(''.join(digest(backup/name)+'  '+name+'\n' for name in sorted(checksums)))
     subprocess.run(['sha256sum','--check','SHA256SUMS'],cwd=backup,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     spec=importlib.util.spec_from_file_location('backup',Path(__file__).with_name('hosting-node-backup.py'))
