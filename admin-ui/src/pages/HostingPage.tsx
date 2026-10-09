@@ -54,7 +54,10 @@ export function HostingPage() {
         (filter === 'attention' && (!n.healthy || n.alerts.length > 0))),
   );
   const instances = overview.data?.instances ?? [];
-  const protectedCount = instances.filter(
+  const backupInstances = instances.filter(
+    (i) => !['retained', 'terminated'].includes(i.state ?? ''),
+  );
+  const protectedCount = backupInstances.filter(
     (i) =>
       i.telemetryFresh &&
       i.backup?.status === 'success' &&
@@ -107,8 +110,8 @@ export function HostingPage() {
           },
           {
             title: '异机备份正常',
-            value: overview.data ? `${protectedCount} / ${instances.length}` : '—',
-            note: '36 小时内的成功副本',
+            value: overview.data ? `${protectedCount} / ${backupInstances.length}` : '—',
+            note: '运行实例 36 小时内的成功副本',
             icon: ShieldCheck,
           },
           {

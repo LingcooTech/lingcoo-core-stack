@@ -80,3 +80,48 @@ test('restart confirmation creates a typed task and disables duplicate operation
     host.remove();
   }
 });
+
+test('retained instance displays intentional stop and exit backup evidence without false failure badges', async () => {
+  mocks.api.mockReset();
+  mocks.api.mockResolvedValue({
+    instances: [
+      {
+        id: 'retained-id',
+        label: 'Retained fixture',
+        appCode: 'sample',
+        customerEmail: 'owner@example.test',
+        nodeId: 'node-id',
+        hostname: 'retained.app.lingcoo.com',
+        state: 'retained',
+        resources: { memoryMb: 128 },
+        services: [{ name: 'app', service: 'site', state: 'exited', health: '' }],
+        backup: null,
+        telemetryFresh: true,
+      },
+    ],
+    operations: [],
+  });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  try {
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <HostingInstances />
+        </QueryClientProvider>,
+      ),
+    );
+    await vi.waitFor(() => expect(host.textContent).toContain('Retained fixture'));
+    expect(host.textContent).toContain('已停服·保留数据');
+    expect(host.textContent).toContain('不再要求每日运行备份');
+    expect(host.textContent).not.toContain('服务异常');
+    expect(host.textContent).not.toContain('暂无成功记录');
+    expect(host.querySelector('a[href="https://retained.app.lingcoo.com"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    client.clear();
+    host.remove();
+  }
+});

@@ -220,11 +220,13 @@ export function HostingInstances({
                         <StatusPill
                           key={c.name}
                           tone={
-                            c.state !== 'running' || c.health === 'unhealthy'
-                              ? 'danger'
-                              : c.health === 'starting'
-                                ? 'warn'
-                                : 'ok'
+                            ['retained', 'terminated'].includes(instance.state ?? '')
+                              ? 'neutral'
+                              : c.state !== 'running' || c.health === 'unhealthy'
+                                ? 'danger'
+                                : c.health === 'starting'
+                                  ? 'warn'
+                                  : 'ok'
                           }
                           label={`${c.service} · ${c.state !== 'running' ? '已停止' : c.health === 'unhealthy' ? '异常' : c.health === 'starting' ? '启动中' : '运行中'}`}
                         />
@@ -236,50 +238,56 @@ export function HostingInstances({
                       <Archive className="size-4" />
                       数据保护
                     </h4>
-                    {[
-                      {
-                        label: '本地备份',
-                        status: instance.backup?.status,
-                        time: instance.backup?.completedAt,
-                      },
-                      {
-                        label: '异机加密副本',
-                        status: instance.backup?.offsiteStatus,
-                        time: instance.backup?.offsiteAt,
-                      },
-                    ].map((b) => {
-                      const stale = !!b.time && Date.now() - Date.parse(b.time) > 36 * 3600000;
-                      return (
-                        <div key={b.label} className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2 text-xs">
-                            <span>{b.label}</span>
-                            <StatusPill
-                              tone={
-                                b.status === 'failed'
-                                  ? 'danger'
-                                  : b.status === 'success' && !stale
-                                    ? 'ok'
-                                    : 'warn'
-                              }
-                              label={
-                                b.status === 'failed'
-                                  ? '失败'
-                                  : stale
-                                    ? '已过期'
-                                    : b.status === 'success'
-                                      ? '已完成'
-                                      : b.status === 'pending'
-                                        ? '待上传'
-                                        : '未就绪'
-                              }
-                            />
+                    {['retained', 'terminated'].includes(instance.state ?? '') ? (
+                      <p className="text-xs text-muted-foreground">
+                        已停服，冷备份与异机副本已验证。保留期限及交接证据见下方退出记录；不再要求每日运行备份。
+                      </p>
+                    ) : (
+                      [
+                        {
+                          label: '本地备份',
+                          status: instance.backup?.status,
+                          time: instance.backup?.completedAt,
+                        },
+                        {
+                          label: '异机加密副本',
+                          status: instance.backup?.offsiteStatus,
+                          time: instance.backup?.offsiteAt,
+                        },
+                      ].map((b) => {
+                        const stale = !!b.time && Date.now() - Date.parse(b.time) > 36 * 3600000;
+                        return (
+                          <div key={b.label} className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <span>{b.label}</span>
+                              <StatusPill
+                                tone={
+                                  b.status === 'failed'
+                                    ? 'danger'
+                                    : b.status === 'success' && !stale
+                                      ? 'ok'
+                                      : 'warn'
+                                }
+                                label={
+                                  b.status === 'failed'
+                                    ? '失败'
+                                    : stale
+                                      ? '已过期'
+                                      : b.status === 'success'
+                                        ? '已完成'
+                                        : b.status === 'pending'
+                                          ? '待上传'
+                                          : '未就绪'
+                                }
+                              />
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {b.time ? formatTime(b.time) : '暂无成功记录'}
+                            </p>
                           </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            {b.time ? formatTime(b.time) : '暂无成功记录'}
-                          </p>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </div>
                 <div className="px-5 pb-4">
