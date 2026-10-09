@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-09",
+  "runtimeCommit": "e05f3f69a4b76f36885336561e1d21140cc52ff1",
+  "ci": {
+    "runId": 37885376190,
+    "conclusion": "success",
+    "unitPassed": 92,
+    "integrationPassed": 110,
+    "componentPassed": 31,
+    "browserCriticalPathsPassed": 4,
+    "productionDependencyVulnerabilities": 0,
+    "allDependencyVulnerabilities": 0
+  },
+  "isolatedNodePilot": {
+    "disposableDeploymentId": "70de5ae4-1935-4c03-b274-5609f006c0d1",
+    "coldSnapshot": true,
+    "encryptedOffsiteRoundTrip": true,
+    "independentAgeKey": true,
+    "platformCredentialsExcluded": true,
+    "resumedEncryptedTransfer": true,
+    "decryptedDataVerified": true,
+    "partialReclamationRetry": true,
+    "reclamationReplay": true,
+    "coldBackupPreserved": true,
+    "existingCustomerContainersStopped": false,
+    "stackApiUsedForPilot": false
+  },
+  "isolatedStackApiAndRealNodePilot": {
+    "disposableDeploymentId": "1b90aea6-9412-43c4-aeab-a64022bf9ea6",
+    "realStackHttpApi": true,
+    "sshEncryptedTunnel": true,
+    "isolatedDatabase": true,
+    "realNodeRetirement": true,
+    "realEncryptedOffsiteRoundTrip": true,
+    "resumedHttpUpload": true,
+    "customerDownloadAndIndependentKey": true,
+    "singleUseGrant": true,
+    "decryptedDataVerified": true,
+    "platformCredentialsExcluded": true,
+    "customerAcknowledgement": true,
+    "retentionClockSimulatedOnlyInFixture": true,
+    "nodeReclamationConfirmedByApi": true,
+    "existingCustomerContainersStopped": false,
+    "productionDataModified": false
+  },
+  "limits": {
+    "singlePackageBytes": 1073741824,
+    "activeUploadBytes": 4294967296,
+    "downloadGrantSeconds": 600,
+    "packageExpiryDays": 7,
+    "fullBackupDestruction": false,
+    "productionCustomerRetirement": false,
+    "realPaymentOrRefund": false
+  },
+  "deploy": {
+    "runId": 37885963181,
+    "conclusion": "success"
+  },
+  "productionReadOnly": {
+    "version": "e05f3f69a4b76f36885336561e1d21140cc52ff1",
+    "nodeCapabilities": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "operations": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "operations": ["retire", "export", "reclaim"]
+      }
+    ],
+    "retailExitNotRequested": true,
+    "retailHandoverNotRequested": true,
+    "desktopMobileVerified": true,
+    "productionRetirementExecuted": false,
+    "realPayment": false
+  },
+  "existingApplicationRegression": {
+    "ready": {
+      "status": "ready",
+      "version": "e05f3f69a4b76f36885336561e1d21140cc52ff1"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "supportedApps": []
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "supportedApps": ["lingcoo_edu_oms", "lingcoo_retail_oms"]
+      }
+    ],
+    "retail": {
+      "services": 5,
+      "backup": "success",
+      "offsite": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ],
+    "desktopMobileVerified": true,
+    "newEduPublicInstance": false,
+    "realPayment": false
+  },
+  "privateStorage": {
+    "mount": "/app/private-handovers",
+    "persistentVolume": true,
+    "mode": "0700",
+    "uid": 1001,
+    "writableByRuntimeUser": true
+  }
+}
