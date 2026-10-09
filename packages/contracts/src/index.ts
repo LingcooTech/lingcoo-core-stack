@@ -32,3 +32,5 @@ export * from './app-readiness.js';
 
 export * from './hosting-exit.js';
 export * from './hosting-handover.js';
+
+export { WechatPaySettingsSchema } from './models/settings.js';

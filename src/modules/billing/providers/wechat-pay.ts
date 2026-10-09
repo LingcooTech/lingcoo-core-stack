@@ -45,6 +45,9 @@ const notificationSchema = z.object({
 export class WechatPayProvider implements BillingProviderAdapter {
   code = 'wechat_pay' as const;
   isConfigured(env?: ProviderContext['env']) {
+    return env?.WECHAT_PAY_ENABLED !== false && this.hasCredentials(env);
+  }
+  private hasCredentials(env?: ProviderContext['env']) {
     if (!env) return false;
     return Boolean(
       env.WECHAT_PAY_MCH_ID &&
@@ -106,7 +109,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
     pathname: string,
     value?: unknown,
   ) {
-    if (!this.isConfigured(env)) throw httpError(422, 'WeChat Pay V3 is not configured');
+    if (!this.hasCredentials(env)) throw httpError(422, 'WeChat Pay V3 is not configured');
     const body = value === undefined ? '' : JSON.stringify(value);
     const response = await fetch(new URL(pathname, this.getApiBaseUrl(env)), {
       method,
@@ -156,6 +159,8 @@ export class WechatPayProvider implements BillingProviderAdapter {
     return data;
   }
   async preparePayment(context: ProviderContext): Promise<PreparedPayment> {
+    if (!this.isConfigured(context.env))
+      throw httpError(422, 'WeChat Pay V3 is disabled or not configured');
     if (
       context.order.currency !== 'CNY' ||
       !Number.isSafeInteger(context.order.amount) ||
@@ -197,7 +202,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
   async parseNotification(
     context: ProviderNotificationContext,
   ): Promise<PaymentNotificationResult> {
-    if (!this.isConfigured(context.env)) throw httpError(422, 'WeChat Pay V3 is not configured');
+    if (!this.hasCredentials(context.env)) throw httpError(422, 'WeChat Pay V3 is not configured');
     const raw =
       typeof context.rawBody === 'string' ? context.rawBody : context.rawBody?.toString('utf8');
     if (!raw) throw httpError(400, 'Missing WeChat Pay callback body');
@@ -302,7 +307,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
     throw httpError(502, 'WeChat Pay close failed');
   }
   async refundPayment(context: ProviderRefundContext): Promise<PaymentRefundResult> {
-    if (!this.isConfigured(context.env)) {
+    if (!this.hasCredentials(context.env)) {
       throw httpError(422, 'WeChat Pay is not configured');
     }
 
@@ -422,7 +427,7 @@ export class WechatPayProvider implements BillingProviderAdapter {
   }
 
   async queryRefundPayment(context: ProviderRefundQueryContext): Promise<PaymentRefundQueryResult> {
-    if (!this.isConfigured(context.env)) {
+    if (!this.hasCredentials(context.env)) {
       throw httpError(422, 'WeChat Pay is not configured');
     }
     if (context.order.currency !== 'CNY')

@@ -4,7 +4,18 @@ import viteConfig from './vite.config';
 export default mergeConfig(
   viteConfig,
   defineConfig({
-    optimizeDeps: { include: ['@radix-ui/react-dialog', 'radix-ui', 'react-router-dom'] },
+    optimizeDeps: {
+      include: [
+        '@radix-ui/react-dialog',
+        'radix-ui',
+        'react-router-dom',
+        '@hookform/resolvers/zod',
+        'react-hook-form',
+        '@radix-ui/react-tabs',
+        '@radix-ui/react-alert-dialog',
+        '@radix-ui/react-checkbox',
+      ],
+    },
     test: {
       include: ['src/**/*.browser.test.{ts,tsx}'],
       browser: {

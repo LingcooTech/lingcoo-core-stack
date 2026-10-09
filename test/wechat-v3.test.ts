@@ -156,3 +156,27 @@ test('V3 responses reject unsigned, foreign key, tampering and mismatched transa
     false,
   );
 });
+
+test('disabling Wechat blocks new payments while signed callbacks, queries and close still settle existing orders', async (t) => {
+  const p = new WechatPayProvider();
+  const disabled = { ...env, WECHAT_PAY_ENABLED: false };
+  assert.equal(p.isConfigured(env), true); // backward compatibility for existing deployments
+  assert.equal(p.isConfigured(disabled), false);
+  const fetch = t.mock.method(globalThis, 'fetch', async () => response(transaction));
+  await assert.rejects(p.preparePayment({ env: disabled, order }), /disabled/);
+  assert.equal(fetch.mock.callCount(), 0);
+  assert.equal((await p.parseNotification({ ...notification(), env: disabled })).kind, 'paid');
+  assert.equal((await p.queryPayment({ env: disabled, order })).kind, 'paid');
+  fetch.mock.mockImplementation(async () => response(null, 204));
+  assert.equal((await p.closePayment({ env: disabled, order })).kind, 'closed');
+});
+
+test('Native payment passes the configured HTTPS callback to Wechat', async (t) => {
+  const configured = { ...env, WECHAT_PAY_NOTIFY_URL: 'https://stack.example.test/custom-notify' };
+  const fetch = t.mock.method(globalThis, 'fetch', async (_url: URL, init: RequestInit) => {
+    assert.equal(JSON.parse(String(init.body)).notify_url, configured.WECHAT_PAY_NOTIFY_URL);
+    return response({ code_url: 'weixin://wxpay/bizpayurl?pr=fixture' });
+  });
+  await new WechatPayProvider().preparePayment({ env: configured, order });
+  assert.equal(fetch.mock.callCount(), 1);
+});

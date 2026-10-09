@@ -1,3 +1,4 @@
+import type { WechatPaySettings, PaymentProviderConfig } from '@lingcoo/contracts/models';
 import { apiClient } from './client';
 import type { PaymentSettingsOverview } from './types';
 
@@ -5,16 +6,7 @@ export async function getPaymentSettings(): Promise<PaymentSettingsOverview> {
   return apiClient('GET /v1/admin/payment-settings', '/v1/admin/payment-settings');
 }
 
-export interface WechatPaySettings {
-  appId?: string;
-  mchId?: string;
-  apiV3Key?: string;
-  merchantSerial?: string;
-  privateKeyPem?: string;
-  publicKeyPem?: string;
-  publicKeyId?: string;
-}
-
+export type { WechatPaySettings } from '@lingcoo/contracts/models';
 export interface AlipaySettings {
   appId?: string;
   f2fPay?: boolean;
@@ -22,7 +14,9 @@ export interface AlipaySettings {
   publicKeyPem?: string;
 }
 
-export async function upsertWechatSettings(payload: WechatPaySettings): Promise<unknown> {
+export async function upsertWechatSettings(
+  payload: WechatPaySettings,
+): Promise<PaymentProviderConfig> {
   return apiClient('PUT /v1/admin/payment-settings/wechat', '/v1/admin/payment-settings/wechat', {
     body: JSON.stringify(payload),
   });

@@ -256,21 +256,70 @@ export const CreateQiniuUploadTokenInputSchema = z.object({
 
 export type CreateQiniuUploadTokenInput = z.infer<typeof CreateQiniuUploadTokenInputSchema>;
 
+const wechatPemSchema = z
+  .string()
+  .trim()
+  .max(20_000, 'PEM 文件不能超过 20KB')
+  .refine(
+    (value) =>
+      !value ||
+      (value.length >= 100 && /^-----BEGIN ([A-Z ]+)-----[\s\S]+-----END \1-----$/.test(value)),
+    '请选择有效的 PEM 格式文件',
+  );
+
 export const WechatPaySettingsSchema = z.object({
-  appId: z.string().trim().optional(),
-  mchId: z.string().trim().optional(),
-  apiV3Key: z
+  enabled: z.boolean().optional(),
+  appId: z
     .string()
     .trim()
+    .refine(
+      (value) => !value || /^wx[0-9a-fA-F]{16}$/.test(value),
+      'AppID 须为 wx 开头的 18 位标识',
+    )
+    .optional(),
+  mchId: z
+    .string()
+    .trim()
+    .refine((value) => !value || /^\d{6,32}$/.test(value), '商户号须为 6 至 32 位数字')
+    .optional(),
+  merchantSerial: z
+    .string()
+    .trim()
+    .refine(
+      (value) => !value || (value.length >= 8 && value.length <= 128),
+      '证书序列号须为 8 至 128 位',
+    )
+    .optional(),
+  privateKeyPem: wechatPemSchema.optional(),
+  apiV3Key: z
+    .string()
     .refine(
       (value) => !value || /^[\x20-\x7E]{32}$/.test(value),
       'API v3 密钥须为 32 位 ASCII 字符',
     )
     .optional(),
-  merchantSerial: z.string().trim().optional(),
-  privateKeyPem: z.string().trim().optional(),
-  publicKeyPem: z.string().trim().optional(),
-  publicKeyId: z.string().trim().optional(),
+  publicKeyId: z
+    .string()
+    .trim()
+    .refine(
+      (value) => !value || (value.length >= 8 && value.length <= 128),
+      '公钥标识须为 8 至 128 位',
+    )
+    .optional(),
+  publicKeyPem: wechatPemSchema.optional(),
+  notifyUrl: z
+    .union([
+      z.literal(''),
+      z.url({ error: '请输入有效的 HTTPS 回调地址' }).refine((value) => {
+        try {
+          const url = new URL(value);
+          return url.protocol === 'https:' && !url.username && !url.password && !url.hash;
+        } catch {
+          return false;
+        }
+      }, '支付回调地址必须使用 HTTPS，且不能包含凭据或片段'),
+    ])
+    .optional(),
 });
 
 export type WechatPaySettings = z.infer<typeof WechatPaySettingsSchema>;

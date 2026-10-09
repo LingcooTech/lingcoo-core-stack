@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { createPrivateKey, createPublicKey } from 'node:crypto';
 import path from 'node:path';
 
 import { eq } from 'drizzle-orm';
@@ -6,11 +7,13 @@ import { eq } from 'drizzle-orm';
 import { systemSettings } from '../../../db/schema';
 import type { DbExecutor } from '../../../db/types';
 import type { AppEnv } from '../../../lib/env';
+import { httpError } from '../../../lib/errors';
 import { decryptJson, encryptJson, getEncryptionKeys } from '../../../lib/settings-crypto';
 
 export type PaymentSettingsSource = 'database' | 'env' | 'none';
 
 export type WechatPaymentSettings = {
+  enabled: boolean;
   appId: string;
   appSecret?: string; // retained only for reading legacy settings
   apiV3Key?: string;
@@ -47,7 +50,7 @@ export type PaymentSettingsOverviewItem =
       configured: boolean;
       values: Pick<
         WechatPaymentSettings,
-        'appId' | 'mchId' | 'disableH5' | 'merchantSerial' | 'publicKeyId'
+        'enabled' | 'appId' | 'mchId' | 'disableH5' | 'merchantSerial' | 'publicKeyId' | 'notifyUrl'
       >;
       secrets: {
         appSecret: SecretStatus;
@@ -230,17 +233,18 @@ export class PaymentSettingsService {
     const mchId = normalizeString(String(raw.mchId ?? raw.mchid ?? ''));
     const apiKey = normalizeString(String(raw.apiKey ?? raw.key ?? ''));
     const disableH5 = normalizeBoolean(raw.disableH5 ?? raw.disable_h5, false);
-    const notifyUrl = '';
+    const notifyUrl = normalizeUrlLikeValue(String(raw.notifyUrl ?? ''));
 
-    if (!appId && !appSecret && !mchId && !apiKey) {
+    if (Object.keys(raw).length === 0) {
       return null;
     }
 
     return {
-      apiV3Key: normalizeString(String(raw.apiV3Key ?? '')),
+      enabled: normalizeBoolean(raw.enabled, true), // legacy configurations were always enabled
+      apiV3Key: String(raw.apiV3Key ?? ''),
       merchantSerial: normalizeString(String(raw.merchantSerial ?? '')),
-      privateKeyPem: normalizeString(String(raw.privateKeyPem ?? '')),
-      publicKeyPem: normalizeString(String(raw.publicKeyPem ?? '')),
+      privateKeyPem: normalizePem(String(raw.privateKeyPem ?? '')),
+      publicKeyPem: normalizePem(String(raw.publicKeyPem ?? '')),
       publicKeyId: normalizeString(String(raw.publicKeyId ?? '')),
       appId,
       appSecret,
@@ -290,11 +294,12 @@ export class PaymentSettingsService {
 
   private getEnvWechatSettings(): WechatPaymentSettings | null {
     const values: WechatPaymentSettings = {
+      enabled: this.env.WECHAT_PAY_ENABLED ?? true,
       appId: normalizeString(this.env.WECHAT_PAY_APP_ID),
       appSecret: normalizeString(this.env.WECHAT_PAY_APP_SECRET),
       mchId: normalizeString(this.env.WECHAT_PAY_MCH_ID),
       apiKey: normalizeString(this.env.WECHAT_PAY_KEY),
-      apiV3Key: normalizeString(this.env.WECHAT_PAY_API_V3_KEY),
+      apiV3Key: this.env.WECHAT_PAY_API_V3_KEY ?? '',
       merchantSerial: normalizeString(this.env.WECHAT_PAY_CERT_SERIAL_NO),
       privateKeyPem: configuredPem(
         this.env.WECHAT_PAY_PRIVATE_KEY,
@@ -314,7 +319,13 @@ export class PaymentSettingsService {
       !values.appId &&
       !values.appSecret &&
       !values.apiKey &&
-      !values.notifyUrl
+      !values.notifyUrl &&
+      !values.apiV3Key &&
+      !values.merchantSerial &&
+      !values.privateKeyPem &&
+      !values.publicKeyPem &&
+      !values.publicKeyId &&
+      this.env.WECHAT_PAY_ENABLED === undefined
     ) {
       return null;
     }
@@ -365,6 +376,7 @@ export class PaymentSettingsService {
     const alipay = await this.getDatabaseAlipaySettings();
 
     if (wechat) {
+      runtimeEnv.WECHAT_PAY_ENABLED = wechat.enabled;
       runtimeEnv.WECHAT_PAY_MCH_ID = wechat.mchId;
       runtimeEnv.WECHAT_PAY_APP_ID = wechat.appId;
       runtimeEnv.WECHAT_PAY_APP_SECRET = wechat.appSecret;
@@ -400,6 +412,7 @@ export class PaymentSettingsService {
   ): Promise<PaymentSettingsOverviewItem> {
     const current = (await this.getDatabaseWechatSettings()) ??
       this.getEnvWechatSettings() ?? {
+        enabled: false,
         appId: '',
         appSecret: '',
         mchId: '',
@@ -408,16 +421,42 @@ export class PaymentSettingsService {
         notifyUrl: '',
       };
 
+    for (const [name, pem] of [
+      ['privateKeyPem', input.privateKeyPem],
+      ['publicKeyPem', input.publicKeyPem],
+    ] as const) {
+      if (!pem) continue;
+      try {
+        const key = name === 'privateKeyPem' ? createPrivateKey(pem) : createPublicKey(pem);
+        if (name === 'publicKeyPem' && pem.includes('PRIVATE KEY'))
+          throw new Error('Expected public key');
+        if (
+          key.asymmetricKeyType !== 'rsa' ||
+          (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048
+        )
+          throw new Error('Expected RSA 2048+');
+      } catch {
+        throw httpError(
+          400,
+          name === 'privateKeyPem'
+            ? '商户私钥须为有效的 RSA 2048 位或以上 PEM 私钥'
+            : '微信支付公钥须为有效的 RSA 2048 位或以上 PEM 公钥或平台证书',
+        );
+      }
+    }
     const next: WechatPaymentSettings = {
-      apiV3Key: input.apiV3Key ? normalizeString(input.apiV3Key) : current.apiV3Key,
-      merchantSerial: input.merchantSerial
-        ? normalizeString(input.merchantSerial)
-        : current.merchantSerial,
+      enabled: input.enabled ?? current.enabled,
+      apiV3Key: input.apiV3Key || current.apiV3Key,
+      merchantSerial:
+        input.merchantSerial !== undefined
+          ? normalizeString(input.merchantSerial)
+          : current.merchantSerial,
       privateKeyPem: input.privateKeyPem
-        ? normalizeString(input.privateKeyPem)
+        ? normalizePem(input.privateKeyPem)
         : current.privateKeyPem,
-      publicKeyPem: input.publicKeyPem ? normalizeString(input.publicKeyPem) : current.publicKeyPem,
-      publicKeyId: input.publicKeyId ? normalizeString(input.publicKeyId) : current.publicKeyId,
+      publicKeyPem: input.publicKeyPem ? normalizePem(input.publicKeyPem) : current.publicKeyPem,
+      publicKeyId:
+        input.publicKeyId !== undefined ? normalizeString(input.publicKeyId) : current.publicKeyId,
       appId: input.appId !== undefined ? normalizeString(input.appId) : current.appId,
       appSecret: input.appSecret ? normalizeString(input.appSecret) : current.appSecret,
       mchId: input.mchId !== undefined ? normalizeString(input.mchId) : current.mchId,
@@ -503,6 +542,10 @@ export class PaymentSettingsService {
             wechat.publicKeyId,
           ),
           values: {
+            enabled: wechat?.enabled ?? false,
+            notifyUrl:
+              wechat?.notifyUrl ||
+              new URL('/v1/billing/providers/wechat/notify', this.env.PUBLIC_BASE_URL).toString(),
             appId: wechat?.appId ?? '',
             mchId: wechat?.mchId ?? '',
             merchantSerial: wechat?.merchantSerial ?? '',

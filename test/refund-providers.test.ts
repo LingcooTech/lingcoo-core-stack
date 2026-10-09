@@ -298,3 +298,11 @@ test('WeChat closed refunds require matching identity and amount before releasin
     /refund|Refund/,
   );
 });
+
+test('disabled Wechat still permits signed refunds and refund reconciliation for existing orders', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => signedResponse(wxPayload));
+  const provider = new WechatPayProvider();
+  const context = { ...base, env: { ...env, WECHAT_PAY_ENABLED: false }, refund };
+  assert.equal((await provider.refundPayment(context)).kind, 'refunded');
+  assert.equal((await provider.queryRefundPayment(context)).kind, 'refunded');
+});

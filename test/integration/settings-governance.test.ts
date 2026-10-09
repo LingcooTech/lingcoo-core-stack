@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, generateKeyPairSync } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../../src/app';
@@ -14,6 +14,7 @@ import {
 import { AuditLogService } from '../../src/modules/audit/public';
 import { rotateSettingKeys } from '../../src/composition/settings-key-rotation';
 import { encryptJson, decryptJson, getEncryptionKeys } from '../../src/lib/settings-crypto';
+import { PaymentSettingsService } from '../../src/modules/settings/public';
 import { createServiceFactories } from '../../src/composition/service-factories';
 import { testDatabase } from './helpers';
 const { db, pool, env } = testDatabase();
@@ -156,6 +157,11 @@ test('administrative user changes roll back when success auditing fails', async 
 });
 
 test('Wechat setting writes use the same optimistic version as the payment overview', async () => {
+  const keys = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+  });
   const key = 'billing.provider.wechat_pay';
   const [previous] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
   const headers = { authorization: `Bearer ${token}` };
@@ -168,26 +174,104 @@ test('Wechat setting writes use the same optimistic version as the payment overv
       url: '/v1/admin/payment-settings/wechat',
       headers: { ...headers, 'if-match': version },
       payload: {
-        appId: 'fixture-app',
-        mchId: 'fixture-merchant',
+        enabled: true,
+        appId: 'wx0123456789abcdef',
+        mchId: '1234567890',
+        notifyUrl: 'https://stack.example.test/v1/billing/providers/wechat/notify',
         apiV3Key: '12345678901234567890123456789012',
         merchantSerial: 'fixture-serial',
         publicKeyId: 'fixture-public-id',
-        privateKeyPem: 'fixture-private-key',
-        publicKeyPem: 'fixture-private-public-key',
+        privateKeyPem: keys.privateKey,
+        publicKeyPem: keys.publicKey,
       },
     });
     assert.equal(saved.statusCode, 200, saved.body);
     assert.equal(saved.json().configured, true);
-    assert.equal(saved.body.includes('fixture-private'), false);
+    assert.equal(saved.body.includes('-----BEGIN'), false);
+    assert.equal(saved.json().values.enabled, true);
+    assert.equal(
+      saved.json().values.notifyUrl,
+      'https://stack.example.test/v1/billing/providers/wechat/notify',
+    );
+    const runtime = await new PaymentSettingsService(db, env).buildRuntimeEnv();
+    assert.equal(runtime.WECHAT_PAY_ENABLED, true);
+    assert.equal(runtime.WECHAT_PAY_NOTIFY_URL, saved.json().values.notifyUrl);
     const stale = await app.inject({
       method: 'PUT',
       url: '/v1/admin/payment-settings/wechat',
       headers: { ...headers, 'if-match': version },
-      payload: { appId: 'stale-overwrite' },
+      payload: { appId: 'wx1111111111111111' },
     });
     assert.equal(stale.statusCode, 409, stale.body);
     assert.notEqual(saved.headers.etag, read.headers.etag);
+  } finally {
+    if (previous) await db.update(systemSettings).set(previous).where(eq(systemSettings.key, key));
+    else await db.delete(systemSettings).where(eq(systemSettings.key, key));
+  }
+});
+
+test('Wechat partial drafts survive later updates, secrets stay encrypted, and invalid changes are atomic', async () => {
+  const key = 'billing.provider.wechat_pay';
+  const [previous] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+  const headers = { authorization: `Bearer ${token}` };
+  const keys = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+  });
+  const read = () => app.inject({ method: 'GET', url: '/v1/admin/payment-settings', headers });
+  const write = async (payload: Record<string, string | boolean | undefined>) => {
+    const latest = await read();
+    return app.inject({
+      method: 'PUT',
+      url: '/v1/admin/payment-settings/wechat',
+      headers: { ...headers, 'if-match': String(latest.headers.etag) },
+      payload,
+    });
+  };
+  try {
+    await db.delete(systemSettings).where(eq(systemSettings.key, key));
+    const first = await write({ privateKeyPem: keys.privateKey });
+    assert.equal(first.statusCode, 200, first.body);
+    assert.equal(first.json().values.enabled, false);
+    assert.equal(first.json().secrets.privateKeyPem.configured, true);
+    assert.equal(first.json().configured, false);
+    const saved = await write({
+      mchId: '1234567890',
+      apiV3Key: '12345678901234567890123456789012',
+      notifyUrl: 'https://stack.example.test/custom-notify',
+    });
+    assert.equal(saved.statusCode, 200, saved.body);
+    assert.equal(saved.json().secrets.privateKeyPem.configured, true);
+    const [stored] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    assert.equal(stored?.isEncrypted, true);
+    assert(!JSON.stringify(stored?.value).includes('-----BEGIN'));
+    assert(!JSON.stringify(stored?.value).includes('12345678901234567890123456789012'));
+    assert(!(await read()).body.includes('-----BEGIN'));
+    const runtime = await new PaymentSettingsService(db, env).buildRuntimeEnv();
+    assert.equal(runtime.WECHAT_PAY_PRIVATE_KEY, keys.privateKey.trim());
+    assert.equal(runtime.WECHAT_PAY_NOTIFY_URL, 'https://stack.example.test/custom-notify');
+    assert.equal(runtime.WECHAT_PAY_ENABLED, false);
+    for (const payload of [
+      { notifyUrl: 'http://stack.example.test/notify' },
+      { notifyUrl: 'bad-url' },
+      { apiV3Key: 'short' },
+      { publicKeyPem: keys.privateKey },
+      { enabled: true, privateKeyPem: keys.publicKey },
+      { appId: 'invalid' },
+    ]) {
+      const before = await read();
+      const rejected = await write(payload);
+      assert.equal(rejected.statusCode, 400, rejected.body);
+      assert(!rejected.body.includes('-----BEGIN'));
+      assert.equal((await read()).headers.etag, before.headers.etag);
+    }
+    const preserved = await write({ privateKeyPem: '', apiV3Key: '', notifyUrl: '' });
+    assert.equal(preserved.statusCode, 200, preserved.body);
+    const final = await new PaymentSettingsService(db, env).buildRuntimeEnv();
+    assert.equal(final.WECHAT_PAY_PRIVATE_KEY, runtime.WECHAT_PAY_PRIVATE_KEY);
+    assert.equal(final.WECHAT_PAY_API_V3_KEY, runtime.WECHAT_PAY_API_V3_KEY);
+    assert.equal(final.WECHAT_PAY_NOTIFY_URL, undefined);
   } finally {
     if (previous) await db.update(systemSettings).set(previous).where(eq(systemSettings.key, key));
     else await db.delete(systemSettings).where(eq(systemSettings.key, key));

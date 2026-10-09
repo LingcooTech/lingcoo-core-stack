@@ -1,3 +1,4 @@
+import { WechatPaySettingsSchema } from '@lingcoo/contracts';
 import { z } from 'zod';
 const optionalTrimmedString = (max: number) =>
   z
@@ -40,22 +41,7 @@ const optionalSitePathOrUrl = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
-export const wechatPaymentSettingsSchema = z.object({
-  appId: z.string().trim().optional(),
-  mchId: z.string().trim().optional(),
-  apiV3Key: z
-    .string()
-    .trim()
-    .refine(
-      (value) => !value || /^[\x20-\x7E]{32}$/.test(value),
-      'API v3 密钥须为 32 位 ASCII 字符',
-    )
-    .optional(),
-  merchantSerial: z.string().trim().optional(),
-  privateKeyPem: z.string().trim().optional(),
-  publicKeyPem: z.string().trim().optional(),
-  publicKeyId: z.string().trim().optional(),
-});
+export const wechatPaymentSettingsSchema = WechatPaySettingsSchema;
 
 export const alipayPaymentSettingsSchema = z.object({
   appId: z.string().trim().optional(),

@@ -84,6 +84,7 @@ const envSchema = z.object({
   POSTGRES_DB: z.string().default('fd_core'),
   POSTGRES_USER: z.string().default('fd_core'),
   POSTGRES_PASSWORD: z.string().default('fd_core_password'),
+  WECHAT_PAY_ENABLED: booleanishEnv,
   WECHAT_PAY_MCH_ID: z.string().optional(),
   WECHAT_PAY_APP_ID: z.string().optional(),
   WECHAT_PAY_APP_SECRET: z.string().optional(),
