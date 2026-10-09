@@ -1,0 +1,155 @@
+{
+  "date": "2026-10-09",
+  "codeCommit": "de47513b9c5d710565a223bdf61e17fc869b8a1f",
+  "sourceServer": "118.25.36.15",
+  "targetServer": "82.157.22.93",
+  "source": {
+    "snapshotId": "1fba3c82d13baae9b656bfaf46cadeb072c3f2656c661753bee3e92dcb48e006",
+    "deploymentId": "fd9bd192-367d-4335-a46b-06ebddd26cfc",
+    "recoveryId": "dd461add-ab41-41c8-a42b-1e7aa73c7875",
+    "manifestSha256": "37f535fff050f0953db513b81537ff5badf4c12b9c2892fb8651aabb9fd4ccc9",
+    "downloadedBytes": 40829009,
+    "durationSeconds": 6.095,
+    "realEncryptedRestic": true,
+    "productionRepositoryUsed": false,
+    "sourceStopped": true
+  },
+  "target": {
+    "recoveryId": "dd461add-ab41-41c8-a42b-1e7aa73c7875",
+    "deploymentId": "fd9bd192-367d-4335-a46b-06ebddd26cfc",
+    "targetNodeId": "f0492e9c-b8d2-4d01-8e45-da89f5f75257",
+    "manifestSha256": "37f535fff050f0953db513b81537ff5badf4c12b9c2892fb8651aabb9fd4ccc9",
+    "snapshotStoppedAt": "2026-10-09T09:02:07.839405+00:00",
+    "verifiedAt": "2026-10-09T09:11:54.346895+00:00",
+    "durationSeconds": 4.026,
+    "archivedBytes": 40829009,
+    "expandedBytes": 40304047,
+    "volumes": {
+      "data": "lc-recovery-dd461addab4141c8a42b1e7aa73c7875_data",
+      "files": "lc-recovery-dd461addab4141c8a42b1e7aa73c7875_files"
+    },
+    "applicationStarted": false,
+    "trafficChanged": false,
+    "postgresRows": 50,
+    "postgresAmountSum": 16575,
+    "unicodeVerified": true,
+    "fileVerified": true,
+    "snapshotCorruptionRejected": true,
+    "frozenPlanProtected": true,
+    "completionReplayVerified": true,
+    "incompleteRestoreBlocked": true,
+    "foreignVolumeProtected": true,
+    "inUseVolumeProtected": true,
+    "cleanupReplayVerified": true,
+    "isolatedDatabaseValidation": true,
+    "productionCustomerModified": false,
+    "productionRepositoryUsed": false,
+    "encryptedRepositoryReadOnTarget": true
+  },
+  "scope": "quarantined cold-volume restore; no production failover",
+  "productionRepositoryUsed": false,
+  "releaseStatus": "accepted_isolated_recovery_phase",
+  "remaining": [
+    "routine logical-backup restore adapters",
+    "source fencing",
+    "dual-node capacity reservation",
+    "application takeover",
+    "default and custom-domain traffic cutover",
+    "whole-host recovery RTO/RPO verification"
+  ],
+  "crossNodeExerciseCommit": "8f431c40b1fbc9066830cdbe38b2a6fcad6f023a",
+  "priorCi": {
+    "runId": 37909653907,
+    "recoveryTestPassed": true,
+    "result": "failed: existing cold-backup fixture PostgreSQL temporary-server readiness race; fixed"
+  },
+  "ci": {
+    "runId": 37910492425,
+    "result": "success",
+    "unitTests": 96,
+    "databaseIntegrationTests": 113,
+    "adminComponentTests": 32,
+    "browserCriticalPaths": 4,
+    "productionVulnerabilities": 0,
+    "allDependencyVulnerabilities": 0,
+    "concurrentForeignVolumeProtected": true,
+    "liveDirectoryOverlapRejected": true
+  },
+  "nodeTools": {
+    "source": {
+      "version": "de47513b9c5d710565a223bdf61e17fc869b8a1f",
+      "files": {
+        "hosting-node-recover.py": "d9978e0518ebd2367c555f12f95293b71814443e0bda12a44e246a2819c96cc5",
+        "hosting-recovery-fetch.py": "d528a5fd42bb245bd5a74192ad6b0539d1b0465cc15d355f5f51393bdc33e5d1",
+        "hosting_adapter.py": "f8f910fbcc588e0c508b16d8bf47b8e27430689be56fc18a0defc6f0535049ff"
+      },
+      "cliReady": true,
+      "agentConfigModified": false
+    },
+    "target": {
+      "version": "de47513b9c5d710565a223bdf61e17fc869b8a1f",
+      "files": {
+        "hosting-node-recover.py": "d9978e0518ebd2367c555f12f95293b71814443e0bda12a44e246a2819c96cc5",
+        "hosting-recovery-fetch.py": "d528a5fd42bb245bd5a74192ad6b0539d1b0465cc15d355f5f51393bdc33e5d1",
+        "hosting_adapter.py": "f8f910fbcc588e0c508b16d8bf47b8e27430689be56fc18a0defc6f0535049ff"
+      },
+      "cliReady": true,
+      "agentConfigModified": false
+    },
+    "cleanup": {
+      "source": {
+        "isolatedPilotArtifactsRemoved": true,
+        "recoveryToolsRetained": true
+      },
+      "target": {
+        "isolatedPilotArtifactsRemoved": true,
+        "recoveryToolsRetained": true
+      }
+    }
+  },
+  "deploy": {
+    "runId": 37911309911,
+    "result": "success"
+  },
+  "live": {
+    "ready": {
+      "status": "ready",
+      "version": "de47513b9c5d710565a223bdf61e17fc869b8a1f"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "canDeploy": false,
+        "enabled": false
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "canDeploy": true,
+        "enabled": true
+      }
+    ],
+    "retail": {
+      "state": "ready",
+      "services": 5,
+      "localBackup": "success",
+      "offsiteBackup": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ]
+  },
+  "verifiedAt": "2026-10-09T09:34:00.575052+00:00"
+}
