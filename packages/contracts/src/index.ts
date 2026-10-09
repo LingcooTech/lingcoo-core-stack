@@ -30,3 +30,4 @@ export * from './hosting-monitor.js';
 export * from './app-readiness.js';
 
 export * from './hosting-exit.js';
+export * from './hosting-handover.js';

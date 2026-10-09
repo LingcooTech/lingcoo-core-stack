@@ -1,3 +1,4 @@
+import { HostingHandoverPanel } from './HostingHandoverPanel';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { hostingExitCommandSchema, type HostingExitCommand } from '@lingcoo/contracts';
@@ -9,6 +10,7 @@ import { hasPermission, normalizeRole } from '@/lib/rbac';
 import { formatTime } from '@/lib/utils';
 const names = {
   requested: '等待运维处理',
+  withdrawn: '已撤回退出',
   stopping: '停服与备份中',
   retained: '数据保留中',
   completed: '交接已确认',
@@ -73,15 +75,16 @@ export function HostingExitPanel({
     setValidation('');
     mutation.mutate(parsed.data);
   }
-  const kind = !exit
-    ? 'request'
-    : canManage && exit.state === 'requested'
-      ? 'start'
-      : canManage && exit.state === 'retained'
-        ? 'handover'
-        : !admin && exit.state === 'retained' && exit.handoverReference
-          ? 'acknowledge'
-          : null;
+  const kind =
+    !exit || exit.state === 'withdrawn'
+      ? 'request'
+      : canManage && exit.state === 'requested'
+        ? 'start'
+        : canManage && exit.state === 'retained'
+          ? 'handover'
+          : !admin && exit.state === 'retained' && exit.handoverReference
+            ? 'acknowledge'
+            : null;
   return (
     <details
       className="rounded-lg border p-4 text-sm"
@@ -125,6 +128,19 @@ export function HostingExitPanel({
               </>
             ) : (
               <p>尚未申请退出</p>
+            )}
+            {!admin && exit?.state === 'requested' && (
+              <div>
+                <p>停服任务提交前可撤回，恢复当前服务的续费和运维入口。</p>
+                <Button
+                  variant="outline"
+                  disabled={mutation.isPending}
+                  onClick={() => submit('withdraw', new FormData())}
+                >
+                  撤回退出申请
+                </Button>
+                {mutation.isError && <p role="alert">{mutation.error.message}</p>}
+              </div>
             )}
             {kind && (!admin || canManage) && (
               <form
@@ -198,6 +214,15 @@ export function HostingExitPanel({
                 </Button>
               </form>
             )}
+            {exit && ['retained', 'completed'].includes(exit.state) && (
+              <HostingHandoverPanel
+                deploymentId={deploymentId}
+                version={exit.version}
+                completed={exit.state === 'completed'}
+                admin={admin}
+                canManage={canManage}
+              />
+            )}
             {query.data?.events.length ? (
               <ol className="space-y-1 border-t pt-3 text-xs text-muted-foreground">
                 {query.data.events.map((event, i) => (
@@ -206,12 +231,22 @@ export function HostingExitPanel({
                     {(
                       {
                         request: '申请退出',
+                        withdraw: '客户撤回退出',
                         start: '提交停服任务',
                         node_confirmed: '节点确认停服与备份',
                         handover: '登记数据交接',
                         acknowledge: '客户确认交接',
+                        export_requested: '请求制作交付包',
+                        handover_ready: '加密交付包已验证',
+                        handover_key_received: '客户领取独立解密密钥',
+                        handover_download_granted: '签发短时下载授权',
+                        handover_download_started: '客户开始下载',
+                        handover_revoked: '交付包已撤销',
+                        reclaim_requested: '运维提交资源回收',
+                        reclaimed: '节点确认资源回收',
                       } as Record<string, string>
                     )[event.kind] ?? event.kind}
+                    {event.reason && <span className="break-all"> · {event.reason}</span>}
                   </li>
                 ))}
               </ol>

@@ -255,7 +255,7 @@ export const hostingExits = pgTable(
       .unique()
       .references(() => deployments.id, { onDelete: 'restrict' }),
     state: varchar('state', { length: 24 })
-      .$type<'requested' | 'stopping' | 'retained' | 'completed'>()
+      .$type<'requested' | 'withdrawn' | 'stopping' | 'retained' | 'completed'>()
       .notNull(),
     version: integer('version').notNull().default(1),
     reason: varchar('reason', { length: 500 }).notNull(),
@@ -272,7 +272,7 @@ export const hostingExits = pgTable(
   (t) => ({
     validity: check(
       'hosting_exits_valid',
-      sql`${t.version}>0 and ${t.state} in ('requested','stopping','retained','completed') and (${t.retentionDays} is null or ${t.retentionDays} between 1 and 3650)`,
+      sql`${t.version}>0 and ${t.state} in ('requested','withdrawn','stopping','retained','completed') and (${t.retentionDays} is null or ${t.retentionDays} between 1 and 3650)`,
     ),
   }),
 );
@@ -285,6 +285,7 @@ export const hostingExitEvents = pgTable(
       .references(() => deployments.id, { onDelete: 'restrict' }),
     requestKey: uuid('request_key').unique(),
     fingerprint: varchar('fingerprint', { length: 64 }),
+    reason: varchar('reason', { length: 500 }),
     kind: varchar('kind', { length: 32 }).notNull(),
     actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -293,3 +294,60 @@ export const hostingExitEvents = pgTable(
     deployment: index('hosting_exit_events_deployment_idx').on(t.deploymentId, t.createdAt),
   }),
 );
+
+export const hostingHandovers = pgTable(
+  'hosting_handovers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    deploymentId: uuid('deployment_id')
+      .notNull()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    operationId: uuid('operation_id')
+      .notNull()
+      .unique()
+      .references(() => hostingOperations.id, { onDelete: 'restrict' }),
+    state: varchar('state', { length: 16 })
+      .$type<'preparing' | 'ready' | 'revoked'>()
+      .notNull()
+      .default('preparing'),
+    sha256: varchar('sha256', { length: 64 }),
+    size: integer('size'),
+    received: integer('received').notNull().default(0),
+    encryptedIdentity: jsonb('encrypted_identity'),
+    keyReceivedAt: timestamp('key_received_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    deployment: index('hosting_handovers_deployment_idx').on(t.deploymentId, t.createdAt),
+  }),
+);
+export const hostingHandoverGrants = pgTable('hosting_handover_grants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  handoverId: uuid('handover_id')
+    .notNull()
+    .references(() => hostingHandovers.id, { onDelete: 'restrict' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'restrict' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+});
+export const hostingReclamations = pgTable('hosting_reclamations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deploymentId: uuid('deployment_id')
+    .notNull()
+    .unique()
+    .references(() => deployments.id, { onDelete: 'restrict' }),
+  operationId: uuid('operation_id')
+    .notNull()
+    .unique()
+    .references(() => hostingOperations.id, { onDelete: 'restrict' }),
+  state: varchar('state', { length: 16 })
+    .$type<'pending' | 'completed'>()
+    .notNull()
+    .default('pending'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  evidence: jsonb('evidence'),
+});

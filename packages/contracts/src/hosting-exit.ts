@@ -17,6 +17,13 @@ export const hostingExitCommandSchema = z.discriminatedUnion('kind', [
     .strict(),
   z
     .object({
+      kind: z.literal('withdraw'),
+      requestKey: z.uuid(),
+      expectedVersion: z.number().int().positive(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal('start'),
       requestKey: z.uuid(),
       expectedVersion: z.number().int().positive(),
@@ -42,7 +49,7 @@ export const hostingExitCommandSchema = z.discriminatedUnion('kind', [
 export const HostingExitSchema = z.object({
   id: z.uuid(),
   deploymentId: z.uuid(),
-  state: z.enum(['requested', 'stopping', 'retained', 'completed']),
+  state: z.enum(['requested', 'withdrawn', 'stopping', 'retained', 'completed']),
   version: z.number().int(),
   reason: z.string(),
   retentionDays: z.number().int().nullable(),
@@ -58,6 +65,7 @@ export const HostingExitResponseSchema = z.object({
   events: z.array(
     z.object({
       kind: z.string(),
+      reason: z.string().nullable(),
       actorUserId: z.uuid().nullable(),
       createdAt: z.iso.datetime({ offset: true }),
     }),

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull } from 'drizzle-orm';
 import {
   HostingExitSchema,
   hostingExitEvidenceSchema,
@@ -14,6 +14,8 @@ import {
   hostingOperations,
   hostingNodes,
   hostingServices,
+  hostingHandovers,
+  hostingHandoverGrants,
   deploymentTokens,
 } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
@@ -55,6 +57,7 @@ export class HostingExitService {
         : null,
       events: events.map((e) => ({
         kind: e.kind,
+        reason: e.reason,
         actorUserId: e.actorUserId,
         createdAt: e.createdAt.toISOString(),
       })),
@@ -72,8 +75,8 @@ export class HostingExitService {
       const d = await service.deployment(id, admin ? undefined : actor);
       if (!admin && ['start', 'handover'].includes(input.kind))
         throw httpError(403, '仅运维人员可执行此操作');
-      if (input.kind === 'acknowledge' && actor !== d.userId)
-        throw httpError(403, '仅实例所属客户可确认数据交接');
+      if (['acknowledge', 'withdraw'].includes(input.kind) && actor !== d.userId)
+        throw httpError(403, '仅实例所属客户可确认交接或撤回退出');
       const fingerprint = createHash('sha256').update(JSON.stringify(input)).digest('hex');
       const [prior] = await tx
         .select()
@@ -94,7 +97,8 @@ export class HostingExitService {
         .where(eq(hostingExits.deploymentId, id));
       const now = this.now();
       if (input.kind === 'request') {
-        if (current) throw httpError(409, '实例已有退出流程，请查看当前进度');
+        if (current && current.state !== 'withdrawn')
+          throw httpError(409, '实例已有退出流程，请查看当前进度');
         if (d.status !== 'active' || d.hostingState !== 'ready' || !d.hostingNodeId)
           throw httpError(409, '仅已交付的托管实例可以申请退出');
         const [active] = await tx
@@ -107,13 +111,25 @@ export class HostingExitService {
             ),
           );
         if (active) throw httpError(409, '请等待当前运维任务完成');
-        await tx.insert(hostingExits).values({
-          deploymentId: id,
-          state: 'requested',
-          reason: input.reason,
-          createdAt: now,
-          updatedAt: now,
-        });
+        if (current) {
+          await tx
+            .update(hostingExits)
+            .set({
+              state: 'requested',
+              reason: input.reason,
+              version: current.version + 1,
+              updatedAt: now,
+            })
+            .where(eq(hostingExits.id, current.id));
+        } else {
+          await tx.insert(hostingExits).values({
+            deploymentId: id,
+            state: 'requested',
+            reason: input.reason,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
         await tx
           .update(deployments)
           .set({ hostingState: 'exit_requested', updatedAt: now })
@@ -121,7 +137,23 @@ export class HostingExitService {
       } else {
         if (!current || current.version !== input.expectedVersion)
           throw httpError(409, '退出记录已变化，请刷新');
-        if (input.kind === 'start') {
+        if (input.kind === 'withdraw') {
+          if (
+            current.state !== 'requested' ||
+            current.operationId ||
+            d.hostingState !== 'exit_requested' ||
+            d.status !== 'active'
+          )
+            throw httpError(409, '停服任务已提交，不能撤回');
+          await tx
+            .update(hostingExits)
+            .set({ state: 'withdrawn', version: current.version + 1, updatedAt: now })
+            .where(eq(hostingExits.id, current.id));
+          await tx
+            .update(deployments)
+            .set({ hostingState: 'ready', updatedAt: now })
+            .where(eq(deployments.id, id));
+        } else if (input.kind === 'start') {
           if (current.state !== 'requested' || !d.hostingNodeId)
             throw httpError(409, '退出流程已执行');
           const [terms] = await tx
@@ -190,6 +222,31 @@ export class HostingExitService {
         } else {
           if (current.state !== 'retained' || !current.handoverReference || !current.evidence)
             throw httpError(409, '平台尚未完成数据交接');
+          if (current.handoverReference.startsWith('加密交付包 ')) {
+            const [packageRow] = await tx
+              .select()
+              .from(hostingHandovers)
+              .where(
+                and(
+                  eq(hostingHandovers.id, current.handoverReference.slice(6)),
+                  eq(hostingHandovers.deploymentId, id),
+                ),
+              );
+            const [download] = packageRow
+              ? await tx
+                  .select()
+                  .from(hostingHandoverGrants)
+                  .where(
+                    and(
+                      eq(hostingHandoverGrants.handoverId, packageRow.id),
+                      eq(hostingHandoverGrants.userId, actor),
+                      isNotNull(hostingHandoverGrants.consumedAt),
+                    ),
+                  )
+              : [];
+            if (!packageRow?.keyReceivedAt || !download)
+              throw httpError(409, '请先下载交付数据与独立密钥，并完成核对');
+          }
           await tx
             .update(hostingExits)
             .set({ state: 'completed', version: current.version + 1, updatedAt: now })
@@ -203,6 +260,12 @@ export class HostingExitService {
       await tx.insert(hostingExitEvents).values({
         deploymentId: id,
         kind: input.kind,
+        reason:
+          input.kind === 'request'
+            ? input.reason
+            : input.kind === 'withdraw'
+              ? current?.reason
+              : null,
         actorUserId: actor,
         requestKey: input.requestKey,
         fingerprint,

@@ -1,3 +1,4 @@
+import { hostingExitEvidenceSchema } from './hosting-exit.js';
 import { z } from 'zod';
 import * as models from './models.js';
 import * as core from './core-responses.js';
@@ -96,6 +97,29 @@ const asset = z.object({
   checksumEnv: z.string().optional(),
 });
 export const externalResponseContracts = [
+  {
+    method: 'GET',
+    path: '/v1/hosting/nodes/:nodeId/operations/:operationId/data',
+    schema: z.object({
+      exitEvidence: hostingExitEvidenceSchema,
+      retainUntil: timestamp.optional(),
+      handover: z
+        .object({
+          id: z.uuid(),
+          state: z.enum(['preparing', 'ready', 'revoked']),
+          received: z.number(),
+          size: z.number().nullable(),
+          sha256: z.string().nullable(),
+        })
+        .nullable(),
+      maxBytes: z.number(),
+    }),
+  },
+  {
+    method: 'POST',
+    path: '/v1/hosting/nodes/:nodeId/operations/:operationId/data',
+    schema: z.object({ received: z.number(), ready: z.boolean() }),
+  },
   { method: 'POST', path: '/v1/auth/register', schema: core.authResponseSchema },
   { method: 'POST', path: '/v1/auth/login', schema: core.authResponseSchema },
   {
@@ -256,6 +280,7 @@ export const externalResponseContracts = [
 ] as const satisfies readonly { method: string; path: string; schema: z.ZodType }[];
 // These payment callbacks deliberately use provider-defined XML/plain text, never SDK JSON.
 export const nonJsonResponseRoutes = [
+  { method: 'GET', path: '/v1/deployments/:deploymentId/handover/:handoverId/download/:grantId' },
   { method: 'POST', path: '/v1/billing/providers/wechat/notify' },
   { method: 'POST', path: '/v1/billing/providers/alipay/notify' },
 ] as const;

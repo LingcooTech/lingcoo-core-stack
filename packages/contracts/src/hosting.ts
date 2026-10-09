@@ -1,3 +1,4 @@
+import { reclamationEvidenceSchema } from './hosting-handover.js';
 import { hostingMonitorProfileSchema } from './hosting-monitor.js';
 import { z } from 'zod';
 import { hostingExitEvidenceSchema } from './hosting-exit.js';
@@ -99,7 +100,7 @@ export const hostingNodeReportSchema = z
   .object({
     dockerReady: z.boolean(),
     canDeploy: z.boolean().optional(),
-    supportedOperations: z.array(z.enum(['retire'])).optional(),
+    supportedOperations: z.array(z.enum(['retire', 'export', 'reclaim'])).optional(),
     supportedApps: z
       .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
       .max(100)
@@ -230,7 +231,13 @@ export const HostingIngressItemSchema = z.object({
   removals: z.array(z.object({ id: z.uuid(), hostname: z.string() })).default([]),
 });
 
-export const hostingOperationKindSchema = z.enum(['restart', 'backup', 'retire']);
+export const hostingOperationKindSchema = z.enum([
+  'restart',
+  'backup',
+  'retire',
+  'export',
+  'reclaim',
+]);
 export const hostingOperationRequestSchema = z
   .object({
     kind: z.enum(['restart', 'backup']),
@@ -254,6 +261,7 @@ export const hostingOperationCompletionSchema = z
     operationId: z.uuid(),
     success: z.boolean(),
     evidence: hostingExitEvidenceSchema.optional(),
+    reclamationEvidence: reclamationEvidenceSchema.optional(),
   })
   .strict();
 export const HostingOperationClaimSchema = z.object({

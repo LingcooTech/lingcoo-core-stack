@@ -23,3 +23,18 @@ with tempfile.TemporaryDirectory() as tmp:
    assert run.call_count==1 and run.call_args.args[0][:3]==['docker','image','inspect']
    assert json.loads((directory/'execution.json').read_text())['phase']=='runtime_ready'
 print('Retirement data preflight rejects writable, undeclared and foreign mounts before stopping')
+
+# Expiration cleanup is confined to known disposable export directories.
+import os
+spec=importlib.util.spec_from_file_location('handover',root/'scripts/hosting-node-handover.py')
+handover=importlib.util.module_from_spec(spec);spec.loader.exec_module(handover)
+with tempfile.TemporaryDirectory() as tmp:
+ workspace=Path(tmp);directory=workspace/str(uuid.uuid4());directory.mkdir();(directory/'execution.json').write_text(json.dumps({'phase':'retained'}))
+ parent=directory/'handover';parent.mkdir()
+ expired=parent/str(uuid.uuid4());expired.mkdir();(expired/'identity.txt').write_text('disposable');os.utime(expired,(0,0))
+ unknown=parent/str(uuid.uuid4());unknown.mkdir();(unknown/'business-data').write_text('preserve');os.utime(unknown,(0,0))
+ fresh=parent/str(uuid.uuid4());fresh.mkdir();(fresh/'identity.txt').write_text('active')
+ foreign=workspace/'foreign';foreign.mkdir();(foreign/'identity.txt').write_text('preserve');linked=parent/str(uuid.uuid4());linked.symlink_to(foreign,target_is_directory=True)
+ handover.cleanup_transfers(workspace)
+ assert not expired.exists() and unknown.exists() and fresh.exists() and linked.is_symlink() and (foreign/'identity.txt').read_text()=='preserve'
+print('Handover expiration cleanup preserves active, unknown and foreign data')

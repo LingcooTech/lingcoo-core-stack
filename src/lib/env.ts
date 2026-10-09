@@ -28,6 +28,7 @@ const booleanishEnv = z.preprocess((value) => {
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  HOSTING_HANDOVER_DIR: z.string().default('/app/private-handovers'),
   APP_NAME: z.string().default('fd-core-stack'),
   APP_VERSION: z.string().default('development'),
   PORT: z.coerce.number().int().positive().default(3000),

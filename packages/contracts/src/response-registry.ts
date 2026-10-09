@@ -1,3 +1,4 @@
+import { HandoverListSchema, HandoverResultSchema } from './hosting-handover.js';
 import { AppReadinessSchema } from './app-readiness.js';
 import { HostingIncidentsSchema, HostingIncidentEventsSchema } from './hosting-monitor.js';
 import { ItemRefundLedgerSchema } from './item-refund.js';
@@ -26,6 +27,18 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  { method: 'GET', path: '/v1/deployments/:deploymentId/handover', schema: HandoverListSchema },
+  { method: 'POST', path: '/v1/deployments/:deploymentId/handover', schema: HandoverResultSchema },
+  {
+    method: 'GET',
+    path: '/v1/admin/deployments/:deploymentId/handover',
+    schema: HandoverListSchema,
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/deployments/:deploymentId/handover',
+    schema: HandoverResultSchema,
+  },
   {
     method: 'GET',
     path: '/v1/deployments/:deploymentId/hosting-exit',

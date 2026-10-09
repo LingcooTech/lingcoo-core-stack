@@ -94,7 +94,7 @@ def collect(data_path, config=None):
                 supported.append(code)
             except (ValueError, OSError, KeyError, TypeError):
                 continue
-    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': ['retire'] if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
+    return {'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': (['retire','export','reclaim'] if config.get('ageBinary') and config.get('ageKeygenBinary') else ['retire']) if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
         'totals': {'cpuMillis': (os.cpu_count() or 1)*1000, 'memoryMb':mem['MemTotal']//1024, 'diskMb':total_disk//1048576},
         'certificateAutomation':automation, 'load1':os.getloadavg()[0], 'containers':containers, 'certificate':certificate, 'backups':backups,
         'available': {

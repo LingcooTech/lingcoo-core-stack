@@ -18,11 +18,19 @@ def store(path, value):
     os.replace(temporary, path)
 
 
-def execute(config, workspace, operation):
+def execute(config, workspace, operation, api=None):
     operation_id, deployment_id = str(uuid.UUID(operation['id'])), str(uuid.UUID(operation['deploymentId']))
-    if operation['kind'] not in ('restart', 'backup', 'retire') or operation['nodeId'] != config['nodeId']:
+    if operation['kind'] not in ('restart', 'backup', 'retire', 'export', 'reclaim') or operation['nodeId'] != config['nodeId']:
         raise ValueError('Unsupported operation')
     directory = workspace / deployment_id
+    if operation['kind'] in ('export','reclaim'):
+        if api is None:raise ValueError('Authenticated API callback required')
+        name='hosting-node-handover.py' if operation['kind']=='export' else 'hosting-node-reclaim.py'
+        spec=importlib.util.spec_from_file_location('delivery_operation',Path(__file__).with_name(name));module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        try:
+            result=module.execute(config,directory if operation['kind']=='export' else workspace,operation,api)
+            return result if operation['kind']=='reclaim' else True
+        except Exception:return False
     if operation['kind']=='retire':
         spec=importlib.util.spec_from_file_location('retire',Path(__file__).with_name('hosting-node-retire.py'))
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

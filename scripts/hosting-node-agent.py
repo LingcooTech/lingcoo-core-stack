@@ -233,15 +233,19 @@ def main():
         if config.get('monitorOnly'):
             print('Inventory report accepted; deployment disabled on this node')
             return
+        if config.get('ageBinary'):
+            spec=importlib.util.spec_from_file_location('handover_cleanup',Path(__file__).with_name('hosting-node-handover.py'))
+            cleanup=importlib.util.module_from_spec(spec);spec.loader.exec_module(cleanup);cleanup.cleanup_transfers(workspace)
         operation = api('operations/claim', {})['operation']
         if operation:
             spec = importlib.util.spec_from_file_location('operation', Path(__file__).with_name('hosting-node-operation.py'))
             module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-            result = module.execute(config, workspace, operation)
+            result = module.execute(config, workspace, operation, api)
             evidence={}
             if result and operation['kind']=='retire':
                 evidence={'evidence':json.loads((workspace/operation['deploymentId']/'exit-status.json').read_text())}
-            api('operations/complete', {'operationId':operation['id'], 'success':result, **evidence})
+            if result and operation['kind']=='reclaim':evidence={'reclamationEvidence':result}
+            api('operations/complete', {'operationId':operation['id'], 'success':bool(result), **evidence})
             api('report', report.collect(str(workspace), config))
             print('Managed operation completed' if result else 'Managed operation failed')
             return

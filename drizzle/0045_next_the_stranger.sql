@@ -1,0 +1,1 @@
+ALTER TABLE "hosting_handovers" ADD COLUMN "key_received_at" timestamp with time zone;

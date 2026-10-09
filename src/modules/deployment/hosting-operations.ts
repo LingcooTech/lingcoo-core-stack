@@ -1,10 +1,18 @@
-import { and, desc, eq, inArray, lt, ne } from 'drizzle-orm';
+import { completeReclamation } from './hosting-handover';
+import { and, desc, eq, inArray, lt, notInArray } from 'drizzle-orm';
 import {
   HostingOperationSchema,
   hostingNodeReportSchema,
   hostingResourcesSchema,
 } from '@lingcoo/contracts';
-import { apps, deployments, hostingNodes, hostingOperations, users } from '../../db/schema';
+import {
+  apps,
+  deployments,
+  hostingNodes,
+  hostingOperations,
+  hostingHandovers,
+  users,
+} from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 import { httpError } from '../../lib/errors';
 import { HostingRepository, HOSTING_REPORT_MAX_AGE_MS } from './hosting';
@@ -150,7 +158,7 @@ export class HostingOperations {
         and(
           eq(hostingOperations.nodeId, nodeId),
           eq(hostingOperations.state, 'running'),
-          ne(hostingOperations.kind, 'retire'),
+          notInArray(hostingOperations.kind, ['retire', 'export', 'reclaim']),
           lt(hostingOperations.startedAt, new Date(now.getTime() - 60 * 60 * 1000)),
         ),
       );
@@ -161,13 +169,16 @@ export class HostingOperations {
       .orderBy(hostingOperations.createdAt);
     const running = runningRows.find(
       (row) =>
-        row.kind !== 'retire' ||
+        !['retire', 'export', 'reclaim'].includes(row.kind) ||
         row.result !== 'execution_failed' ||
         !row.startedAt ||
         now.getTime() - row.startedAt.getTime() >= 5 * 60000,
     );
     if (running) {
-      if (running.kind === 'retire' && running.result === 'execution_failed') {
+      if (
+        ['retire', 'export', 'reclaim'].includes(running.kind) &&
+        running.result === 'execution_failed'
+      ) {
         const [retry] = await this.db
           .update(hostingOperations)
           .set({ result: null, startedAt: now })
@@ -199,6 +210,7 @@ export class HostingOperations {
     success: boolean,
     now = new Date(),
     evidence?: HostingExitEvidence,
+    reclamationEvidence?: unknown,
   ) {
     const repository = new HostingRepository(this.db);
     await repository.authenticate(nodeId, token);
@@ -210,6 +222,33 @@ export class HostingOperations {
     if (!row) throw httpError(404, '操作不存在');
     if (['succeeded', 'failed'].includes(row.state)) return { ok: true };
     if (row.state !== 'running') throw httpError(409, '操作未领取');
+    if (['retire', 'export', 'reclaim'].includes(row.kind) && !success) {
+      const [handover] =
+        row.kind === 'export'
+          ? await this.db
+              .select()
+              .from(hostingHandovers)
+              .where(eq(hostingHandovers.operationId, id))
+          : [];
+      const expired = handover && (handover.state === 'revoked' || handover.expiresAt <= now);
+      await this.db
+        .update(hostingOperations)
+        .set({
+          result: 'execution_failed',
+          startedAt: now,
+          ...(expired ? { state: 'failed', completedAt: now } : {}),
+        })
+        .where(eq(hostingOperations.id, id));
+      return { ok: true };
+    }
+    if (row.kind === 'export') {
+      const [h] = await this.db
+        .select()
+        .from(hostingHandovers)
+        .where(eq(hostingHandovers.operationId, id));
+      if (!h || h.state !== 'ready') throw httpError(409, '交付包尚未验证完成');
+    }
+    if (row.kind === 'reclaim') await completeReclamation(this.db, id, reclamationEvidence, now);
     if (row.kind === 'retire') {
       if (!success) {
         await this.db

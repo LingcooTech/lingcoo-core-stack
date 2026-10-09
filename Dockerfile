@@ -62,7 +62,7 @@ COPY --from=build /app/packages/contracts/package.json ./packages/contracts/pack
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/admin-ui/dist ./admin-ui/dist
 
-RUN chown -R 1001:0 /app
+RUN mkdir -p /app/private-handovers && chmod 700 /app/private-handovers && chown -R 1001:0 /app
 
 USER 1001
 

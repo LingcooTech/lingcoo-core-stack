@@ -36,6 +36,8 @@ services:
       - .env
     environment:
       APP_VERSION: ${APP_VERSION:-development}
+    volumes:
+      - hosting_handovers:/app/private-handovers
     command: ['node', 'dist/server.js']
     depends_on:
       postgres:
@@ -108,6 +110,7 @@ services:
       - caddy_config:/config
 
 volumes:
+  hosting_handovers:
   postgres_data:
   redis_data:
   caddy_data:

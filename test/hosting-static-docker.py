@@ -77,7 +77,59 @@ with tempfile.TemporaryDirectory() as tmp:
    time.sleep(1)
   assert b'cold-database-proof' in subprocess.check_output(['docker','exec',restored,'psql','-U','postgres','-Atc','SELECT value FROM exit_proof'])
   assert json.loads((workspace/did/'execution.json').read_text())['phase']=='retained' 
-  print('Static adapter install, replay, backup, cold stop and isolated restore passed')
+  # Real age encryption and interrupted/resumable transfer; API state is a bounded test double.
+  import base64,datetime,shutil
+  from unittest.mock import patch
+  spec=importlib.util.spec_from_file_location('handover',root/'scripts/hosting-node-handover.py');handover=importlib.util.module_from_spec(spec);spec.loader.exec_module(handover)
+  config.update(ageBinary=shutil.which('age'),ageKeygenBinary=shutil.which('age-keygen'))
+  assert config['ageBinary'] and config['ageKeygenBinary']
+  transfer={'state':'preparing','received':0};received=bytearray();lost=[False]
+  export_op={'id':str(uuid.uuid4()),'deploymentId':did,'nodeId':config['nodeId'],'kind':'export'}
+  def api(route,payload=None):
+   if payload is None:return {'exitEvidence':evidence,'retainUntil':(datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=1)).isoformat(),'handover':transfer,'maxBytes':1024**3}
+   if payload['kind']=='begin':
+    if 'sha256' in transfer:assert transfer['sha256']==payload['sha256'] and transfer['identity']==payload['identity']
+    transfer.update({k:payload[k] for k in ('sha256','size','identity')});return transfer
+   if payload['kind']=='chunk':
+    assert payload['offset']==len(received);received.extend(base64.b64decode(payload['data']));transfer['received']=len(received)
+    if not lost[0]:lost[0]=True;raise ConnectionError('Response lost after accepting first chunk')
+    return transfer
+   assert len(received)==transfer['size'] and hashlib.sha256(received).hexdigest()==transfer['sha256'];transfer['state']='ready';return transfer
+  try:handover.execute(config,workspace/did,export_op,api);raise AssertionError('Lost response not exercised')
+  except ConnectionError:pass
+  handover.execute(config,workspace/did,export_op,api)
+  identity=workspace/'customer.key';identity.write_text(transfer['identity']+'\n');identity.chmod(0o600)
+  encrypted=workspace/'customer.tar.age';encrypted.write_bytes(received)
+  decrypted=workspace/'customer.tar'
+  with decrypted.open('wb') as out:subprocess.run([config['ageBinary'],'-d','-i',str(identity),str(encrypted)],stdout=out,check=True)
+  delivered_pages=workspace/'delivered-pages.tar';delivered_pages.write_bytes(subprocess.check_output(['tar','-xOf',str(decrypted),'pages.tar']))
+  assert b'persistent-proof' in subprocess.check_output(['tar','-xOf',str(delivered_pages),'./proof.txt'])
+  assert not (workspace/did/'handover'/export_op['id']).exists()
+  # Reclamation refuses the unrelated restored container sharing this project before any deletion.
+  spec=importlib.util.spec_from_file_location('reclaim',root/'scripts/hosting-node-reclaim.py');reclaim=importlib.util.module_from_spec(spec);spec.loader.exec_module(reclaim)
+  reclaim_op={'id':str(uuid.uuid4()),'deploymentId':did,'nodeId':config['nodeId'],'kind':'reclaim'}
+  try:reclaim.execute(config,workspace,reclaim_op,api);raise AssertionError('Foreign service accepted')
+  except ValueError:pass
+  subprocess.run(['docker','rm','-f',restored],check=True)
+  foreign=project+'-foreign-ref'
+  subprocess.run(['docker','create','--name',foreign,'-v',project+'_pages:/data',image],check=True)
+  try:reclaim.execute(config,workspace,reclaim_op,api);raise AssertionError('Shared volume accepted')
+  except ValueError:pass
+  finally:subprocess.run(['docker','rm',foreign],check=True)
+  original_run=subprocess.run;removals=[0]
+  def interrupted(command,*args,**kwargs):
+   if command[:2]==['docker','rm']:
+    removals[0]+=1
+    if removals[0]==2:raise subprocess.CalledProcessError(1,command)
+   return original_run(command,*args,**kwargs)
+  with patch.object(reclaim.subprocess,'run',side_effect=interrupted):
+   try:reclaim.execute(config,workspace,reclaim_op,api);raise AssertionError('Interrupted reclaim not exercised')
+   except subprocess.CalledProcessError:pass
+  reclaimed=reclaim.execute(config,workspace,reclaim_op,api)
+  assert reclaimed==reclaim.execute(config,workspace,reclaim_op,api)
+  assert not (workspace/did).exists() and cold.exists()
+  assert not subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project='+project]).strip()
+  print('Static/PG cold recovery, real age export, interrupted transfer and owned reclamation replay passed')
  finally:
   ids=subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project='+project],text=True).split()
   if ids:subprocess.run(['docker','rm','-f',*ids],check=True)

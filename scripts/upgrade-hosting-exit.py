@@ -2,7 +2,7 @@
 """Install reviewed exit runtime on an enrolled node; no instance is stopped by this upgrade."""
 import datetime,fcntl,hashlib,json,os,py_compile,shutil,subprocess,sys
 from pathlib import Path
-allowed={'hosting-node-agent.py','hosting-node-report.py','hosting-node-operation.py','hosting-node-retire.py'}
+allowed={'hosting-node-agent.py','hosting-node-report.py','hosting-node-operation.py','hosting-node-retire.py','hosting-node-handover.py','hosting-node-reclaim.py'}
 config_path=Path(sys.argv[1]);stage=Path(sys.argv[2])
 if config_path.stat().st_mode & 0o077:raise ValueError('Private config required')
 config=json.loads(config_path.read_text());destination=config_path.parent
@@ -20,6 +20,10 @@ if not config.get('monitorOnly'):
  image=candidates[0]
  subprocess.run(['docker','run','--rm','--network','none','--read-only','--entrypoint','tar',image,'--help'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True)
  config['snapshotImage']=image
+ for key,binary in [('ageBinary','age'),('ageKeygenBinary','age-keygen')]:
+  path=shutil.which(binary)
+  if not path:raise ValueError('Install distribution age package before activating handover')
+  config[key]=path
 stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 backup=destination/('exit-runtime-before-'+stamp);backup.mkdir(mode=0o700)
 workspace=Path(config['workspace']);workspace.mkdir(mode=0o700,parents=True,exist_ok=True)

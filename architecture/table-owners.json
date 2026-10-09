@@ -50,5 +50,8 @@
   "hostingIncidentEvents": "deployment",
   "hostingMonitorState": "deployment",
   "hostingExits": "deployment",
-  "hostingExitEvents": "deployment"
+  "hostingExitEvents": "deployment",
+  "hostingHandovers": "deployment",
+  "hostingHandoverGrants": "deployment",
+  "hostingReclamations": "deployment"
 }

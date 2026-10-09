@@ -51,19 +51,23 @@ test('exit panel lazily loads and preserves request identity after transport fai
 test('customer receives handover acknowledgement, with no operator stop control', async () => {
   mocks.api.mockReset();
   mocks.role = 'user';
-  mocks.api.mockResolvedValue({
-    exit: {
-      id,
-      deploymentId: id,
-      state: 'retained',
-      version: 3,
-      reason: 'Requested closure',
-      retainUntil: '2026-11-09T00:00:00Z',
-      handoverReference: 'Secure handover #100',
-      evidence: { manifestSha256: 'a'.repeat(64) },
-    },
-    events: [],
-  });
+  mocks.api.mockImplementation(async (endpoint: string) =>
+    endpoint.endsWith('/handover')
+      ? { items: [], reclamation: null }
+      : {
+          exit: {
+            id,
+            deploymentId: id,
+            state: 'retained',
+            version: 3,
+            reason: 'Requested closure',
+            retainUntil: '2026-11-09T00:00:00Z',
+            handoverReference: 'Secure handover #100',
+            evidence: { manifestSha256: 'a'.repeat(64) },
+          },
+          events: [],
+        },
+  );
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);

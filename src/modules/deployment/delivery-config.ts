@@ -1,6 +1,6 @@
 import { decryptJson, encryptJson, type EncryptionKeyring } from '../../lib/settings-crypto';
 import { eq } from 'drizzle-orm';
-import { appDeliverySettings, deployments } from '../../db/schema';
+import { appDeliverySettings, deployments, hostingHandovers } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 export async function deleteAppDeliverySettings(db: DbExecutor, appId: string) {
   await db.delete(appDeliverySettings).where(eq(appDeliverySettings.appId, appId));
@@ -65,6 +65,16 @@ export async function rotateDeliveryKeyring(
         .update(deployments)
         .set({ meta: next.value, updatedAt: new Date() })
         .where(eq(deployments.id, row.id));
+  }
+  const handovers = await db.select().from(hostingHandovers).for('update');
+  for (const row of handovers) {
+    if (!row.encryptedIdentity) continue;
+    const next = rotateNested(row.encryptedIdentity);
+    if (next.changed && !dryRun)
+      await db
+        .update(hostingHandovers)
+        .set({ encryptedIdentity: next.value })
+        .where(eq(hostingHandovers.id, row.id));
   }
   return { checked, rotated };
 }
