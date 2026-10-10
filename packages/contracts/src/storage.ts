@@ -1,6 +1,7 @@
 import { z } from 'zod';
 const name = z.string().trim().min(1).max(200);
 export const storageSettingsSchema = z.object({
+  provider: z.enum(['local', 's3']).default('s3'),
   region: z.string().trim().max(120).default(''),
   endpoint: z
     .union([

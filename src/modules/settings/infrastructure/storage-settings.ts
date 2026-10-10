@@ -21,9 +21,10 @@ export class StorageSettingsService {
         value: storageSettingsSchema.parse(decryptJson(row.value, getEncryptionKeys(this.env))),
         source: 'database',
       };
-    if (this.env.STORAGE_S3_BUCKET)
+    if (this.env.STORAGE_S3_BUCKET || this.env.STORAGE_PROVIDER === 'local')
       return {
         value: storageSettingsSchema.parse({
+          provider: this.env.STORAGE_PROVIDER ?? 's3',
           region: this.env.STORAGE_S3_REGION,
           endpoint: this.env.STORAGE_S3_ENDPOINT,
           bucket: this.env.STORAGE_S3_BUCKET,
@@ -46,7 +47,7 @@ export class StorageSettingsService {
               defaultPrefix: legacy.defaultPrefix || 'stack/assets',
               publicBaseUrl: legacy.publicBaseUrl,
             }
-          : {},
+          : { provider: 'local' },
       ),
       source: legacy ? 'legacy' : 'none',
     };
@@ -56,7 +57,9 @@ export class StorageSettingsService {
     const { accessKey, secretKey, ...values } = value;
     return {
       configured:
-        source !== 'legacy' && Boolean(value.region && value.bucket && accessKey && secretKey),
+        value.provider === 'local' ||
+        (source !== 'legacy' &&
+          Boolean(value.region && value.bucket && Boolean(accessKey) === Boolean(secretKey))),
       source,
       values,
       secrets: {

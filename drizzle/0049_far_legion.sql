@@ -1,0 +1,2 @@
+ALTER TABLE "storage_objects" ADD COLUMN "provider" varchar(20) DEFAULT 's3' NOT NULL;--> statement-breakpoint
+ALTER TABLE "storage_objects" ADD CONSTRAINT "storage_objects_provider_check" CHECK ("storage_objects"."provider" in ('local', 's3'));

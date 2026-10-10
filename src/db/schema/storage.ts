@@ -53,6 +53,7 @@ export const storageObjects = pgTable(
       .references(() => storageAssets.id),
     version: integer('version').notNull(),
     objectKey: text('object_key').notNull(),
+    provider: varchar('provider', { length: 20 }).notNull().default('s3'),
     bucket: varchar('bucket', { length: 255 }).notNull(),
     endpoint: text('endpoint').notNull(),
     region: text('region').notNull(),
@@ -66,6 +67,7 @@ export const storageObjects = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check('storage_objects_provider_check', sql`${t.provider} in ('local', 's3')`),
     check(
       'storage_objects_status_check',
       sql`${t.status} in ('pending', 'writing', 'ready', 'deletion_pending', 'deleted', 'failed')`,

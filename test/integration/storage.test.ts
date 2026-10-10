@@ -281,3 +281,57 @@ test('cleanup retries failed deletion, expires abandoned uploads and refuses cha
     1,
   );
 });
+
+test('local provider uses persisted object identity and refuses switching drivers with live files', async () => {
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { LocalStorageProvider } = await import('../../src/modules/storage/local-provider');
+  const root = await mkdtemp(join(tmpdir(), 'stack-local-integration-'));
+  const localEnv = { ...env, STORAGE_LOCAL_ROOT: root };
+  const settings = new StorageSettingsService(db, localEnv),
+    previous = (await settings.runtime()).value;
+  const local = new StorageService(db, localEnv);
+  let objectId: string | undefined;
+  try {
+    await settings.save(storageSettingsSchema.parse({ provider: 'local' }), userId);
+    await local.testSettings(storageSettingsSchema.parse({ provider: 'local' }));
+    const grant = await local.authorize(
+      assetUploadSchema.parse({
+        filename: 'local.txt',
+        contentType: 'text/plain',
+        sizeBytes: 5,
+        visibility: 'private',
+      }),
+      userId,
+    );
+    objectId = grant.objectId;
+    const asset = await local.upload(grant.objectId, Buffer.from('local'), userId);
+    const file = await local.content(asset.id, false);
+    const read = await file.read();
+    const chunks: Buffer[] = [];
+    for await (const chunk of read.Body!) chunks.push(Buffer.from(chunk));
+    assert.equal(Buffer.concat(chunks).toString(), 'local');
+    const [object] = await db
+      .select()
+      .from(storageObjects)
+      .where(eq(storageObjects.id, grant.objectId));
+    assert.equal(object!.provider, 'local');
+    assert.equal(object!.endpoint, root);
+    await assert.rejects(local.saveSettings(previous, userId), /迁移/);
+    await local.delete(asset.id, asset.revision, userId);
+    await new LocalStorageProvider(root).delete(object!.objectKey);
+    await db
+      .update(storageObjects)
+      .set({ status: 'deleted' })
+      .where(eq(storageObjects.id, grant.objectId));
+  } finally {
+    if (objectId)
+      await db
+        .update(storageObjects)
+        .set({ status: 'deleted' })
+        .where(eq(storageObjects.id, objectId));
+    await settings.save(previous, userId);
+    await rm(root, { recursive: true, force: true });
+  }
+});

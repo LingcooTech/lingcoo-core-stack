@@ -32,7 +32,10 @@ export class S3StorageProvider {
       region: config.region,
       endpoint: config.endpoint || undefined,
       forcePathStyle: config.forcePathStyle,
-      credentials: { accessKeyId: config.accessKey ?? '', secretAccessKey: config.secretKey ?? '' },
+      credentials:
+        config.accessKey && config.secretKey
+          ? { accessKeyId: config.accessKey, secretAccessKey: config.secretKey }
+          : undefined,
       requestChecksumCalculation: 'WHEN_REQUIRED',
       responseChecksumValidation: 'WHEN_REQUIRED',
       maxAttempts: 2,

@@ -93,24 +93,24 @@ test('admin settings numeric inputs use Zod output and optimistic version on sav
   await page.goto('/admin/settings');
   await page.getByRole('button', { name: '云存储', exact: true }).first().click();
   await page.getByRole('dialog').getByRole('link', { name: '存储设置', exact: true }).click();
-  await expect(page.getByText('文件存储 · S3 兼容', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'SMTP', exact: true }).click();
-  await page.getByLabel('SMTP Host', { exact: true }).fill('smtp.example.test');
-  await page.getByLabel('端口', { exact: true }).fill('587');
-  await page.getByLabel('发件人邮箱', { exact: true }).fill('sender@example.test');
+  await expect(page.getByRole('heading', { name: '文件存储', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: '邮件服务', exact: true }).click();
+  await page.getByLabel('邮件服务器地址', { exact: true }).fill('smtp.example.test');
+  await page.getByLabel('邮件服务器端口', { exact: true }).fill('587');
+  await page.getByLabel('发件地址', { exact: true }).fill('sender@example.test');
   const save = page.waitForResponse(
     (response) =>
       response.url().includes('/v1/admin/system-settings/smtp') &&
       response.request().method() === 'PUT',
   );
-  await page.getByRole('button', { name: '保存 SMTP 配置', exact: true }).click();
+  await page.getByRole('button', { name: '保存配置', exact: true }).click();
   const result = await save;
   expect(result.status()).toBe(200);
   expect(result.request().postDataJSON().port).toBe(587);
   expect(result.request().headers()['if-match']).toBeTruthy();
   await page.reload();
-  await page.getByRole('tab', { name: 'SMTP', exact: true }).click();
-  await expect(page.getByLabel('端口', { exact: true })).toHaveValue('587');
+  await page.getByRole('tab', { name: '邮件服务', exact: true }).click();
+  await expect(page.getByLabel('邮件服务器端口', { exact: true })).toHaveValue('587');
 });
 test('ordinary user cannot enter the admin console or invoke admin settings', async ({ page }) => {
   await login(page, '/admin/login', userEmail);

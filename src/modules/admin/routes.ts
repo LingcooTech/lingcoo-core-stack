@@ -15,6 +15,7 @@ import { QiniuSettingsService } from '../settings/public';
 import { hasPermission, normalizeRole } from '../../lib/rbac';
 import { SiteSettingsService } from '../settings/public';
 import { SmtpSettingsService } from '../settings/public';
+import { rotateGlobalSettingKeys } from '../settings/public';
 import { createAuthAccess } from '../auth/public';
 
 import {
@@ -511,6 +512,35 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
 
       return result;
     },
+  );
+
+  app.post(
+    '/v1/admin/system-settings/rotate-secrets',
+    { preHandler: app.requirePermission('settings.manage') },
+    async (request) => {
+      return app.db.transaction(async (tx) => {
+        const result = await rotateGlobalSettingKeys(tx, app.appEnv, false);
+        await new AuditLogService(tx).record({
+          actorType: 'user',
+          actorUserId: request.user.sub,
+          action: 'settings.secrets_rotated',
+          resourceType: 'system_settings',
+          resourceId: 'encrypted',
+          summary: 'Sensitive settings re-encrypted with active key',
+          meta: { checked: result.checked, rotated: result.rotated },
+        });
+        return { checked: result.checked, rotated: result.rotated };
+      });
+    },
+  );
+
+  app.post(
+    '/v1/admin/system-settings/smtp/connection-test',
+    { preHandler: app.requirePermission('settings.manage') },
+    (request) =>
+      new SmtpSettingsService(app.db, app.appEnv).testConnection(
+        smtpSettingsSchema.parse(request.body),
+      ),
   );
 
   app.post(

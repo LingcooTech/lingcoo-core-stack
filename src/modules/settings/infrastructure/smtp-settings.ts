@@ -10,6 +10,8 @@ import { decryptJson, encryptJson, getEncryptionKeys } from '../../../lib/settin
 export type SmtpSettingsSource = 'database' | 'env' | 'none';
 
 export type SmtpSettings = {
+  transport: 'capture' | 'smtp';
+  fromName: string;
   host: string;
   port: number;
   secure: boolean;
@@ -22,6 +24,8 @@ export type SmtpSettingsOverview = {
   configured: boolean;
   source: SmtpSettingsSource;
   values: {
+    transport: 'capture' | 'smtp';
+    fromName: string;
     host: string;
     port: number;
     secure: boolean;
@@ -113,7 +117,9 @@ export class SmtpSettingsService {
 
   private getDefaultFrom() {
     const appName = normalizeString(this.env.APP_NAME) || 'fd-core-stack.local';
-    return normalizeString(this.env.SMTP_FROM) || `noreply@${appName}`;
+    return (
+      normalizeString(this.env.SMTP_FROM_ADDRESS || this.env.SMTP_FROM) || `noreply@${appName}`
+    );
   }
 
   private async findSettingRow() {
@@ -145,11 +151,14 @@ export class SmtpSettingsService {
     const password = normalizeString(raw.password);
     const from = normalizeString(raw.from) || this.getDefaultFrom();
 
-    if (!host && !user && !password) {
+    if (!host && !user && !password && raw.transport !== 'capture') {
       return null;
     }
 
     return {
+      transport: raw.transport === 'capture' ? 'capture' : 'smtp',
+      fromName:
+        normalizeString(raw.fromName) || normalizeString(this.env.SMTP_FROM_NAME) || 'Stack',
       host,
       port,
       secure,
@@ -167,16 +176,19 @@ export class SmtpSettingsService {
   getEnvSettings(): SmtpSettings | null {
     const host = normalizeString(this.env.SMTP_HOST);
     const port = normalizePort(this.env.SMTP_PORT, 465);
-    const secure = port === 465;
+    const secure =
+      this.env.SMTP_SECURE === undefined ? port === 465 : this.env.SMTP_SECURE === 'true';
     const user = normalizeString(this.env.SMTP_USER);
     const password = normalizeString(this.env.SMTP_PASSWORD);
     const from = this.getDefaultFrom();
 
-    if (!host && !user && !password) {
+    if (!host && !user && !password && this.env.MAIL_TRANSPORT !== 'capture') {
       return null;
     }
 
     return {
+      transport: this.env.MAIL_TRANSPORT ?? 'smtp',
+      fromName: normalizeString(this.env.SMTP_FROM_NAME) || 'Stack',
       host,
       port,
       secure,
@@ -192,6 +204,8 @@ export class SmtpSettingsService {
 
   async resolveDraftSettings(
     input: {
+      transport?: 'capture' | 'smtp';
+      fromName?: string;
       host?: string;
       port?: number;
       secure?: boolean;
@@ -203,6 +217,8 @@ export class SmtpSettingsService {
     const existing = (await this.getDatabaseSettings()) ?? this.getEnvSettings();
 
     return {
+      transport: input.transport ?? existing?.transport ?? 'smtp',
+      fromName: normalizeString(input.fromName) || existing?.fromName || 'Stack',
       host: normalizeString(input.host) || existing?.host || '',
       port: normalizePort(input.port, existing?.port ?? 465),
       secure:
@@ -222,12 +238,16 @@ export class SmtpSettingsService {
     const source: SmtpSettingsSource = databaseSettings ? 'database' : envSettings ? 'env' : 'none';
 
     return {
-      configured: Boolean(effective?.host && effective.user && effective.password),
+      configured:
+        effective?.transport === 'capture' ||
+        Boolean(effective?.host && (!effective.user || effective.password)),
       source,
       values: {
+        transport: effective?.transport ?? 'capture',
+        fromName: effective?.fromName ?? 'Stack',
         host: effective?.host ?? '',
-        port: effective?.port ?? 465,
-        secure: effective?.secure ?? true,
+        port: effective?.port ?? 587,
+        secure: effective?.secure ?? false,
         user: effective?.user ?? '',
         from: effective?.from ?? this.getDefaultFrom(),
       },
@@ -241,6 +261,8 @@ export class SmtpSettingsService {
 
   async upsertSettings(
     input: {
+      transport?: 'capture' | 'smtp';
+      fromName?: string;
       host?: string;
       port?: number;
       secure?: boolean;
@@ -281,6 +303,8 @@ export class SmtpSettingsService {
     to: string;
     subject: string;
     text: string;
+    transport?: 'capture' | 'smtp';
+    fromName?: string;
     host?: string;
     port?: number;
     secure?: boolean;
@@ -292,18 +316,7 @@ export class SmtpSettingsService {
     const subject = normalizeString(input.subject);
     const text = typeof input.text === 'string' ? input.text.trim() : '';
     const draft = await this.resolveDraftSettings(input);
-    const mailer = new Mailer(
-      draft.host && draft.user && draft.password
-        ? {
-            host: draft.host,
-            port: draft.port,
-            secure: draft.secure,
-            user: draft.user,
-            password: draft.password,
-            from: draft.from,
-          }
-        : null,
-    );
+    const mailer = new Mailer({ ...draft, password: draft.password ?? '' });
 
     if (!mailer.isConfigured) {
       throw httpError(422, 'SMTP 配置不完整，无法发送测试邮件');
@@ -317,11 +330,19 @@ export class SmtpSettingsService {
     });
 
     return {
-      sent: true,
+      sent: draft.transport !== 'capture',
+      simulated: draft.transport === 'capture',
       to,
       from: draft.from,
       subject,
     };
+  }
+
+  async testConnection(input: Parameters<SmtpSettingsService['resolveDraftSettings']>[0] = {}) {
+    const draft = await this.resolveDraftSettings(input);
+    if (!draft.host || (draft.user && !draft.password)) throw httpError(422, 'SMTP 设置不完整');
+    await new Mailer({ ...draft, transport: 'smtp', password: draft.password ?? '' }).verify();
+    return { ok: true as const };
   }
 
   async clearSettings() {

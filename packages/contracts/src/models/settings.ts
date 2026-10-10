@@ -24,11 +24,13 @@ export const SmtpSettingsOverviewSchema = z.object({
   configured: z.boolean(),
   source: z.union([z.literal('database'), z.literal('env'), z.literal('none')]),
   values: z.object({
+    transport: z.enum(['capture', 'smtp']).default('smtp'),
     host: z.string(),
     port: z.number(),
     secure: z.boolean(),
     user: z.string(),
     from: z.string(),
+    fromName: z.string().default('Stack'),
   }),
   secrets: z.object({ password: PaymentProviderSecretStatusSchema }),
 });
@@ -37,6 +39,7 @@ export type SmtpSettingsOverview = z.infer<typeof SmtpSettingsOverviewSchema>;
 
 export const SmtpTestEmailResultSchema = z.object({
   sent: z.boolean(),
+  simulated: z.boolean().default(false),
   to: z.string(),
   from: z.string(),
   subject: z.string(),
@@ -334,12 +337,14 @@ export const AlipaySettingsSchema = z.object({
 export type AlipaySettings = z.infer<typeof AlipaySettingsSchema>;
 
 export const SmtpSettingsInputSchema = z.object({
+  transport: z.enum(['capture', 'smtp']).optional(),
   host: z.string().optional(),
   port: z.number().optional(),
   secure: z.boolean().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
   from: z.string().optional(),
+  fromName: z.string().optional(),
 });
 
 export type SmtpSettingsInput = z.infer<typeof SmtpSettingsInputSchema>;

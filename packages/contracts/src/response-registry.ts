@@ -438,6 +438,16 @@ const clientResponseContracts = [
   },
   {
     method: 'POST',
+    path: '/v1/admin/system-settings/rotate-secrets',
+    schema: z.object({ checked: z.number().int(), rotated: z.number().int() }),
+  },
+  {
+    method: 'POST',
+    path: '/v1/admin/system-settings/smtp/connection-test',
+    schema: z.object({ ok: z.literal(true) }),
+  },
+  {
+    method: 'POST',
     path: '/v1/admin/system-settings/smtp/test',
     schema: models.SmtpTestEmailResultSchema,
   },

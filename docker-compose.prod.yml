@@ -38,6 +38,7 @@ services:
       APP_VERSION: ${APP_VERSION:-development}
     volumes:
       - hosting_handovers:/app/private-handovers
+      - storage_assets:/app/private-assets
     command: ['node', 'dist/server.js']
     depends_on:
       postgres:
@@ -73,6 +74,8 @@ services:
       - .env
     environment:
       APP_VERSION: ${APP_VERSION:-development}
+    volumes:
+      - storage_assets:/app/private-assets
     healthcheck:
       test: ['CMD', 'node', 'scripts/check-worker-health.mjs']
       interval: 10s
@@ -110,6 +113,7 @@ services:
       - caddy_config:/config
 
 volumes:
+  storage_assets:
   hosting_handovers:
   postgres_data:
   redis_data:

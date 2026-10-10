@@ -26,18 +26,7 @@ export class DeliveryJobHandlers {
     }
 
     const config = await new SmtpSettingsService(this.db, this.env).getRuntimeSettings();
-    return new Mailer(
-      config && config.password
-        ? {
-            host: config.host,
-            port: config.port,
-            secure: config.secure,
-            user: config.user,
-            password: config.password,
-            from: config.from,
-          }
-        : null,
-    );
+    return new Mailer(config ? { ...config, password: config.password ?? '' } : null);
   }
 
   async process(job: Pick<typeof jobRuns.$inferSelect, 'kind' | 'payload'>, signal?: AbortSignal) {
@@ -62,7 +51,8 @@ export class DeliveryJobHandlers {
         });
         return {
           ok: true,
-          channel: 'smtp',
+          channel: mailer.isCapture ? 'capture' : 'smtp',
+          simulated: mailer.isCapture,
           to: normalizeString(payload.to).toLowerCase(),
         };
       }

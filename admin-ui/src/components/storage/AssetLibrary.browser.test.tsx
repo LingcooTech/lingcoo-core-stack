@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
 import { AssetLibrary } from './AssetLibrary';
+import { SmtpSettingsPanel } from '@/components/settings/SmtpSettingsPanel';
 import { StorageSettingsPanel } from './StorageSettingsPanel';
 import type { AssetDetail } from '@lingcoo/contracts';
 const mocks = vi.hoisted(() => ({ api: vi.fn(), role: 'admin' }));
@@ -177,6 +178,7 @@ test('S3 settings retain saved secrets, show legacy migration guidance and keep 
       configured: false,
       source: 'legacy',
       values: {
+        provider: 's3',
         region: '',
         endpoint: '',
         bucket: 'legacy-bucket',
@@ -196,6 +198,114 @@ test('S3 settings retain saved secrets, show legacy migration guidance and keep 
     await act(async () => button('保存配置').click());
     await vi.waitFor(() => expect(saves).toBe(1));
     expect(document.querySelector<HTMLInputElement>('#storage-region')!.value).toBe('cn-east-1');
+  } finally {
+    await view.dispose();
+  }
+});
+
+test('storage matches Edu field order, provider options and secret visibility controls', async () => {
+  mocks.api.mockReset();
+  mocks.api.mockResolvedValue({
+    configured: true,
+    source: 'database',
+    values: {
+      provider: 's3',
+      region: 'cn-north-1',
+      endpoint: 'https://s3.cn-north-1.qiniucs.com',
+      bucket: 'fixture',
+      defaultPrefix: 'stack/assets',
+      forcePathStyle: false,
+      publicBaseUrl: '',
+    },
+    secrets: { accessKey: { configured: true }, secretKey: { configured: true } },
+  });
+  const view = await mount(<StorageSettingsPanel />);
+  try {
+    await vi.waitFor(() => expect(view.host.querySelectorAll('[data-setting-key]').length).toBe(8));
+    expect(
+      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) => e.textContent),
+    ).toEqual([
+      '存储驱动',
+      '存储访问密钥标识',
+      '存储访问密钥',
+      '存储空间名称',
+      '默认上传目录',
+      '存储区域',
+      '存储服务地址',
+      '强制路径寻址',
+    ]);
+    expect(
+      Array.from(view.host.querySelectorAll('select option')).map((e) => e.textContent),
+    ).toEqual(['本地磁盘', 'S3 兼容存储']);
+    expect(view.host.querySelector('#storage-forcePathStyle')?.getAttribute('role')).toBe('switch');
+    await act(async () => value('#storage-accessKey', 'replacement-ak'));
+    expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.type).toBe('password');
+    await act(async () =>
+      view.host.querySelector<HTMLButtonElement>('[aria-label="显示存储访问密钥标识"]')!.click(),
+    );
+    expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.type).toBe('text');
+    expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.value).toBe(
+      'replacement-ak',
+    );
+  } finally {
+    await view.dispose();
+  }
+});
+
+test('SMTP matches Edu field order; connection testing is separate and failed saves keep the draft', async () => {
+  mocks.api.mockReset();
+  mocks.api.mockImplementation(async (id: string) => {
+    if (id.startsWith('PUT')) throw Error('Fixture unavailable');
+    if (id.endsWith('/connection-test')) return { ok: true };
+    return {
+      configured: true,
+      source: 'database',
+      values: {
+        transport: 'smtp',
+        host: 'smtp.example.test',
+        port: 587,
+        secure: false,
+        user: 'sender',
+        from: 'sender@example.test',
+        fromName: 'Stack',
+      },
+      secrets: { password: { configured: true } },
+    };
+  });
+  const view = await mount(<SmtpSettingsPanel />);
+  try {
+    await vi.waitFor(() => expect(view.host.querySelectorAll('[data-setting-key]').length).toBe(8));
+    expect(
+      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) => e.textContent),
+    ).toEqual([
+      '投递方式',
+      '邮件服务器地址',
+      '邮件服务器端口',
+      '直接加密连接',
+      '邮件服务器用户名',
+      '邮件服务器密码',
+      '发件地址',
+      '发件名称',
+    ]);
+    expect(
+      Array.from(view.host.querySelectorAll('select option')).map((e) => e.textContent),
+    ).toEqual(['测试捕获（不外发）', '邮件服务器投递']);
+    expect(view.host.querySelector<HTMLInputElement>('#smtp-password')!.value).toBe('');
+    expect(button('保存配置').disabled).toBe(true);
+    await act(async () => value('#smtp-port', '465'));
+    await act(async () => value('#smtp-fromName', 'Brand Name'));
+    await act(async () => button('测试 SMTP 连接').click());
+    await vi.waitFor(() =>
+      expect(mocks.api.mock.calls.some((c) => c[0].endsWith('/connection-test'))).toBe(true),
+    );
+    expect(mocks.api.mock.calls.some((c) => c[0].endsWith('/smtp/test'))).toBe(false);
+    await act(async () => button('保存配置').click());
+    await vi.waitFor(() =>
+      expect(mocks.api.mock.calls.some((c) => c[0].startsWith('PUT'))).toBe(true),
+    );
+    expect(view.host.querySelector<HTMLInputElement>('#smtp-fromName')!.value).toBe('Brand Name');
+    const call = mocks.api.mock.calls.find((c) => c[0].startsWith('PUT'))!;
+    expect(JSON.parse(call[2].body).port).toBe(465);
   } finally {
     await view.dispose();
   }

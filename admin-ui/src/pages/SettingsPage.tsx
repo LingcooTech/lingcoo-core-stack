@@ -1,3 +1,4 @@
+import { SmtpSettingsPanel } from '@/components/settings/SmtpSettingsPanel';
 import { StorageSettingsPanel } from '@/components/storage/StorageSettingsPanel';
 import { handleAsync } from '@/lib/async-events';
 import { Plus, Search, Trash2 } from 'lucide-react';
@@ -14,16 +15,13 @@ import {
   clearOpenRouterSettings,
   clearPublicPagesSettings,
   clearSiteSettings,
-  clearSmtpSettings,
   getContentImportSettings,
   getAiProviders,
   getOpenRouterSettings,
   getPublicPagesSettings,
   getSiteSettings,
-  getSmtpSettings,
   previewOpenRouterChatCompletion,
   previewOpenRouterModels,
-  sendSmtpTestEmail,
   testNotionImportSettings,
   testWordPressImportSettings,
   testOpenRouterSettings,
@@ -31,7 +29,6 @@ import {
   upsertOpenRouterSettings,
   upsertPublicPagesSettings,
   upsertSiteSettings,
-  upsertSmtpSettings,
 } from '@/api/settings';
 import type {
   AiChatCompletionResult,
@@ -66,15 +63,6 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-
-const smtpSchema = z.object({
-  host: z.string().optional(),
-  port: z.coerce.number<string | number>().int().min(1).max(65535),
-  secure: z.boolean().optional(),
-  user: z.string().optional(),
-  password: z.string().optional(),
-  from: z.string().email('请输入有效邮箱').or(z.literal('')),
-});
 
 const optionalUrlField = z.preprocess(
   (value: string) => (typeof value === 'string' ? value.trim() : value),
@@ -158,39 +146,10 @@ const publicPagesSchema = z.object({
   docsHub: hubContentSchema,
 });
 
-const testEmailSchema = z.string().trim().email('请输入有效的测试收件邮箱');
-const testSubjectSchema = z
-  .string()
-  .trim()
-  .min(1, '请输入测试邮件主题')
-  .max(200, '主题不能超过 200 个字符');
-const testBodySchema = z
-  .string()
-  .trim()
-  .min(1, '请输入测试邮件正文')
-  .max(10_000, '正文不能超过 10000 个字符');
-
-type SmtpValues = z.infer<typeof smtpSchema>;
 type SiteValues = z.infer<typeof siteSchema>;
 type OpenRouterValues = z.infer<typeof openrouterSchema>;
 type ContentImportValues = z.infer<typeof contentImportSchema>;
 type PublicPagesValues = z.infer<typeof publicPagesSchema>;
-
-function buildSmtpPayload(values: SmtpValues, options: { includePassword: boolean }) {
-  const host = values.host?.trim();
-  const user = values.user?.trim();
-  const password = values.password?.trim();
-  const from = values.from?.trim();
-
-  return {
-    ...(host ? { host } : {}),
-    port: values.port,
-    secure: Boolean(values.secure),
-    ...(user ? { user } : {}),
-    ...(options.includePassword && password ? { password } : {}),
-    ...(from ? { from } : {}),
-  };
-}
 
 function buildSitePayload(values: SiteValues) {
   return {
@@ -307,26 +266,19 @@ export function SettingsPage() {
   const qc = useQueryClient();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() =>
-    new URLSearchParams(location.search).get('tab') === 'storage' ? 'storage' : 'site',
+    ['storage', 'smtp'].includes(new URLSearchParams(location.search).get('tab') ?? '')
+      ? new URLSearchParams(location.search).get('tab')!
+      : 'site',
   );
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('tab') === 'storage') setActiveTab('storage');
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab === 'storage' || tab === 'smtp') setActiveTab(tab);
   }, [location.search]);
   const [settingsQuery, setSettingsQuery] = useState('');
   const [clearSiteOpen, setClearSiteOpen] = useState(false);
-  const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
   const [clearOpenRouterOpen, setClearOpenRouterOpen] = useState(false);
   const [clearContentImportOpen, setClearContentImportOpen] = useState(false);
   const [clearPublicPagesOpen, setClearPublicPagesOpen] = useState(false);
-  const [testTo, setTestTo] = useState('');
-  const [testSubject, setTestSubject] = useState('fd-core-stack SMTP 测试邮件');
-  const [testBody, setTestBody] = useState(
-    [
-      '这是一封来自 fd-core-stack 的测试邮件。',
-      '',
-      '如果你收到了这封邮件，说明当前 SMTP 配置已经可以正常发送邮件。',
-    ].join('\n'),
-  );
   const [openrouterModels, setOpenrouterModels] = useState<AiModelSummary[]>([]);
   const [openrouterModelsLoaded, setOpenrouterModelsLoaded] = useState(false);
   const [openrouterConnectionResult, setOpenrouterConnectionResult] =
@@ -347,11 +299,6 @@ export function SettingsPage() {
     queryFn: getAiProviders,
   });
 
-  const { data: smtpData, isLoading: smtpLoading } = useQuery({
-    queryKey: ['system-settings', 'smtp'],
-    queryFn: getSmtpSettings,
-  });
-
   const { data: siteData, isLoading: siteLoading } = useQuery({
     queryKey: ['system-settings', 'site'],
     queryFn: getSiteSettings,
@@ -370,18 +317,6 @@ export function SettingsPage() {
   const { data: publicPagesData, isLoading: publicPagesLoading } = useQuery({
     queryKey: ['system-settings', 'public-pages'],
     queryFn: getPublicPagesSettings,
-  });
-
-  const smtpForm = useForm<z.input<typeof smtpSchema>, unknown, SmtpValues>({
-    resolver: zodResolver(smtpSchema),
-    defaultValues: {
-      host: '',
-      port: 465,
-      secure: true,
-      user: '',
-      password: '',
-      from: '',
-    },
   });
 
   const siteForm = useForm<SiteValues>({
@@ -486,21 +421,6 @@ export function SettingsPage() {
   });
 
   useEffect(() => {
-    if (!smtpData) {
-      return;
-    }
-
-    smtpForm.reset({
-      host: smtpData.values.host,
-      port: smtpData.values.port,
-      secure: smtpData.values.secure,
-      user: smtpData.values.user,
-      password: '',
-      from: smtpData.values.from,
-    });
-  }, [smtpData, smtpForm]);
-
-  useEffect(() => {
     if (!siteData) {
       return;
     }
@@ -578,41 +498,6 @@ export function SettingsPage() {
   const hasSelectedOpenRouterModelOption =
     !selectedOpenRouterModelId ||
     openrouterModels.some((item) => item.id === selectedOpenRouterModelId);
-
-  const saveSmtpMutation = useMutation({
-    mutationFn: upsertSmtpSettings,
-    onSuccess: (result) => {
-      toast.success('SMTP 配置已保存');
-      qc.setQueryData(['system-settings', 'smtp'], result);
-      smtpForm.reset({
-        host: result.values.host,
-        port: result.values.port,
-        secure: result.values.secure,
-        user: result.values.user,
-        password: '',
-        from: result.values.from,
-      });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
-  });
-
-  const clearSmtpMutation = useMutation({
-    mutationFn: clearSmtpSettings,
-    onSuccess: async () => {
-      toast.success('数据库中的 SMTP 配置已清空');
-      setClearSmtpOpen(false);
-      await qc.invalidateQueries({ queryKey: ['system-settings', 'smtp'] });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '清空失败'),
-  });
-
-  const testSmtpMutation = useMutation({
-    mutationFn: sendSmtpTestEmail,
-    onSuccess: (result) => {
-      toast.success(`测试邮件已发送到 ${result.to}`);
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '发送测试邮件失败'),
-  });
 
   const saveSiteMutation = useMutation({
     mutationFn: upsertSiteSettings,
@@ -833,35 +718,6 @@ export function SettingsPage() {
     buildManagedOpenRouterPayload,
   ]);
 
-  const handleSendTestEmail = smtpForm.handleSubmit((values) => {
-    const parsedTo = testEmailSchema.safeParse(testTo);
-    if (!parsedTo.success) {
-      toast.error(parsedTo.error.issues[0]?.message ?? '请输入有效的测试收件邮箱');
-      return;
-    }
-
-    const parsedSubject = testSubjectSchema.safeParse(testSubject);
-    if (!parsedSubject.success) {
-      toast.error(parsedSubject.error.issues[0]?.message ?? '请输入测试邮件主题');
-      return;
-    }
-
-    const parsedBody = testBodySchema.safeParse(testBody);
-    if (!parsedBody.success) {
-      toast.error(parsedBody.error.issues[0]?.message ?? '请输入测试邮件正文');
-      return;
-    }
-
-    testSmtpMutation.mutate({
-      ...buildSmtpPayload(values, {
-        includePassword: Boolean(smtpForm.formState.dirtyFields.password),
-      }),
-      to: parsedTo.data,
-      subject: parsedSubject.data,
-      text: parsedBody.data,
-    });
-  });
-
   const handleTestOpenRouter = openrouterForm.handleSubmit((values) => {
     testOpenRouterMutation.mutate(buildManagedOpenRouterPayload(values));
   });
@@ -940,7 +796,7 @@ export function SettingsPage() {
                   公共页面
                 </TabsTrigger>
                 <TabsTrigger value="smtp" className="min-w-[108px] rounded-md">
-                  SMTP
+                  邮件服务
                 </TabsTrigger>
                 <TabsTrigger value="storage" className="min-w-[108px] rounded-md">
                   文件存储
@@ -1598,198 +1454,7 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="smtp" className="mt-0">
-            <div className="space-y-5 rounded-lg border border-border bg-card p-6 shadow-sm">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
-                  <StatusPill
-                    tone={smtpData?.configured ? 'ok' : 'neutral'}
-                    label={smtpData?.configured ? 'SMTP 已配置' : 'SMTP 未配置'}
-                  />
-                  <StatusPill
-                    tone={
-                      smtpData?.source === 'database'
-                        ? 'ok'
-                        : smtpData?.source === 'env'
-                          ? 'warn'
-                          : 'neutral'
-                    }
-                    label={`来源: ${sourceLabel(smtpData?.source ?? 'none')}`}
-                  />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">SMTP 配置</h2>
-              </div>
-
-              {smtpLoading ? (
-                <div className="space-y-3">
-                  {[...Array(5)].map((_, index) => (
-                    <div key={index} className="h-10 animate-pulse rounded-md bg-muted" />
-                  ))}
-                </div>
-              ) : (
-                <Form {...smtpForm}>
-                  <form
-                    onSubmit={handleAsync(
-                      smtpForm.handleSubmit((values) =>
-                        saveSmtpMutation.mutate(
-                          buildSmtpPayload(values, {
-                            includePassword: Boolean(smtpForm.formState.dirtyFields.password),
-                          }),
-                        ),
-                      ),
-                    )}
-                    className="space-y-5"
-                  >
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={smtpForm.control}
-                        name="host"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SMTP Host</FormLabel>
-                            <FormControl>
-                              <Input placeholder="smtp.example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={smtpForm.control}
-                        name="port"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>端口</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={65535}
-                                value={field.value}
-                                onChange={(event) => field.onChange(event.target.value)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={smtpForm.control}
-                        name="user"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>用户名</FormLabel>
-                            <FormControl>
-                              <Input placeholder="mailer@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={smtpForm.control}
-                        name="from"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>发件人邮箱</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="noreply@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={smtpForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SMTP Password</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              autoComplete="new-password"
-                              placeholder={
-                                smtpData?.secrets.password.configured
-                                  ? '已保存，留空保持不变'
-                                  : '请输入 SMTP 密码'
-                              }
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={smtpForm.control}
-                      name="secure"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 rounded-md border border-border bg-muted px-4 py-3">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                          <FormLabel className="cursor-pointer">启用 SSL/TLS</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex gap-2">
-                      <Button type="submit" disabled={saveSmtpMutation.isPending}>
-                        {saveSmtpMutation.isPending ? '保存中...' : '保存 SMTP 配置'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={clearSmtpMutation.isPending}
-                        onClick={() => setClearSmtpOpen(true)}
-                      >
-                        清空数据库配置
-                      </Button>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/70 p-4">
-                      <h3 className="text-sm font-semibold text-foreground">发送测试邮件</h3>
-                      <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                        <Input
-                          type="email"
-                          value={testTo}
-                          onChange={(event) => setTestTo(event.target.value)}
-                          placeholder="test@example.com"
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <Input
-                          value={testSubject}
-                          onChange={(event) => setTestSubject(event.target.value)}
-                          placeholder="测试邮件主题"
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <Textarea
-                          value={testBody}
-                          onChange={(event) => setTestBody(event.target.value)}
-                          placeholder="测试邮件正文"
-                          className="min-h-[140px]"
-                        />
-                      </div>
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={testSmtpMutation.isPending}
-                          onClick={handleAsync(handleSendTestEmail)}
-                        >
-                          {testSmtpMutation.isPending ? '发送中...' : '发送测试邮件'}
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
-                </Form>
-              )}
-            </div>
+            <SmtpSettingsPanel />
           </TabsContent>
 
           <TabsContent value="storage" className="mt-0">
@@ -2284,17 +1949,6 @@ export function SettingsPage() {
       />
 
       <ConfirmActionDialog
-        open={clearSmtpOpen}
-        onOpenChange={setClearSmtpOpen}
-        title="清空 SMTP 数据库配置？"
-        description="这会删除数据库中的 SMTP 设置。清空后系统将回退到环境变量配置；如果环境变量也没有配置，注册验证和找回密码邮件会失效。"
-        confirmText={clearSmtpMutation.isPending ? '清空中...' : '确认清空'}
-        confirmVariant="destructive"
-        isConfirming={clearSmtpMutation.isPending}
-        onConfirm={() => clearSmtpMutation.mutate()}
-      />
-
-      <ConfirmActionDialog
         open={clearOpenRouterOpen}
         onOpenChange={setClearOpenRouterOpen}
         title="清空 OpenRouter 数据库配置？"
@@ -2363,13 +2017,13 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchHit[] = [
   },
   {
     tab: 'smtp',
-    tabLabel: 'SMTP',
+    tabLabel: '邮件服务',
     field: 'SMTP 主机 / 端口',
     keywords: ['smtp', '邮件', '邮箱', 'host', 'port', '发件'],
   },
   {
     tab: 'smtp',
-    tabLabel: 'SMTP',
+    tabLabel: '邮件服务',
     field: '发送测试邮件',
     keywords: ['测试邮件', 'test', '发件人'],
   },

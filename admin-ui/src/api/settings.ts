@@ -20,6 +20,8 @@ import type {
 } from './types';
 
 export interface SmtpSettingsInput {
+  transport?: 'capture' | 'smtp';
+  fromName?: string;
   host?: string;
   port?: number;
   secure?: boolean;
@@ -341,5 +343,20 @@ export async function clearOpenRouterSettings(): Promise<void> {
   await apiClient(
     'DELETE /v1/admin/system-settings/ai/providers/openrouter',
     '/v1/admin/system-settings/ai/providers/openrouter',
+  );
+}
+
+export function testSmtpConnection(payload: SmtpSettingsInput) {
+  return apiClient(
+    'POST /v1/admin/system-settings/smtp/connection-test',
+    '/v1/admin/system-settings/smtp/connection-test',
+    { body: JSON.stringify(payload) },
+  );
+}
+
+export function rotateSettingSecrets() {
+  return apiClient(
+    'POST /v1/admin/system-settings/rotate-secrets',
+    '/v1/admin/system-settings/rotate-secrets',
   );
 }

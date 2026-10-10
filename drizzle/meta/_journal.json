@@ -344,6 +344,13 @@
       "when": 1791587391133,
       "tag": "0048_watery_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791612164575,
+      "tag": "0049_far_legion",
+      "breakpoints": true
     }
   ]
 }

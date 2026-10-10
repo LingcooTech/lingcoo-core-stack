@@ -19,6 +19,7 @@ import { StorageSettingsService } from '../settings/public';
 import { AuditLogService } from '../audit/public';
 import { inspectAssetContent, assertDeclaredAssetType } from './content-inspection';
 import { S3StorageProvider } from './s3-provider';
+import { LocalStorageProvider } from './local-provider';
 type ObjectRow = typeof storageObjects.$inferSelect;
 export type StorageProviderFactory = (config: StorageSettings) => {
   test: () => Promise<unknown>;
@@ -30,7 +31,8 @@ export class StorageService {
   constructor(
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
-    private readonly provider: StorageProviderFactory = (c) => new S3StorageProvider(c),
+    private readonly provider: StorageProviderFactory = (c) =>
+      c.provider === 'local' ? new LocalStorageProvider(c.endpoint) : new S3StorageProvider(c),
   ) {}
   private async lock(tx: DbExecutor) {
     await acquireTransactionLock(tx, 'storage:references');
@@ -40,20 +42,31 @@ export class StorageService {
   }
   async config(db = this.db) {
     const { value, source } = await this.settings(db).runtime();
+    if (value.provider === 'local') return this.objectConfiguration(value);
     if (
       source === 'legacy' ||
       !value.region ||
       !value.bucket ||
-      !value.accessKey ||
-      !value.secretKey
+      Boolean(value.accessKey) !== Boolean(value.secretKey)
     )
       throw httpError(409, '请先完成 S3 存储设置与连接测试');
     return value;
   }
+  private objectConfiguration(value: StorageSettings): StorageSettings {
+    return value.provider === 'local'
+      ? {
+          ...value,
+          bucket: 'local',
+          region: 'local',
+          endpoint: this.env.STORAGE_LOCAL_ROOT,
+          publicBaseUrl: '',
+        }
+      : value;
+  }
   async saveSettings(input: StorageSettings, userId: string) {
     return this.db.transaction(async (tx) => {
       await this.lock(tx);
-      const next = await this.settings(tx).draft(input);
+      const next = this.objectConfiguration(await this.settings(tx).draft(input));
       const [object] = await tx
         .select()
         .from(storageObjects)
@@ -61,6 +74,7 @@ export class StorageService {
           and(
             neDeleted(),
             or(
+              sql`${storageObjects.provider} <> ${next.provider}`,
               sql`${storageObjects.bucket} <> ${next.bucket}`,
               sql`${storageObjects.endpoint} <> ${next.endpoint}`,
               sql`${storageObjects.region} <> ${next.region}`,
@@ -77,9 +91,12 @@ export class StorageService {
     });
   }
   async testSettings(input: StorageSettings) {
-    const config = await this.settings().draft(input);
-    if (!config.region || !config.bucket || !config.accessKey || !config.secretKey)
-      throw httpError(422, '请填写区域、S3 空间名称以及成对的访问密钥');
+    const config = this.objectConfiguration(await this.settings().draft(input));
+    if (
+      config.provider === 's3' &&
+      (!config.region || !config.bucket || Boolean(config.accessKey) !== Boolean(config.secretKey))
+    )
+      throw httpError(422, '请填写区域、存储空间名称；访问密钥必须成对填写，AWS 实例角色可留空');
     await this.provider(config).test();
     return { ok: true as const };
   }
@@ -295,6 +312,7 @@ export class StorageService {
         assetId: asset.id,
         version,
         objectKey: `${config.defaultPrefix || 'assets'}/${asset.id}/v${version}/${objectId}`,
+        provider: config.provider,
         bucket: config.bucket,
         endpoint: config.endpoint,
         region: config.region,
@@ -413,6 +431,7 @@ export class StorageService {
   private async configForObject(object: ObjectRow, db = this.db) {
     const config = await this.config(db);
     if (
+      config.provider !== object.provider ||
       config.bucket !== object.bucket ||
       config.endpoint !== object.endpoint ||
       config.region !== object.region

@@ -42,18 +42,7 @@ export class AuthService {
     }
 
     const config = await new SmtpSettingsService(this.db, this.env).getRuntimeSettings();
-    return new Mailer(
-      config && config.password
-        ? {
-            host: config.host,
-            port: config.port,
-            secure: config.secure,
-            user: config.user,
-            password: config.password,
-            from: config.from,
-          }
-        : null,
-    );
+    return new Mailer(config ? { ...config, password: config.password ?? '' } : null);
   }
 
   async sendVerificationCode(userId: string, email: string) {

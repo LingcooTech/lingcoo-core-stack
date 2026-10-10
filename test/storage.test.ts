@@ -72,6 +72,7 @@ test('S3 SDK signs and transfers the actual file bytes with an explicit integrit
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Missing test address');
   const provider = new S3StorageProvider({
+    provider: 's3',
     region: 'cn-east-1',
     endpoint: `http://127.0.0.1:${address.port}`,
     bucket: 'fixture-bucket',
@@ -97,5 +98,36 @@ test('S3 SDK signs and transfers the actual file bytes with an explicit integrit
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve())));
+  }
+});
+
+test('local storage persists bytes, rejects traversal and symlinks, and deletes idempotently', async () => {
+  const { mkdtemp, rm, symlink, readdir } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { LocalStorageProvider } = await import('../src/modules/storage/local-provider');
+  const root = await mkdtemp(join(tmpdir(), 'stack-storage-local-'));
+  const outside = await mkdtemp(join(tmpdir(), 'stack-storage-outside-'));
+  try {
+    const first = new LocalStorageProvider(root);
+    await first.test();
+    await first.write('assets/a/v1/object', Buffer.from('persistent'));
+    const second = new LocalStorageProvider(root);
+    const chunks: Buffer[] = [];
+    for await (const chunk of (await second.read('assets/a/v1/object')).Body)
+      chunks.push(Buffer.from(chunk));
+    assert.equal(Buffer.concat(chunks).toString(), 'persistent');
+    await assert.rejects(first.write('../escape', Buffer.from('bad')));
+    await symlink(outside, join(root, 'linked'));
+    await assert.rejects(first.write('linked/subdirectory/object', Buffer.from('bad')));
+    assert.deepEqual(await readdir(outside), []);
+    await symlink(join(outside, 'missing'), join(root, 'linked-file'));
+    await assert.rejects(first.read('linked-file'));
+    await second.delete('assets/a/v1/object');
+    await second.delete('assets/a/v1/object');
+    await assert.rejects(first.read('assets/a/v1/object'));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
   }
 });

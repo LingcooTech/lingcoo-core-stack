@@ -51,6 +51,8 @@ export const alipayPaymentSettingsSchema = z.object({
 });
 
 export const smtpSettingsSchema = z.object({
+  transport: z.enum(['capture', 'smtp']).optional(),
+  fromName: optionalTrimmedString(120),
   host: optionalTrimmedString(255),
   port: z.coerce.number().int().min(1).max(65535).optional(),
   secure: z.boolean().optional(),
