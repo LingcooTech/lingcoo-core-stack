@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { eq } from 'drizzle-orm';
 import { testDatabase, seedPurchase } from '../integration/helpers';
 import { users, passwordCredentials, entitlements } from '../../src/db/schema';
@@ -261,4 +263,132 @@ test('hosting resource registration keeps allocation paused and budget edits sur
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   );
+});
+
+test('all admin routes and legacy redirects render, with responsive themed forms and public pages', async ({
+  page,
+}, info) => {
+  test.setTimeout(180000);
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  const apps = await (await page.request.get('/v1/admin/apps')).json();
+  const content = await (await page.request.get('/v1/admin/content?limit=1')).json();
+  const routes = [
+    '/admin',
+    '/admin/apps',
+    '/admin/apps/new',
+    `/admin/apps/${apps.items[0].code}/edit`,
+    '/admin/content',
+    '/admin/content/new',
+    `/admin/content/${content.items[0].id}/edit`,
+    '/admin/storage',
+    '/admin/docs',
+    '/admin/secrets',
+    '/admin/orders',
+    '/admin/payments',
+    '/admin/settings',
+    '/admin/licenses',
+    '/admin/tickets',
+    '/admin/users',
+    '/admin/installs',
+    '/admin/notifications',
+    '/admin/hosting',
+    '/admin/deployments',
+    '/admin/observability',
+  ];
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  for (const route of routes) {
+    await page.goto(route);
+    await expect(page.locator('.admin-page')).toBeVisible();
+    await expect(page.getByText('页面加载失败', { exact: true })).toHaveCount(0);
+  }
+  for (const [from, to] of [
+    ['catalog', 'apps'],
+    ['delivery', 'apps'],
+    ['operations', 'orders'],
+  ]) {
+    await page.goto(`/admin/${from}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/${to}$`));
+  }
+  for (const width of [1440, 1280, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/admin/settings?tab=smtp');
+    await expect(page.getByLabel('发件名称', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+      true,
+    );
+    await page.screenshot({ path: info.outputPath(`settings-${width}.png`), fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: '切换主题', exact: true }).click();
+  await page.getByRole('menuitem', { name: '深色', exact: true }).click();
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.screenshot({ path: info.outputPath('settings-dark.png'), fullPage: true });
+  await page.getByRole('button', { name: '切换主题', exact: true }).click();
+  await page.getByRole('menuitem', { name: '跟随系统', exact: true }).click();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  for (const route of ['/', '/content', '/docs', '/account']) {
+    await page.goto(route);
+    await expect(page.locator('main').first()).toBeVisible();
+    expect(await page.locator('.stack-admin').count()).toBe(0);
+  }
+  expect(errors).toEqual([]);
+});
+
+// Real application manifests are copied from their repositories; all writes stay in the disposable test database.
+test('Retail and Edu manifests render dynamically and survive an application edit', async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  for (const sample of ['retail', 'edu']) {
+    const manifest = JSON.parse(
+      readFileSync(resolve(`test/fixtures/app-manifests/${sample}.json`), 'utf8'),
+    ) as Record<string, unknown>;
+    const code = `browser_${sample}_${randomUUID().replaceAll('-', '').slice(0, 8)}`;
+    const response = await page.request.put(`/v1/admin/apps/${code}`, {
+      headers: {
+        'x-csrf-token': (await page.context().cookies()).find(
+          (cookie) => cookie.name === 'fd_core_csrf',
+        )!.value,
+      },
+      data: {
+        name: `Sample ${sample}`,
+        type: 'web_app',
+        status: 'inactive',
+        features: [],
+        plans: [],
+        offers: [],
+        meta: { deliveryMode: 'one_click', deliveryManifest: manifest },
+      },
+    });
+    expect(response.ok(), await response.text()).toBe(true);
+    await page.goto(`/admin/apps/${code}/edit`);
+    await page.getByRole('tab', { name: '交付配置', exact: true }).click();
+    await expect(
+      page.getByLabel(sample === 'retail' ? 'Retail 运行镜像 digest' : 'Edu 运行镜像 digest', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByRole('tab', { name: '基本信息', exact: true }).click();
+    await page.locator('#app-editor_app_name').fill(`Updated ${sample}`);
+    await page.getByRole('tab', { name: '展示内容', exact: true }).click();
+    await page.locator('.w-md-editor-text-input').fill(`# ${sample} detail`);
+    await page.getByRole('tab', { name: '基本信息', exact: true }).click();
+    await page.getByRole('button', { name: '保存应用配置', exact: true }).click();
+    await expect(page.getByText('应用配置已保存', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.locator('#app-editor_app_name')).toHaveValue(`Updated ${sample}`);
+    await page.getByRole('tab', { name: '展示内容', exact: true }).click();
+    await expect(page.locator('.w-md-editor-text-input')).toHaveValue(`# ${sample} detail`);
+    const apps = await (await page.request.get('/v1/admin/apps')).json();
+    expect(
+      apps.items.find((app: { code: string }) => app.code === code).meta.deliveryManifest,
+    ).toEqual(manifest);
+  }
 });

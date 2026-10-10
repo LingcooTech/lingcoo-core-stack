@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { App, Button, Form, Modal, Space, Tabs } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +11,6 @@ import { AsyncState } from '@/components/admin/AsyncState';
 import { AppReadiness } from '@/components/apps/app-edit/AppReadiness';
 import {
   AppBasicsSection,
-  AppContentSection,
   AppFeaturesSection,
   AppPlansSection,
   AppOffersSection,
@@ -44,6 +43,11 @@ import {
 import { useSettingsForm } from '@/lib/settings-form';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
+const AppContentSection = lazy(() =>
+  import('@/components/admin/apps/AppContentSection').then((module) => ({
+    default: module.AppContentSection,
+  })),
+);
 export interface AppEditorDraft {
   app: FormState;
   features: EditableFeature[];
@@ -284,12 +288,14 @@ function AppEditor({ appCode }: { appCode?: string }) {
               (t) => ({
                 key: t.key,
                 label: t.label,
-                forceRender: true,
+                forceRender: t.key !== 'content',
                 children:
                   t.key === 'basics' ? (
                     <AppBasicsSection create={!appCode} />
                   ) : t.key === 'content' ? (
-                    <AppContentSection />
+                    <Suspense fallback={<AsyncState loading>{null}</AsyncState>}>
+                      <AppContentSection />
+                    </Suspense>
                   ) : t.key === 'features' ? (
                     <AppFeaturesSection />
                   ) : t.key === 'plans' ? (

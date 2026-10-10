@@ -1,0 +1,129 @@
+{
+  "scope": {
+    "businessSections": 17,
+    "adminPageRoutes": 22,
+    "publicPagesChecked": 15,
+    "legacyAdminRuntimePaths": 0
+  },
+  "checks": {
+    "adminBrowser": {
+      "passed": 54,
+      "files": 24
+    },
+    "integration": {
+      "passed": 125,
+      "failed": 0
+    },
+    "backendUnit": {
+      "passed": 102,
+      "skipped": 3,
+      "failed": 0
+    },
+    "storybook": "passed",
+    "auditAllVulnerabilities": 0,
+    "auditProductionVulnerabilities": 0,
+    "e2e": {
+      "passed": 10,
+      "failed": 0,
+      "adminRoutes": 22,
+      "legacyRedirects": 3,
+      "viewportWidths": [1440, 1280, 1024, 390],
+      "themes": ["light", "dark", "system"],
+      "realManifestSamples": ["retail", "edu"],
+      "writes": "isolated test database with normal login and CSRF"
+    },
+    "format": "passed",
+    "schema": "passed",
+    "moduleBoundaries": "passed",
+    "adminBoundaries": "passed",
+    "lint": "passed",
+    "backendTypes": "passed",
+    "testTypes": "passed",
+    "adminTypes": "passed",
+    "productionBuild": "passed",
+    "staticEntry": "passed"
+  },
+  "assets": {
+    "baseline": {
+      "totalBytes": 12370256,
+      "totalGzipBytes": 2715508,
+      "appEditor": [
+        {
+          "file": "AppEditPage-BDMGO-ot.js",
+          "bytes": 791443,
+          "gzipBytes": 276801
+        },
+        {
+          "file": "AppEditPage-CePAQ54o.css",
+          "bytes": 33811,
+          "gzipBytes": 6014
+        }
+      ],
+      "settings": [
+        {
+          "file": "SettingsPage-D9dwNrTj.js",
+          "bytes": 57903,
+          "gzipBytes": 15062
+        }
+      ],
+      "hosting": [
+        {
+          "file": "HostingPage-CO8kNg5V.js",
+          "bytes": 50171,
+          "gzipBytes": 14914
+        }
+      ]
+    },
+    "current": {
+      "totalBytes": 13261769,
+      "totalGzipBytes": 3040471,
+      "appEditor": [
+        {
+          "file": "AppEditPage-ISKhTeuP.js",
+          "bytes": 26931,
+          "gzipBytes": 9676
+        }
+      ],
+      "appContentOnDemand": [
+        {
+          "file": "AppContentSection-B_rCYPFv.js",
+          "bytes": 725045,
+          "gzipBytes": 257667
+        },
+        {
+          "file": "AppContentSection-CePAQ54o.css",
+          "bytes": 33811,
+          "gzipBytes": 6014
+        }
+      ],
+      "settings": [
+        {
+          "file": "SettingsPage-DP-nf4R9.js",
+          "bytes": 37038,
+          "gzipBytes": 11914
+        }
+      ],
+      "hosting": [
+        {
+          "file": "HostingPage-BW9LDRZQ.js",
+          "bytes": 52156,
+          "gzipBytes": 18246
+        }
+      ],
+      "entry": ["/assets/index-CBeMjRJG.js"]
+    },
+    "interpretation": "Total covers all emitted JS/CSS, including on-demand language grammars; it is not first-page transfer size. App editor split sizes exclude shared chunks."
+  },
+  "production": {
+    "status": "pending",
+    "rollbackRevision": "261b158adb517c0406be71d5a7721fd508e1c1b1",
+    "rollbackDigest": "sha256:6d60b5ece92d50e34f212768ff9eec35d2aca737f2d912e5f5edabf54366528c",
+    "databaseMigrationsAdded": false
+  },
+  "validationBoundaries": {
+    "productionMutationsForTesting": false,
+    "productionAdminSessionForged": false,
+    "realPaymentClaimed": false,
+    "customerAppsRedeployed": false
+  }
+}

@@ -97,9 +97,9 @@ function AdminLayout() {
     }))
     .filter((group) => group.children.length > 0);
   const themeItems: MenuProps['items'] = [
-    { key: 'light', label: '浅色', icon: <SunOutlined /> },
-    { key: 'dark', label: '深色', icon: <MoonOutlined /> },
-    { key: 'system', label: '跟随系统', icon: <DesktopOutlined /> },
+    { key: 'light', label: '浅色', icon: <SunOutlined aria-hidden="true" /> },
+    { key: 'dark', label: '深色', icon: <MoonOutlined aria-hidden="true" /> },
+    { key: 'system', label: '跟随系统', icon: <DesktopOutlined aria-hidden="true" /> },
   ];
   const accountItems: MenuProps['items'] = [
     {

@@ -29,7 +29,7 @@
     "lint:admin": "npm run lint --prefix admin-ui",
     "typecheck:admin": "npm run typecheck --prefix admin-ui",
     "smoke:admin-static": "node scripts/verify-admin-static.mjs",
-    "check": "npm run check:toolchain && npm run build:packages && npm run format:check && npm run check:schema && npm run check:boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:admin && npm run build && npm run smoke:admin-static",
+    "check": "npm run check:toolchain && npm run build:packages && npm run format:check && npm run check:schema && npm run check:boundaries && npm run check:admin-boundaries && npm run lint && npm run lint:admin && npm run typecheck && npm run typecheck:test && npm run typecheck:admin && npm test && npm run build:admin && npm run build && npm run smoke:admin-static",
     "inspect:architecture": "node scripts/inspect-architecture.mjs",
     "db:bootstrap": "node dist/scripts/bootstrap-admin.js",
     "check:boundaries": "node scripts/check-module-boundaries.mjs",
@@ -44,7 +44,8 @@
     "preinstall": "node scripts/check-toolchain.mjs",
     "check:schema": "node --import tsx scripts/check-schema.mjs",
     "app:validate": "node --import tsx scripts/validate-app-product.mjs",
-    "smoke:retail-delivery": "node --import tsx scripts/verify-retail-delivery.mjs"
+    "smoke:retail-delivery": "node --import tsx scripts/verify-retail-delivery.mjs",
+    "check:admin-boundaries": "node scripts/admin-ui-inventory.mjs --check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1117.0",

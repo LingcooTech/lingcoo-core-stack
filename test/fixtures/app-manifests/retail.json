@@ -1,0 +1,85 @@
+{
+  "version": "1",
+  "installer": {
+    "repoUrl": "https://downloads.lingcoo.com/apps/lingcoo_retail_oms/pending/",
+    "repoBranch": "release",
+    "remoteInstallScriptUrl": "https://downloads.lingcoo.com/apps/lingcoo_retail_oms/pending/remote-install.sh",
+    "installPath": "/opt/lingcoo-retail-oms"
+  },
+  "groups": [],
+  "domainSlots": [
+    {
+      "key": "retail",
+      "label": "Retail OMS 域名",
+      "envKey": "RETAIL_DOMAIN",
+      "sourceField": "primaryDomain",
+      "required": true,
+      "description": "Web、Admin 和 API 共用部署域名。"
+    }
+  ],
+  "envFields": [
+    {
+      "key": "APP_IMAGE",
+      "label": "Retail 运行镜像 digest",
+      "type": "text",
+      "scope": "preset",
+      "required": true,
+      "editable": true,
+      "advanced": true
+    },
+    {
+      "key": "ACR_USERNAME",
+      "label": "镜像仓库只读用户名",
+      "type": "text",
+      "scope": "preset",
+      "required": true,
+      "editable": true,
+      "advanced": true
+    },
+    {
+      "key": "INITIAL_ADMIN_EMAIL",
+      "label": "安装初始化邮箱",
+      "type": "email",
+      "scope": "user_input",
+      "required": true,
+      "editable": true,
+      "advanced": false
+    }
+  ],
+  "secretFields": [
+    {
+      "key": "ACR_PASSWORD",
+      "label": "镜像仓库受限拉取凭据",
+      "type": "secret",
+      "scope": "preset",
+      "required": true,
+      "editable": true,
+      "advanced": true
+    },
+    {
+      "key": "INITIAL_ADMIN_PASSWORD",
+      "label": "安装初始化密码",
+      "type": "secret",
+      "scope": "user_input",
+      "required": true,
+      "editable": true,
+      "advanced": false
+    }
+  ],
+  "assets": [
+    {
+      "key": "retail-runtime",
+      "label": "Retail OMS Runtime",
+      "type": "docker_image",
+      "required": true,
+      "visibility": "private",
+      "imageEnv": "APP_IMAGE",
+      "authSecret": "ACR_PASSWORD"
+    }
+  ],
+  "notes": [
+    "交付包仅包含部署配置和脚本，业务源码不交付。",
+    "Web 是 SSR；Worker 持续运行；当前只认证自有服务器 Compose 模式。",
+    "部署后的应用账号与使用不接入 Stack。"
+  ]
+}

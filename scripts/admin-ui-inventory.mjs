@@ -30,14 +30,40 @@ function resolveImport(file, specifier) {
 const graph = new Map();
 for (const [file, source] of files) {
   const imports = [];
-  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const ast = ts.createSourceFile(
+    file,
+    file.endsWith('.css') ? '' : source,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  if (ast.parseDiagnostics.length)
+    throw new Error(
+      `Cannot parse ${file}: ${ast.parseDiagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ')).join('; ')}`,
+    );
+  const runtimeImport = (node) => {
+    if (ts.isImportDeclaration(node)) {
+      const clause = node.importClause;
+      if (!clause) return true;
+      if (clause.isTypeOnly) return false;
+      if (clause.name || !clause.namedBindings || ts.isNamespaceImport(clause.namedBindings))
+        return true;
+      return (
+        clause.namedBindings.elements.length === 0 ||
+        clause.namedBindings.elements.some((item) => !item.isTypeOnly)
+      );
+    }
+    return (
+      !node.isTypeOnly &&
+      (!node.exportClause ||
+        !ts.isNamedExports(node.exportClause) ||
+        node.exportClause.elements.length === 0 ||
+        node.exportClause.elements.some((item) => !item.isTypeOnly))
+    );
+  };
   function visit(node) {
-    if (
-      (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly) ||
-      (ts.isExportDeclaration(node) && !node.isTypeOnly)
-    ) {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && runtimeImport(node)) {
       if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-        imports.push(node.moduleSpecifier.text);
+        imports.push({ specifier: node.moduleSpecifier.text, dynamic: false });
       }
     }
     if (
@@ -46,19 +72,21 @@ for (const [file, source] of files) {
       node.arguments[0] &&
       ts.isStringLiteral(node.arguments[0])
     )
-      imports.push(node.arguments[0].text);
+      imports.push({ specifier: node.arguments[0].text, dynamic: true });
     ts.forEachChild(node, visit);
   }
   visit(ast);
   graph.set(file, imports);
 }
-function walk(entry) {
+function walk(entry, includeDynamic = true) {
+  if (!files.has(entry)) throw new Error(`Missing runtime entry: ${entry}`);
   const visited = new Set();
   const packages = new Set();
   function traverse(file) {
     if (visited.has(file)) return;
     visited.add(file);
-    for (const specifier of graph.get(file) ?? []) {
+    for (const { specifier, dynamic } of graph.get(file) ?? []) {
+      if (dynamic && !includeDynamic) continue;
       const dependency = resolveImport(file, specifier);
       if (dependency) traverse(dependency);
       else if (!specifier.startsWith('.') && !specifier.startsWith('@/')) packages.add(specifier);
@@ -94,8 +122,44 @@ const report = {
   pageRoutes: routes.length,
   routes,
   pages,
-  shell: walk(path.join(root, 'components/layout/Shell.tsx')),
+  shell: walk(path.join(root, 'components/admin/AdminShell.tsx')),
 };
+const adminPages = new Set(routes.map(({ page }) => page));
+const publicPages = [...app.matchAll(/import\('@\/pages\/(\w+)'\)/g)]
+  .map(([, page]) => page)
+  .filter((page) => !adminPages.has(page));
+report.publicRuntime = Object.fromEntries(
+  [...new Set(publicPages)].map((page) => [page, walk(path.join(root, 'pages', `${page}.tsx`))]),
+);
+report.publicEntry = walk(path.join(root, 'main.tsx'), false);
+if (process.argv.includes('--check')) {
+  const failures = [];
+  if (routes.length !== 22 || report.businessSections !== 17)
+    failures.push('Admin route coverage changed; update the inventory contract explicitly');
+  for (const [name, item] of Object.entries({ ...pages, AdminShell: report.shell })) {
+    const forbidden = item.packages.filter((dependency) =>
+      /^(?:@radix-ui\/|radix-ui(?:\/|$)|sonner(?:\/|$)|react-hook-form(?:\/|$)|@hookform\/resolvers(?:\/|$)|@tanstack\/react-table(?:\/|$))/.test(
+        dependency,
+      ),
+    );
+    if (item.legacyUiFiles.length || forbidden.length)
+      failures.push(`${name}: ${[...item.legacyUiFiles, ...forbidden].join(', ')}`);
+  }
+  for (const [name, item] of Object.entries({
+    ...report.publicRuntime,
+    PublicEntry: report.publicEntry,
+  })) {
+    const forbidden = item.packages.filter((dependency) =>
+      /^(?:antd(?:\/|$)|@ant-design\/)/.test(dependency),
+    );
+    if (forbidden.length)
+      failures.push(`${name} eagerly reaches admin UI: ${forbidden.join(', ')}`);
+  }
+  if (failures.length) throw new Error(`Admin UI boundary violations:\n${failures.join('\n')}`);
+  console.info(
+    `Verified ${routes.length} admin routes, shell and ${publicPages.length} public pages: no legacy admin UI or public Ant Design imports`,
+  );
+}
 if (process.argv.includes('--assets')) {
   const assets = path.resolve('admin-ui/dist/assets');
   report.assets = await Promise.all(
@@ -109,4 +173,4 @@ if (process.argv.includes('--assets')) {
 }
 const output = process.argv.find((argument) => argument.startsWith('--output='))?.slice(9);
 if (output) await writeFile(output, `${JSON.stringify(report, null, 2)}\n`);
-else console.info(JSON.stringify(report, null, 2));
+else if (!process.argv.includes('--check')) console.info(JSON.stringify(report, null, 2));

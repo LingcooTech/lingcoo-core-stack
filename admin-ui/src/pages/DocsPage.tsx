@@ -304,12 +304,15 @@ function DocSpaceForm({
               ]}
             />
           </Form.Item>
-          <Form.Item name="appId" label="关联应用">
+          <Form.Item
+            name="appId"
+            normalize={(value: string | undefined) => value ?? ''}
+            label="关联应用"
+          >
             <Select
               allowClear
               loading={apps.isPending}
               options={apps.data?.items.map((a) => ({ value: a.id, label: a.name }))}
-              onClear={() => form.setFieldValue('appId', '')}
             />
           </Form.Item>
           <Form.Item name="sortOrder" label="排序">

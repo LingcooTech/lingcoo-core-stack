@@ -43,7 +43,7 @@ function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
   return lazy(() => loader().then((mod) => ({ default: mod[name] as ComponentType })));
 }
 
-const Shell = lazyNamed(() => import('@/components/layout/Shell'), 'Shell');
+const Shell = lazyNamed(() => import('@/components/admin/AdminShell'), 'AdminShell');
 const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), 'AccountCenterPage');
 const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
 const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');

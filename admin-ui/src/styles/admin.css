@@ -119,6 +119,11 @@
   margin-inline-start: auto;
 }
 .admin-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--ant-color-bg-container);
+  padding-bottom: 16px;
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--ant-color-border-secondary);
