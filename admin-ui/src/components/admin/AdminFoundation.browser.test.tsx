@@ -1,6 +1,11 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  createMemoryRouter,
+  createRoutesFromElements,
+  RouterProvider,
+  Route,
+} from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { ThemeProvider } from '@/lib/theme';
@@ -50,25 +55,29 @@ afterEach(async () => {
   host.remove();
 });
 async function mount(login = false) {
+  const router = createMemoryRouter(
+    createRoutesFromElements(
+      <>
+        <Route path="/admin/login" element={<LoginPage />} />
+        <Route element={<AdminShell />}>
+          <Route
+            path="/admin/orders"
+            element={
+              <PageContainer title="订单详情测试">
+                <span>page fixture</span>
+              </PageContainer>
+            }
+          />
+        </Route>
+      </>,
+    ),
+    { initialEntries: [login ? '/admin/login' : '/admin/orders'] },
+  );
   await act(async () =>
     root.render(
       <QueryClientProvider client={client}>
         <ThemeProvider>
-          <MemoryRouter initialEntries={[login ? '/admin/login' : '/admin/orders']}>
-            <Routes>
-              <Route path="/admin/login" element={<LoginPage />} />
-              <Route element={<AdminShell />}>
-                <Route
-                  path="/admin/orders"
-                  element={
-                    <PageContainer title="订单详情测试">
-                      <span>page fixture</span>
-                    </PageContainer>
-                  }
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
+          <RouterProvider router={router} />
         </ThemeProvider>
       </QueryClientProvider>,
     ),

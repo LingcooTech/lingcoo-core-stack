@@ -1,4 +1,5 @@
 import { act } from 'react';
+import { App, ConfigProvider } from 'antd';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -37,7 +38,11 @@ async function mount() {
   await act(async () =>
     root.render(
       <QueryClientProvider client={client}>
-        <PaymentsPage />
+        <ConfigProvider theme={{ token: { motion: false } }}>
+          <App>
+            <PaymentsPage />
+          </App>
+        </ConfigProvider>
       </QueryClientProvider>,
     ),
   );
@@ -52,8 +57,8 @@ async function mount() {
   };
 }
 function button(host: ParentNode, label: string) {
-  const result = Array.from(host.querySelectorAll('button')).find(
-    (item) => item.textContent === label,
+  const result = Array.from(host.querySelectorAll<HTMLButtonElement>('button, [role=tab]')).find(
+    (item) => item.textContent?.replace(/\s/g, '') === label.replace(/\s/g, ''),
   );
   if (!result) throw new Error(`Missing button: ${label}`);
   return result;

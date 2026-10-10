@@ -160,3 +160,15 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.stack-admin .admin-asset-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+@media (max-width: 767px) {
+  .stack-admin .admin-asset-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

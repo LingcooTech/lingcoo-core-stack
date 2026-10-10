@@ -1,4 +1,5 @@
 import { act } from 'react';
+import { App, ConfigProvider } from 'antd';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -45,6 +46,7 @@ function fixture(): AssetDetail {
   };
 }
 async function mount(element: React.ReactNode) {
+  Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true);
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -54,7 +56,11 @@ async function mount(element: React.ReactNode) {
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <QueryClientProvider client={client}>{element}</QueryClientProvider>
+        <QueryClientProvider client={client}>
+          <ConfigProvider theme={{ token: { motion: false } }}>
+            <App>{element}</App>
+          </ConfigProvider>
+        </QueryClientProvider>
       </MemoryRouter>,
     ),
   );
@@ -68,7 +74,9 @@ async function mount(element: React.ReactNode) {
   };
 }
 function button(text: string) {
-  const b = Array.from(document.querySelectorAll('button')).find((b) => b.textContent === text);
+  const b = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.textContent?.replace(/\s/g, '') === text.replace(/\s/g, ''),
+  );
   if (!b) throw new Error('Missing button ' + text);
   return b;
 }
@@ -223,7 +231,9 @@ test('storage matches Edu field order, provider options and secret visibility co
   try {
     await vi.waitFor(() => expect(view.host.querySelectorAll('[data-setting-key]').length).toBe(8));
     expect(
-      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) => e.textContent),
+      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) =>
+        e.querySelector('span')?.firstChild?.textContent?.trim(),
+      ),
     ).toEqual([
       '存储驱动',
       '存储访问密钥标识',
@@ -234,14 +244,30 @@ test('storage matches Edu field order, provider options and secret visibility co
       '存储服务地址',
       '强制路径寻址',
     ]);
+    await act(async () =>
+      view.host
+        .querySelector<HTMLElement>('[role=combobox]')!
+        .dispatchEvent(new MouseEvent('mousedown', { bubbles: true })),
+    );
+    await vi.waitFor(() =>
+      expect(document.querySelectorAll('.ant-select-item-option-content')).toHaveLength(2),
+    );
     expect(
-      Array.from(view.host.querySelectorAll('select option')).map((e) => e.textContent),
+      Array.from(document.querySelectorAll('.ant-select-item-option-content')).map(
+        (e) => e.textContent,
+      ),
     ).toEqual(['本地磁盘', 'S3 兼容存储']);
+    await act(async () =>
+      document.querySelectorAll<HTMLElement>('.ant-select-item-option')[1]!.click(),
+    );
     expect(view.host.querySelector('#storage-forcePathStyle')?.getAttribute('role')).toBe('switch');
     await act(async () => value('#storage-accessKey', 'replacement-ak'));
     expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.type).toBe('password');
     await act(async () =>
-      view.host.querySelector<HTMLButtonElement>('[aria-label="显示存储访问密钥标识"]')!.click(),
+      view.host
+        .querySelector<HTMLElement>('#storage-accessKey')!
+        .parentElement!.querySelector<HTMLElement>('.ant-input-password-icon')!
+        .click(),
     );
     expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.type).toBe('text');
     expect(view.host.querySelector<HTMLInputElement>('#storage-accessKey')!.value).toBe(
@@ -276,7 +302,9 @@ test('SMTP matches Edu field order; connection testing is separate and failed sa
   try {
     await vi.waitFor(() => expect(view.host.querySelectorAll('[data-setting-key]').length).toBe(8));
     expect(
-      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) => e.textContent),
+      Array.from(view.host.querySelectorAll('[data-setting-key] label')).map((e) =>
+        e.querySelector('span')?.firstChild?.textContent?.trim(),
+      ),
     ).toEqual([
       '投递方式',
       '邮件服务器地址',
@@ -287,9 +315,22 @@ test('SMTP matches Edu field order; connection testing is separate and failed sa
       '发件地址',
       '发件名称',
     ]);
+    await act(async () =>
+      view.host
+        .querySelector<HTMLElement>('[role=combobox]')!
+        .dispatchEvent(new MouseEvent('mousedown', { bubbles: true })),
+    );
+    await vi.waitFor(() =>
+      expect(document.querySelectorAll('.ant-select-item-option-content')).toHaveLength(2),
+    );
     expect(
-      Array.from(view.host.querySelectorAll('select option')).map((e) => e.textContent),
+      Array.from(document.querySelectorAll('.ant-select-item-option-content')).map(
+        (e) => e.textContent,
+      ),
     ).toEqual(['测试捕获（不外发）', '邮件服务器投递']);
+    await act(async () =>
+      document.querySelectorAll<HTMLElement>('.ant-select-item-option')[1]!.click(),
+    );
     expect(view.host.querySelector<HTMLInputElement>('#smtp-password')!.value).toBe('');
     expect(button('保存配置').disabled).toBe(true);
     await act(async () => value('#smtp-port', '465'));

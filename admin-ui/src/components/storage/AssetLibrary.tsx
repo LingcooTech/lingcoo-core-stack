@@ -1,38 +1,37 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Folder,
-  FolderPlus,
-  FileText,
-  Upload,
-  RefreshCw,
-  Settings,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+  App,
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Flex,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Tag,
+  Typography,
+  type TableColumnsType,
+} from 'antd';
+import {
+  DeleteOutlined,
+  EditOutlined,
+  FileOutlined,
+  FolderOutlined,
+  FolderAddOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import type { AssetSummary, AssetDetail } from '@lingcoo/contracts';
 import * as api from '@/api/storage';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { DataTable } from '@/components/shared/DataTable';
-import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { PageToolbar, FormActions } from '@/components/admin/PageContainer';
+import { useSettingsForm } from '@/lib/settings-form';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
 const accept =
@@ -51,39 +50,43 @@ export function AssetPreview({
     <img
       src={`${asset.contentUrl}?v=${asset.currentVersion}`}
       alt={asset.altText || asset.displayName}
-      className={
+      style={
         compact
-          ? 'h-12 w-16 rounded border object-contain'
-          : 'max-h-64 w-full rounded border bg-muted/30 object-contain'
+          ? { height: 48, width: 64, objectFit: 'contain' }
+          : { maxHeight: 256, width: '100%', objectFit: 'contain' }
       }
     />
   ) : (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <FileText className={compact ? 'size-8' : 'size-16'} />
-      <span>{kindLabels[asset.mediaKind]}</span>
-    </div>
+    <Flex align="center" gap={8}>
+      <FileOutlined aria-hidden="true" style={{ fontSize: compact ? 24 : 48 }} />
+      <Typography.Text type="secondary">{kindLabels[asset.mediaKind]}</Typography.Text>
+    </Flex>
   );
 }
 export function AssetLibrary({
   onSelect,
   imagesOnly = false,
+  onConfigure,
 }: {
   onSelect?: (asset: AssetSummary) => void;
   imagesOnly?: boolean;
+  onConfigure?: () => void;
 }) {
   const { user } = useAuth(),
-    role = normalizeRole(user?.role);
+    role = normalizeRole(user?.role),
+    { message } = App.useApp();
   const canManage = hasPermission(role, 'storage.manage'),
     canConfigure = hasPermission(role, 'settings.manage');
   const qc = useQueryClient(),
-    fileInput = useRef<HTMLInputElement>(null);
+    fileInput = useRef<HTMLInputElement>(null),
+    [modal, context] = Modal.useModal();
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(''),
-    [kind, setKind] = useState('');
+    [kind, setKind] = useState<string | undefined>();
   const [folder, setFolder] = useState('all'),
     [selected, setSelected] = useState<string | null>(null);
-  const [folderEditor, setFolderEditor] = useState<{ id?: string; name: string } | null>(null);
-  const [folderDeletion, setFolderDeletion] = useState<string | null>(null);
+  const [folderEditor, setFolderEditor] = useState<{ id?: string } | null>(null);
+  const [folderForm] = Form.useForm<{ name: string }>();
   const folders = useQuery({ queryKey: ['storage-folders'], queryFn: api.listFolders });
   const assets = useQuery({
     queryKey: ['storage-assets', page, search, kind, folder, imagesOnly],
@@ -91,7 +94,7 @@ export function AssetLibrary({
       api.listAssets({
         page,
         search: search || undefined,
-        mediaKind: imagesOnly ? 'image' : kind || undefined,
+        mediaKind: imagesOnly ? 'image' : kind,
         folderId: folder === 'all' ? undefined : folder,
       }),
   });
@@ -102,323 +105,317 @@ export function AssetLibrary({
       qc.invalidateQueries({ queryKey: ['storage-asset'] }),
     ]);
   };
+  const failure = (error: Error) => {
+    void message.error(error.message);
+  };
   const upload = useMutation({
-    mutationFn: (file: File) =>
-      api.uploadAsset(
+    mutationFn: (file: File) => {
+      if (!canManage) throw new Error('没有素材管理权限');
+      return api.uploadAsset(
         file,
         ['all', 'root'].includes(folder) ? null : folder,
         onSelect ? 'public' : 'private',
-      ),
-    onSuccess: async (asset) => {
-      toast.success('素材上传完成');
-      await refresh();
-      if (onSelect) onSelect(asset);
+      );
     },
-    onError: (e) => toast.error(e.message),
+    onSuccess: async (asset) => {
+      void message.success('素材上传完成');
+      await refresh();
+      if (onSelect && asset.publicUrl) onSelect(asset);
+    },
+    onError: failure,
   });
   const saveFolder = useMutation({
-    mutationFn: () => {
-      if (!folderEditor) throw new Error('请输入文件夹名称');
+    mutationFn: ({ name }: { name: string }) => {
+      if (!canManage || !folderEditor) throw new Error('没有文件夹管理权限');
       return folderEditor.id
-        ? api.renameFolder(folderEditor.id, folderEditor.name.trim())
-        : api.createFolder(folderEditor.name.trim());
+        ? api.renameFolder(folderEditor.id, name.trim())
+        : api.createFolder(name.trim());
     },
     onSuccess: async (result) => {
       setFolderEditor(null);
+      folderForm.resetFields();
       setFolder(result.id);
       setPage(1);
       await refresh();
     },
-    onError: (e) => toast.error(e.message),
+    onError: failure,
   });
   const removeFolder = useMutation({
-    mutationFn: (id: string) => api.deleteFolder(id),
+    mutationFn: api.deleteFolder,
     onSuccess: async () => {
-      setFolderDeletion(null);
       setFolder('all');
       setPage(1);
       await refresh();
     },
-    onError: (e) => toast.error(e.message),
+    onError: failure,
   });
-  const chooseFolder = (id: string) => {
-    setFolder(id);
-    setPage(1);
+  const editFolder = (id?: string, name = '') => {
+    folderForm.resetFields();
+    folderForm.setFieldsValue({ name });
+    setFolderEditor(id ? { id } : {});
   };
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+  const columns: TableColumnsType<AssetSummary> = [
+    {
+      title: '预览',
+      key: 'preview',
+      width: 90,
+      render: (_, asset) => <AssetPreview asset={asset} compact />,
+    },
+    {
+      title: '素材',
+      key: 'name',
+      width: 240,
+      render: (_, asset) => (
         <div>
-          <h2 className="text-lg font-semibold">
-            {onSelect ? '选择营销素材' : '云存储 · 营销素材'}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            统一管理图片、PDF 和 UTF-8 文本；替换文件保持素材链接稳定。
-            {onSelect && '此处上传的图片将公开供业务页面使用。'}
-          </p>
+          <Button
+            type="link"
+            style={{ padding: 0, maxWidth: 220 }}
+            onClick={() => setSelected(asset.id)}
+          >
+            <Typography.Text ellipsis>{asset.displayName}</Typography.Text>
+          </Button>
+          <br />
+          <Typography.Text type="secondary">
+            {asset.originalName} · {sizeLabel(asset.sizeBytes)}
+          </Typography.Text>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {canManage && (
-            <Button variant="outline" onClick={() => setFolderEditor({ name: '' })}>
-              <FolderPlus className="mr-2 size-4" />
-              新建文件夹
+      ),
+    },
+    {
+      title: '文件夹',
+      key: 'folder',
+      width: 140,
+      render: (_, asset) =>
+        folders.data?.items.find((item) => item.id === asset.folderId)?.name || '未分类',
+    },
+    {
+      title: '类型',
+      dataIndex: 'mediaKind',
+      width: 100,
+      render: (value: keyof typeof kindLabels) => kindLabels[value],
+    },
+    {
+      title: '可见性',
+      dataIndex: 'visibility',
+      width: 90,
+      render: (value) => <Tag>{value === 'public' ? '公开' : '私有'}</Tag>,
+    },
+    { title: '引用', dataIndex: 'referenceCount', width: 80 },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      width: 180,
+      render: (value: string) => new Date(value).toLocaleString(),
+    },
+    ...(onSelect
+      ? [
+          {
+            title: '操作',
+            key: 'choose',
+            width: 100,
+            render: (_: unknown, asset: AssetSummary) => (
+              <Button size="small" disabled={!asset.publicUrl} onClick={() => onSelect(asset)}>
+                {asset.publicUrl ? '选择' : '需先公开'}
+              </Button>
+            ),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <div>
+      {context}
+      <Typography.Paragraph type="secondary">
+        统一管理图片、PDF 和 UTF-8 文本；替换文件保持素材链接稳定。
+        {onSelect && '此处上传的图片将公开供业务页面使用。'}
+      </Typography.Paragraph>
+      <PageToolbar
+        filters={
+          <>
+            <Input.Search
+              aria-label="搜索素材"
+              placeholder="搜索名称或原文件名"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              style={{ width: 260 }}
+            />
+            {!imagesOnly && (
+              <Select
+                aria-label="素材类型"
+                allowClear
+                placeholder="全部类型"
+                value={kind}
+                style={{ width: 150 }}
+                onChange={(value) => {
+                  setKind(value);
+                  setPage(1);
+                }}
+                options={Object.entries(kindLabels).map(([value, label]) => ({ value, label }))}
+              />
+            )}
+          </>
+        }
+        actions={
+          <>
+            <Button icon={<ReloadOutlined aria-hidden="true" />} onClick={() => void refresh()}>
+              刷新
             </Button>
-          )}
-          {canConfigure && (
-            <Button variant="outline" asChild>
-              <Link to="/admin/settings?tab=storage">
-                <Settings className="mr-2 size-4" />
+            {canManage && (
+              <Button icon={<FolderAddOutlined aria-hidden="true" />} onClick={() => editFolder()}>
+                新建文件夹
+              </Button>
+            )}
+            {canConfigure && (
+              <Link to="/admin/settings?tab=storage" onClick={onConfigure}>
                 存储设置
               </Link>
-            </Button>
-          )}
-          {canManage && (
-            <Button disabled={upload.isPending} onClick={() => fileInput.current?.click()}>
-              <Upload className="mr-2 size-4" />
-              {upload.isPending ? '上传中…' : '上传素材'}
-            </Button>
-          )}
-          <input
-            ref={fileInput}
-            type="file"
-            className="hidden"
-            aria-label="上传素材文件"
-            accept={imagesOnly ? 'image/jpeg,image/png,image/gif,image/webp,image/avif' : accept}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) upload.mutate(file);
-              e.target.value = '';
-            }}
-          />
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <Input
-          aria-label="搜索素材"
-          placeholder="搜索名称或原文件名"
-          className="w-full sm:w-64"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
-        {!imagesOnly && (
-          <select
-            aria-label="素材类型"
-            className="rounded-md border bg-background px-3 text-sm"
-            value={kind}
-            onChange={(e) => {
-              setKind(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">全部类型</option>
-            <option value="image">图片</option>
-            <option value="document">PDF 文档</option>
-            <option value="text">文本</option>
-          </select>
-        )}
-        <Button
-          variant="outline"
-          onClick={() => {
-            void refresh();
-          }}
-        >
-          <RefreshCw className="mr-2 size-4" />
-          刷新
-        </Button>
-      </div>
-      {(assets.error || folders.error) && (
-        <p role="alert" className="text-sm text-destructive">
-          {assets.error?.message || folders.error?.message}
-        </p>
-      )}
-      <div className="flex flex-col gap-5 md:flex-row">
-        <aside aria-label="素材文件夹" className="shrink-0 space-y-2 rounded-lg border p-3 md:w-52">
-          <h3 className="mb-3 px-2 text-sm font-semibold">文件夹</h3>
-          {[
-            { id: 'all', name: '全部素材' },
-            { id: 'root', name: '未分类' },
-            ...(folders.data?.items ?? []),
-          ].map((f) => (
-            <div key={f.id} className="flex items-center gap-1">
+            )}
+            {canManage && (
               <Button
-                className="min-w-0 flex-1 justify-start truncate"
-                variant={folder === f.id ? 'secondary' : 'ghost'}
-                onClick={() => chooseFolder(f.id)}
+                type="primary"
+                icon={<UploadOutlined aria-hidden="true" />}
+                disabled={upload.isPending}
+                loading={upload.isPending}
+                onClick={() => fileInput.current?.click()}
               >
-                <Folder className="mr-2 size-4 shrink-0" />
-                <span className="truncate">{f.name}</span>
+                上传素材
               </Button>
-              {canManage && !['all', 'root'].includes(f.id) && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 shrink-0"
-                    aria-label={`重命名 ${f.name}`}
-                    onClick={() => setFolderEditor({ id: f.id, name: f.name })}
-                  >
-                    <Pencil className="size-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 shrink-0"
-                    aria-label={`删除文件夹 ${f.name}`}
-                    onClick={() => setFolderDeletion(f.id)}
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                </>
-              )}
-            </div>
-          ))}
-        </aside>
-        <div className="min-w-0 flex-1 overflow-hidden rounded-lg border">
-          <DataTable<AssetSummary>
-            data={assets.data?.items ?? []}
-            isLoading={assets.isPending}
-            getRowId={(a) => a.id}
-            emptyMessage="暂无素材，上传文件开始使用"
-            columns={[
-              { key: 'preview', header: '预览', cell: (a) => <AssetPreview asset={a} compact /> },
-              {
-                key: 'name',
-                header: '素材',
-                cell: (a) => (
-                  <div className="max-w-64">
-                    <button
-                      type="button"
-                      className="truncate text-left font-medium text-primary hover:underline"
-                      onClick={() => setSelected(a.id)}
-                    >
-                      {a.displayName}
-                    </button>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {a.originalName} · {sizeLabel(a.sizeBytes)}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                key: 'folder',
-                header: '文件夹',
-                cell: (a) => folders.data?.items.find((f) => f.id === a.folderId)?.name || '未分类',
-              },
-              { key: 'kind', header: '类型', cell: (a) => kindLabels[a.mediaKind] },
-              {
-                key: 'visibility',
-                header: '可见性',
-                cell: (a) => (a.visibility === 'public' ? '公开' : '私有'),
-              },
-              { key: 'refs', header: '引用', cell: (a) => a.referenceCount },
-              {
-                key: 'updated',
-                header: '更新时间',
-                cell: (a) => new Date(a.updatedAt).toLocaleString(),
-              },
-              ...(onSelect
-                ? [
-                    {
-                      key: 'choose',
-                      header: '操作',
-                      cell: (a: AssetSummary) => (
-                        <Button size="sm" disabled={!a.publicUrl} onClick={() => onSelect(a)}>
-                          {a.publicUrl ? '选择' : '需先公开'}
-                        </Button>
-                      ),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-          <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
-            <span>共 {assets.data?.total ?? 0} 项</span>
-            <div className="flex items-center gap-3">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                上一页
-              </Button>
-              <span>第 {page} 页</span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page * 20 >= (assets.data?.total ?? 0)}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                下一页
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <Sheet
-        open={Boolean(selected)}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-      >
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>素材详情</SheetTitle>
-            <SheetDescription>查看文件、整理分类和管理内容版本。</SheetDescription>
-          </SheetHeader>
-          {selected && (
-            <AssetDrawer
-              key={selected}
-              id={selected}
-              canManage={canManage}
-              onChanged={refresh}
-              onDeleted={() => setSelected(null)}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
-      <Dialog
-        open={Boolean(folderEditor)}
-        onOpenChange={(open) => {
-          if (!open) setFolderEditor(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{folderEditor?.id ? '重命名文件夹' : '新建文件夹'}</DialogTitle>
-            <DialogDescription>用文件夹整理营销素材。</DialogDescription>
-          </DialogHeader>
-          <Input
-            aria-label="文件夹名称"
-            autoFocus
-            maxLength={80}
-            value={folderEditor?.name ?? ''}
-            onChange={(e) => setFolderEditor((f) => (f ? { ...f, name: e.target.value } : null))}
-          />
-          <Button
-            disabled={!folderEditor?.name.trim() || saveFolder.isPending}
-            onClick={() => saveFolder.mutate()}
-          >
-            保存文件夹
-          </Button>
-        </DialogContent>
-      </Dialog>
-      <ConfirmActionDialog
-        open={Boolean(folderDeletion)}
-        onOpenChange={(open) => {
-          if (!open) setFolderDeletion(null);
-        }}
-        title="删除文件夹"
-        description="仅可删除没有素材的文件夹。"
-        confirmText="删除"
-        onConfirm={() => {
-          if (folderDeletion) removeFolder.mutate(folderDeletion);
-        }}
-        isConfirming={removeFolder.isPending}
+            )}
+          </>
+        }
       />
+      <input
+        ref={fileInput}
+        type="file"
+        hidden
+        aria-label="上传素材文件"
+        accept={imagesOnly ? 'image/jpeg,image/png,image/gif,image/webp,image/avif' : accept}
+        disabled={!canManage || upload.isPending}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) upload.mutate(file);
+          event.target.value = '';
+        }}
+      />
+      <div className="admin-asset-layout">
+        <Card size="small" title="文件夹" className="admin-asset-folders">
+          <AsyncState
+            loading={folders.isPending}
+            error={folders.error}
+            onRetry={() => void folders.refetch()}
+          >
+            <nav aria-label="素材文件夹">
+              {[
+                { id: 'all', name: '全部素材' },
+                { id: 'root', name: '未分类' },
+                ...(folders.data?.items ?? []),
+              ].map((item) => (
+                <Flex key={item.id} gap={2} style={{ marginBottom: 6 }}>
+                  <Button
+                    icon={<FolderOutlined aria-hidden="true" />}
+                    type={folder === item.id ? 'primary' : 'text'}
+                    style={{ minWidth: 0, flex: 1, justifyContent: 'start' }}
+                    onClick={() => {
+                      setFolder(item.id);
+                      setPage(1);
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.name}
+                    </span>
+                  </Button>
+                  {canManage && !['all', 'root'].includes(item.id) && (
+                    <>
+                      <Button
+                        type="text"
+                        icon={<EditOutlined aria-hidden="true" />}
+                        aria-label={`重命名 ${item.name}`}
+                        onClick={() => editFolder(item.id, item.name)}
+                      />
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined aria-hidden="true" />}
+                        aria-label={`删除文件夹 ${item.name}`}
+                        onClick={() => {
+                          modal.confirm({
+                            title: '删除文件夹',
+                            content: '仅可删除没有素材的文件夹。',
+                            okText: '删除',
+                            cancelText: '取消',
+                            okButtonProps: { danger: true },
+                            onOk: () => removeFolder.mutateAsync(item.id),
+                          });
+                        }}
+                      />
+                    </>
+                  )}
+                </Flex>
+              ))}
+            </nav>
+          </AsyncState>
+        </Card>
+        <div style={{ minWidth: 0 }}>
+          <AsyncState error={assets.error} onRetry={() => void assets.refetch()}>
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={assets.data?.items ?? []}
+              loading={assets.isPending}
+              scroll={{ x: 1020 }}
+              locale={{ emptyText: '暂无素材，上传文件开始使用' }}
+              pagination={{
+                current: page,
+                pageSize: 20,
+                total: assets.data?.total ?? 0,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+                onChange: setPage,
+              }}
+            />
+          </AsyncState>
+        </div>
+      </div>
+      {selected && (
+        <AssetDrawer
+          id={selected}
+          canManage={canManage}
+          onChanged={refresh}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      <Modal
+        open={Boolean(folderEditor)}
+        title={folderEditor?.id ? '重命名文件夹' : '新建文件夹'}
+        onCancel={() => {
+          if (!saveFolder.isPending) setFolderEditor(null);
+        }}
+        destroyOnHidden
+        confirmLoading={saveFolder.isPending}
+        okText="保存文件夹"
+        cancelText="取消"
+        onOk={() => folderForm.submit()}
+      >
+        <Form
+          form={folderForm}
+          name="asset-folder"
+          layout="vertical"
+          disabled={saveFolder.isPending}
+          onFinish={(values) => saveFolder.mutate(values)}
+        >
+          <Form.Item
+            name="name"
+            label="文件夹名称"
+            rules={[{ required: true, whitespace: true, max: 80 }]}
+          >
+            <Input aria-label="文件夹名称" autoFocus maxLength={80} />
+          </Form.Item>
+          {saveFolder.error && <Alert type="error" title={saveFolder.error.message} />}
+        </Form>
+      </Modal>
     </div>
   );
 }
@@ -426,244 +423,290 @@ function AssetDrawer({
   id,
   canManage,
   onChanged,
-  onDeleted,
+  onClose,
 }: {
   id: string;
   canManage: boolean;
-  onChanged: () => Promise<void>;
-  onDeleted: () => void;
+  onChanged(): Promise<void>;
+  onClose(): void;
 }) {
   const query = useQuery({ queryKey: ['storage-asset', id], queryFn: () => api.getAsset(id) });
-  if (query.isPending) return <p className="p-6">加载素材详情…</p>;
-  if (query.error)
+  if (query.data)
     return (
-      <p role="alert" className="p-6">
-        {query.error.message}
-      </p>
+      <AssetEditor
+        asset={query.data}
+        canManage={canManage}
+        onChanged={onChanged}
+        onClose={onClose}
+      />
     );
-  return query.data ? (
-    <AssetEditor
-      key={query.data.revision}
-      asset={query.data}
-      canManage={canManage}
-      onChanged={onChanged}
-      onDeleted={onDeleted}
-    />
-  ) : null;
+  return (
+    <ManagementDrawer open title="素材详情" onClose={onClose}>
+      <AsyncState
+        loading={query.isPending}
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      >
+        {null}
+      </AsyncState>
+    </ManagementDrawer>
+  );
 }
+const editorValues = (asset: AssetDetail) => ({
+  displayName: asset.displayName,
+  altText: asset.altText ?? '',
+  visibility: asset.visibility,
+  folderId: asset.folderId ?? 'root',
+});
 function AssetEditor({
   asset,
   canManage,
   onChanged,
-  onDeleted,
+  onClose,
 }: {
   asset: AssetDetail;
   canManage: boolean;
-  onChanged: () => Promise<void>;
-  onDeleted: () => void;
+  onChanged(): Promise<void>;
+  onClose(): void;
 }) {
-  const [name, setName] = useState(asset.displayName),
-    [alt, setAlt] = useState(asset.altText ?? ''),
-    [visibility, setVisibility] = useState(asset.visibility),
-    [folder, setFolder] = useState(asset.folderId ?? 'root');
-  const [deleting, setDeleting] = useState(false),
-    replacementInput = useRef<HTMLInputElement>(null);
+  const { message } = App.useApp(),
+    [modal, context] = Modal.useModal();
+  const [base, setBase] = useState(asset);
+  const { form, dirty, reset } = useSettingsForm(editorValues(base));
+  useEffect(() => {
+    if (!dirty && asset.revision > base.revision) setBase(asset);
+  }, [asset, dirty, base.revision]);
+  const replacement = useRef<HTMLInputElement>(null);
   const folders = useQuery({ queryKey: ['storage-folders'], queryFn: api.listFolders });
+  const failure = (error: Error) => {
+    void message.error(error.message);
+  };
   const save = useMutation({
-    mutationFn: () =>
-      api.updateAsset(asset, {
-        displayName: name,
-        altText: alt || null,
-        visibility,
-        folderId: folder === 'root' ? null : folder,
+    mutationFn: (values: ReturnType<typeof editorValues>) =>
+      api.updateAsset(base, {
+        ...values,
+        altText: values.altText || null,
+        folderId: values.folderId === 'root' ? null : values.folderId,
       }),
-    onSuccess: async () => {
-      toast.success('素材信息已更新');
+    onSuccess: async (result) => {
+      setBase(result);
+      reset(editorValues(result));
+      void message.success('素材信息已更新');
       await onChanged();
     },
-    onError: (e) => toast.error(e.message),
+    onError: failure,
   });
   const replace = useMutation({
-    mutationFn: (file: File) => api.uploadAsset(file, asset.folderId, asset.visibility, asset),
-    onSuccess: async () => {
-      toast.success('素材内容已替换，原链接保持有效');
+    mutationFn: (file: File) => api.uploadAsset(file, base.folderId, base.visibility, base),
+    onSuccess: async (result) => {
+      setBase(result);
+      reset(editorValues(result));
+      void message.success('素材内容已替换，原链接保持有效');
       await onChanged();
     },
-    onError: (e) => toast.error(e.message),
+    onError: failure,
   });
   const remove = useMutation({
-    mutationFn: () => api.deleteAsset(asset),
+    mutationFn: () => api.deleteAsset(base),
     onSuccess: async () => {
       await onChanged();
-      onDeleted();
+      onClose();
     },
-    onError: (e) => toast.error(e.message),
+    onError: failure,
   });
-  const dirty =
-    name !== asset.displayName ||
-    alt !== (asset.altText ?? '') ||
-    visibility !== asset.visibility ||
-    folder !== (asset.folderId ?? 'root');
+  const pending = save.isPending || replace.isPending || remove.isPending;
+  const close = () => {
+    if (pending) return;
+    if (dirty)
+      modal.confirm({
+        title: '放弃未保存的素材修改？',
+        okText: '放弃修改',
+        cancelText: '继续编辑',
+        onOk: onClose,
+      });
+    else onClose();
+  };
   return (
-    <div className="space-y-5 px-6 pb-8">
+    <ManagementDrawer
+      open
+      title="素材详情"
+      onClose={close}
+      footer={
+        <FormActions hint={dirty ? '有未保存的修改' : '替换文件保持素材链接稳定'}>
+          <Button onClick={close} disabled={pending}>
+            关闭
+          </Button>
+          {canManage && (
+            <>
+              <Button
+                type="primary"
+                loading={save.isPending}
+                disabled={!dirty || pending}
+                onClick={() => form.submit()}
+              >
+                保存信息
+              </Button>
+              <Button disabled={pending || dirty} onClick={() => replacement.current?.click()}>
+                替换文件
+              </Button>
+              <Button
+                danger
+                disabled={pending || asset.referenceCount > 0}
+                onClick={() => {
+                  modal.confirm({
+                    title: '删除素材',
+                    content: '删除后素材链接将失效，文件由后台清理。',
+                    okText: '删除素材',
+                    cancelText: '取消',
+                    okButtonProps: { danger: true },
+                    onOk: () => remove.mutateAsync(),
+                  });
+                }}
+              >
+                删除素材
+              </Button>
+            </>
+          )}
+        </FormActions>
+      }
+    >
+      {context}
       <AssetPreview asset={asset} />
-      <Button variant="outline" asChild>
-        <a href={asset.contentUrl} download={asset.originalName}>
-          下载文件
-        </a>
+      <Button href={asset.contentUrl} download={asset.originalName} style={{ marginBlock: 16 }}>
+        下载文件
       </Button>
-      <dl className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-        <dt>素材标识</dt>
-        <dd className="break-all">{asset.id}</dd>
-        <dt>原文件名</dt>
-        <dd className="break-all">{asset.originalName}</dd>
-        <dt>大小</dt>
-        <dd>{sizeLabel(asset.sizeBytes)}</dd>
-        <dt>引用数量</dt>
-        <dd>{asset.referenceCount}</dd>
-        <dt>内容校验值</dt>
-        <dd className="text-xs break-all">{asset.checksumSha256}</dd>
-        <dt>当前版本</dt>
-        <dd>v{asset.currentVersion}</dd>
-      </dl>
-      <div className="space-y-2">
-        <Label htmlFor="asset-name">显示名称</Label>
-        <Input
-          id="asset-name"
-          value={name}
-          disabled={!canManage}
-          maxLength={200}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="asset-alt">替代文本</Label>
-        <Input
-          id="asset-alt"
-          value={alt}
-          disabled={!canManage}
-          maxLength={500}
-          onChange={(e) => setAlt(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="asset-folder">所属文件夹</Label>
-        <select
-          id="asset-folder"
-          className="w-full rounded-md border bg-background p-2 text-sm"
-          disabled={!canManage}
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
+      <Descriptions
+        column={1}
+        size="small"
+        items={[
+          { key: 'id', label: '素材标识', children: asset.id },
+          { key: 'name', label: '原文件名', children: asset.originalName },
+          { key: 'size', label: '大小', children: sizeLabel(asset.sizeBytes) },
+          { key: 'refs', label: '引用数量', children: asset.referenceCount },
+          {
+            key: 'checksum',
+            label: '内容校验值',
+            children: (
+              <Typography.Text style={{ overflowWrap: 'anywhere' }}>
+                {asset.checksumSha256}
+              </Typography.Text>
+            ),
+          },
+          { key: 'version', label: '当前版本', children: `v${asset.currentVersion}` },
+        ]}
+      />
+      <Form
+        name="asset"
+        form={form}
+        layout="vertical"
+        disabled={!canManage || pending}
+        onFinish={(values) => save.mutate(values)}
+      >
+        <Form.Item
+          name="displayName"
+          label="显示名称"
+          htmlFor="asset-name"
+          rules={[{ required: true, whitespace: true, max: 200 }]}
         >
-          <option value="root">未分类</option>
-          {folders.data?.items.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="asset-visibility">可见性</Label>
-        <select
-          id="asset-visibility"
-          className="w-full rounded-md border bg-background p-2 text-sm"
-          disabled={!canManage}
-          value={visibility}
-          onChange={(e) => setVisibility(e.target.value as 'public' | 'private')}
-        >
-          <option value="private">私有（仅后台可读）</option>
-          <option value="public">公开（允许业务页面访问）</option>
-        </select>
-      </div>
+          <Input id="asset-name" maxLength={200} />
+        </Form.Item>
+        <Form.Item name="altText" label="替代文本">
+          <Input id="asset-alt" maxLength={500} />
+        </Form.Item>
+        <Form.Item name="folderId" label="所属文件夹">
+          <Select
+            id="asset-folder"
+            options={[
+              { value: 'root', label: '未分类' },
+              ...(folders.data?.items ?? []).map((item) => ({ value: item.id, label: item.name })),
+            ]}
+          />
+        </Form.Item>
+        <Form.Item name="visibility" label="可见性">
+          <Select
+            id="asset-visibility"
+            options={[
+              { value: 'private', label: '私有（仅后台可读）', disabled: asset.referenceCount > 0 },
+              { value: 'public', label: '公开（允许业务页面访问）' },
+            ]}
+          />
+        </Form.Item>
+      </Form>
+      {folders.error && (
+        <Alert
+          type="error"
+          title={folders.error.message}
+          action={<Button onClick={() => void folders.refetch()}>重试</Button>}
+        />
+      )}
       {asset.publicUrl && (
-        <div className="space-y-2">
-          <Label htmlFor="asset-url">公开素材地址</Label>
-          <Input id="asset-url" readOnly value={asset.publicUrl} />
+        <Form layout="vertical">
+          <Form.Item label="公开素材地址" htmlFor="asset-url">
+            <Input id="asset-url" readOnly value={asset.publicUrl} />
+          </Form.Item>
           <Button
-            size="sm"
-            variant="outline"
             onClick={() => {
               void navigator.clipboard
                 .writeText(asset.publicUrl!)
-                .then(() => toast.success('链接已复制'))
-                .catch(() => toast.error('复制失败，请手动复制'));
+                .then(() => message.success('链接已复制'))
+                .catch(() => message.error('复制失败，请手动复制'));
             }}
           >
             复制链接
           </Button>
-        </div>
-      )}
-      {canManage && (
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={!dirty || !name.trim() || save.isPending} onClick={() => save.mutate()}>
-            保存信息
-          </Button>
-          <Button
-            variant="outline"
-            disabled={replace.isPending}
-            onClick={() => replacementInput.current?.click()}
-          >
-            替换文件
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={asset.referenceCount > 0}
-            onClick={() => setDeleting(true)}
-          >
-            删除素材
-          </Button>
-          <input
-            ref={replacementInput}
-            type="file"
-            aria-label="替换素材文件"
-            className="hidden"
-            accept={accept}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) replace.mutate(file);
-              e.target.value = '';
-            }}
-          />
-        </div>
+        </Form>
       )}
       {asset.referenceCount > 0 && (
-        <p className="text-sm text-muted-foreground">
-          素材正在被业务引用；可以替换内容，解除引用后才能删除或改为私有。
-        </p>
+        <Alert
+          type="info"
+          showIcon
+          title="素材正在被业务引用；可以替换内容，解除引用后才能删除或改为私有。"
+        />
       )}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold">版本记录</h3>
-        <ul className="space-y-2 text-sm">
-          {asset.versions.map((v) => (
-            <li key={v.id} className="flex flex-wrap justify-between gap-2 border-b py-2">
-              <span>
-                v{v.version} · {v.originalName}
-              </span>
-              <span className="text-muted-foreground">
-                {
-                  {
-                    ready: '当前可用',
-                    pending: '待上传',
-                    failed: '失败',
-                    deletion_pending: '待清理',
-                    deleted: '已清理',
-                  }[v.status]
-                }
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <ConfirmActionDialog
-        open={deleting}
-        onOpenChange={setDeleting}
-        title="删除素材"
-        description="删除后素材链接将失效，文件由后台清理。"
-        confirmText="删除素材"
-        isConfirming={remove.isPending}
-        onConfirm={() => remove.mutate()}
+      {(save.error || replace.error) && (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          title={save.error?.message || replace.error?.message}
+        />
+      )}
+      <input
+        ref={replacement}
+        type="file"
+        hidden
+        aria-label="替换素材文件"
+        accept={accept}
+        disabled={!canManage || pending || dirty}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) replace.mutate(file);
+          event.target.value = '';
+        }}
       />
-    </div>
+      <Card size="small" title="版本记录" style={{ marginTop: 24 }}>
+        <Table
+          rowKey="id"
+          pagination={false}
+          dataSource={asset.versions}
+          columns={[
+            { title: '版本', dataIndex: 'version', render: (value) => `v${value}` },
+            { title: '原文件名', dataIndex: 'originalName' },
+            {
+              title: '状态',
+              dataIndex: 'status',
+              render: (value: AssetDetail['versions'][number]['status']) =>
+                ({
+                  ready: '当前可用',
+                  pending: '待上传',
+                  failed: '失败',
+                  deletion_pending: '待清理',
+                  deleted: '已清理',
+                })[value],
+            },
+          ]}
+        />
+      </Card>
+    </ManagementDrawer>
   );
 }

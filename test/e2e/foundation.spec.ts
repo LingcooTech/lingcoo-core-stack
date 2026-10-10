@@ -173,3 +173,23 @@ test('browser logout revokes the server session and a refreshed protected route 
   await page.reload();
   await expect(page).toHaveURL(/\/login/);
 });
+
+test('unsaved admin settings block navigation and preserve the draft when editing continues', async ({
+  page,
+}) => {
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto('/admin/settings?tab=smtp');
+  await page.getByLabel('发件名称', { exact: true }).fill('Unsaved fixture brand');
+  await page.getByRole('menuitem', { name: '订单管理', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '继续编辑', exact: true }).click();
+  await expect(page.getByLabel('发件名称', { exact: true })).toHaveValue('Unsaved fixture brand');
+  await page.getByRole('menuitem', { name: '订单管理', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: '放弃修改并离开', exact: true })
+    .click();
+  await expect(page.getByRole('region', { name: '订单管理', exact: true })).toBeVisible();
+});

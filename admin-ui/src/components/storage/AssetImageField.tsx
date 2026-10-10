@@ -1,14 +1,11 @@
-import { ImagePlus } from 'lucide-react';
+import { PictureOutlined } from '@ant-design/icons';
+import { Button, Flex, Form, Image, Input } from 'antd';
 import { useState } from 'react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-
 import { AssetImagePickerDialog } from './AssetImagePickerDialog';
-
 interface AssetImageFieldProps {
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  id?: string;
   defaultPrefix?: string;
   placeholder?: string;
   previewAlt: string;
@@ -16,10 +13,10 @@ interface AssetImageFieldProps {
   dialogTitle?: string;
   dialogDescription?: string;
 }
-
 export function AssetImageField({
-  value,
+  value = '',
   onChange,
+  id,
   defaultPrefix,
   placeholder = 'https://...',
   previewAlt,
@@ -27,39 +24,36 @@ export function AssetImageField({
   dialogTitle,
   dialogDescription,
 }: AssetImageFieldProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
+  const [open, setOpen] = useState(false);
+  const { status } = Form.Item.useStatus();
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <Flex wrap gap={8}>
         <Input
-          className="flex-1"
+          id={id}
+          style={{ flex: '1 1 220px' }}
+          status={status === 'error' ? 'error' : undefined}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange?.(event.target.value)}
           placeholder={placeholder}
         />
-        <Button type="button" variant="outline" onClick={() => setPickerOpen(true)}>
-          <ImagePlus className="h-4 w-4" />
+        <Button icon={<PictureOutlined aria-hidden="true" />} onClick={() => setOpen(true)}>
           云存储
         </Button>
-      </div>
-
-      {value ? (
-        <img
+      </Flex>
+      {value && (
+        <Image
           key={value}
           src={value}
           alt={previewAlt}
           className={previewClassName}
-          onError={(event) => {
-            (event.target as HTMLImageElement).style.display = 'none';
-          }}
+          style={{ maxHeight: 120, objectFit: 'contain', marginTop: 12 }}
         />
-      ) : null}
-
+      )}
       <AssetImagePickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        onSelect={onChange}
+        open={open}
+        onOpenChange={setOpen}
+        onSelect={(url) => onChange?.(url)}
         defaultPrefix={defaultPrefix}
         title={dialogTitle}
         description={dialogDescription}

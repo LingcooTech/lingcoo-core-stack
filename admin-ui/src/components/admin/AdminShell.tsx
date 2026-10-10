@@ -36,6 +36,7 @@ import { getSiteDisplayName, PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-s
 import { getInitials } from '@/lib/utils';
 import { resolveIcon } from '@/lib/section-icons';
 import { AdminUiProvider } from './AdminUiProvider';
+import { AdminDraftGuard } from './AdminDraftGuard';
 import { AdminCommandPalette } from './AdminCommandPalette';
 import { PageTitleContext } from './page-context';
 import { AsyncState } from './AsyncState';
@@ -43,7 +44,9 @@ import { AsyncState } from './AsyncState';
 export function AdminShell() {
   return (
     <AdminUiProvider>
-      <AdminLayout />
+      <AdminDraftGuard>
+        <AdminLayout />
+      </AdminDraftGuard>
     </AdminUiProvider>
   );
 }

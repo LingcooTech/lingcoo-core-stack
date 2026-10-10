@@ -1,9 +1,6 @@
-import { SMTP_FIELDS } from './integration-definitions';
-import { RotateSecretsButton } from '@/components/settings/RotateSecretsButton';
-import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, App, Button, Card, Collapse, Form, Input, Modal } from 'antd';
 import { z } from 'zod';
-import { toast } from 'sonner';
 import type { SmtpSettingsOverview } from '@/api/types';
 import {
   clearSmtpSettings,
@@ -12,12 +9,12 @@ import {
   testSmtpConnection,
   upsertSmtpSettings,
 } from '@/api/settings';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { SMTP_FIELDS } from './integration-definitions';
+import { RotateSecretsButton } from './RotateSecretsButton';
 import { IntegrationFields, IntegrationHeader } from './IntegrationFields';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { FormActions } from '@/components/admin/PageContainer';
+import { parseSettingsForm, useSettingsForm } from '@/lib/settings-form';
 const schema = z.object({
   transport: z.enum(['capture', 'smtp']),
   host: z.string().trim().max(255),
@@ -28,50 +25,47 @@ const schema = z.object({
   from: z.union([z.email(), z.literal('')]),
   fromName: z.string().trim().max(120),
 });
+const emailSchema = z.object({
+  to: z.email('请输入有效的测试收件邮箱'),
+  subject: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(10000),
+});
+type Values = z.infer<typeof schema>;
+type Email = z.infer<typeof emailSchema>;
 export function SmtpSettingsPanel() {
   const query = useQuery({ queryKey: ['system-settings', 'smtp'], queryFn: getSmtpSettings });
-  if (query.isPending) return <p role="status">加载邮件服务设置…</p>;
-  if (query.error) return <p role="alert">{query.error.message}</p>;
-  return query.data ? (
-    <SettingsForm key={JSON.stringify(query.data)} overview={query.data} />
-  ) : null;
+  return (
+    <AsyncState loading={query.isPending} error={query.error} onRetry={() => void query.refetch()}>
+      {query.data && <SettingsForm overview={query.data} />}
+    </AsyncState>
+  );
 }
 function SettingsForm({ overview }: { overview: SmtpSettingsOverview }) {
-  const qc = useQueryClient();
-  const initial = {
+  const qc = useQueryClient(),
+    { message } = App.useApp(),
+    [modal, context] = Modal.useModal();
+  const values: Values = {
     ...overview.values,
     transport: overview.values.transport ?? 'smtp',
     fromName: overview.values.fromName ?? 'Stack',
     password: '',
   };
-  const [values, setValues] = useState(initial),
-    [clearOpen, setClearOpen] = useState(false);
-  const [to, setTo] = useState(''),
-    [subject, setSubject] = useState('Stack 测试邮件'),
-    [text, setText] = useState('这是一封用于验证邮件服务的测试邮件。');
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial);
-  const payload = () => {
-    const parsed = schema.safeParse(values);
-    if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查邮件设置');
-    return parsed.data;
-  };
+  const { form, dirty, reset } = useSettingsForm(values);
+  const [emailForm] = Form.useForm<Email>();
+  const transport = Form.useWatch('transport', form);
   const mutation = useMutation({
     mutationFn: async (action: 'save' | 'test' | 'send' | 'clear') => {
       if (action === 'clear') return clearSmtpSettings();
-      const input = payload();
+      const input = parseSettingsForm(schema, await form.validateFields(), form);
       if (action === 'save') return upsertSmtpSettings(input);
       if (action === 'test') return testSmtpConnection(input);
-      const parsed = z
-        .object({
-          to: z.email('请输入有效的测试收件邮箱'),
-          subject: z.string().trim().min(1).max(200),
-          text: z.string().trim().min(1).max(10000),
-        })
-        .parse({ to, subject, text });
-      return sendSmtpTestEmail({ ...input, ...parsed });
+      return sendSmtpTestEmail({
+        ...input,
+        ...parseSettingsForm(emailSchema, await emailForm.validateFields(), emailForm),
+      });
     },
     onSuccess: async (result, action) => {
-      toast.success(
+      void message.success(
         action === 'test'
           ? 'SMTP 连接和认证成功；未发送邮件'
           : action === 'send'
@@ -83,20 +77,29 @@ function SettingsForm({ overview }: { overview: SmtpSettingsOverview }) {
               : '邮件服务配置已保存',
       );
       if (action === 'save' || action === 'clear') {
-        setClearOpen(false);
-        await qc.invalidateQueries({ queryKey: ['system-settings', 'smtp'] });
+        const saved = await getSmtpSettings();
+        reset({
+          ...saved.values,
+          transport: saved.values.transport ?? 'smtp',
+          fromName: saved.values.fromName ?? 'Stack',
+          password: '',
+        });
+        qc.setQueryData(['system-settings', 'smtp'], saved);
       }
     },
-    onError: (e) => toast.error(e.message),
+    onError: (error) => {
+      void message.error(error.message);
+    },
   });
-  const count = SMTP_FIELDS.filter((f) =>
-    f.control === 'secret'
+  const count = SMTP_FIELDS.filter((field) =>
+    field.control === 'secret'
       ? overview.secrets.password.configured
-      : typeof overview.values[f.key as keyof typeof overview.values] === 'boolean' ||
-        Boolean(overview.values[f.key as keyof typeof overview.values]),
+      : typeof overview.values[field.key as keyof typeof overview.values] === 'boolean' ||
+        Boolean(overview.values[field.key as keyof typeof overview.values]),
   ).length;
   return (
-    <section className="space-y-5 p-6">
+    <Card>
+      {context}
       <IntegrationHeader
         title="邮件服务"
         description="SMTP 发信身份、传输安全和投递模式。"
@@ -104,79 +107,108 @@ function SettingsForm({ overview }: { overview: SmtpSettingsOverview }) {
       >
         <RotateSecretsButton disabled={dirty || mutation.isPending} />
       </IntegrationHeader>
-      <IntegrationFields
-        prefix="smtp"
-        fields={SMTP_FIELDS}
-        values={values}
-        source={overview.source}
-        secrets={{ password: overview.secrets.password.configured }}
+      <Form
+        name="smtp"
+        form={form}
+        layout="vertical"
         disabled={mutation.isPending}
-        onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))}
-      />
-      {values.transport === 'capture' && (
-        <p role="status" className="text-sm text-amber-700">
-          测试捕获模式不会向外发送邮件。生产注册验证、密码找回和告警需要选择邮件服务器投递。
-        </p>
-      )}
-      <div className="flex flex-wrap gap-3">
-        <Button disabled={!dirty || mutation.isPending} onClick={() => mutation.mutate('save')}>
-          保存配置
-        </Button>
-        <Button
-          variant="outline"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate('test')}
-        >
-          测试 SMTP 连接
-        </Button>
-        <Button
-          variant="outline"
-          disabled={overview.source !== 'database' || mutation.isPending}
-          onClick={() => setClearOpen(true)}
-        >
-          清除配置
-        </Button>
-      </div>
-      <details className="rounded-lg border p-4">
-        <summary className="cursor-pointer text-sm font-medium">发送测试邮件</summary>
-        <div className="mt-4 space-y-3">
-          <Label htmlFor="smtp-test-to">测试收件邮箱</Label>
-          <Input
-            id="smtp-test-to"
-            type="email"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
+        onFinish={() => mutation.mutate('save')}
+      >
+        <IntegrationFields
+          prefix="smtp"
+          fields={SMTP_FIELDS}
+          source={overview.source}
+          secrets={{ password: overview.secrets.password.configured }}
+        />
+        {transport === 'capture' && (
+          <Alert
+            type="warning"
+            showIcon
+            title="测试捕获模式不会向外发送邮件"
+            description="生产注册验证、密码找回和告警需要选择邮件服务器投递。"
           />
-          <Label htmlFor="smtp-test-subject">测试邮件主题</Label>
-          <Input
-            id="smtp-test-subject"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-          <Label htmlFor="smtp-test-text">测试邮件正文</Label>
-          <Textarea id="smtp-test-text" value={text} onChange={(e) => setText(e.target.value)} />
+        )}
+        <FormActions hint={dirty ? '有未保存的修改' : '敏感项留空保留原值'}>
           <Button
-            variant="secondary"
-            disabled={mutation.isPending}
-            onClick={() => mutation.mutate('send')}
+            type="primary"
+            htmlType="submit"
+            disabled={!dirty}
+            loading={mutation.isPending && mutation.variables === 'save'}
           >
-            发送测试邮件
+            保存配置
           </Button>
-          <p className="text-xs text-muted-foreground">
-            连接测试不发信；此操作使用当前表单配置。Capture 模式只模拟成功。
-          </p>
-        </div>
-      </details>
-      <ConfirmActionDialog
-        open={clearOpen}
-        onOpenChange={setClearOpen}
-        title="清除邮件服务后台配置？"
-        description="配置将回退到环境变量；若没有可用的 SMTP，邮件验证和找回密码将无法发信。"
-        confirmText="清除配置"
-        confirmVariant="destructive"
-        isConfirming={mutation.isPending}
-        onConfirm={() => mutation.mutate('clear')}
+          <Button onClick={() => mutation.mutate('test')}>测试 SMTP 连接</Button>
+          <Button
+            danger
+            disabled={overview.source !== 'database'}
+            onClick={() => {
+              modal.confirm({
+                title: '清除邮件服务后台配置？',
+                content: '配置将回退到环境变量；若没有可用的 SMTP，邮件验证和找回密码将无法发信。',
+                okText: '清除配置',
+                cancelText: '取消',
+                okButtonProps: { danger: true },
+                onOk: () => mutation.mutateAsync('clear'),
+              });
+            }}
+          >
+            清除配置
+          </Button>
+        </FormActions>
+      </Form>
+      <Collapse
+        style={{ marginTop: 24 }}
+        items={[
+          {
+            key: 'email',
+            label: '发送测试邮件',
+            children: (
+              <Form
+                name="smtp-test"
+                form={emailForm}
+                layout="vertical"
+                disabled={mutation.isPending}
+                initialValues={{
+                  to: '',
+                  subject: 'Stack 测试邮件',
+                  text: '这是一封用于验证邮件服务的测试邮件。',
+                }}
+                onFinish={() => mutation.mutate('send')}
+              >
+                <Form.Item
+                  name="to"
+                  label="测试收件邮箱"
+                  rules={[{ required: true, type: 'email' }]}
+                >
+                  <Input type="email" />
+                </Form.Item>
+                <Form.Item
+                  name="subject"
+                  label="测试邮件主题"
+                  rules={[{ required: true, whitespace: true, max: 200 }]}
+                >
+                  <Input />
+                </Form.Item>
+                <Form.Item
+                  name="text"
+                  label="测试邮件正文"
+                  rules={[{ required: true, whitespace: true, max: 10000 }]}
+                >
+                  <Input.TextArea rows={4} />
+                </Form.Item>
+                <FormActions hint="连接测试不发信；此操作使用当前表单配置。Capture 模式只模拟成功。">
+                  <Button
+                    htmlType="submit"
+                    loading={mutation.isPending && mutation.variables === 'send'}
+                  >
+                    发送测试邮件
+                  </Button>
+                </FormActions>
+              </Form>
+            ),
+          },
+        ]}
       />
-    </section>
+    </Card>
   );
 }

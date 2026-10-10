@@ -1,8 +1,9 @@
 import { AssetLibrary } from '@/components/storage/AssetLibrary';
+import { PageContainer } from '@/components/admin/PageContainer';
 export function StoragePage() {
   return (
-    <div className="p-4 md:p-6">
+    <PageContainer title="云存储" width="wide">
       <AssetLibrary />
-    </div>
+    </PageContainer>
   );
 }

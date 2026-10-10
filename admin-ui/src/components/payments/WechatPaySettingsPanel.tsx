@@ -1,18 +1,16 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, App, Button, Flex, Form, Input, Switch, Tag, Typography } from 'antd';
 import {
   WechatPaySettingsSchema,
   type PaymentProviderConfig,
   type PaymentSettingsOverview,
   type WechatPaySettings,
 } from '@lingcoo/contracts/models';
-import { toast } from 'sonner';
 import { upsertWechatSettings } from '@/api/payments';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { StatusPill } from '@/components/shared/StatusPill';
-
+import { StatusTag } from '@/components/admin/StatusTag';
+import { FormActions } from '@/components/admin/PageContainer';
+import { parseSettingsForm, useSettingsForm } from '@/lib/settings-form';
 const fields = [
   [
     'enabled',
@@ -40,20 +38,22 @@ const secretFields = new Set<keyof WechatPaySettings>([
 
 function PemFileInput({
   name,
-  value,
+  value = '',
   configured,
   disabled,
   onChange,
+  id,
 }: {
   name: 'privateKeyPem' | 'publicKeyPem';
-  value: string;
+  value?: string;
   configured: boolean;
   disabled: boolean;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  id?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState('');
-  const [error, setError] = useState('');
+  const [fileName, setFileName] = useState(''),
+    [error, setError] = useState('');
   const readFile = async (file?: File) => {
     if (!file) return;
     try {
@@ -65,16 +65,16 @@ function PemFileInput({
         throw new Error(checked.error.issues[0]?.message ?? '文件内容不是有效的 PEM 格式');
       setError('');
       setFileName(file.name);
-      onChange(content);
+      onChange?.(content);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '读取 PEM 文件失败，请重试');
     }
   };
   return (
-    <div className="space-y-2">
+    <div>
       <input
         ref={inputRef}
-        id={`wechat-${name}`}
+        id={id ?? `wechat-${name}`}
         name={name}
         type="file"
         hidden
@@ -86,45 +86,46 @@ function PemFileInput({
           void readFile(file);
         }}
       />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
-        >
+      <Flex wrap gap={12} align="center">
+        <Button disabled={disabled} onClick={() => inputRef.current?.click()}>
           上传 PEM 文件
         </Button>
-        <span className="text-sm break-all text-muted-foreground">
+        <Typography.Text type="secondary">
           {value
             ? `已读取 ${fileName}，保存本组设置后加密保存`
             : configured
               ? '已配置；上传新文件可替换'
               : '请选择 PEM 文件'}
-        </span>
+        </Typography.Text>
         {value && (
           <Button
-            type="button"
-            variant="ghost"
+            type="text"
             disabled={disabled}
             onClick={() => {
-              onChange('');
+              onChange?.('');
               setError('');
             }}
           >
             取消替换
           </Button>
         )}
-      </div>
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      </Flex>
+      {error && <Alert type="error" title={error} showIcon />}
     </div>
   );
 }
-
+function baseline(settings: PaymentProviderConfig | undefined): WechatPaySettings {
+  return Object.fromEntries(
+    fields.map(([name]) => [
+      name,
+      name === 'enabled'
+        ? Boolean(settings?.values.enabled)
+        : secretFields.has(name)
+          ? ''
+          : String(settings?.values[name] ?? ''),
+    ]),
+  );
+}
 export function WechatPaySettingsPanel({
   settings,
   canManage,
@@ -136,12 +137,21 @@ export function WechatPaySettingsPanel({
   isClearing: boolean;
   onClear: () => void;
 }) {
-  const qc = useQueryClient();
-  const [draft, setDraft] = useState<WechatPaySettings>({});
-  const [errors, setErrors] = useState<Partial<Record<keyof WechatPaySettings, string>>>({});
+  const qc = useQueryClient(),
+    { message } = App.useApp();
+  const base = baseline(settings);
+  const { form, reset } = useSettingsForm(base);
+  const watched = Form.useWatch([], { form, preserve: true }) as WechatPaySettings | undefined;
+  const draft = Object.fromEntries(
+    fields
+      .filter(([name]) => (watched?.[name] ?? base[name]) !== base[name])
+      .map(([name]) => [name, watched?.[name]]),
+  );
+  const pendingCount = Object.keys(draft).length;
   const mutation = useMutation({
     mutationFn: upsertWechatSettings,
     onSuccess: (saved) => {
+      reset(baseline(saved));
       qc.setQueryData<PaymentSettingsOverview>(
         ['payment-settings'],
         (current) =>
@@ -149,12 +159,12 @@ export function WechatPaySettingsPanel({
             items: current.items.map((item) => (item.code === 'wechat_pay' ? saved : item)),
           },
       );
-      setDraft({});
-      setErrors({});
-      toast.success('微信支付设置已保存');
+      void message.success('微信支付设置已保存');
       void qc.invalidateQueries({ queryKey: ['payment-settings'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '保存失败'),
+    onError: (error) => {
+      void message.error(error.message);
+    },
   });
   const disabled = !canManage || mutation.isPending || isClearing;
   const source =
@@ -163,22 +173,6 @@ export function WechatPaySettingsPanel({
       : settings?.source === 'env'
         ? '环境变量'
         : '默认值';
-  const baseValue = (name: keyof WechatPaySettings): string | boolean =>
-    name === 'enabled'
-      ? Boolean(settings?.values.enabled)
-      : secretFields.has(name)
-        ? ''
-        : String(settings?.values[name] ?? '');
-  const change = (name: keyof WechatPaySettings, value: string | boolean) => {
-    setDraft((current) => {
-      const next = { ...current, [name]: value };
-      if (value === baseValue(name)) delete next[name];
-      return next;
-    });
-    setErrors((current) => ({ ...current, [name]: undefined }));
-    mutation.reset();
-  };
-  const pendingCount = Object.keys(draft).length;
   const configuredCount = fields.filter(
     ([name]) =>
       name === 'enabled' ||
@@ -186,145 +180,122 @@ export function WechatPaySettingsPanel({
         ? settings?.secrets[name]?.configured
         : Boolean(settings?.values[name])),
   ).length;
-
   return (
-    <form
-      className="max-w-4xl space-y-5"
-      onSubmit={(event) => {
-        event.preventDefault();
+    <Form
+      form={form}
+      name="wechat"
+      layout="vertical"
+      disabled={disabled}
+      onValuesChange={() => mutation.reset()}
+      onFinish={() => {
         if (disabled || pendingCount === 0) return;
-        const checked = WechatPaySettingsSchema.safeParse(draft);
-        if (!checked.success) {
-          setErrors(
-            Object.fromEntries(checked.error.issues.map((issue) => [issue.path[0], issue.message])),
-          );
-          return;
+        try {
+          mutation.mutate(parseSettingsForm(WechatPaySettingsSchema, draft, form));
+        } catch {
+          /* Field errors are displayed by Form. */
         }
-        mutation.mutate(checked.data);
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/50 p-4">
-        <StatusPill
+      <Flex gap={12} wrap align="center" style={{ marginBottom: 16 }}>
+        <StatusTag
           tone={settings?.configured ? 'ok' : 'warn'}
           label={settings?.configured ? '配置完整' : '配置未完成'}
         />
-        <StatusPill
+        <StatusTag
           tone={settings?.values.enabled ? 'ok' : 'neutral'}
           label={settings?.values.enabled ? '已启用' : '未启用'}
         />
-        <span className="text-sm text-muted-foreground">
+        <Typography.Text type="secondary">
           已配置 {configuredCount}/{fields.length} · 来源：{source}
-        </span>
-      </div>
-      <p className="text-sm text-muted-foreground">
+        </Typography.Text>
+      </Flex>
+      <Typography.Paragraph type="secondary">
         后台配置优先于环境变量。敏感项仅显示配置状态；留空保留原值，上传新文件或输入完整新值后统一保存。
-      </p>
+      </Typography.Paragraph>
       {!canManage && (
-        <p role="status" className="text-sm text-muted-foreground">
-          当前账号仅可查看支付设置。
-        </p>
+        <Alert type="info" title="当前账号仅可查看支付设置。" style={{ marginBottom: 16 }} />
       )}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="admin-form-grid">
         {fields.map(([name, label, description]) => {
           const isPem = name === 'privateKeyPem' || name === 'publicKeyPem';
-          const value = draft[name] ?? baseValue(name);
           return (
-            <section
+            <Form.Item
               key={name}
-              className={`space-y-3 rounded-lg border border-border p-4 ${isPem || name === 'notifyUrl' ? 'md:col-span-2' : ''}`}
+              name={name}
+              htmlFor={`wechat-${name}`}
+              valuePropName={name === 'enabled' ? 'checked' : 'value'}
+              style={isPem || name === 'notifyUrl' ? { gridColumn: '1 / -1' } : undefined}
+              label={
+                <span>
+                  {label}{' '}
+                  <span aria-hidden="true">
+                    <Tag>{source}</Tag>
+                    {secretFields.has(name) && <Tag color="red">敏感配置</Tag>}
+                    {draft[name] !== undefined && <Tag color="warning">未保存</Tag>}
+                  </span>
+                </span>
+              }
+              extra={description}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor={`wechat-${name}`} className="text-sm font-medium">
-                  {label}
-                </label>
-                <span className="text-xs text-muted-foreground">{source}</span>
-                {secretFields.has(name) && (
-                  <span className="text-xs text-muted-foreground">敏感配置</span>
-                )}
-                {draft[name] !== undefined && <StatusPill tone="warn" label="未保存" />}
-              </div>
-              <p
-                id={`wechat-${name}-description`}
-                className="text-sm leading-relaxed text-muted-foreground"
-              >
-                {description}
-              </p>
               {name === 'enabled' ? (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="wechat-enabled"
-                    checked={Boolean(value)}
-                    disabled={disabled}
-                    onCheckedChange={(checked) => change(name, checked === true)}
-                    aria-describedby={`wechat-${name}-description`}
-                  />
-                  <span className="text-sm">{value ? '开启' : '关闭'}</span>
-                </div>
+                <Switch id="wechat-enabled" aria-label={label} disabled={disabled} />
               ) : isPem ? (
                 <PemFileInput
+                  id={`wechat-${name}`}
                   name={name}
-                  value={String(value)}
                   configured={Boolean(settings?.secrets[name]?.configured)}
                   disabled={disabled}
-                  onChange={(content) => change(name, content)}
+                />
+              ) : name === 'apiV3Key' ? (
+                <Input.Password
+                  id={`wechat-${name}`}
+                  name={name}
+                  autoComplete="new-password"
+                  placeholder={
+                    settings?.secrets[name]?.configured ? '已配置；输入完整新值以替换' : undefined
+                  }
                 />
               ) : (
                 <Input
                   id={`wechat-${name}`}
                   name={name}
-                  type={name === 'apiV3Key' ? 'password' : name === 'notifyUrl' ? 'url' : 'text'}
-                  autoComplete={name === 'apiV3Key' ? 'new-password' : 'off'}
-                  value={String(value)}
-                  disabled={disabled}
+                  type={name === 'notifyUrl' ? 'url' : 'text'}
+                  autoComplete="off"
                   placeholder={
-                    name === 'apiV3Key' && settings?.secrets[name]?.configured
-                      ? '已配置；输入完整新值以替换'
-                      : name === 'appId'
-                        ? 'wx0123456789abcdef'
-                        : name === 'publicKeyId'
-                          ? 'PUB_KEY_ID_…'
-                          : undefined
+                    name === 'appId'
+                      ? 'wx0123456789abcdef'
+                      : name === 'publicKeyId'
+                        ? 'PUB_KEY_ID_…'
+                        : undefined
                   }
-                  onChange={(event) => change(name, event.target.value)}
-                  aria-invalid={Boolean(errors[name])}
-                  aria-describedby={`wechat-${name}-description`}
                 />
               )}
-              {errors[name] && (
-                <p role="alert" className="text-sm text-destructive">
-                  {errors[name]}
-                </p>
-              )}
-            </section>
+            </Form.Item>
           );
         })}
       </div>
-      {mutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
-          {mutation.error instanceof Error ? mutation.error.message : '保存失败，请重试'}
-          ；待保存内容已保留。
-        </p>
+      {mutation.error && (
+        <Alert type="error" showIcon title={`${mutation.error.message}；待保存内容已保留`} />
       )}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
-        <p role="status" className="text-sm text-muted-foreground">
-          {pendingCount > 0
+      <FormActions
+        hint={
+          pendingCount > 0
             ? `有 ${pendingCount} 项待保存；填写完成后统一保存。`
-            : '修改设置后统一保存。'}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={disabled || pendingCount === 0}>
-            {mutation.isPending ? '保存中…' : '保存微信支付设置'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || settings?.source !== 'database'}
-            onClick={onClear}
-          >
-            清除本组后台配置
-          </Button>
-        </div>
-      </div>
-    </form>
+            : '修改设置后统一保存。'
+        }
+      >
+        <Button
+          type="primary"
+          htmlType="submit"
+          disabled={disabled || pendingCount === 0}
+          loading={mutation.isPending}
+        >
+          保存微信支付设置
+        </Button>
+        <Button danger disabled={disabled || settings?.source !== 'database'} onClick={onClear}>
+          清除本组后台配置
+        </Button>
+      </FormActions>
+    </Form>
   );
 }
