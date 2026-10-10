@@ -138,7 +138,6 @@ export function HostingPage() {
     <PageContainer
       title="托管运维"
       width="wide"
-      description="掌握服务器资源，管理托管应用与数据保护。"
       actions={
         <Space>
           <Button
@@ -178,7 +177,7 @@ export function HostingPage() {
             note: '实例、资源、备份与期限',
           },
         ].map((m) => (
-          <Card key={m.title}>
+          <Card className="admin-metric" key={m.title}>
             <Statistic title={m.title} value={m.value} />
             <small>{m.note}</small>
           </Card>

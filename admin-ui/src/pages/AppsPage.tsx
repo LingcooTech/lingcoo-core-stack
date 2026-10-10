@@ -72,7 +72,6 @@ export function AppsPage() {
     <PageContainer
       title="应用管理"
       width="wide"
-      description="管理应用接入、交付、套餐和售卖配置。"
       filters={
         <>
           <Input.Search

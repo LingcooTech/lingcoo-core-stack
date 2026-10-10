@@ -127,12 +127,6 @@ test('admin shell uses the page title and filters navigation and search by role'
 test('theme choices persist and change the Ant Design theme without leaving the page', async () => {
   await mount();
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="切换主题"]')!.click());
-  await vi.waitFor(() => expect(document.body.textContent).toContain('跟随系统'));
-  await act(async () =>
-    [...document.querySelectorAll('[role=menuitem]')]
-      .find((item) => item.textContent?.includes('深色'))!
-      .dispatchEvent(new MouseEvent('click', { bubbles: true })),
-  );
   await vi.waitFor(() => expect(localStorage.getItem('fd-core:theme')).toBe('dark'));
   expect(document.documentElement.classList.contains('dark')).toBe(true);
   expect(host.textContent).toContain('page fixture');

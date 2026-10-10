@@ -31,7 +31,7 @@ export const JobRunsResponseSchema = paginationSchema(JobRunSchema);
 export type JobRunsResponse = z.infer<typeof JobRunsResponseSchema>;
 
 export const ObservabilityAlertSchema = z.object({
-  id: z.uuid(),
+  id: z.string().min(1),
   level: z.union([z.literal('info'), z.literal('warning'), z.literal('error')]),
   title: z.string(),
   description: z.string(),

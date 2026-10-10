@@ -74,11 +74,7 @@ export function DashboardPage() {
     { label: '售后工单', href: '/admin/tickets', permission: 'tickets.manage' },
   ] as const;
   return (
-    <PageContainer
-      title="仪表盘"
-      width="wide"
-      description="平台经营与交付概览，数据按当前账号权限展示。"
-    >
+    <PageContainer title="仪表盘" width="wide">
       {results.filter((r) => r.isError).length > 0 && (
         <Alert
           type="warning"
@@ -108,7 +104,7 @@ export function DashboardPage() {
         ]
           .filter((m) => m.show)
           .map((m) => (
-            <Card key={m.title}>
+            <Card className="admin-metric" key={m.title}>
               <Statistic title={m.title} value={m.value} />
             </Card>
           ))}

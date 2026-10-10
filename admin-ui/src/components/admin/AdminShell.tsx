@@ -1,7 +1,6 @@
 import {
   App,
   Avatar,
-  Breadcrumb,
   Button,
   Drawer,
   Dropdown,
@@ -13,16 +12,15 @@ import {
   type MenuProps,
 } from 'antd';
 import {
-  DesktopOutlined,
+  DownOutlined,
+  BulbOutlined,
   LogoutOutlined,
-  MenuFoldOutlined,
   MenuUnfoldOutlined,
   MoonOutlined,
   SearchOutlined,
-  SunOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -55,7 +53,8 @@ function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { message } = App.useApp();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
   const screens = Grid.useBreakpoint();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -84,38 +83,25 @@ function AdminLayout() {
   };
   const items: MenuProps['items'] = adminNavigationGroups
     .map((group) => ({
-      type: 'group' as const,
       key: group.label,
       label: group.label,
+      icon: (() => {
+        const Icon = resolveIcon(adminSectionMeta[group.items[0]!].icon);
+        return <Icon size={16} />;
+      })(),
       children: group.items
         .filter((key) => hasPermission(role, adminSectionMeta[key].permission))
         .map((key) => {
           const meta = adminSectionMeta[key];
-          const Icon = resolveIcon(meta.icon);
-          return { key: meta.href, label: meta.navTitle, icon: <Icon size={16} /> };
+          return { key: meta.href, label: meta.navTitle };
         }),
     }))
     .filter((group) => group.children.length > 0);
-  const themeItems: MenuProps['items'] = [
-    { key: 'light', label: '浅色', icon: <SunOutlined aria-hidden="true" /> },
-    { key: 'dark', label: '深色', icon: <MoonOutlined aria-hidden="true" /> },
-    { key: 'system', label: '跟随系统', icon: <DesktopOutlined aria-hidden="true" /> },
-  ];
+  useEffect(() => {
+    if (!collapsed && section)
+      setOpenKeys((current) => [...new Set([...current, section.groupLabel])]);
+  }, [collapsed, section]);
   const accountItems: MenuProps['items'] = [
-    {
-      key: 'identity',
-      label: (
-        <>
-          <strong>{name}</strong>
-          <br />
-          {user?.email}
-          <br />
-          {roleLabels[role]}
-        </>
-      ),
-      disabled: true,
-    },
-    { type: 'divider' },
     ...[
       ['/account?tab=profile', '个人资料'],
       ['/account?tab=orders', '我的订单'],
@@ -129,63 +115,122 @@ function AdminLayout() {
     { type: 'divider' },
     { key: 'logout', label: '退出登录', danger: true, icon: <LogoutOutlined /> },
   ];
-  const navigation = (small: boolean) => (
-    <div className="admin-navigation">
-      <div className={`admin-brand${!small && collapsed ? 'admin-brand--collapsed' : ''}`}>
-        <Link to="/" aria-label="返回应用中心">
-          <Avatar shape="square" src={settings?.logoUrl || undefined}>
-            {getInitials(getSiteDisplayName(settings))}
-          </Avatar>
-          {(small || !collapsed) && <strong>{getSiteDisplayName(settings)}</strong>}
-        </Link>
-        {!small && (
-          <Tooltip title={collapsed ? '打开边栏' : '收起边栏'}>
-            <Button
-              type="text"
-              aria-label={collapsed ? '打开边栏' : '收起边栏'}
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed(!collapsed)}
-            />
-          </Tooltip>
-        )}
+  const accountMenu: MenuProps = {
+    items: accountItems,
+    onClick: ({ key }) => {
+      if (key === 'help') window.open('/api-docs', '_blank', 'noopener,noreferrer');
+      else if (key === 'logout')
+        void logout().catch((error: unknown) => {
+          void message.error(error instanceof Error ? error.message : '退出登录失败，请重试');
+        });
+      else go(key);
+    },
+  };
+  const accountMenuContent = (menu: ReactNode) => (
+    <div className="admin-account-menu">
+      <div className="admin-account-menu__identity">
+        <Avatar className="admin-account__avatar" size={38} icon={<UserOutlined />} />
+        <div className="admin-account-menu__copy">
+          <strong>{name}</strong>
+          <span>{user?.email}</span>
+          <span>{roleLabels[role]}</span>
+        </div>
       </div>
-      <Menu
-        mode="inline"
-        inlineCollapsed={!small && collapsed}
-        selectedKeys={section ? [section.href] : []}
-        items={items}
-        onClick={({ key }) => go(key)}
-        className="admin-navigation__menu"
-      />
-      <Dropdown
-        trigger={['click']}
-        menu={{
-          items: accountItems,
-          onClick: ({ key }) => {
-            if (key === 'help') window.open('/api-docs', '_blank', 'noopener,noreferrer');
-            else if (key === 'logout')
-              void logout().catch((error: unknown) => {
-                void message.error(error instanceof Error ? error.message : '退出登录失败，请重试');
-              });
-            else if (key !== 'identity') go(key);
-          },
-        }}
-      >
-        <Button
-          className="admin-account"
-          type="text"
-          icon={
-            <Avatar size="small" icon={<UserOutlined />}>
-              {getInitials(name)}
-            </Avatar>
-          }
-          aria-label="管理员账户"
-        >
-          {(small || !collapsed) && <span className="admin-account__name">{name}</span>}
-        </Button>
-      </Dropdown>
+      {menu}
     </div>
   );
+  const navigation = (small: boolean) => {
+    const compact = !small && collapsed;
+    return (
+      <div className="admin-navigation-layout">
+        <div className={`admin-brand ${compact ? 'admin-brand--collapsed' : ''}`}>
+          <Link className="admin-brand__link" to="/" aria-label="返回应用中心">
+            {!compact && settings?.logoUrl ? (
+              <img
+                className="admin-brand__full-logo"
+                src={settings.logoUrl}
+                alt={getSiteDisplayName(settings)}
+              />
+            ) : (
+              <>
+                <Avatar
+                  className="brand-mark brand-mark--compact"
+                  shape="square"
+                  src={settings?.faviconUrl || settings?.logoUrl || undefined}
+                >
+                  {getInitials(getSiteDisplayName(settings))}
+                </Avatar>
+                {!compact && (
+                  <div className="admin-brand__copy">
+                    <strong>{getSiteDisplayName(settings)}</strong>
+                    <span>Admin Console</span>
+                  </div>
+                )}
+              </>
+            )}
+          </Link>
+          {!small && (
+            <Tooltip title={collapsed ? '打开边栏' : '收起边栏'} placement="right">
+              <Button
+                type="text"
+                className="admin-brand__toggle"
+                aria-label={collapsed ? '打开边栏' : '收起边栏'}
+                icon={
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <rect
+                      x="3"
+                      y="3"
+                      width="18"
+                      height="18"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path d="M9 3v18" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                }
+                onClick={() => setCollapsed(!collapsed)}
+              />
+            </Tooltip>
+          )}
+        </div>
+        <Menu
+          mode="inline"
+          inlineIndent={14}
+          inlineCollapsed={compact}
+          selectedKeys={section ? [section.href] : []}
+          openKeys={compact ? undefined : openKeys}
+          onOpenChange={setOpenKeys}
+          items={items}
+          onClick={({ key }) => go(key)}
+          className="admin-navigation"
+        />
+        <div className={`admin-sider__footer ${compact ? 'admin-sider__footer--collapsed' : ''}`}>
+          <Dropdown
+            trigger={['click']}
+            placement="topLeft"
+            menu={accountMenu}
+            popupRender={accountMenuContent}
+          >
+            <Button
+              className={`admin-sider-user ${compact ? 'admin-sider-user--collapsed' : ''}`}
+              type="text"
+              aria-label="管理员账户"
+            >
+              <Avatar className="admin-account__avatar" size={34} icon={<UserOutlined />} />
+              {!compact && (
+                <span className="admin-sider-user__copy">
+                  <strong>{name}</strong>
+                  <span>{user?.email}</span>
+                </span>
+              )}
+              {!compact && <DownOutlined className="admin-account__chevron" />}
+            </Button>
+          </Dropdown>
+        </div>
+      </div>
+    );
+  };
   return (
     <PageTitleContext.Provider value={setPageTitle}>
       <Layout className="admin-layout">
@@ -194,8 +239,8 @@ function AdminLayout() {
             width={240}
             collapsedWidth={72}
             collapsed={collapsed}
-            theme="light"
-            className="admin-sider"
+            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+            className={`admin-sider ${resolvedTheme === 'dark' ? 'admin-sider--dark' : ''}`}
           >
             {navigation(false)}
           </Layout.Sider>
@@ -204,14 +249,18 @@ function AdminLayout() {
           open={!screens.lg && mobileOpen}
           onClose={() => setMobileOpen(false)}
           placement="left"
-          size={260}
-          title="管理导航"
-          styles={{ body: { padding: 0 } }}
+          size={280}
+          styles={{ body: { padding: 0, overflow: 'hidden' }, header: { display: 'none' } }}
         >
           {navigation(true)}
         </Drawer>
-        <Layout className="admin-main">
-          <Layout.Header className="admin-header">
+        <Layout
+          className="admin-main"
+          style={{ marginInlineStart: screens.lg ? (collapsed ? 72 : 240) : 0 }}
+        >
+          <Layout.Header
+            className={`admin-header ${resolvedTheme === 'dark' ? 'admin-header--dark' : ''}`}
+          >
             <Space className="admin-header__title">
               {!screens.lg && (
                 <Button
@@ -221,46 +270,55 @@ function AdminLayout() {
                   onClick={() => setMobileOpen(true)}
                 />
               )}
-              <Breadcrumb
-                items={[
-                  ...(section ? [{ title: section.groupLabel }] : []),
-                  { title: pageTitle || section?.title || '管理后台' },
-                ]}
-              />
+              <div className="admin-header__context">
+                <h1>{pageTitle || section?.title || '管理后台'}</h1>
+              </div>
             </Space>
-            <Space>
+            <div className="admin-header__actions">
               <Button
+                className="admin-search-trigger"
                 icon={<SearchOutlined />}
                 aria-label="搜索页面"
                 onClick={() => setCommandOpen(true)}
               >
-                {screens.md ? '搜索 · ⌘K' : null}
+                {screens.md && (
+                  <>
+                    <span>搜索页面、资源…</span>
+                    <kbd>⌘K</kbd>
+                  </>
+                )}
               </Button>
+              <div className="admin-header__utilities">
+                <Tooltip title={resolvedTheme === 'light' ? '切换深色主题' : '切换浅色主题'}>
+                  <Button
+                    type="text"
+                    icon={resolvedTheme === 'light' ? <MoonOutlined /> : <BulbOutlined />}
+                    aria-label="切换主题"
+                    onClick={() => setTheme(resolvedTheme === 'light' ? 'dark' : 'light')}
+                  />
+                </Tooltip>
+              </div>
               <Dropdown
+                menu={accountMenu}
                 trigger={['click']}
-                menu={{
-                  items: themeItems,
-                  selectedKeys: [theme],
-                  onClick: ({ key }) => {
-                    if (key === 'light' || key === 'dark' || key === 'system') setTheme(key);
-                  },
-                }}
+                placement="bottomRight"
+                popupRender={accountMenuContent}
               >
-                <Button
-                  type="text"
-                  icon={
-                    theme === 'dark' ? (
-                      <MoonOutlined />
-                    ) : theme === 'system' ? (
-                      <DesktopOutlined />
-                    ) : (
-                      <SunOutlined />
-                    )
-                  }
-                  aria-label="切换主题"
-                />
+                <Button type="text" className="admin-account" aria-label="打开账户菜单">
+                  <Space>
+                    <Avatar className="admin-account__avatar" size={32} icon={<UserOutlined />} />
+                    {screens.lg && (
+                      <>
+                        <span className="admin-account__copy">
+                          <strong>{name}</strong>
+                        </span>
+                        <DownOutlined className="admin-account__chevron" />
+                      </>
+                    )}
+                  </Space>
+                </Button>
               </Dropdown>
-            </Space>
+            </div>
           </Layout.Header>
           <Layout.Content className="admin-content">
             <ErrorBoundary

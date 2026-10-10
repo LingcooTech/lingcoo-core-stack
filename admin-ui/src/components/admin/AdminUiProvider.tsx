@@ -24,9 +24,12 @@ export function AdminUiProvider({ children }: { children: ReactNode }) {
           token: {
             colorPrimary: data?.brandPrimaryColor || '#2563eb',
             colorInfo: data?.brandPrimaryColor || '#2563eb',
+            colorBgLayout: resolvedTheme === 'light' ? '#f4f6fa' : '#000000',
+            colorBgContainer: resolvedTheme === 'light' ? '#ffffff' : '#141414',
+            colorText: resolvedTheme === 'light' ? '#172033' : 'rgba(255, 255, 255, 0.88)',
             borderRadius: 8,
             fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
           },
         }}
       >

@@ -7,7 +7,6 @@ export const EventSchema = z.object({
   eventName: z.string(),
   eventTime: z.iso.datetime({ offset: true }),
   properties: z.unknown(),
-  createdAt: z.iso.datetime({ offset: true }),
   userId: z.union([z.string(), z.null()]),
   installId: z.union([z.string(), z.null()]),
   appId: z.union([z.string(), z.null()]),

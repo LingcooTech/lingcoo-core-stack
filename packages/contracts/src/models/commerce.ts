@@ -278,7 +278,6 @@ export const BillingWebhookEventSchema = z.object({
   payload: z.unknown(),
   processedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
   createdAt: z.iso.datetime({ offset: true }),
-  updatedAt: z.iso.datetime({ offset: true }),
 });
 
 export type BillingWebhookEvent = z.infer<typeof BillingWebhookEventSchema>;

@@ -213,7 +213,7 @@ export function LicensesPage() {
   ];
 
   return (
-    <PageContainer title="授权管理" description="人工发放、查询或撤销应用授权。">
+    <PageContainer title="授权管理">
       <Card title="人工发放授权" style={{ marginBottom: 16 }}>
         <Form
           form={grantForm}

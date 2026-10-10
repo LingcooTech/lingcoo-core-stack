@@ -356,7 +356,6 @@ export function UsersPage() {
   return (
     <PageContainer
       title="用户管理"
-      description="查询用户与关联业务记录；角色、停用和密码操作受独立权限控制。"
       filters={
         <>
           <Input.Search

@@ -214,10 +214,7 @@ export function NotificationsPage() {
     });
   };
   return (
-    <PageContainer
-      title="通知管理"
-      description="查看系统通知与管理员公告。发布公告会通知所有活跃用户。"
-    >
+    <PageContainer title="通知管理">
       {contextHolder}
       <Flex wrap gap={16} style={{ marginBottom: 16 }}>
         <Card title="发布公告" style={{ flex: '1 1 400px' }}>

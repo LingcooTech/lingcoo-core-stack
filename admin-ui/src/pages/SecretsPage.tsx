@@ -58,7 +58,7 @@ export function SecretsPage() {
     },
   });
   return (
-    <PageContainer title="应用密钥" description="生成和管理应用 API 密钥" width="form">
+    <PageContainer title="应用密钥" width="form">
       {context}
       <AsyncState
         loading={query.isPending}

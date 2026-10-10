@@ -77,7 +77,6 @@ export function ContentPage() {
     <PageContainer
       title="内容管理"
       width="wide"
-      description="创建本地内容，或通过已配置的 WordPress、Notion 和微信公众号导入内容。"
       filters={
         <>
           <Input.Search

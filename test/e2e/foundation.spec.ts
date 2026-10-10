@@ -132,8 +132,10 @@ test('admin navigation, command search and mobile menu preserve route access', a
   await page.setViewportSize({ width: 1440, height: 900 });
   await login(page, '/admin/login', adminEmail);
   await expect(page).toHaveURL(/\/admin$/);
+  await page.getByRole('menuitem', { name: '交易管理', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: '订单管理', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '收起边栏', exact: true }).click();
+  await page.locator('.admin-brand').hover();
   await expect(page.getByRole('button', { name: '打开边栏', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '打开边栏', exact: true }).click();
   await page.keyboard.press('Control+k');
@@ -147,6 +149,10 @@ test('admin navigation, command search and mobile menu preserve route access', a
   await page.screenshot({ path: info.outputPath('admin-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '打开侧边栏', exact: true }).click();
+  const mobileTrade = page
+    .getByRole('dialog')
+    .getByRole('menuitem', { name: '交易管理', exact: true });
+  if ((await mobileTrade.getAttribute('aria-expanded')) !== 'true') await mobileTrade.click();
   await page.getByRole('dialog').getByRole('menuitem', { name: '订单管理', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/orders$/);
   await expect(page.getByRole('region', { name: '订单管理', exact: true })).toBeVisible();
@@ -183,10 +189,12 @@ test('unsaved admin settings block navigation and preserve the draft when editin
   await expect(page).toHaveURL(/\/admin$/);
   await page.goto('/admin/settings?tab=smtp');
   await page.getByLabel('发件名称', { exact: true }).fill('Unsaved fixture brand');
+  await page.getByRole('menuitem', { name: '交易管理', exact: true }).click();
   await page.getByRole('menuitem', { name: '订单管理', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: '继续编辑', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '放弃未保存的修改？', exact: true })).toBeHidden();
   await expect(page.getByLabel('发件名称', { exact: true })).toHaveValue('Unsaved fixture brand');
   await page.getByRole('menuitem', { name: '订单管理', exact: true }).click();
   await page
@@ -311,6 +319,40 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     await page.goto(`/admin/${from}`);
     await expect(page).toHaveURL(new RegExp(`/admin/${to}$`));
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/admin');
+  await expect(page.getByRole('heading', { name: '仪表盘', exact: true })).toBeVisible();
+  await expect(page.locator('.admin-sider-user__copy')).toBeVisible();
+  await expect(page.locator('.admin-sider-user .ant-avatar')).toHaveCSS('width', '34px');
+  await expect(page.locator('.admin-sider-user .ant-avatar')).toHaveCSS('height', '34px');
+  await expect(page.getByRole('button', { name: '打开账户菜单', exact: true })).toBeVisible();
+  await expect(page.locator('.admin-content')).toHaveCSS('background-color', 'rgb(244, 246, 250)');
+  await page.getByRole('button', { name: '收起边栏', exact: true }).click();
+  await expect(page.locator('.admin-sider')).toHaveCSS('width', '72px');
+  await expect(page.locator('.admin-brand--collapsed')).toHaveCSS('height', '64px');
+  await expect(page.locator('.admin-sider__footer--collapsed')).toBeVisible();
+  await expect(page.locator('.admin-sider-user__copy')).toHaveCount(0);
+  await page.locator('.admin-brand').hover();
+  await expect(page.getByRole('button', { name: '打开边栏', exact: true })).toHaveCSS(
+    'opacity',
+    '1',
+  );
+  await page.screenshot({ path: info.outputPath('sidebar-collapsed.png'), fullPage: true });
+  await page.getByRole('button', { name: '打开边栏', exact: true }).click();
+  await expect(page.locator('.admin-sider')).toHaveCSS('width', '240px');
+  await page.screenshot({ path: info.outputPath('dashboard-expanded.png'), fullPage: true });
+  await page.goto('/admin/observability');
+  for (const path of [
+    'events',
+    'billing-webhooks',
+    'jobs',
+    'audit-logs',
+    'observability/summary',
+  ]) {
+    const response = await page.request.get('/v1/admin/' + path);
+    expect(response.status(), path).toBe(200);
+  }
+  await expect(page.getByText('Unexpected server error', { exact: true })).toHaveCount(0);
   for (const width of [1440, 1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/admin/settings?tab=smtp');
@@ -322,14 +364,11 @@ test('all admin routes and legacy redirects render, with responsive themed forms
   }
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: '切换主题', exact: true }).click();
-  await page.getByRole('menuitem', { name: '深色', exact: true }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('.admin-sider--dark')).toHaveCSS('background-color', 'rgb(20, 20, 20)');
+  await expect(page.locator('.admin-content')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
   await page.screenshot({ path: info.outputPath('settings-dark.png'), fullPage: true });
   await page.getByRole('button', { name: '切换主题', exact: true }).click();
-  await page.getByRole('menuitem', { name: '跟随系统', exact: true }).click();
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await expect(page.locator('html')).toHaveClass(/dark/);
-  await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   for (const route of ['/', '/content', '/docs', '/account']) {
     await page.goto(route);

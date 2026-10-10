@@ -119,7 +119,6 @@ export function DocsPage() {
     <PageContainer
       title="文档管理"
       width="wide"
-      description="管理产品和应用文档空间、目录和发布状态。"
       actions={
         <Button
           type="primary"

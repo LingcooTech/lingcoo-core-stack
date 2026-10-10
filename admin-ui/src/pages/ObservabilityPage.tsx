@@ -297,7 +297,6 @@ export function ObservabilityPage() {
       render: (_, row) => (
         <div>
           <p className="text-xs">{formatTime(row.eventTime)}</p>
-          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -370,7 +369,6 @@ export function ObservabilityPage() {
       render: (_, row) => (
         <div>
           <p className="text-xs">{row.processedAt ? formatTime(row.processedAt) : '未处理'}</p>
-          <p className="text-[10px] text-muted-foreground">{formatTime(row.updatedAt)}</p>
         </div>
       ),
     },
@@ -675,10 +673,7 @@ export function ObservabilityPage() {
     </>
   );
   return (
-    <PageContainer
-      title="事件日志与告警"
-      description="查看业务事件、支付回调、后台任务和操作审计。"
-    >
+    <PageContainer title="事件日志与告警">
       <AsyncState error={summaryQuery.error} onRetry={() => void summaryQuery.refetch()}>
         <Flex wrap gap={16} style={{ marginBottom: 16 }}>
           <MetricCard
@@ -892,7 +887,7 @@ function MetricCard({
 }) {
   const Icon = tone === 'danger' ? ShieldAlert : tone === 'warn' ? AlertTriangle : BellRing;
   return (
-    <Card style={{ flex: '1 1 220px' }}>
+    <Card className="admin-metric" style={{ flex: '1 1 220px' }}>
       <Flex justify="space-between">
         <Statistic title={title} value={value} />
         <Icon size={20} />

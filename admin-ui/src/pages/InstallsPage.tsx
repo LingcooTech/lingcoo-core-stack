@@ -126,7 +126,6 @@ export function InstallsPage() {
   return (
     <PageContainer
       title="客户端安装"
-      description="查看客户端主动登记的版本和用户绑定，处理接入与授权问题。"
       filters={
         <Input.Search
           aria-label="搜索客户端安装"

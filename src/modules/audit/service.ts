@@ -64,7 +64,7 @@ export class AuditLogService {
           ilike(auditLogs.resourceId, pattern),
           ilike(auditLogs.summary, pattern),
           ilike(auditLogs.actorLabel, pattern),
-          ilike(auditLogs.outcome, pattern),
+          ilike(sql`${auditLogs.outcome}::text`, pattern),
           ilike(sql`${auditLogs.id}::text`, pattern),
           ilike(users.email, pattern),
           ilike(users.displayName, pattern),

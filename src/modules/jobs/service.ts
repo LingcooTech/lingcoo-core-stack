@@ -200,7 +200,7 @@ export class JobRunService {
         or(
           ilike(jobRuns.kind, pattern),
           ilike(jobRuns.queue, pattern),
-          ilike(jobRuns.status, pattern),
+          ilike(sql`${jobRuns.status}::text`, pattern),
           ilike(jobRuns.relatedEntityType, pattern),
           ilike(jobRuns.relatedEntityId, pattern),
           ilike(jobRuns.lockedBy, pattern),

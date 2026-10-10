@@ -154,7 +154,7 @@ export class BillingRepository {
           ilike(billingWebhookEvents.provider, pattern),
           ilike(billingWebhookEvents.type, pattern),
           ilike(billingWebhookEvents.providerEventId, pattern),
-          ilike(billingWebhookEvents.status, pattern),
+          ilike(sql`${billingWebhookEvents.status}::text`, pattern),
         )!,
       );
     }

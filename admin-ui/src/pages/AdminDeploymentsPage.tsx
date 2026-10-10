@@ -144,7 +144,6 @@ export function AdminDeploymentsPage() {
   return (
     <PageContainer
       title="应用部署"
-      description="统一查看客户自有服务器与平台托管的交付记录。"
       actions={
         <>
           <Button loading={query.isFetching} onClick={() => void query.refetch()}>
