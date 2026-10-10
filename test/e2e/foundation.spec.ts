@@ -359,6 +359,11 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     for (const route of ['/admin/apps', '/admin/apps/new', '/admin/settings', '/admin/payments']) {
       await page.goto(route);
       await expect(page.locator('.admin-page')).toBeVisible();
+      // useBreakpoint resolves after mount; measure after the sidebar margin transition settles.
+      await expect(page.locator('.admin-main')).toHaveCSS(
+        'margin-inline-start',
+        width >= 992 ? '240px' : '0px',
+      );
       const bounds = await page.locator('.admin-page').boundingBox();
       expect(bounds).toBeTruthy();
       if (!expectedBounds) expectedBounds = bounds!;
