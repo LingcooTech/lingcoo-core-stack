@@ -1,434 +1,212 @@
-import { handleAsync } from '@/lib/async-events';
+import { useDeferredValue, useState } from 'react';
+import { App, Button, Card, Form, Input, Modal, Select, Space, Table } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-
+import { Link } from 'react-router-dom';
+import { z } from 'zod';
 import {
   importNotionContent,
   importWechatContent,
   importWordPressContent,
   listContent,
 } from '@/api/admin';
+import type { AdminContentListParams } from '@/api/admin';
 import type { ContentItem } from '@/api/types';
-import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
-import { PaginationBar } from '@/components/shared/PaginationBar';
-import { SectionHeader } from '@/components/shared/SectionHeader';
-import { StatusPill } from '@/components/shared/StatusPill';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { PageContainer } from '@/components/admin/PageContainer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { StatusTag } from '@/components/admin/StatusTag';
 import { useTableState } from '@/hooks/useTableState';
-import { recordStatusLabel } from '@/lib/portal-labels';
+import { parseSettingsForm } from '@/lib/settings-form';
 import { formatTime } from '@/lib/utils';
-
-const PAGE_SIZE = 20;
-
-function getSourceLabel(sourceType: ContentItem['sourceType']) {
-  switch (sourceType) {
-    case 'wordpress':
-      return 'WordPress';
-    case 'notion':
-      return 'Notion';
-    case 'wechat':
-      return '微信公众号';
-    case 'manual':
-    default:
-      return '手动';
-  }
-}
-
-function getStatusTone(status: ContentItem['status']) {
-  if (status === 'published') return 'ok' as const;
-  if (status === 'draft') return 'warn' as const;
-  return 'neutral' as const;
-}
-
+const statuses = [
+  { value: 'draft', label: '草稿' },
+  { value: 'published', label: '已发布' },
+  { value: 'archived', label: '已归档' },
+];
+const sources = [
+  { value: 'manual', label: '手动' },
+  { value: 'wordpress', label: 'WordPress' },
+  { value: 'notion', label: 'Notion' },
+  { value: 'wechat', label: '微信公众号' },
+];
+const importSchema = z.object({
+  source: z.enum(['wordpress', 'notion', 'wechat']),
+  url: z.url(),
+  status: z.enum(['draft', 'published']),
+});
 export function ContentPage() {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
+  const qc = useQueryClient(),
+    { message } = App.useApp();
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
-    defaultPageSize: PAGE_SIZE,
+    defaultPageSize: 20,
     knownFilters: ['sourceType', 'status'],
   });
-  const sourceTypeValues = useMemo(() => filters.sourceType ?? [], [filters.sourceType]);
-  const statusValues = useMemo(() => filters.status ?? [], [filters.status]);
-  const deferredSearch = useDeferredValue(search);
-
-  const [wpForm, setWpForm] = useState({
-    postUrl: '',
-    status: 'draft' as 'draft' | 'published',
-  });
-  const [notionForm, setNotionForm] = useState({
-    pageUrl: '',
-    status: 'draft' as 'draft' | 'published',
-  });
-  const [wechatForm, setWechatForm] = useState({
-    url: '',
-    status: 'draft' as 'draft' | 'published',
-  });
-
-  const query = useMemo(
-    () => ({
-      limit: PAGE_SIZE,
-      offset: (page - 1) * PAGE_SIZE,
-      search: deferredSearch.trim() || undefined,
-      // 后端单值，多选时取首项
-      sourceType: sourceTypeValues[0] as 'manual' | 'wordpress' | 'notion' | 'wechat' | undefined,
-      status: statusValues[0] as 'draft' | 'published' | 'archived' | undefined,
-    }),
-    [deferredSearch, page, sourceTypeValues, statusValues],
-  );
-
-  const contentQuery = useQuery({
-    queryKey: ['admin-content', query],
-    queryFn: () => listContent(query),
-  });
-
-  const items = contentQuery.data?.items ?? [];
-  const total = contentQuery.data?.total ?? 0;
-  const draftCount = items.filter((item) => item.status === 'draft').length;
-  const publishedCount = items.filter((item) => item.status === 'published').length;
-  const importedCount = items.filter((item) => item.importedAt).length;
-
-  const invalidateContent = async () => {
-    await qc.invalidateQueries({ queryKey: ['admin-content'] });
+  const deferred = useDeferredValue(search);
+  const params: AdminContentListParams = {
+    limit: 20,
+    offset: (page - 1) * 20,
+    search: deferred.trim() || undefined,
+    sourceType: filters.sourceType?.[0] as AdminContentListParams['sourceType'],
+    status: filters.status?.[0] as AdminContentListParams['status'],
   };
-
-  const importWordPressMutation = useMutation({
-    mutationFn: importWordPressContent,
-    onSuccess: async (item) => {
-      toast.success(`已导入 WordPress 文章：${item.title}`);
-      await invalidateContent();
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : 'WordPress 导入失败'),
+  const query = useQuery({
+    queryKey: ['admin-content', params],
+    queryFn: () => listContent(params),
   });
-
-  const importNotionMutation = useMutation({
-    mutationFn: importNotionContent,
-    onSuccess: async (item) => {
-      toast.success(`已导入 Notion 页面：${item.title}`);
-      await invalidateContent();
+  const [open, setOpen] = useState(false),
+    [form] = Form.useForm<z.infer<typeof importSchema>>();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const v = parseSettingsForm(importSchema, await form.validateFields(), form);
+      return v.source === 'wordpress'
+        ? importWordPressContent({ postUrl: v.url, status: v.status })
+        : v.source === 'notion'
+          ? importNotionContent({ pageUrl: v.url, status: v.status })
+          : importWechatContent({ url: v.url, status: v.status });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : 'Notion 导入失败'),
+    onSuccess: (item) => {
+      void message.success(`已导入：${item.title}`);
+      setOpen(false);
+      form.resetFields();
+      void qc.invalidateQueries({ queryKey: ['admin-content'] });
+    },
+    onError: (e) => {
+      void message.error(e.message);
+    },
   });
-
-  const importWechatMutation = useMutation({
-    mutationFn: importWechatContent,
-    onSuccess: async (item) => {
-      toast.success(`已导入微信公众号文章：${item.title}`);
-      await invalidateContent();
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '微信公众号导入失败'),
-  });
-
-  const columns: Column<ContentItem>[] = [
-    {
-      key: 'title',
-      header: '内容',
-      cell: (row) => (
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{row.title}</p>
-          <p className="font-mono text-[11px] text-muted-foreground">{row.slug}</p>
-          {row.excerpt ? (
-            <p className="line-clamp-2 text-sm text-muted-foreground">{row.excerpt}</p>
-          ) : null}
-        </div>
-      ),
-      className: 'min-w-[360px]',
-    },
-    {
-      key: 'source',
-      header: '来源',
-      cell: (row) => (
-        <div className="space-y-1">
-          <StatusPill tone="info" label={getSourceLabel(row.sourceType)} />
-          {row.authorName ? (
-            <p className="text-xs text-muted-foreground">{row.authorName}</p>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: '状态',
-      cell: (row) => (
-        <StatusPill tone={getStatusTone(row.status)} label={recordStatusLabel(row.status)} />
-      ),
-    },
-    {
-      key: 'publishedAt',
-      header: '发布时间',
-      cell: (row) => <span className="text-xs text-foreground">{formatTime(row.publishedAt)}</span>,
-    },
-    {
-      key: 'importedAt',
-      header: '导入时间',
-      cell: (row) => (
-        <span className="text-xs text-foreground">
-          {formatTime(row.importedAt || row.createdAt)}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '操作',
-      cell: (row) => (
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleAsync(() => navigate(`/admin/content/${row.id}/edit`))}
-          >
-            编辑
-          </Button>
-          {row.sourceUrl ? (
-            <Button size="sm" variant="ghost" asChild>
-              <a href={row.sourceUrl} target="_blank" rel="noopener noreferrer">
-                原文
-              </a>
-            </Button>
-          ) : null}
-        </div>
-      ),
-    },
-  ];
-
   return (
-    <div>
-      <SectionHeader sectionKey="content" />
-      <div className="space-y-4 p-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: '内容总数', value: String(total) },
-            { label: '草稿', value: String(draftCount) },
-            { label: '已发布', value: String(publishedCount) },
-            { label: '已导入', value: String(importedCount) },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm"
-            >
-              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-              <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">导入与管理</h2>
-            <p className="text-sm text-muted-foreground">
-              支持导入外部内容，也支持手动创建本地内容。
-            </p>
-          </div>
-          <Button asChild>
+    <PageContainer
+      title="内容管理"
+      width="wide"
+      description="创建本地内容，或通过已配置的 WordPress、Notion 和微信公众号导入内容。"
+      filters={
+        <>
+          <Input.Search
+            aria-label="搜索内容"
+            placeholder="搜索标题、slug、作者、来源链接"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 300 }}
+          />
+          <Select
+            aria-label="来源"
+            placeholder="全部来源"
+            allowClear
+            value={filters.sourceType?.[0]}
+            options={sources}
+            onChange={(v) => setFilter('sourceType', v ? [v] : [])}
+            style={{ width: 160 }}
+          />
+          <Select
+            aria-label="状态"
+            placeholder="全部状态"
+            allowClear
+            value={filters.status?.[0]}
+            options={statuses}
+            onChange={(v) => setFilter('status', v ? [v] : [])}
+            style={{ width: 140 }}
+          />
+          <Button onClick={clearFilters}>重置</Button>
+        </>
+      }
+      actions={
+        <Space>
+          <Button onClick={() => setOpen(true)}>导入内容</Button>
+          <Button type="primary">
             <Link to="/admin/content/new">新建内容</Link>
           </Button>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">导入 WordPress</CardTitle>
-              <CardDescription>
-                系统会使用“系统设置”中的 WordPress 连接配置，这里只需输入文章 URL。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>文章 URL</Label>
-                <Input
-                  placeholder="https://your-site.com/post-slug"
-                  value={wpForm.postUrl}
-                  onChange={(event) =>
-                    setWpForm((prev) => ({ ...prev, postUrl: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>导入状态</Label>
-                <Select
-                  value={wpForm.status}
-                  onValueChange={(value) =>
-                    setWpForm((prev) => ({ ...prev, status: value as typeof prev.status }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">保存为草稿</SelectItem>
-                    <SelectItem value="published">直接发布</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full"
-                disabled={importWordPressMutation.isPending}
-                onClick={() => importWordPressMutation.mutate(wpForm)}
-              >
-                {importWordPressMutation.isPending ? '导入中...' : '导入 WordPress 文章'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">导入 Notion</CardTitle>
-              <CardDescription>
-                系统会使用“系统设置”中的 Notion Token，这里只需输入页面 URL。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>页面 URL</Label>
-                <Input
-                  placeholder="https://www.notion.so/..."
-                  value={notionForm.pageUrl}
-                  onChange={(event) =>
-                    setNotionForm((prev) => ({ ...prev, pageUrl: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>导入状态</Label>
-                <Select
-                  value={notionForm.status}
-                  onValueChange={(value) =>
-                    setNotionForm((prev) => ({ ...prev, status: value as typeof prev.status }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">保存为草稿</SelectItem>
-                    <SelectItem value="published">直接发布</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full"
-                disabled={importNotionMutation.isPending}
-                onClick={() => importNotionMutation.mutate(notionForm)}
-              >
-                {importNotionMutation.isPending ? '导入中...' : '导入 Notion 页面'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">导入微信公众号</CardTitle>
-              <CardDescription>
-                输入公众号文章链接，系统会抓取标题、摘要和正文 HTML。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>公众号文章 URL</Label>
-                <Input
-                  placeholder="https://mp.weixin.qq.com/s/..."
-                  value={wechatForm.url}
-                  onChange={(event) =>
-                    setWechatForm((prev) => ({ ...prev, url: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>导入状态</Label>
-                <Select
-                  value={wechatForm.status}
-                  onValueChange={(value) =>
-                    setWechatForm((prev) => ({ ...prev, status: value as typeof prev.status }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">保存为草稿</SelectItem>
-                    <SelectItem value="published">直接发布</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full"
-                disabled={importWechatMutation.isPending}
-                onClick={() => importWechatMutation.mutate(wechatForm)}
-              >
-                {importWechatMutation.isPending ? '导入中...' : '导入微信公众号文章'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <FilterChipBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="搜索标题、slug、作者、来源链接..."
-            chips={
-              [
-                {
-                  id: 'sourceType',
-                  label: '来源',
-                  values: sourceTypeValues,
-                  onChange: (next) => setFilter('sourceType', next),
-                  options: [
-                    { value: 'wordpress', label: 'WordPress' },
-                    { value: 'notion', label: 'Notion' },
-                    { value: 'wechat', label: '微信公众号' },
-                  ],
-                },
-                {
-                  id: 'status',
-                  label: '状态',
-                  values: statusValues,
-                  onChange: (next) => setFilter('status', next),
-                  options: [
-                    { value: 'draft', label: '草稿' },
-                    { value: 'published', label: '已发布' },
-                    { value: 'archived', label: '已归档' },
-                  ],
-                },
-              ] satisfies FilterChipConfig[]
-            }
-            onClearAll={clearFilters}
+        </Space>
+      }
+    >
+      <AsyncState error={query.error} onRetry={() => void query.refetch()}>
+        <Card>
+          <Table<ContentItem>
+            rowKey="id"
+            loading={query.isPending}
+            dataSource={query.data?.items ?? []}
+            scroll={{ x: 1000 }}
+            pagination={{
+              current: page,
+              pageSize: 20,
+              total: query.data?.total ?? 0,
+              showSizeChanger: false,
+              onChange: setPage,
+              showTotal: (t) => `共 ${t} 篇内容`,
+            }}
+            columns={[
+              {
+                title: '内容',
+                dataIndex: 'title',
+                width: 360,
+                render: (_, r) => (
+                  <Space orientation="vertical" size={0}>
+                    <Link to={`/admin/content/${r.id}/edit`}>{r.title}</Link>
+                    <small>{r.slug}</small>
+                    <span>{r.excerpt}</span>
+                  </Space>
+                ),
+              },
+              {
+                title: '来源',
+                dataIndex: 'sourceType',
+                render: (v: string) => sources.find((s) => s.value === v)?.label ?? v,
+              },
+              { title: '作者', dataIndex: 'authorName' },
+              {
+                title: '状态',
+                dataIndex: 'status',
+                render: (v: string) => (
+                  <StatusTag
+                    label={statuses.find((s) => s.value === v)?.label ?? v}
+                    tone={v === 'published' ? 'ok' : v === 'draft' ? 'warn' : 'neutral'}
+                  />
+                ),
+              },
+              { title: '发布时间', dataIndex: 'publishedAt', render: (v: string) => formatTime(v) },
+              { title: '导入时间', render: (_, r) => formatTime(r.importedAt || r.createdAt) },
+              {
+                title: '操作',
+                render: (_, r) => (
+                  <Space>
+                    <Link to={`/admin/content/${r.id}/edit`}>编辑</Link>
+                    {r.sourceUrl && (
+                      <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
+                        原文
+                      </a>
+                    )}
+                  </Space>
+                ),
+              },
+            ]}
           />
-
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <DataTable
-              columns={columns}
-              data={items}
-              isLoading={contentQuery.isLoading}
-              emptyMessage="暂无内容"
-              getRowId={(row) => row.id}
-            />
-          </div>
-
-          <PaginationBar
-            total={total}
-            page={page}
-            pageSize={PAGE_SIZE}
-            isLoading={contentQuery.isLoading}
-            itemLabel="篇内容"
-            onPageChange={setPage}
-          />
-        </div>
-      </div>
-    </div>
+        </Card>
+      </AsyncState>
+      <Modal
+        title="导入外部内容"
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={() => mutation.mutate()}
+        confirmLoading={mutation.isPending}
+        okText="导入"
+        cancelText="取消"
+        maskClosable={false}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ source: 'wordpress', url: '', status: 'draft' }}
+          disabled={mutation.isPending}
+        >
+          <Form.Item name="source" label="来源" rules={[{ required: true }]}>
+            <Select options={sources.filter((s) => s.value !== 'manual')} />
+          </Form.Item>
+          <Form.Item name="url" label="文章或页面 URL" rules={[{ required: true, type: 'url' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="status" label="导入状态">
+            <Select options={statuses.slice(0, 2)} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </PageContainer>
   );
 }

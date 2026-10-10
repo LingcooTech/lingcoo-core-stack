@@ -32,7 +32,11 @@ test('publication report distinguishes saved configuration from online acceptanc
       ),
     );
     await expect.poll(() => host.textContent).toContain('配置检查通过');
-    await act(async () => host.querySelector('summary')!.click());
+    await act(async () =>
+      host
+        .querySelector('.ant-collapse-header')!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true })),
+    );
     expect(host.textContent).toContain('待在线验收');
     expect(host.textContent).toContain('仅针对已保存的配置');
     expect(mocks.api.mock.calls.every((c) => String(c[0]).startsWith('GET'))).toBe(true);

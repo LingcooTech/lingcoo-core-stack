@@ -6,6 +6,7 @@ export default mergeConfig(
   defineConfig({
     optimizeDeps: {
       include: [
+        '@uiw/react-md-editor',
         '@radix-ui/react-dialog',
         'radix-ui',
         'react-router-dom',

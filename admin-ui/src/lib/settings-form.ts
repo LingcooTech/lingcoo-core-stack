@@ -64,5 +64,13 @@ export function useSettingsForm<T extends object>(values: T | undefined) {
     register?.(id, dirty);
     return () => register?.(id, false);
   }, [register, id, dirty]);
-  return { form, dirty, reset };
+  const rebase = useCallback(
+    (patch: Partial<T>) => {
+      baseline.current = { ...baseline.current, ...patch } as T;
+      form.setFieldsValue(patch as T);
+      rerender((revision) => revision + 1);
+    },
+    [form],
+  );
+  return { form, dirty, reset, rebase };
 }

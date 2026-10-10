@@ -1,240 +1,171 @@
-import { runAsync } from '@/lib/async-events';
+import { App, Button, Card, Form, Input, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
+import { flushSync } from 'react-dom';
+import { z } from 'zod';
 import { createContent, getContent, updateContent } from '@/api/admin';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-
-type ContentStatus = 'draft' | 'published' | 'archived';
-type ContentSourceType = 'manual' | 'wordpress' | 'notion' | 'wechat';
-
-const EMPTY_FORM = {
+import { PageContainer, FormActions } from '@/components/admin/PageContainer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { AssetImageField } from '@/components/storage/AssetImageField';
+import { parseSettingsForm, useSettingsForm } from '@/lib/settings-form';
+const schema = z.object({
+  title: z.string().trim().min(1).max(200),
+  slug: z.string().trim().max(160),
+  excerpt: z.string(),
+  content: z.string(),
+  coverUrl: z.string(),
+  authorName: z.string(),
+  status: z.enum(['draft', 'published', 'archived']),
+  sourceType: z.enum(['manual', 'wordpress', 'notion', 'wechat']),
+  sourceId: z.string(),
+  sourceUrl: z.string(),
+});
+type Values = z.infer<typeof schema>;
+const empty: Values = {
   title: '',
   slug: '',
   excerpt: '',
   content: '',
   coverUrl: '',
   authorName: '',
-  status: 'draft' as ContentStatus,
-  sourceType: 'manual' as ContentSourceType,
+  status: 'draft',
+  sourceType: 'manual',
   sourceId: '',
   sourceUrl: '',
 };
-
 export function ContentEditPage() {
-  const { contentId } = useParams<{ contentId: string }>();
-  const isCreateMode = !contentId;
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [form, setForm] = useState(EMPTY_FORM);
-
-  const contentQuery = useQuery({
+  const { contentId } = useParams(),
+    navigate = useNavigate(),
+    qc = useQueryClient(),
+    { message } = App.useApp();
+  const query = useQuery({
     queryKey: ['admin-content-item', contentId],
     queryFn: () => getContent(contentId!),
     enabled: Boolean(contentId),
   });
-
-  useEffect(() => {
-    if (!contentQuery.data) {
-      return;
-    }
-
-    setForm({
-      title: contentQuery.data.title,
-      slug: contentQuery.data.slug,
-      excerpt: contentQuery.data.excerpt ?? '',
-      content: contentQuery.data.content,
-      coverUrl: contentQuery.data.coverUrl ?? '',
-      authorName: contentQuery.data.authorName ?? '',
-      status: contentQuery.data.status,
-      sourceType: contentQuery.data.sourceType,
-      sourceId: contentQuery.data.sourceId ?? '',
-      sourceUrl: contentQuery.data.sourceUrl ?? '',
-    });
-  }, [contentQuery.data]);
-
-  const saveMutation = useMutation({
+  const item = query.data;
+  const values: Values | undefined = contentId
+    ? item
+      ? {
+          title: item.title,
+          slug: item.slug,
+          excerpt: item.excerpt ?? '',
+          content: item.content,
+          coverUrl: item.coverUrl ?? '',
+          authorName: item.authorName ?? '',
+          status: item.status,
+          sourceType: item.sourceType,
+          sourceId: item.sourceId ?? '',
+          sourceUrl: item.sourceUrl ?? '',
+        }
+      : undefined
+    : empty;
+  const { form, dirty, reset } = useSettingsForm(values);
+  const mutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        ...form,
-        sourceType: form.sourceType,
-        status: form.status,
-      };
-
-      return isCreateMode ? createContent(payload) : updateContent(contentId!, payload);
+      const v = parseSettingsForm(schema, await form.validateFields(), form);
+      return contentId ? updateContent(contentId, v) : createContent(v);
     },
-    onSuccess: async (item) => {
-      toast.success(isCreateMode ? '内容已创建' : '内容已保存');
-      await qc.invalidateQueries({ queryKey: ['admin-content'] });
-      runAsync(() => navigate(`/admin/content/${item.id}/edit`, { replace: true }));
+    onSuccess: (saved) => {
+      flushSync(() =>
+        reset({
+          ...form.getFieldsValue(true),
+          ...saved,
+          excerpt: saved.excerpt ?? '',
+          coverUrl: saved.coverUrl ?? '',
+          authorName: saved.authorName ?? '',
+          sourceId: saved.sourceId ?? '',
+          sourceUrl: saved.sourceUrl ?? '',
+        }),
+      );
+      qc.setQueryData(['admin-content-item', saved.id], saved);
+      void qc.invalidateQueries({ queryKey: ['admin-content'] });
+      void message.success('内容已保存');
+      if (!contentId) void navigate(`/admin/content/${saved.id}/edit`, { replace: true });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '保存失败'),
+    onError: (e) => {
+      void message.error(e.message);
+    },
   });
-
   return (
-    <div className="space-y-4">
-      <div className="border-b border-border px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">
-              {isCreateMode ? '新建内容' : '编辑内容'}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              支持手动创建内容，也支持对导入内容做二次编辑。
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/admin/content">返回列表</Link>
-            </Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? '保存中...' : '保存内容'}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 p-6">
-        <Card className="border-border bg-card shadow-sm">
-          <CardHeader>
-            <CardTitle>基础信息</CardTitle>
-            <CardDescription>标题、slug、来源和发布状态。</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>标题</Label>
-                <Input
-                  value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>slug</Label>
-                <Input
-                  value={form.slug}
-                  onChange={(event) => setForm((prev) => ({ ...prev, slug: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label>状态</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, status: value as ContentStatus }))
-                  }
+    <PageContainer
+      title={contentId ? '编辑内容' : '新建内容'}
+      width="form"
+      actions={
+        <Button>
+          <Link to="/admin/content">返回列表</Link>
+        </Button>
+      }
+    >
+      <AsyncState
+        loading={Boolean(contentId) && query.isPending}
+        error={query.error}
+        onRetry={() => void query.refetch()}
+      >
+        <Form
+          name="content-editor"
+          form={form}
+          layout="vertical"
+          disabled={mutation.isPending}
+          onFinish={() => mutation.mutate()}
+        >
+          <Card title="基本信息">
+            <div className="admin-form-grid">
+              {[
+                ['title', '标题'],
+                ['slug', 'Slug'],
+                ['authorName', '作者'],
+                ['sourceId', '来源 ID'],
+                ['sourceUrl', '来源链接'],
+              ].map(([key = '', label = '']) => (
+                <Form.Item
+                  key={key}
+                  name={key}
+                  label={label}
+                  rules={key === 'title' ? [{ required: true }] : []}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">草稿</SelectItem>
-                    <SelectItem value="published">已发布</SelectItem>
-                    <SelectItem value="archived">已归档</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>来源类型</Label>
+                  <Input />
+                </Form.Item>
+              ))}
+              <Form.Item name="status" label="状态">
                 <Select
-                  value={form.sourceType}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, sourceType: value as ContentSourceType }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">手动</SelectItem>
-                    <SelectItem value="wordpress">WordPress</SelectItem>
-                    <SelectItem value="notion">Notion</SelectItem>
-                    <SelectItem value="wechat">微信公众号</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>作者</Label>
-                <Input
-                  value={form.authorName}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, authorName: event.target.value }))
-                  }
+                  options={[
+                    { value: 'draft', label: '草稿' },
+                    { value: 'published', label: '已发布' },
+                    { value: 'archived', label: '已归档' },
+                  ]}
                 />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>来源 ID</Label>
-                <Input
-                  value={form.sourceId}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, sourceId: event.target.value }))
-                  }
+              </Form.Item>
+              <Form.Item name="sourceType" label="来源类型">
+                <Select
+                  options={[
+                    { value: 'manual', label: '手动' },
+                    { value: 'wordpress', label: 'WordPress' },
+                    { value: 'notion', label: 'Notion' },
+                    { value: 'wechat', label: '微信公众号' },
+                  ]}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>来源链接</Label>
-                <Input
-                  value={form.sourceUrl}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, sourceUrl: event.target.value }))
-                  }
-                />
-              </div>
+              </Form.Item>
             </div>
-
-            <div className="space-y-2">
-              <Label>封面图</Label>
-              <Input
-                value={form.coverUrl}
-                onChange={(event) => setForm((prev) => ({ ...prev, coverUrl: event.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>摘要</Label>
-              <Textarea
-                rows={4}
-                value={form.excerpt}
-                onChange={(event) => setForm((prev) => ({ ...prev, excerpt: event.target.value }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border bg-card shadow-sm">
-          <CardHeader>
-            <CardTitle>正文内容</CardTitle>
-            <CardDescription>当前阶段直接维护 Markdown / HTML 正文。</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              rows={22}
-              value={form.content}
-              onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-              className="font-mono text-sm"
-            />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            <Form.Item name="coverUrl" label="封面图">
+              <AssetImageField defaultPrefix="content/cover" previewAlt="内容封面" />
+            </Form.Item>
+            <Form.Item name="excerpt" label="摘要">
+              <Input.TextArea rows={4} />
+            </Form.Item>
+          </Card>
+          <Card title="正文内容" extra="Markdown / HTML">
+            <Form.Item name="content">
+              <Input.TextArea aria-label="正文内容" rows={22} className="font-mono" />
+            </Form.Item>
+          </Card>
+          <FormActions hint={dirty ? '有未保存的修改' : '已保存'}>
+            <Button type="primary" htmlType="submit" loading={mutation.isPending} disabled={!dirty}>
+              保存内容
+            </Button>
+          </FormActions>
+        </Form>
+      </AsyncState>
+    </PageContainer>
   );
 }

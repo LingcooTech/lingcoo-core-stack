@@ -1,610 +1,250 @@
+import { useState } from 'react';
+import { App, Button, Card, Form, Input, Modal, Select, Space, Statistic, Table } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Archive,
-  Boxes,
-  CreditCard,
-  ExternalLink,
-  FileEdit,
-  MoreHorizontal,
-  Plus,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
-import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
-
 import { archiveApp, listAppsAdmin, purgeAppConfiguration } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
-import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
-import { SkeletonMetricCard } from '@/components/shared/Skeleton';
-import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/admin/PageContainer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { StatusTag } from '@/components/admin/StatusTag';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { useTableState } from '@/hooks/useTableState';
-import {
-  formatOfferPriceLabel,
   getActiveOffers,
+  getPreferredOffer,
+  formatOfferPriceLabel,
   getAppStatusLabel,
   getAppTypeLabel,
-  getPreferredOffer,
 } from '@/lib/app-catalog-ui';
-import { formatPlanInterval } from '@/lib/catalog-utils';
-import { hasPermission, normalizeRole } from '@/lib/rbac';
+import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
-import { getInitials } from '@/lib/utils';
-
-function normalizeMeta(meta: unknown) {
-  return meta && typeof meta === 'object' && !Array.isArray(meta)
-    ? (meta as Record<string, unknown>)
-    : {};
+import { hasPermission, normalizeRole } from '@/lib/rbac';
+function meta(a: AppWithDetails) {
+  return a.meta ?? {};
 }
-
-function replaceAppInList(current: { items: AppWithDetails[] } | undefined, next: AppWithDetails) {
-  const items = (current?.items ?? []).filter((item) => {
-    const meta = normalizeMeta(item.meta);
-    return !(typeof meta.deletedAt === 'string' && meta.deletedAt.trim());
-  });
-  const existingIndex = items.findIndex((item) => item.id === next.id || item.code === next.code);
-  const nextMeta = normalizeMeta(next.meta);
-  const nextDeleted = typeof nextMeta.deletedAt === 'string' && nextMeta.deletedAt.trim();
-
-  if (nextDeleted) {
-    return {
-      items: items.filter((item) => item.id !== next.id && item.code !== next.code),
-    };
-  }
-
-  if (existingIndex === -1) {
-    return { items: [next, ...items] };
-  }
-
-  return {
-    items: items.map((item, index) => (index === existingIndex ? next : item)),
-  };
+function archived(a: AppWithDetails) {
+  return Boolean(meta(a).archivedAt) || a.status === 'inactive';
 }
-
-function getLifecycleState(app: AppWithDetails) {
-  const meta = normalizeMeta(app.meta);
-  const deletedAt = typeof meta.deletedAt === 'string' ? meta.deletedAt.trim() : '';
-  const archivedAt = typeof meta.archivedAt === 'string' ? meta.archivedAt.trim() : '';
-
-  if (deletedAt) {
-    return { label: '配置已删除', tone: 'danger' as const };
-  }
-
-  if (archivedAt || app.status === 'inactive') {
-    return { label: '已归档', tone: 'warn' as const };
-  }
-
-  return null;
-}
-
-function formatUpdatedAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
-function AppsTableSkeleton() {
-  return (
-    <TableBody>
-      {Array.from({ length: 6 }).map((_, rowIndex) => (
-        <TableRow key={rowIndex}>
-          {Array.from({ length: 7 }).map((__, cellIndex) => (
-            <TableCell key={cellIndex}>
-              <div
-                className="h-4 animate-pulse rounded bg-muted"
-                style={{ width: `${60 + ((rowIndex + cellIndex) % 4) * 10}%` }}
-              />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </TableBody>
-  );
-}
-
-type PendingDangerAction =
-  | { kind: 'archive'; app: AppWithDetails }
-  | { kind: 'purge'; app: AppWithDetails }
-  | null;
-
 export function AppsPage() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const currentRole = normalizeRole(user?.role);
-  const canManageApps = hasPermission(currentRole, 'apps.manage');
-  const [pendingDangerAction, setPendingDangerAction] = useState<PendingDangerAction>(null);
-  const [confirmAppCode, setConfirmAppCode] = useState('');
-
-  const { search, filters, setSearch, setFilter, clearFilters } = useTableState({
+  const qc = useQueryClient(),
+    { message } = App.useApp(),
+    { user } = useAuth();
+  const writable = hasPermission(normalizeRole(user?.role), 'apps.manage');
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: 20,
     knownFilters: ['category', 'state'],
   });
-  const categoryValues = useMemo(() => filters.category ?? [], [filters.category]);
-  const stateValue = (filters.state?.[0] ?? 'all') as 'all' | 'active' | 'archived';
-
-  const { data: appsData, isLoading: isAppsLoading } = useQuery({
-    queryKey: ['apps'],
-    queryFn: listAppsAdmin,
-  });
-
-  const apps = useMemo(
-    () =>
-      (appsData?.items ?? []).filter((app) => {
-        const meta = normalizeMeta(app.meta);
-        return !(typeof meta.deletedAt === 'string' && meta.deletedAt.trim());
-      }),
-    [appsData?.items],
+  const query = useQuery({ queryKey: ['apps'], queryFn: listAppsAdmin });
+  const apps = (query.data?.items ?? []).filter((a) => !meta(a).deletedAt);
+  const items = apps.filter(
+    (a) =>
+      (!search.trim() ||
+        [a.name, a.code, a.tagline]
+          .join(' ')
+          .toLowerCase()
+          .includes(search.trim().toLowerCase())) &&
+      (!filters.category?.length || filters.category.includes(a.category ?? '')) &&
+      (!filters.state?.[0] ||
+        filters.state[0] === 'all' ||
+        (filters.state[0] === 'archived' ? archived(a) : !archived(a) && a.status === 'active')),
   );
-
-  const categories = useMemo(
-    () => Array.from(new Set(apps.map((app) => app.category).filter(Boolean))) as string[],
-    [apps],
-  );
-
-  const filteredApps = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return apps.filter((app) => {
-      const lifecycleState = getLifecycleState(app);
-      const matchesKeyword =
-        !keyword ||
-        app.name.toLowerCase().includes(keyword) ||
-        app.code.toLowerCase().includes(keyword) ||
-        (app.tagline ?? '').toLowerCase().includes(keyword);
-      const matchesCategory =
-        categoryValues.length === 0 ||
-        (app.category ? categoryValues.includes(app.category) : false);
-      const matchesState =
-        stateValue === 'all'
-          ? true
-          : stateValue === 'archived'
-            ? Boolean(lifecycleState)
-            : !lifecycleState && app.status === 'active';
-
-      return matchesKeyword && matchesCategory && matchesState;
-    });
-  }, [categoryValues, stateValue, apps, search]);
-
-  const publishedCount = useMemo(
-    () => apps.filter((app) => !getLifecycleState(app) && app.status === 'active').length,
-    [apps],
-  );
-  const archivedCount = useMemo(
-    () => apps.filter((app) => Boolean(getLifecycleState(app))).length,
-    [apps],
-  );
-  const activeOfferCount = useMemo(
-    () => apps.filter((app) => getActiveOffers(app.checkoutOffers ?? []).length > 0).length,
-    [apps],
-  );
-
-  const lifecycleAppCode = pendingDangerAction?.app.code ?? '';
-  const purgeConfirmMatched =
-    pendingDangerAction?.kind !== 'purge' || confirmAppCode.trim() === lifecycleAppCode;
-
-  const archiveMutation = useMutation({
-    mutationFn: (appCode: string) => archiveApp(appCode),
-    onSuccess: (result) => {
-      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
-        replaceAppInList(current, result),
-      );
-      void qc.invalidateQueries({ queryKey: ['apps'] });
-      setPendingDangerAction(null);
-      toast.success('应用已停用归档');
+  const [action, setAction] = useState<{ app: AppWithDetails; kind: 'archive' | 'purge' } | null>(
+      null,
+    ),
+    [form] = Form.useForm<{ confirmedCode: string }>();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!action) throw new Error('请选择应用');
+      if (action.kind === 'archive') return archiveApp(action.app.code);
+      const { confirmedCode } = await form.validateFields();
+      return purgeAppConfiguration(action.app.code, confirmedCode);
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : '停用应用失败');
-    },
-  });
-
-  const purgeMutation = useMutation({
-    mutationFn: ({ appCode, confirmedCode }: { appCode: string; confirmedCode: string }) =>
-      purgeAppConfiguration(appCode, confirmedCode),
-    onSuccess: (result) => {
-      qc.setQueryData<{ items: AppWithDetails[] } | undefined>(['apps'], (current) =>
-        replaceAppInList(current, result),
-      );
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['apps'] });
       void qc.invalidateQueries({ queryKey: ['catalog'] });
-      setPendingDangerAction(null);
-      setConfirmAppCode('');
-      toast.success('应用配置已清空，经营历史已保留');
+      setAction(null);
+      form.resetFields();
+      void message.success('应用配置已更新，经营历史已保留');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : '清空应用配置失败');
+    onError: (e) => {
+      void message.error(e.message);
     },
   });
-
-  const isDangerPending = archiveMutation.isPending || purgeMutation.isPending;
-
-  const chips: FilterChipConfig[] = [
-    {
-      id: 'category',
-      label: '分类',
-      values: categoryValues,
-      onChange: (next) => setFilter('category', next),
-      searchable: categories.length >= 7,
-      options: categories.map((c) => ({ value: c, label: c })),
-    },
-    {
-      id: 'state',
-      label: '状态',
-      values: stateValue === 'all' ? [] : [stateValue],
-      onChange: (next) => setFilter('state', next.length === 0 ? null : next.slice(-1)),
-      options: [
-        { value: 'active', label: '已上架' },
-        { value: 'archived', label: '已归档' },
-      ],
-    },
-  ];
-
   return (
-    <div className="space-y-5 p-6">
-      <header className="flex items-center justify-end">
-        {canManageApps ? (
-          <Button asChild>
-            <Link to="/admin/apps/new">
-              <Plus className="h-4 w-4" />
-              新建应用
-            </Link>
-          </Button>
-        ) : null}
-      </header>
-
-      <div className="grid gap-4 lg:grid-cols-4">
-        {isAppsLoading
-          ? Array.from({ length: 4 }).map((_, index) => (
-              <div key={index}>
-                <SkeletonMetricCard />
-              </div>
-            ))
-          : [
-              {
-                icon: Boxes,
-                label: '应用总数',
-                value: String(apps.length),
-                color: 'from-blue-500 to-blue-600',
-              },
-              {
-                icon: Sparkles,
-                label: '已上架',
-                value: String(publishedCount),
-                color: 'from-green-500 to-green-600',
-              },
-              {
-                icon: Archive,
-                label: '已归档',
-                value: String(archivedCount),
-                color: 'from-amber-500 to-amber-600',
-              },
-              {
-                icon: CreditCard,
-                label: '可售卖',
-                value: String(activeOfferCount),
-                color: 'from-purple-500 to-purple-600',
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.label}
-                  className="rounded-lg border border-border bg-card px-4 py-4 shadow-sm transition-all duration-300"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-                        {item.label}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                        {item.value}
-                      </p>
-                    </div>
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${item.color} text-white shadow-sm`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-      </div>
-
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
-          <FilterChipBar
-            className="flex-1"
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="搜索应用名称、Code 或一句话介绍"
-            chips={chips}
-            onClearAll={clearFilters}
+    <PageContainer
+      title="应用管理"
+      width="wide"
+      description="管理应用接入、交付、套餐和售卖配置。"
+      filters={
+        <>
+          <Input.Search
+            aria-label="搜索应用"
+            placeholder="搜索名称、Code、简介"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: 300 }}
           />
-
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>结果 {filteredApps.length}</span>
-            <span className="hidden text-gray-300 md:inline">|</span>
-            <span className="hidden md:inline">分类 {categories.length}</span>
-          </div>
-        </div>
-
-        <Table>
-          <TableHeader className="bg-muted/70">
-            <TableRow className="hover:bg-muted/70">
-              <TableHead className="w-[28%]">应用</TableHead>
-              <TableHead className="w-[16%]">分类 / 类型</TableHead>
-              <TableHead className="w-[18%]">目录配置</TableHead>
-              <TableHead className="w-[16%]">售卖信息</TableHead>
-              <TableHead className="w-[12%]">状态</TableHead>
-              <TableHead className="w-[10%]">更新时间</TableHead>
-              <TableHead className="w-[12%] text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          {isAppsLoading ? (
-            <AppsTableSkeleton />
-          ) : (
-            <TableBody>
-              {filteredApps.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-14 text-center text-sm text-muted-foreground"
-                  >
-                    没有符合当前筛选条件的应用。
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredApps.map((app) => {
-                  const lifecycleState = getLifecycleState(app);
-                  const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
-                  const preferredOffer = getPreferredOffer(activeOffers);
-
-                  return (
-                    <TableRow key={app.id} className="hover:bg-muted/70">
-                      <TableCell className="py-4">
-                        <div className="flex items-start gap-3">
-                          {app.iconUrl ? (
-                            <img
-                              src={app.iconUrl}
-                              alt={app.name}
-                              className="h-11 w-11 rounded-xl border border-border bg-card object-contain"
-                            />
-                          ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-muted text-sm font-semibold text-muted-foreground">
-                              {getInitials(app.name)}
-                            </div>
-                          )}
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-foreground">
-                              {app.name}
-                            </p>
-                            <p className="mt-1 font-mono text-xs text-muted-foreground">
-                              {app.code}
-                            </p>
-                            {app.tagline ? (
-                              <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                {app.tagline}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="space-y-2">
-                          {app.category ? (
-                            <Badge className="bg-muted text-foreground hover:bg-muted">
-                              {app.category}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">未分类</span>
-                          )}
-                          <p className="text-sm font-medium text-foreground">
-                            {getAppTypeLabel(app.type)}
-                          </p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="space-y-2 text-sm text-muted-foreground">
-                          <p>{app.features.length} Features</p>
-                          <p>{app.plans.length} Plans</p>
-                          <p>{app.checkoutOffers.length} Offers</p>
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="space-y-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {formatOfferPriceLabel(preferredOffer)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {preferredOffer
-                              ? `${preferredOffer.title} · ${formatPlanInterval(preferredOffer.interval)}`
-                              : '暂无活动 Offer'}
-                          </p>
-                          {activeOffers.length > 1 ? (
-                            <p className="text-xs text-muted-foreground">
-                              另有 {activeOffers.length - 1} 个活动方案
-                            </p>
-                          ) : null}
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex flex-col gap-2">
-                          <StatusPill
-                            tone={statusToTone(app.status)}
-                            label={getAppStatusLabel(app.status)}
-                          />
-                          {lifecycleState ? (
-                            <StatusPill tone={lifecycleState.tone} label={lifecycleState.label} />
-                          ) : null}
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <p className="text-sm text-muted-foreground">
-                          {formatUpdatedAt(app.updatedAt)}
-                        </p>
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="icon" variant="ghost" asChild>
-                            <Link to={`/apps/${app.code}`} target="_blank" rel="noreferrer">
-                              <ExternalLink className="h-4 w-4" />
-                            </Link>
-                          </Button>
-
-                          {canManageApps ? (
-                            <>
-                              <Button size="sm" variant="outline" asChild>
-                                <Link to={`/admin/apps/${app.code}/edit`}>
-                                  <FileEdit className="h-3.5 w-3.5" />
-                                  编辑
-                                </Link>
-                              </Button>
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button size="icon" variant="ghost">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onSelect={(event) => {
-                                      event.preventDefault();
-                                      setPendingDangerAction({ kind: 'archive', app });
-                                      setConfirmAppCode('');
-                                    }}
-                                  >
-                                    <Archive className="mr-2 h-4 w-4" />
-                                    停用归档
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onSelect={(event) => {
-                                      event.preventDefault();
-                                      setPendingDangerAction({ kind: 'purge', app });
-                                      setConfirmAppCode('');
-                                    }}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    永久删除配置
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          )}
-        </Table>
-      </section>
-
-      <ConfirmActionDialog
-        open={Boolean(pendingDangerAction)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingDangerAction(null);
-            setConfirmAppCode('');
-          }
-        }}
-        onCancel={() => {
-          setPendingDangerAction(null);
-          setConfirmAppCode('');
-        }}
-        title={
-          pendingDangerAction?.kind === 'archive'
-            ? `停用应用 ${pendingDangerAction.app.name}？`
-            : pendingDangerAction?.kind === 'purge'
-              ? `永久删除 ${pendingDangerAction.app.name} 的配置？`
-              : ''
-        }
-        description={
-          pendingDangerAction?.kind === 'archive'
-            ? '应用会从用户侧下架，历史订单、订阅、部署、事件和用户数据会继续保留。'
-            : pendingDangerAction?.kind === 'purge'
-              ? '会停用应用，并清空展示内容、功能映射、Offers、密钥和交付配置。订单、结账、订阅、部署、事件和用户数据不会删除。'
-              : ''
-        }
-        confirmText={pendingDangerAction?.kind === 'archive' ? '确认停用' : '确认删除配置'}
-        confirmVariant="destructive"
-        confirmDisabled={!purgeConfirmMatched}
-        isConfirming={isDangerPending}
-        onConfirm={() => {
-          if (!pendingDangerAction) {
-            return;
-          }
-
-          if (pendingDangerAction.kind === 'archive') {
-            archiveMutation.mutate(pendingDangerAction.app.code);
-            return;
-          }
-
-          purgeMutation.mutate({
-            appCode: pendingDangerAction.app.code,
-            confirmedCode: confirmAppCode.trim(),
-          });
-        }}
+          <Select
+            mode="multiple"
+            aria-label="分类"
+            placeholder="全部分类"
+            value={filters.category ?? []}
+            options={[...new Set(apps.map((a) => a.category).filter(Boolean))].map((v) => ({
+              label: v,
+              value: v,
+            }))}
+            onChange={(v) => setFilter('category', v)}
+            style={{ minWidth: 160 }}
+          />
+          <Select
+            aria-label="应用状态"
+            value={filters.state?.[0] ?? 'all'}
+            options={[
+              { value: 'all', label: '全部状态' },
+              { value: 'active', label: '已发布' },
+              { value: 'archived', label: '已归档' },
+            ]}
+            onChange={(v) => setFilter('state', [v])}
+            style={{ width: 140 }}
+          />
+          <Button onClick={clearFilters}>重置</Button>
+        </>
+      }
+      actions={
+        writable && (
+          <Button type="primary">
+            <Link to="/admin/apps/new">新建应用</Link>
+          </Button>
+        )
+      }
+    >
+      <Space wrap size={24}>
+        <Statistic title="应用总数" value={apps.length} />
+        <Statistic
+          title="已发布"
+          value={apps.filter((a) => !archived(a) && a.status === 'active').length}
+        />
+        <Statistic title="已归档" value={apps.filter(archived).length} />
+        <Statistic
+          title="有在售 Offer 的应用"
+          value={apps.filter((a) => getActiveOffers(a.checkoutOffers ?? []).length > 0).length}
+        />
+      </Space>
+      <AsyncState error={query.error} onRetry={() => void query.refetch()}>
+        <Card>
+          <Table<AppWithDetails>
+            rowKey="id"
+            loading={query.isPending}
+            dataSource={items}
+            scroll={{ x: 1100 }}
+            pagination={{
+              current: page,
+              pageSize: 20,
+              showSizeChanger: false,
+              onChange: setPage,
+              showTotal: (t) => `共 ${t} 个应用`,
+            }}
+            columns={[
+              {
+                title: '应用',
+                width: 300,
+                render: (_, a) => (
+                  <Space orientation="vertical" size={0}>
+                    <Link to={`/admin/apps/${a.code}/edit`}>{a.name}</Link>
+                    <small>{a.code}</small>
+                    <span>{a.tagline}</span>
+                  </Space>
+                ),
+              },
+              { title: '分类', dataIndex: 'category' },
+              { title: '类型', dataIndex: 'type', render: (v: string) => getAppTypeLabel(v) },
+              {
+                title: '状态',
+                render: (_, a) => (
+                  <StatusTag
+                    label={archived(a) ? '已归档' : getAppStatusLabel(a.status)}
+                    tone={archived(a) ? 'warn' : a.status === 'active' ? 'ok' : 'neutral'}
+                  />
+                ),
+              },
+              {
+                title: '功能 / 套餐',
+                render: (_, a) => `${a.features?.length ?? 0} / ${a.plans?.length ?? 0}`,
+              },
+              {
+                title: '售卖价格',
+                render: (_, a) => {
+                  const offer = getPreferredOffer(a.checkoutOffers ?? []);
+                  return offer ? formatOfferPriceLabel(offer) : '未配置';
+                },
+              },
+              {
+                title: '操作',
+                width: 280,
+                render: (_, a) => (
+                  <Space wrap>
+                    <Link to={`/admin/apps/${a.code}/edit`}>{writable ? '编辑' : '查看'}</Link>
+                    <a href={`/apps/${a.code}`} target="_blank" rel="noopener noreferrer">
+                      预览
+                    </a>
+                    {writable && (
+                      <>
+                        <Button
+                          size="small"
+                          disabled={archived(a)}
+                          onClick={() => setAction({ app: a, kind: 'archive' })}
+                        >
+                          归档
+                        </Button>
+                        <Button
+                          size="small"
+                          danger
+                          onClick={() => {
+                            form.resetFields();
+                            setAction({ app: a, kind: 'purge' });
+                          }}
+                        >
+                          清空配置
+                        </Button>
+                      </>
+                    )}
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      </AsyncState>
+      <Modal
+        title={action?.kind === 'purge' ? '清空应用配置？' : '停用并归档应用？'}
+        open={Boolean(action)}
+        onCancel={() => setAction(null)}
+        onOk={() => mutation.mutate()}
+        confirmLoading={mutation.isPending}
+        okText="确认"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        maskClosable={false}
       >
-        {pendingDangerAction?.kind === 'purge' ? (
-          <div className="space-y-4 rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10">
-            <div className="space-y-1 text-sm text-red-700 dark:text-red-300">
-              <p>会清空：展示内容、Features、Offers、Secrets、Delivery Settings。</p>
-              <p>会保留但停用：应用主体、Plans、订单、结账、订阅、部署、事件、用户数据。</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="purge-app-confirm-code">输入 App Code 继续</Label>
-              <Input
-                id="purge-app-confirm-code"
-                value={confirmAppCode}
-                onChange={(event) => setConfirmAppCode(event.target.value)}
-                placeholder={pendingDangerAction.app.code}
-                autoComplete="off"
-              />
-            </div>
-          </div>
-        ) : null}
-      </ConfirmActionDialog>
-    </div>
+        <p>订单、支付、授权和部署历史会保留。应用将停止售卖。</p>
+        {action?.kind === 'purge' && (
+          <Form form={form} layout="vertical">
+            <Form.Item
+              name="confirmedCode"
+              label={`输入应用 Code「${action.app.code}」确认`}
+              rules={[
+                { required: true },
+                {
+                  validator: (_, v) =>
+                    v === action.app.code
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('应用 Code 不匹配')),
+                },
+              ]}
+            >
+              <Input autoComplete="off" />
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
+    </PageContainer>
   );
 }

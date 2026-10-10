@@ -193,3 +193,39 @@ test('unsaved admin settings block navigation and preserve the draft when editin
     .click();
   await expect(page.getByRole('region', { name: '订单管理', exact: true })).toBeVisible();
 });
+
+test('admin creates an application, content and documentation through Ant Design forms', async ({
+  page,
+}) => {
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  const code = 'browser_app_' + randomUUID().replaceAll('-', '').slice(0, 12);
+  await page.goto('/admin/apps/new');
+  await page.locator('#app-editor_app_appCode').fill(code);
+  await page.locator('#app-editor_app_name').fill('Browser application');
+  await page.getByRole('button', { name: '保存应用配置', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/edit$`));
+  await page.reload();
+  await expect(page.locator('#app-editor_app_name')).toHaveValue('Browser application');
+  const slug = 'browser-content-' + randomUUID();
+  await page.goto('/admin/content/new');
+  await page.locator('#content-editor_title').fill('Browser content');
+  await page.locator('#content-editor_slug').fill(slug);
+  await page.getByLabel('正文内容', { exact: true }).fill('# Browser fixture');
+  await page.getByRole('button', { name: '保存内容', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/content\/[^/]+\/edit$/);
+  await page.reload();
+  await expect(page.locator('#content-editor_title')).toHaveValue('Browser content');
+  await page.goto('/admin/docs');
+  await page.getByRole('button', { name: '新建空间', exact: true }).click();
+  await page.locator('#doc-space_title').fill('Browser documentation');
+  await page.locator('#doc-space_slug').fill(slug);
+  await page.getByRole('button', { name: '保存空间', exact: true }).click();
+  await expect(page.getByRole('tab', { name: '文档页面', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: '文档页面', exact: true }).click();
+  await page.locator('#doc-page_title').fill('Getting started');
+  await page.locator('#doc-page_slug').fill('getting-started');
+  await page.locator('#doc-page_content').fill('# Setup');
+  await page.getByRole('button', { name: '保存页面', exact: true }).click();
+  await expect(page.getByRole('tree').getByText('Getting started', { exact: true })).toBeVisible();
+});
