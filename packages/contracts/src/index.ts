@@ -40,5 +40,7 @@ export * from './hosting-exit.js';
 export * from './hosting-handover.js';
 
 export { WechatPaySettingsSchema } from './models/settings.js';
+export { AlertingSettingsInputSchema } from './models/settings.js';
+export { AdminUpdateUserInputSchema } from './models/auth.js';
 
 export * from './storage.js';

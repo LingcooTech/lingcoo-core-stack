@@ -1,28 +1,20 @@
-import { ItemRefundLedger } from '@/components/shared/ItemRefundLedger';
+import { AdminItemRefundLedger } from '@/components/admin/ItemRefundLedger';
 import { HostingFulfillmentStatus } from '@/components/hosting/HostingFulfillmentStatus';
 import { OrderItems } from '@/components/shared/OrderItems';
-import { handleAsync } from '@/lib/async-events';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, Eye, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Eye } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cancelOrder, getOrderDetail, listOrders, reconcileOrder, refundOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
-import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { BulkActionBar, BulkActionButton } from '@/components/shared/BulkActionBar';
-import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
-import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
+import { App, Alert, Button, Flex, Input, Modal, Select, Table, type TableColumnsType } from 'antd';
+import { PageContainer } from '@/components/admin/PageContainer';
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import { AsyncState } from '@/components/admin/AsyncState';
 import { JsonViewer } from '@/components/shared/JsonViewer';
-import { PaginationBar } from '@/components/shared/PaginationBar';
-import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
+import { StatusTag, statusToTone } from '@/components/admin/StatusTag';
+import { useAuth } from '@/lib/auth';
+import { hasPermission, normalizeRole, type AppPermission } from '@/lib/rbac';
 import { useTableState } from '@/hooks/useTableState';
 import {
   checkoutActionTypeLabel,
@@ -31,7 +23,6 @@ import {
   orderStatusLabel,
   paymentProviderLabel,
 } from '@/lib/portal-labels';
-import { toastErr, toastOk, toastWarn } from '@/lib/toast';
 import { formatAmount, formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -63,6 +54,18 @@ function userDetailHref(userId: string) {
 }
 
 export function OrdersPage() {
+  const { message } = App.useApp();
+  const { user } = useAuth();
+  const can = (permission: AppPermission) => hasPermission(normalizeRole(user?.role), permission);
+  const toastOk = (title: string, detail?: string) => {
+    void message.success(detail ? `${title}：${detail}` : title);
+  };
+  const toastWarn = (title: string, detail?: string) => {
+    void message.warning(detail ? `${title}：${detail}` : title);
+  };
+  const toastErr = (error: unknown, title: string) => {
+    void message.error(error instanceof Error ? `${title}：${error.message}` : title);
+  };
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
     defaultPageSize: PAGE_SIZE,
     knownFilters: ['status', 'provider'],
@@ -76,8 +79,11 @@ export function OrdersPage() {
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [pendingAction, setPendingAction] = useState<PendingOrderAction | null>(null);
 
+  useEffect(() => {
+    setSelectedRowIds(new Set());
+  }, [page, search, statusValues, providerValues]);
+
   const qc = useQueryClient();
-  // 后端 status/provider 当前为单值；多选时取首项，UI 仍允许多选以便未来扩展
   const orderQuery = useMemo(
     () => ({
       limit: PAGE_SIZE,
@@ -168,28 +174,11 @@ export function OrdersPage() {
     }
   }, [orders, selectedOrderNo]);
 
-  const chips: FilterChipConfig[] = [
-    {
-      id: 'status',
-      label: '状态',
-      values: statusValues,
-      onChange: (next) => setFilter('status', next),
-      options: STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-    },
-    {
-      id: 'provider',
-      label: '支付方式',
-      values: providerValues,
-      onChange: (next) => setFilter('provider', next),
-      options: PROVIDER_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-    },
-  ];
-
-  const orderColumns: Column<HydratedOrder>[] = [
+  const orderColumns: TableColumnsType<HydratedOrder> = [
     {
       key: 'order',
-      header: '订单号',
-      cell: (row) => (
+      title: '订单号',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate font-mono text-[12px] font-semibold text-foreground">
             {row.orderNo}
@@ -200,10 +189,10 @@ export function OrdersPage() {
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
+      title: '状态',
+      render: (_, row) => (
         <div className="inline-flex items-center gap-1.5">
-          <StatusPill tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
+          <StatusTag tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
           {row.provider ? (
             <span className="text-[10px] text-muted-foreground">
               {paymentProviderLabel(row.provider)}
@@ -214,13 +203,13 @@ export function OrdersPage() {
     },
     {
       key: 'user',
-      header: '用户',
-      cell: (row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
+      title: '用户',
+      render: (_, row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'amount',
-      header: '金额',
-      cell: (row) => (
+      title: '金额',
+      render: (_, row) => (
         <div className="tabular-nums">
           <p className="text-[12px] font-semibold text-foreground">
             {formatAmount(row.amount, row.currency)}
@@ -231,13 +220,12 @@ export function OrdersPage() {
     },
     {
       key: 'actions',
-      header: '操作',
+      title: '操作',
       className: 'w-[140px]',
-      cell: (row) => (
+      render: (_, row) => (
         <div className="flex items-center gap-1.5">
           <Button
-            size="sm"
-            variant="outline"
+            size="small"
             className="h-7 px-2 text-xs"
             onClick={(e) => {
               e.stopPropagation();
@@ -248,10 +236,13 @@ export function OrdersPage() {
             查看
           </Button>
           <Button
-            size="sm"
-            variant="ghost"
+            size="small"
+            type="text"
             className="h-7 px-2 text-xs text-muted-foreground"
-            disabled={reconcileMutation.isPending && reconcileMutation.variables === row.orderNo}
+            disabled={
+              !can('orders.reconcile') ||
+              (reconcileMutation.isPending && reconcileMutation.variables === row.orderNo)
+            }
             onClick={(e) => {
               e.stopPropagation();
               reconcileMutation.mutate(row.orderNo);
@@ -268,168 +259,203 @@ export function OrdersPage() {
 
   const detail: OrderDetail | undefined = orderDetailQuery.data;
 
+  const resetSelection = () => setSelectedRowIds(new Set());
   return (
-    <div className="space-y-4 px-6 py-5">
-      <FilterChipBar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="搜索订单号、用户、应用..."
-        chips={chips}
-        onClearAll={clearFilters}
-      />
-
-      <BulkActionBar
-        selectedCount={selectedRowIds.size}
-        onClear={() => setSelectedRowIds(new Set())}
-      >
-        <BulkActionButton onClick={handleAsync(runBulkReconcile)} disabled={bulkRunning}>
-          <RefreshCw className={`size-3.5 ${bulkRunning ? 'animate-spin' : ''}`} />
-          {bulkRunning ? '同步中...' : '批量同步'}
-        </BulkActionButton>
-      </BulkActionBar>
-
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <DataTable
-          columns={orderColumns}
-          data={orders}
-          isLoading={ordersQuery.isLoading}
-          emptyMessage="暂无订单"
-          getRowId={(row) => row.orderNo}
-          enableRowSelection
-          selectedRowIds={selectedRowIds}
-          onSelectionChange={setSelectedRowIds}
+    <PageContainer
+      title="订单管理"
+      filters={
+        <>
+          <Input.Search
+            value={search}
+            onChange={(event) => {
+              resetSelection();
+              setSearch(event.target.value);
+            }}
+            aria-label="搜索订单"
+            allowClear
+            placeholder="搜索订单号、用户、应用…"
+            style={{ width: 320, maxWidth: '100%' }}
+          />
+          <Select
+            value={statusValues[0]}
+            allowClear
+            aria-label="订单状态"
+            placeholder="全部状态"
+            style={{ width: 140 }}
+            options={[...STATUS_OPTIONS]}
+            onChange={(value) => {
+              resetSelection();
+              setFilter('status', value ? [value] : []);
+            }}
+          />
+          <Select
+            value={providerValues[0]}
+            allowClear
+            aria-label="支付方式"
+            placeholder="全部支付方式"
+            style={{ width: 140 }}
+            options={[...PROVIDER_OPTIONS]}
+            onChange={(value) => {
+              resetSelection();
+              setFilter('provider', value ? [value] : []);
+            }}
+          />
+          <Button
+            onClick={() => {
+              resetSelection();
+              clearFilters();
+            }}
+          >
+            清除筛选
+          </Button>
+        </>
+      }
+    >
+      {selectedRowIds.size > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title={`已选择当前页 ${selectedRowIds.size} 笔订单`}
+          action={
+            <Flex gap={8}>
+              <Button onClick={resetSelection} disabled={bulkRunning}>
+                清除选择
+              </Button>
+              {can('orders.reconcile') && (
+                <Button
+                  loading={bulkRunning}
+                  onClick={() => {
+                    void runBulkReconcile().catch((error) => toastErr(error, '批量同步失败'));
+                  }}
+                >
+                  批量同步
+                </Button>
+              )}
+            </Flex>
+          }
         />
-      </div>
-
-      <PaginationBar
-        total={totalOrders}
-        page={page}
-        pageSize={PAGE_SIZE}
-        isLoading={ordersQuery.isLoading}
-        itemLabel="条订单"
-        onPageChange={setPage}
-      />
-
-      {selectedOrderNo && (
-        <Sheet
-          open
-          onOpenChange={(open) => {
-            if (!open) setSelectedOrderNo(null);
+      )}
+      <AsyncState error={ordersQuery.error} onRetry={() => void ordersQuery.refetch()}>
+        <Table
+          columns={orderColumns}
+          dataSource={orders}
+          rowKey="orderNo"
+          loading={ordersQuery.isLoading}
+          scroll={{ x: 950 }}
+          locale={{ emptyText: '暂无订单' }}
+          rowSelection={
+            can('orders.reconcile')
+              ? {
+                  selectedRowKeys: [...selectedRowIds],
+                  onChange: (keys) => setSelectedRowIds(new Set(keys.map(String))),
+                  preserveSelectedRowKeys: false,
+                  getCheckboxProps: () => ({ disabled: bulkRunning }),
+                }
+              : undefined
+          }
+          pagination={{
+            total: totalOrders,
+            current: page,
+            pageSize: PAGE_SIZE,
+            showSizeChanger: false,
+            onChange: (next) => {
+              resetSelection();
+              setPage(next);
+            },
+            showTotal: (total) => `共 ${total} 条订单`,
           }}
-        >
-          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-2xl">
-            <SheetHeader className="border-b border-border px-6 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <SheetDescription className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    订单详情
-                  </SheetDescription>
-                  <SheetTitle className="mt-1 truncate font-mono text-[15px] font-semibold text-foreground">
-                    {selectedOrderNo}
-                  </SheetTitle>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => reconcileMutation.mutate(selectedOrderNo)}
-                  disabled={reconcileMutation.isPending}
-                >
-                  <RefreshCw
-                    className={`size-3.5 ${reconcileMutation.isPending ? 'animate-spin' : ''}`}
-                  />
-                  {reconcileMutation.isPending ? '同步中' : '同步订单'}
-                </Button>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={
-                    detail?.item.status !== 'pending' ||
-                    cancelMutation.isPending ||
-                    reconcileMutation.isPending
-                  }
-                  onClick={() => setPendingAction({ type: 'cancel', orderNo: selectedOrderNo })}
-                >
-                  {cancelMutation.isPending ? '关闭中' : '关闭订单'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={
-                    (!!detail?.item.items?.length && detail?.item.status !== 'refunding') ||
-                    !['paid', 'refunding'].includes(detail?.item.status ?? '') ||
-                    refundMutation.isPending ||
-                    reconcileMutation.isPending
-                  }
-                  onClick={() =>
+        />
+      </AsyncState>
+      <ManagementDrawer
+        open={!!selectedOrderNo}
+        title={`订单详情 · ${selectedOrderNo ?? ''}`}
+        onClose={() => setSelectedOrderNo(null)}
+        footer={
+          <Flex justify="flex-end" gap={8} wrap>
+            <Button onClick={() => setSelectedOrderNo(null)}>关闭</Button>
+            {can('orders.reconcile') && (
+              <Button
+                loading={reconcileMutation.isPending}
+                onClick={() => {
+                  if (selectedOrderNo) reconcileMutation.mutate(selectedOrderNo);
+                }}
+              >
+                同步订单
+              </Button>
+            )}
+            {can('orders.cancel') && (
+              <Button
+                danger
+                disabled={detail?.item.status !== 'pending' || reconcileMutation.isPending}
+                loading={cancelMutation.isPending}
+                onClick={() => {
+                  if (selectedOrderNo)
+                    setPendingAction({ type: 'cancel', orderNo: selectedOrderNo });
+                }}
+              >
+                关闭订单
+              </Button>
+            )}
+            {can('orders.refund') && (
+              <Button
+                danger
+                disabled={
+                  (!!detail?.item.items?.length && detail.item.status !== 'refunding') ||
+                  !['paid', 'refunding'].includes(detail?.item.status ?? '') ||
+                  reconcileMutation.isPending
+                }
+                loading={refundMutation.isPending}
+                onClick={() => {
+                  if (selectedOrderNo)
                     setPendingAction({
                       type: 'refund',
                       orderNo: selectedOrderNo,
                       amountLabel: detail
                         ? formatAmount(detail.item.amount, detail.item.currency)
                         : undefined,
-                    })
-                  }
-                >
-                  {!!detail?.item.items?.length && detail?.item.status !== 'refunding'
-                    ? '请使用下方分项退款'
-                    : refundMutation.isPending
-                      ? '退款中'
-                      : detail?.item.status === 'refunding'
-                        ? '回查退款'
-                        : '全额退款'}
-                </Button>
-              </div>
-            </SheetHeader>
-
-            <div className="px-6 py-5">
-              {orderDetailQuery.isLoading ? (
-                <div className="space-y-3">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-8 animate-pulse rounded bg-muted" />
-                  ))}
-                </div>
-              ) : orderDetailQuery.isError ? (
-                <div role="alert" className="space-y-3 text-sm text-destructive">
-                  <p>订单详情加载失败：{orderDetailQuery.error.message}</p>
-                  <Button variant="outline" onClick={() => void orderDetailQuery.refetch()}>
-                    重试
-                  </Button>
-                </div>
-              ) : detail ? (
-                <OrderDetailSection detail={detail} />
-              ) : null}
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
-
-      <ConfirmActionDialog
-        open={!!pendingAction}
-        onOpenChange={(open) => {
-          if (!open) setPendingAction(null);
-        }}
-        title={pendingAction?.type === 'refund' ? '确认发起退款？' : '确认关闭订单？'}
-        description={
-          pendingAction?.type === 'refund'
-            ? `将对订单 ${pendingAction.orderNo} 发起全额退款${pendingAction.amountLabel ? `（${pendingAction.amountLabel}）` : ''}。退款可能影响对应授权状态，请确认已完成必要核对。`
-            : pendingAction
-              ? `将关闭订单 ${pendingAction.orderNo}。关闭后用户需要重新发起购买才能继续支付。`
-              : undefined
+                    });
+                }}
+              >
+                {!!detail?.item.items?.length && detail.item.status !== 'refunding'
+                  ? '请使用下方分项退款'
+                  : detail?.item.status === 'refunding'
+                    ? '回查退款'
+                    : '全额退款'}
+              </Button>
+            )}
+          </Flex>
         }
-        confirmText={pendingAction?.type === 'refund' ? '确认退款' : '确认关闭'}
-        isConfirming={cancelMutation.isPending || refundMutation.isPending}
-        onConfirm={() => {
-          if (!pendingAction) return;
-          if (pendingAction.type === 'refund') {
-            refundMutation.mutate(pendingAction.orderNo);
-            return;
-          }
-          cancelMutation.mutate(pendingAction.orderNo);
+      >
+        <AsyncState
+          loading={orderDetailQuery.isLoading}
+          error={orderDetailQuery.error}
+          onRetry={() => void orderDetailQuery.refetch()}
+        >
+          {detail && <OrderDetailSection detail={detail} />}
+        </AsyncState>
+      </ManagementDrawer>
+      <Modal
+        open={!!pendingAction}
+        title={pendingAction?.type === 'refund' ? '确认发起退款？' : '确认关闭订单？'}
+        okText={pendingAction?.type === 'refund' ? '确认退款' : '确认关闭'}
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        confirmLoading={cancelMutation.isPending || refundMutation.isPending}
+        onCancel={() => setPendingAction(null)}
+        onOk={() => {
+          if (!pendingAction || cancelMutation.isPending || refundMutation.isPending) return;
+          if (pendingAction.type === 'refund') refundMutation.mutate(pendingAction.orderNo);
+          else cancelMutation.mutate(pendingAction.orderNo);
         }}
-      />
-    </div>
+      >
+        {pendingAction?.type === 'refund'
+          ? `将对订单 ${pendingAction.orderNo} 发起全额退款${pendingAction.amountLabel ? `（${pendingAction.amountLabel}）` : ''}。退款可能影响对应授权状态，请确认已完成必要核对。`
+          : pendingAction
+            ? `将关闭订单 ${pendingAction.orderNo}。用户需要重新购买才能继续支付。`
+            : ''}
+      </Modal>
+    </PageContainer>
   );
 }
 
@@ -442,7 +468,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <InfoBlock
           label="状态"
           render={
-            <StatusPill tone={statusToTone(item.status)} label={orderStatusLabel(item.status)} />
+            <StatusTag tone={statusToTone(item.status)} label={orderStatusLabel(item.status)} />
           }
         />
         <InfoBlock label="渠道" value={paymentProviderLabel(item.provider)} />
@@ -468,7 +494,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
       </section>
 
       <OrderItems items={item.items} />
-      {!!item.items?.length && <ItemRefundLedger orderNo={item.orderNo} admin />}
+      {!!item.items?.length && <AdminItemRefundLedger orderNo={item.orderNo} />}
       {item.items?.some((i) => i.hostingTerms?.target) && (
         <HostingFulfillmentStatus orderNo={item.orderNo} admin />
       )}
@@ -517,7 +543,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
               <div key={attempt.id} className="rounded-md border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[12px] font-semibold">{attempt.attemptNo}</span>
-                  <StatusPill
+                  <StatusTag
                     tone={statusToTone(attempt.status)}
                     label={checkoutSessionStatusLabel(attempt.status)}
                   />
@@ -551,10 +577,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
                 title="在授权管理中查看"
               >
                 <span className="font-mono text-foreground">{e.plan?.code ?? e.id}</span>
-                <StatusPill
-                  tone={statusToTone(e.status)}
-                  label={entitlementStatusLabel(e.status)}
-                />
+                <StatusTag tone={statusToTone(e.status)} label={entitlementStatusLabel(e.status)} />
                 <ArrowUpRight className="h-3 w-3 text-muted-foreground/60" />
               </Link>
             ))}
@@ -586,14 +609,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 }
 
 function ActionLink({ to, label }: { to: string; label: string }) {
-  return (
-    <Button size="sm" variant="outline" asChild className="h-8 text-xs">
-      <Link to={to}>
-        {label}
-        <ArrowUpRight className="h-3 w-3" />
-      </Link>
-    </Button>
-  );
+  return <Link to={to}>{label}</Link>;
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {

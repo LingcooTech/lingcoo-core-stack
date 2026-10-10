@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { App, Button, Form, Input, Modal, Select, Table, type TableColumnsType } from 'antd';
+import { AdminUpdateUserInputSchema } from '@lingcoo/contracts';
 import {
   activateUser,
   getUser,
@@ -22,34 +23,10 @@ import type {
   HydratedOrder,
   HydratedSupportTicket,
 } from '@/api/types';
-import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
-import { SectionHeader } from '@/components/shared/SectionHeader';
-import { StatusPill, statusToTone } from '@/components/shared/StatusPill';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { PageContainer } from '@/components/admin/PageContainer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import { StatusTag, statusToTone } from '@/components/admin/StatusTag';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
 import { entitlementStatusLabel, orderStatusLabel, recordStatusLabel } from '@/lib/portal-labels';
@@ -94,11 +71,13 @@ function ticketStatusTone(status: HydratedSupportTicket['status']) {
 
 export function UsersPage() {
   const qc = useQueryClient();
+  const { message, modal } = App.useApp();
   const { user: currentUser } = useAuth();
   const currentRole = normalizeRole(currentUser?.role);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { search, filters, setSearch, setFilter, clearFilters } = useTableState({
+  const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
+    defaultPageSize: 20,
     knownFilters: ['role', 'status'],
   });
   const roleValues = useMemo(() => filters.role ?? [], [filters.role]);
@@ -106,7 +85,7 @@ export function UsersPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState<AdminUpdateUserInput>({});
+  const [editForm] = Form.useForm<AdminUpdateUserInput>();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(() =>
     searchParams.get('userId'),
   );
@@ -120,18 +99,18 @@ export function UsersPage() {
     null,
   );
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin-users', search, roleValues, statusValues],
+  const usersQuery = useQuery({
+    queryKey: ['admin-users', page, search, roleValues, statusValues],
     queryFn: () =>
       listUsers({
-        limit: 100,
+        limit: 20,
+        offset: (page - 1) * 20,
         search: search || undefined,
-        // 后端 role/status 当前为单值；多选时取首项
         role: roleValues[0],
         status: statusValues[0],
       }),
   });
-  const users = data?.items ?? [];
+  const users = usersQuery.data?.items ?? [];
   const userDetailQuery = useQuery({
     queryKey: ['admin-user-detail', selectedUserId],
     queryFn: () => getUser(selectedUserId!),
@@ -144,9 +123,18 @@ export function UsersPage() {
   }, [searchParams]);
 
   const updateMutation = useMutation({
-    mutationFn: () => updateUser(editingUser!.id, editForm),
+    mutationFn: async () => {
+      const values = AdminUpdateUserInputSchema.parse(await editForm.validateFields());
+      return updateUser(editingUser!.id, {
+        displayName: values.displayName,
+        ...(canManageRoles && editingUser && !isSelf(editingUser) ? { role: values.role } : {}),
+        ...(canSuspendUsers && editingUser && !isSelf(editingUser)
+          ? { status: values.status }
+          : {}),
+      });
+    },
     onSuccess: () => {
-      toast.success('用户信息已更新');
+      void message.success('用户信息已更新');
       setEditOpen(false);
       setEditingUser(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
@@ -154,29 +142,29 @@ export function UsersPage() {
         void qc.invalidateQueries({ queryKey: ['admin-user-detail', editingUser.id] });
       }
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '更新失败'),
+    onError: (err) => void message.error(err instanceof Error ? err.message : '更新失败'),
   });
 
   const suspendMutation = useMutation({
     mutationFn: (userId: string) => suspendUser(userId),
     onSuccess: () => {
-      toast.success('用户已停用');
+      void message.success('用户已停用');
       setConfirmAction(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
       void qc.invalidateQueries({ queryKey: ['admin-user-detail'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '停用失败'),
+    onError: (err) => void message.error(err instanceof Error ? err.message : '停用失败'),
   });
 
   const activateMutation = useMutation({
     mutationFn: (userId: string) => activateUser(userId),
     onSuccess: () => {
-      toast.success('用户已激活');
+      void message.success('用户已激活');
       setConfirmAction(null);
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
       void qc.invalidateQueries({ queryKey: ['admin-user-detail'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '激活失败'),
+    onError: (err) => void message.error(err instanceof Error ? err.message : '激活失败'),
   });
 
   const resetMutation = useMutation({
@@ -186,16 +174,17 @@ export function UsersPage() {
       setTempPassword({ email: result.email, password: result.temporaryPassword });
       void qc.invalidateQueries({ queryKey: ['admin-users'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : '重置失败'),
+    onError: (err) => void message.error(err instanceof Error ? err.message : '重置失败'),
   });
 
   function openEdit(u: AdminUser) {
     setEditingUser(u);
-    setEditForm({
-      displayName: u.displayName ?? '',
-      role: u.role as AppRole,
-      status: u.status as 'active' | 'suspended',
-    });
+    editForm.resetFields();
+    editForm.setFields([
+      { name: 'displayName', value: u.displayName ?? '', touched: false },
+      { name: 'role', value: u.role, touched: false },
+      { name: 'status', value: u.status, touched: false },
+    ]);
     setEditOpen(true);
   }
 
@@ -229,38 +218,11 @@ export function UsersPage() {
   const canSuspendUsers = hasPermission(currentRole, 'users.suspend');
   const canResetPasswords = hasPermission(currentRole, 'users.reset_password');
 
-  const chips: FilterChipConfig[] = [
-    {
-      id: 'role',
-      label: '角色',
-      values: roleValues,
-      onChange: (next) => setFilter('role', next),
-      options: [
-        { value: 'admin', label: '管理员' },
-        { value: 'operator', label: '运营' },
-        { value: 'finance', label: '财务' },
-        { value: 'support', label: '客服' },
-        { value: 'editor', label: '内容编辑' },
-        { value: 'user', label: '普通用户' },
-      ],
-    },
-    {
-      id: 'status',
-      label: '状态',
-      values: statusValues,
-      onChange: (next) => setFilter('status', next),
-      options: [
-        { value: 'active', label: '活跃' },
-        { value: 'suspended', label: '已停用' },
-      ],
-    },
-  ];
-
-  const columns: Column<AdminUser>[] = [
+  const columns: TableColumnsType<AdminUser> = [
     {
       key: 'user',
-      header: '用户',
-      cell: (row) => (
+      title: '用户',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-foreground">{row.email}</p>
           {row.displayName ? (
@@ -271,9 +233,9 @@ export function UsersPage() {
     },
     {
       key: 'role',
-      header: '角色',
-      cell: (row) => (
-        <StatusPill
+      title: '角色',
+      render: (_, row) => (
+        <StatusTag
           tone={row.role === 'admin' ? 'ok' : row.role === 'user' ? 'neutral' : 'info'}
           label={roleLabels[(row.role as AppRole) ?? 'user'] ?? row.role}
         />
@@ -281,14 +243,14 @@ export function UsersPage() {
     },
     {
       key: 'status',
-      header: '账户 / 邮箱',
-      cell: (row) => (
+      title: '账户 / 邮箱',
+      render: (_, row) => (
         <div className="inline-flex items-center gap-1.5">
-          <StatusPill
+          <StatusTag
             tone={row.status === 'active' ? 'ok' : 'warn'}
             label={recordStatusLabel(row.status)}
           />
-          <StatusPill
+          <StatusTag
             tone={row.emailVerified ? 'ok' : 'warn'}
             label={row.emailVerified ? '已验证' : '未验证'}
           />
@@ -297,8 +259,8 @@ export function UsersPage() {
     },
     {
       key: 'createdAt',
-      header: '注册时间',
-      cell: (row) => (
+      title: '注册时间',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
@@ -306,13 +268,12 @@ export function UsersPage() {
     },
     {
       key: 'actions',
-      header: '操作',
+      title: '操作',
       className: 'w-[260px]',
-      cell: (row) => (
+      render: (_, row) => (
         <div className="flex items-center gap-1">
           <Button
-            size="sm"
-            variant="outline"
+            size="small"
             className="h-7 px-2 text-xs"
             onClick={(event) => {
               event.stopPropagation();
@@ -323,8 +284,7 @@ export function UsersPage() {
           </Button>
           {canEditUsers ? (
             <Button
-              size="sm"
-              variant="outline"
+              size="small"
               className="h-7 px-2 text-xs"
               onClick={(event) => {
                 event.stopPropagation();
@@ -337,8 +297,8 @@ export function UsersPage() {
           {canSuspendUsers ? (
             row.status === 'active' ? (
               <Button
-                size="sm"
-                variant="ghost"
+                size="small"
+                type="text"
                 className="h-7 px-2 text-xs text-muted-foreground"
                 disabled={isSelf(row)}
                 onClick={(event) => {
@@ -350,8 +310,8 @@ export function UsersPage() {
               </Button>
             ) : (
               <Button
-                size="sm"
-                variant="ghost"
+                size="small"
+                type="text"
                 className="h-7 px-2 text-xs text-muted-foreground"
                 onClick={(event) => {
                   event.stopPropagation();
@@ -364,8 +324,8 @@ export function UsersPage() {
           ) : null}
           {canResetPasswords ? (
             <Button
-              size="sm"
-              variant="ghost"
+              size="small"
+              type="text"
               className="h-7 px-2 text-xs text-destructive hover:text-destructive"
               onClick={(event) => {
                 event.stopPropagation();
@@ -380,220 +340,206 @@ export function UsersPage() {
     },
   ];
 
+  const closeEdit = async () => {
+    if (updateMutation.isPending) return;
+    if (
+      editForm.isFieldsTouched() &&
+      !(await modal.confirm({
+        title: '放弃未保存的用户修改？',
+        okText: '放弃修改',
+        cancelText: '继续编辑',
+      }))
+    )
+      return;
+    setEditOpen(false);
+  };
   return (
-    <div>
-      <SectionHeader sectionKey="users" />
-      <div className="space-y-4 p-6">
-        <FilterChipBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="搜索邮箱或名称..."
-          chips={chips}
-          onClearAll={clearFilters}
-        />
-
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <DataTable
-            columns={columns}
-            data={users}
-            isLoading={isLoading}
-            emptyMessage="暂无用户"
-            getRowKey={(row) => row.id}
-            onRowClick={(row) => openUserDetail(row.id)}
+    <PageContainer
+      title="用户管理"
+      description="查询用户与关联业务记录；角色、停用和密码操作受独立权限控制。"
+      filters={
+        <>
+          <Input.Search
+            aria-label="搜索用户"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            allowClear
+            placeholder="搜索邮箱或名称…"
+            style={{ width: 320, maxWidth: '100%' }}
           />
-        </div>
-      </div>
-
-      {selectedUserId ? (
-        <Sheet
-          open
-          onOpenChange={(open) => {
-            if (!open) closeUserDetail();
+          <Select
+            value={roleValues[0]}
+            allowClear
+            aria-label="用户角色"
+            placeholder="全部角色"
+            style={{ width: 140 }}
+            options={Object.entries(roleLabels).map(([value, label]) => ({ value, label }))}
+            onChange={(value) => setFilter('role', value ? [value] : [])}
+          />
+          <Select
+            value={statusValues[0]}
+            allowClear
+            aria-label="用户状态"
+            placeholder="全部状态"
+            style={{ width: 140 }}
+            options={[
+              { value: 'active', label: '活跃' },
+              { value: 'suspended', label: '已停用' },
+            ]}
+            onChange={(value) => setFilter('status', value ? [value] : [])}
+          />
+          <Button onClick={clearFilters}>清除筛选</Button>
+        </>
+      }
+    >
+      <AsyncState error={usersQuery.error} onRetry={() => void usersQuery.refetch()}>
+        <Table
+          columns={columns}
+          dataSource={users}
+          rowKey="id"
+          loading={usersQuery.isLoading}
+          pagination={{
+            current: page,
+            pageSize: 20,
+            total: usersQuery.data?.total ?? 0,
+            showSizeChanger: false,
+            onChange: setPage,
           }}
+          scroll={{ x: 900 }}
+          locale={{ emptyText: '暂无用户' }}
+        />
+      </AsyncState>
+      <ManagementDrawer
+        open={!!selectedUserId}
+        title={`用户详情 · ${userDetailQuery.data?.email ?? selectedUserId ?? ''}`}
+        onClose={closeUserDetail}
+        size="large"
+      >
+        <AsyncState
+          loading={userDetailQuery.isLoading}
+          error={userDetailQuery.error}
+          onRetry={() => void userDetailQuery.refetch()}
         >
-          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-4xl">
-            <SheetHeader className="border-b border-border px-6 py-4">
-              <SheetDescription className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                用户详情
-              </SheetDescription>
-              <SheetTitle className="truncate text-base font-semibold text-foreground">
-                {userDetailQuery.data?.email ?? selectedUserId}
-              </SheetTitle>
-            </SheetHeader>
-            <div className="px-6 py-5">
-              {userDetailQuery.isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="h-9 animate-pulse rounded-md bg-muted" />
-                  ))}
-                </div>
-              ) : userDetailQuery.data ? (
-                <UserDetailPanel detail={userDetailQuery.data} />
-              ) : null}
-            </div>
-          </SheetContent>
-        </Sheet>
-      ) : null}
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑用户</DialogTitle>
-            <DialogDescription>修改 {editingUser?.email} 的用户信息</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>显示名称</Label>
-              <Input
-                value={editForm.displayName ?? ''}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, displayName: e.target.value }))}
-                placeholder="用户昵称"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>角色</Label>
-              <Select
-                value={editForm.role ?? 'user'}
-                onValueChange={(v) => setEditForm((prev) => ({ ...prev, role: v as AppRole }))}
-                disabled={!canManageRoles || (editingUser ? isSelf(editingUser) : false)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">管理员</SelectItem>
-                  <SelectItem value="operator">运营</SelectItem>
-                  <SelectItem value="finance">财务</SelectItem>
-                  <SelectItem value="support">客服</SelectItem>
-                  <SelectItem value="editor">内容编辑</SelectItem>
-                  <SelectItem value="user">普通用户</SelectItem>
-                </SelectContent>
-              </Select>
-              {editingUser && (isSelf(editingUser) || !canManageRoles) && (
-                <p className="text-xs text-muted-foreground">
-                  {isSelf(editingUser) ? '不能修改自己的角色' : '当前角色没有修改用户角色的权限'}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>状态</Label>
-              <Select
-                value={editForm.status ?? 'active'}
-                onValueChange={(v) =>
-                  setEditForm((prev) => ({ ...prev, status: v as 'active' | 'suspended' }))
-                }
-                disabled={!canSuspendUsers || (editingUser ? isSelf(editingUser) : false)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">活跃</SelectItem>
-                  <SelectItem value="suspended">已停用</SelectItem>
-                </SelectContent>
-              </Select>
-              {editingUser && (isSelf(editingUser) || !canSuspendUsers) && (
-                <p className="text-xs text-muted-foreground">
-                  {isSelf(editingUser) ? '不能修改自己的状态' : '当前角色没有修改用户状态的权限'}
-                </p>
-              )}
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setEditOpen(false)}>
-                取消
-              </Button>
-              <Button disabled={updateMutation.isPending} onClick={() => updateMutation.mutate()}>
-                {updateMutation.isPending ? '保存中...' : '保存'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Suspend/Activate Confirmation Dialog */}
-      <Dialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{confirmAction?.type === 'suspend' ? '停用用户' : '激活用户'}</DialogTitle>
-            <DialogDescription>
-              {confirmAction?.type === 'suspend'
-                ? `确认停用用户 ${confirmAction.user.email}？停用后该用户将无法登录。`
-                : `确认激活用户 ${confirmAction?.user.email}？激活后该用户可正常登录。`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setConfirmAction(null)}>
-              取消
-            </Button>
-            <Button
-              variant={confirmAction?.type === 'suspend' ? 'destructive' : 'default'}
-              disabled={suspendMutation.isPending || activateMutation.isPending}
-              onClick={() => {
-                if (!confirmAction) return;
-                if (confirmAction.type === 'suspend') {
-                  suspendMutation.mutate(confirmAction.user.id);
-                } else {
-                  activateMutation.mutate(confirmAction.user.id);
-                }
-              }}
-            >
-              {suspendMutation.isPending || activateMutation.isPending
-                ? '处理中...'
-                : confirmAction?.type === 'suspend'
-                  ? '确认停用'
-                  : '确认激活'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Password Confirmation Dialog */}
-      <Dialog open={!!resetConfirm} onOpenChange={() => setResetConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>重置密码</DialogTitle>
-            <DialogDescription>
-              确认为用户 {resetConfirm?.email} 重置密码？重置后将生成一个临时密码。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setResetConfirm(null)}>
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={resetMutation.isPending}
-              onClick={() => {
-                if (resetConfirm) resetMutation.mutate(resetConfirm.id);
-              }}
-            >
-              {resetMutation.isPending ? '重置中...' : '确认重置'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Temporary Password Display Dialog */}
-      <Dialog open={!!tempPassword} onOpenChange={() => setTempPassword(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>密码已重置</DialogTitle>
-            <DialogDescription>
-              用户 {tempPassword?.email} 的临时密码如下，请妥善传达给用户。此密码仅显示一次。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-            <p className="font-mono text-lg font-bold tracking-widest select-all">
-              {tempPassword?.password}
-            </p>
-          </div>
-          <div className="flex justify-end pt-2">
-            <Button onClick={() => setTempPassword(null)}>关闭</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          {userDetailQuery.data && <UserDetailPanel detail={userDetailQuery.data} />}
+        </AsyncState>
+      </ManagementDrawer>
+      <Modal
+        open={editOpen}
+        forceRender
+        title={`编辑用户 · ${editingUser?.email ?? ''}`}
+        okText="保存"
+        cancelText="取消"
+        confirmLoading={updateMutation.isPending}
+        onCancel={() => {
+          void closeEdit();
+        }}
+        onOk={() => {
+          if (!updateMutation.isPending) editForm.submit();
+        }}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          disabled={updateMutation.isPending}
+          onFinish={() => updateMutation.mutate()}
+        >
+          <Form.Item name="displayName" label="显示名称">
+            <Input placeholder="用户昵称" />
+          </Form.Item>
+          <Form.Item
+            name="role"
+            label="角色"
+            extra={
+              editingUser && isSelf(editingUser)
+                ? '不能修改自己的角色'
+                : !canManageRoles
+                  ? '当前角色没有修改用户角色的权限'
+                  : undefined
+            }
+          >
+            <Select
+              options={Object.entries(roleLabels).map(([value, label]) => ({ value, label }))}
+              disabled={
+                updateMutation.isPending ||
+                !canManageRoles ||
+                !!(editingUser && isSelf(editingUser))
+              }
+            />
+          </Form.Item>
+          <Form.Item
+            name="status"
+            label="状态"
+            extra={
+              editingUser && isSelf(editingUser)
+                ? '不能修改自己的状态'
+                : !canSuspendUsers
+                  ? '当前角色没有修改用户状态的权限'
+                  : undefined
+            }
+          >
+            <Select
+              options={[
+                { value: 'active', label: '活跃' },
+                { value: 'suspended', label: '已停用' },
+              ]}
+              disabled={
+                updateMutation.isPending ||
+                !canSuspendUsers ||
+                !!(editingUser && isSelf(editingUser))
+              }
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        open={!!confirmAction}
+        title={confirmAction?.type === 'suspend' ? '停用用户' : '激活用户'}
+        okText={confirmAction?.type === 'suspend' ? '确认停用' : '确认激活'}
+        cancelText="取消"
+        okButtonProps={{ danger: confirmAction?.type === 'suspend' }}
+        confirmLoading={suspendMutation.isPending || activateMutation.isPending}
+        onCancel={() => setConfirmAction(null)}
+        onOk={() => {
+          if (!confirmAction || suspendMutation.isPending || activateMutation.isPending) return;
+          if (confirmAction.type === 'suspend') suspendMutation.mutate(confirmAction.user.id);
+          else activateMutation.mutate(confirmAction.user.id);
+        }}
+      >
+        {confirmAction?.type === 'suspend'
+          ? `确认停用用户 ${confirmAction.user.email}？停用后无法登录。`
+          : `确认激活用户 ${confirmAction?.user.email}？`}
+      </Modal>
+      <Modal
+        open={!!resetConfirm}
+        title="重置密码"
+        okText="确认重置"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        confirmLoading={resetMutation.isPending}
+        onCancel={() => setResetConfirm(null)}
+        onOk={() => {
+          if (resetConfirm && !resetMutation.isPending) resetMutation.mutate(resetConfirm.id);
+        }}
+      >
+        确认为用户 {resetConfirm?.email} 重置密码？将生成一个临时密码。
+      </Modal>
+      <Modal
+        open={!!tempPassword}
+        title="密码已重置"
+        onCancel={() => setTempPassword(null)}
+        footer={
+          <Button type="primary" onClick={() => setTempPassword(null)}>
+            关闭
+          </Button>
+        }
+        destroyOnHidden
+      >
+        <p>用户 {tempPassword?.email} 的临时密码仅显示一次，请妥善传达。</p>
+        <p className="my-4 text-center font-mono text-lg break-all select-all">
+          {tempPassword?.password}
+        </p>
+      </Modal>
+    </PageContainer>
   );
 }
 
@@ -601,16 +547,16 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
   const { activity } = detail;
   const grantHref = `/admin/licenses?grantUserEmail=${encodeURIComponent(detail.email)}`;
 
-  const orderColumns: Column<HydratedOrder>[] = [
+  const orderColumns: TableColumnsType<HydratedOrder> = [
     {
       key: 'orderNo',
-      header: '订单号',
-      cell: (row) => <span className="font-mono text-[11px]">{row.orderNo}</span>,
+      title: '订单号',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.orderNo}</span>,
     },
     {
       key: 'product',
-      header: '产品',
-      cell: (row) => (
+      title: '产品',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-foreground">
             {row.app?.name ?? row.appId}
@@ -623,15 +569,15 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
-        <StatusPill tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
+      title: '状态',
+      render: (_, row) => (
+        <StatusTag tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
       ),
     },
     {
       key: 'amount',
-      header: '金额',
-      cell: (row) => (
+      title: '金额',
+      render: (_, row) => (
         <span className="text-[11px] font-medium tabular-nums">
           {formatAmount(row.amount, row.currency)}
         </span>
@@ -639,8 +585,8 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'createdAt',
-      header: '创建时间',
-      cell: (row) => (
+      title: '创建时间',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
@@ -648,29 +594,27 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '跳转',
+      title: '跳转',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={adminSearchHref('/admin/orders', row.orderNo)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={adminSearchHref('/admin/orders', row.orderNo)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
 
-  const entitlementColumns: Column<HydratedEntitlement>[] = [
+  const entitlementColumns: TableColumnsType<HydratedEntitlement> = [
     {
       key: 'app',
-      header: '应用',
-      cell: (row) => row.app?.name ?? row.appId,
+      title: '应用',
+      render: (_, row) => row.app?.name ?? row.appId,
     },
     {
       key: 'plan',
-      header: '套餐',
-      cell: (row) => (
+      title: '套餐',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-foreground">
             {row.plan?.name ?? row.planId}
@@ -683,15 +627,15 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
-        <StatusPill tone={statusToTone(row.status)} label={entitlementStatusLabel(row.status)} />
+      title: '状态',
+      render: (_, row) => (
+        <StatusTag tone={statusToTone(row.status)} label={entitlementStatusLabel(row.status)} />
       ),
     },
     {
       key: 'expiresAt',
-      header: '到期时间',
-      cell: (row) => (
+      title: '到期时间',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.expiresAt)}
         </span>
@@ -699,41 +643,39 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '处置',
+      title: '处置',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={adminSearchHref('/admin/licenses', row.id)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={adminSearchHref('/admin/licenses', row.id)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
 
-  const installColumns: Column<HydratedInstall>[] = [
+  const installColumns: TableColumnsType<HydratedInstall> = [
     {
       key: 'install',
-      header: '客户端安装',
-      cell: (row) => <span className="font-mono text-[11px]">{row.extensionInstallId}</span>,
+      title: '客户端安装',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.extensionInstallId}</span>,
     },
     {
       key: 'app',
-      header: '应用',
-      cell: (row) => row.app?.name ?? '—',
+      title: '应用',
+      render: (_, row) => row.app?.name ?? '—',
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
-        <StatusPill tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
+      title: '状态',
+      render: (_, row) => (
+        <StatusTag tone={statusToTone(row.status)} label={recordStatusLabel(row.status)} />
       ),
     },
     {
       key: 'lastSeenAt',
-      header: '最后活跃',
-      cell: (row) => (
+      title: '最后活跃',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.lastSeenAt)}
         </span>
@@ -741,39 +683,37 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '跳转',
+      title: '跳转',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={adminSearchHref('/admin/installs', row.extensionInstallId)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={adminSearchHref('/admin/installs', row.extensionInstallId)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
 
-  const eventColumns: Column<AdminEvent>[] = [
+  const eventColumns: TableColumnsType<AdminEvent> = [
     {
       key: 'eventName',
-      header: '事件',
-      cell: (row) => <span className="font-mono text-[11px]">{row.eventName}</span>,
+      title: '事件',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.eventName}</span>,
     },
     {
       key: 'appId',
-      header: '应用',
-      cell: (row) => <span className="font-mono text-[11px]">{row.appId ?? '—'}</span>,
+      title: '应用',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.appId ?? '—'}</span>,
     },
     {
       key: 'installId',
-      header: '安装',
-      cell: (row) => <span className="font-mono text-[11px]">{row.installId ?? '—'}</span>,
+      title: '安装',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.installId ?? '—'}</span>,
     },
     {
       key: 'eventTime',
-      header: '发生时间',
-      cell: (row) => (
+      title: '发生时间',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.eventTime)}
         </span>
@@ -781,29 +721,27 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '跳转',
+      title: '跳转',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={observabilityHref('events', row.eventName)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={observabilityHref('events', row.eventName)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
 
-  const auditColumns: Column<AuditLog>[] = [
+  const auditColumns: TableColumnsType<AuditLog> = [
     {
       key: 'action',
-      header: '动作',
-      cell: (row) => <span className="font-mono text-[11px]">{row.action}</span>,
+      title: '动作',
+      render: (_, row) => <span className="font-mono text-[11px]">{row.action}</span>,
     },
     {
       key: 'resource',
-      header: '资源',
-      cell: (row) => (
+      title: '资源',
+      render: (_, row) => (
         <span className="font-mono text-[11px]">
           {row.resourceType}/{row.resourceId ?? '—'}
         </span>
@@ -811,13 +749,13 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'outcome',
-      header: '结果',
-      cell: (row) => <StatusPill tone={statusToTone(row.outcome)} label={row.outcome} />,
+      title: '结果',
+      render: (_, row) => <StatusTag tone={statusToTone(row.outcome)} label={row.outcome} />,
     },
     {
       key: 'createdAt',
-      header: '时间',
-      cell: (row) => (
+      title: '时间',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.createdAt)}
         </span>
@@ -825,24 +763,22 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '跳转',
+      title: '跳转',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={observabilityHref('audits', row.action)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={observabilityHref('audits', row.action)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
 
-  const ticketColumns: Column<HydratedSupportTicket>[] = [
+  const ticketColumns: TableColumnsType<HydratedSupportTicket> = [
     {
       key: 'ticketNo',
-      header: '工单号',
-      cell: (row) => (
+      title: '工单号',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate font-mono text-[12px] font-semibold text-foreground">
             {row.ticketNo}
@@ -853,18 +789,18 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
+      title: '状态',
+      render: (_, row) => (
         <div className="flex flex-wrap items-center gap-1.5">
-          <StatusPill tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
-          <StatusPill tone="neutral" label={row.category} />
+          <StatusTag tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
+          <StatusTag tone="neutral" label={row.category} />
         </div>
       ),
     },
     {
       key: 'context',
-      header: '关联',
-      cell: (row) => (
+      title: '关联',
+      render: (_, row) => (
         <div className="space-y-0.5 text-[10px] text-muted-foreground">
           <p>{row.app?.name ?? row.app?.code ?? '未关联应用'}</p>
           {row.order ? <p className="font-mono">order: {row.order.orderNo}</p> : null}
@@ -876,8 +812,8 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'lastActivityAt',
-      header: '最近活动',
-      cell: (row) => (
+      title: '最近活动',
+      render: (_, row) => (
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatTime(row.lastActivityAt)}
         </span>
@@ -885,15 +821,13 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     },
     {
       key: 'actions',
-      header: '处置',
+      title: '处置',
       className: 'w-[76px]',
-      cell: (row) => (
-        <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-          <Link to={adminSearchHref('/admin/tickets', row.ticketNo)}>
-            查看
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </Button>
+      render: (_, row) => (
+        <Link to={adminSearchHref('/admin/tickets', row.ticketNo)}>
+          查看
+          <ArrowUpRight className="h-3 w-3" />
+        </Link>
       ),
     },
   ];
@@ -906,7 +840,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <InfoBlock
           label="角色"
           render={
-            <StatusPill
+            <StatusTag
               tone={detail.role === 'admin' ? 'ok' : detail.role === 'user' ? 'neutral' : 'info'}
               label={roleLabels[(detail.role as AppRole) ?? 'user'] ?? detail.role}
             />
@@ -915,7 +849,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <InfoBlock
           label="账户状态"
           render={
-            <StatusPill
+            <StatusTag
               tone={statusToTone(detail.status)}
               label={recordStatusLabel(detail.status)}
             />
@@ -924,7 +858,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
         <InfoBlock
           label="邮箱验证"
           render={
-            <StatusPill
+            <StatusTag
               tone={detail.emailVerified ? 'ok' : 'warn'}
               label={detail.emailVerified ? '已验证' : '未验证'}
             />
@@ -963,56 +897,68 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       </section>
 
       <DetailSection title={`最近订单 (${activity.orders.length})`}>
-        <DataTable
+        <Table
           columns={orderColumns}
-          data={activity.orders}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无订单"
+          dataSource={activity.orders}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无订单' }}
         />
       </DetailSection>
 
       <DetailSection title={`最近授权 (${activity.entitlements.length})`}>
-        <DataTable
+        <Table
           columns={entitlementColumns}
-          data={activity.entitlements}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无授权"
+          dataSource={activity.entitlements}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无授权' }}
         />
       </DetailSection>
 
       <DetailSection title={`客户端安装 (${activity.installs.length})`}>
-        <DataTable
+        <Table
           columns={installColumns}
-          data={activity.installs}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无客户端安装"
+          dataSource={activity.installs}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无客户端安装' }}
         />
       </DetailSection>
 
       <DetailSection title={`最近工单 (${activity.tickets.length})`}>
-        <DataTable
+        <Table
           columns={ticketColumns}
-          data={activity.tickets}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无工单"
+          dataSource={activity.tickets}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无工单' }}
         />
       </DetailSection>
 
       <DetailSection title={`最近事件 (${activity.events.length})`}>
-        <DataTable
+        <Table
           columns={eventColumns}
-          data={activity.events}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无事件"
+          dataSource={activity.events}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无事件' }}
         />
       </DetailSection>
 
       <DetailSection title={`审计日志 (${activity.auditLogs.length})`}>
-        <DataTable
+        <Table
           columns={auditColumns}
-          data={activity.auditLogs}
-          getRowKey={(row) => row.id}
-          emptyMessage="暂无审计日志"
+          dataSource={activity.auditLogs}
+          rowKey="id"
+          pagination={false}
+          scroll={{ x: 700 }}
+          locale={{ emptyText: '暂无审计日志' }}
         />
       </DetailSection>
     </div>
@@ -1021,12 +967,10 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
 
 function ActionLink({ to, label }: { to: string; label: string }) {
   return (
-    <Button size="sm" variant="outline" asChild className="h-8 text-xs">
-      <Link to={to}>
-        {label}
-        <ArrowUpRight className="h-3 w-3" />
-      </Link>
-    </Button>
+    <Link to={to}>
+      {label}
+      <ArrowUpRight className="h-3 w-3" />
+    </Link>
   );
 }
 

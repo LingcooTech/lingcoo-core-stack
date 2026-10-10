@@ -45,14 +45,4 @@ export function StatusPill({ tone, label, className, noDot }: StatusPillProps) {
   );
 }
 
-// Maps common status strings to tones
-export function statusToTone(status: string): Tone {
-  const s = status.toLowerCase();
-  if (['active', 'paid', 'completed', 'ok', 'success', 'configured', 'granted'].includes(s))
-    return 'ok';
-  if (['pending', 'processing', 'refunding', 'partial'].includes(s)) return 'warn';
-  if (['failed', 'cancelled', 'expired', 'revoked', 'inactive', 'error'].includes(s))
-    return 'danger';
-  if (['env', 'database'].includes(s)) return 'info';
-  return 'neutral';
-}
+export { statusToTone } from '@/lib/status-tone';

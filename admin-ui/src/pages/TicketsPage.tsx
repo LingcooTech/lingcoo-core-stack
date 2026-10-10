@@ -1,8 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import {
+  App,
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Flex,
+  Form,
+  Input,
+  Select,
+  Table,
+  type TableColumnsType,
+  type FormInstance,
+} from 'antd';
 
 import {
   assignAdminTicket,
@@ -12,30 +25,10 @@ import {
   updateAdminTicketStatus,
 } from '@/api/admin';
 import type { HydratedSupportTicket, SupportTicketDetail, SupportTicketMessage } from '@/api/types';
-import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
-import { PaginationBar } from '@/components/shared/PaginationBar';
-import { SectionHeader } from '@/components/shared/SectionHeader';
-import { StatusPill } from '@/components/shared/StatusPill';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
+import { PageContainer } from '@/components/admin/PageContainer';
+import { AsyncState } from '@/components/admin/AsyncState';
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import { StatusTag } from '@/components/admin/StatusTag';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
 import { cn, formatTime } from '@/lib/utils';
@@ -173,7 +166,7 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
             <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{messageAuthorLabel(message)}</span>
               <span>{formatTime(message.createdAt)}</span>
-              {isInternal ? <StatusPill tone="neutral" label="内部备注" /> : null}
+              {isInternal ? <StatusTag tone="neutral" label="内部备注" /> : null}
             </div>
             <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-foreground">
               {message.body}
@@ -185,16 +178,12 @@ function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   );
 }
 
+type TicketDraft = { status: HydratedSupportTicket['status']; body: string; internal: boolean };
 function TicketDetailPanel({
   detail,
-  statusDraft,
-  onStatusDraftChange,
+  form,
   onSaveStatus,
-  replyDraft,
-  onReplyDraftChange,
   onReply,
-  internalNote,
-  onInternalNoteChange,
   onAssignToMe,
   onUnassign,
   isSavingStatus,
@@ -202,14 +191,9 @@ function TicketDetailPanel({
   isAssigning,
 }: {
   detail: SupportTicketDetail;
-  statusDraft: HydratedSupportTicket['status'];
-  onStatusDraftChange: (value: HydratedSupportTicket['status']) => void;
+  form: FormInstance<TicketDraft>;
   onSaveStatus: () => void;
-  replyDraft: string;
-  onReplyDraftChange: (value: string) => void;
   onReply: () => void;
-  internalNote: boolean;
-  onInternalNoteChange: (value: boolean) => void;
   onAssignToMe: () => void;
   onUnassign: () => void;
   isSavingStatus: boolean;
@@ -217,37 +201,23 @@ function TicketDetailPanel({
   isAssigning: boolean;
 }) {
   const { ticket, messages } = detail;
-
+  const statusDraft = Form.useWatch('status', form);
+  const internal = Form.useWatch('internal', form);
   return (
-    <Card className="border-border bg-card shadow-sm">
-      <CardHeader className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg">{ticket.subject}</CardTitle>
-            <CardDescription className="mt-1">
-              {ticket.ticketNo} · 最近活动 {formatTime(ticket.lastActivityAt)}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusPill
-              tone={ticketStatusTone(ticket.status)}
-              label={ticketStatusLabel(ticket.status)}
-            />
-            <StatusPill
-              tone={ticketPriorityTone(ticket.priority)}
-              label={ticketPriorityLabel(ticket.priority)}
-            />
-            <StatusPill tone="neutral" label={ticketCategoryLabel(ticket.category)} />
-            <Button size="sm" variant="outline" asChild className="h-7 px-2 text-xs">
-              <Link to={userDetailHref(ticket.userId)}>
-                用户 360
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4">
+      <Card title={ticket.subject} extra={<Link to={userDetailHref(ticket.userId)}>用户 360</Link>}>
+        <Flex wrap gap={8} style={{ marginBottom: 16 }}>
+          <StatusTag
+            tone={ticketStatusTone(ticket.status)}
+            label={ticketStatusLabel(ticket.status)}
+          />
+          <StatusTag
+            tone={ticketPriorityTone(ticket.priority)}
+            label={ticketPriorityLabel(ticket.priority)}
+          />
+          <StatusTag tone="neutral" label={ticketCategoryLabel(ticket.category)} />
+        </Flex>
+        <div className="admin-form-grid">
           <MetaField label="用户" value={ticket.user?.email ?? '—'} />
           <MetaField label="应用" value={ticket.app?.name ?? '未关联'} />
           <MetaField label="订单号" value={ticket.order?.orderNo ?? '未关联'} mono />
@@ -262,87 +232,64 @@ function TicketDetailPanel({
             value={ticket.assignee?.displayName ?? ticket.assignee?.email ?? '未分配'}
           />
           <MetaField label="创建时间" value={formatTime(ticket.createdAt)} />
-          <MetaField label="最近回复方" value={ticket.lastReplyAuthorType} />
+          <MetaField label="最近活动" value={formatTime(ticket.lastActivityAt)} />
         </div>
-      </CardHeader>
-
-      <CardContent className="space-y-5">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-          <div className="space-y-3 rounded-xl border border-dashed border-border bg-muted/60 p-4">
-            <div className="space-y-2">
-              <Label>工单状态</Label>
+      </Card>
+      <Card title={`会话记录 (${messages.length})`}>
+        <TicketMessageList messages={messages} />
+      </Card>
+      <Card title="处理工单">
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ status: ticket.status, body: '', internal: false }}
+          onFinish={onReply}
+        >
+          <Flex gap={12} wrap align="end" style={{ marginBottom: 16 }}>
+            <Form.Item name="status" label="工单状态" style={{ width: 180, marginBottom: 0 }}>
               <Select
-                value={statusDraft}
-                onValueChange={(value) =>
-                  onStatusDraftChange(value as HydratedSupportTicket['status'])
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="waiting_staff">待处理</SelectItem>
-                  <SelectItem value="waiting_user">待回复</SelectItem>
-                  <SelectItem value="resolved">已解决</SelectItem>
-                  <SelectItem value="closed">已关闭</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              type="button"
-              onClick={onSaveStatus}
-              disabled={isSavingStatus || statusDraft === ticket.status}
-            >
-              {isSavingStatus ? '保存中...' : '更新状态'}
-            </Button>
-
-            <div className="h-px bg-gray-200" />
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">指派</p>
-              <Button type="button" variant="outline" onClick={onAssignToMe} disabled={isAssigning}>
-                {isAssigning ? '处理中...' : '指派给我'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={onUnassign} disabled={isAssigning}>
-                取消指派
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">会话记录</p>
-              <p className="text-xs text-muted-foreground">{messages.length} 条消息</p>
-            </div>
-            <TicketMessageList messages={messages} />
-          </div>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-dashed border-border bg-muted/60 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-foreground">回复工单</p>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={internalNote}
-                onCheckedChange={(checked) => onInternalNoteChange(checked === true)}
+                options={['waiting_staff', 'waiting_user', 'resolved', 'closed'].map((value) => ({
+                  value,
+                  label: ticketStatusLabel(value as HydratedSupportTicket['status']),
+                }))}
               />
-              <Label className="cursor-pointer">内部备注</Label>
-            </div>
-          </div>
-          <Textarea
-            value={replyDraft}
-            onChange={(event) => onReplyDraftChange(event.target.value)}
-            rows={5}
-            placeholder={internalNote ? '这条备注仅管理员可见' : '输入发给用户的回复内容'}
-          />
-          <div className="flex justify-end">
-            <Button type="button" onClick={onReply} disabled={isReplying || !replyDraft.trim()}>
-              {isReplying ? '发送中...' : internalNote ? '保存备注' : '发送回复'}
+            </Form.Item>
+            <Button
+              onClick={onSaveStatus}
+              loading={isSavingStatus}
+              disabled={!statusDraft || statusDraft === ticket.status}
+            >
+              更新状态
             </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+            <Button onClick={onAssignToMe} loading={isAssigning}>
+              指派给我
+            </Button>
+            <Button type="text" onClick={onUnassign} disabled={isAssigning}>
+              取消指派
+            </Button>
+          </Flex>
+          <Form.Item name="internal" valuePropName="checked">
+            <Checkbox>内部备注（仅管理员可见）</Checkbox>
+          </Form.Item>
+          <Form.Item
+            name="body"
+            label={internal ? '内部备注内容' : '回复内容'}
+            rules={[{ required: true, whitespace: true, message: '请输入回复内容' }]}
+          >
+            <Input.TextArea
+              rows={5}
+              placeholder={internal ? '这条备注仅管理员可见' : '输入发给用户的回复内容'}
+              disabled={isReplying}
+            />
+          </Form.Item>
+          <Flex justify="end">
+            <Button type="primary" htmlType="submit" loading={isReplying}>
+              {internal ? '保存备注' : '发送回复'}
+            </Button>
+          </Flex>
+        </Form>
+      </Card>
+    </div>
   );
 }
 
@@ -350,6 +297,8 @@ export function TicketsPage() {
   const [contextParams, setContextParams] = useSearchParams();
   const deploymentId = contextParams.get('deploymentId') ?? undefined;
   const qc = useQueryClient();
+  const { message, modal } = App.useApp();
+  const [form] = Form.useForm<TicketDraft>();
   const { user } = useAuth();
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
     defaultPageSize: PAGE_SIZE,
@@ -361,17 +310,12 @@ export function TicketsPage() {
   const deferredSearch = useDeferredValue(search);
 
   const [selectedTicketNo, setSelectedTicketNo] = useState<string | null>(null);
-  const [statusDraft, setStatusDraft] = useState<HydratedSupportTicket['status']>('waiting_staff');
-  const [replyDraft, setReplyDraft] = useState('');
-  const [internalNote, setInternalNote] = useState(false);
-
   const query = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
       deploymentId,
-      // 后端 status/category/priority 当前为单值；多选时取首项
       status: statusValues[0] as HydratedSupportTicket['status'] | undefined,
       category: categoryValues[0] as HydratedSupportTicket['category'] | undefined,
       priority: priorityValues[0] as HydratedSupportTicket['priority'] | undefined,
@@ -393,40 +337,39 @@ export function TicketsPage() {
   useEffect(() => {
     const nextStatus = detailQuery.data?.ticket.status;
     if (nextStatus) {
-      setStatusDraft(nextStatus);
+      form.setFieldValue('status', nextStatus);
     }
-  }, [detailQuery.data?.ticket.status]);
+  }, [detailQuery.data?.ticket.status, form]);
 
   const assignMutation = useMutation({
     mutationFn: assignAdminTicket,
     onSuccess: async (_, variables) => {
-      toast.success(variables.assignedAdminUserId ? '工单已指派' : '已取消指派');
+      void message.success(variables.assignedAdminUserId ? '工单已指派' : '已取消指派');
       await qc.invalidateQueries({ queryKey: ['admin-tickets'] });
       await qc.invalidateQueries({ queryKey: ['admin-ticket-detail', variables.ticketNo] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '更新指派失败'),
+    onError: (error) => void message.error(error instanceof Error ? error.message : '更新指派失败'),
   });
 
   const replyMutation = useMutation({
     mutationFn: replyAdminTicket,
     onSuccess: async (_, variables) => {
-      toast.success(variables.isInternal ? '内部备注已保存' : '回复已发送');
-      setReplyDraft('');
-      setInternalNote(false);
+      void message.success(variables.isInternal ? '内部备注已保存' : '回复已发送');
+      form.setFieldsValue({ body: '', internal: false });
       await qc.invalidateQueries({ queryKey: ['admin-tickets'] });
       await qc.invalidateQueries({ queryKey: ['admin-ticket-detail', variables.ticketNo] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '发送回复失败'),
+    onError: (error) => void message.error(error instanceof Error ? error.message : '发送回复失败'),
   });
 
   const statusMutation = useMutation({
     mutationFn: updateAdminTicketStatus,
     onSuccess: async (_, variables) => {
-      toast.success('工单状态已更新');
+      void message.success('工单状态已更新');
       await qc.invalidateQueries({ queryKey: ['admin-tickets'] });
       await qc.invalidateQueries({ queryKey: ['admin-ticket-detail', variables.ticketNo] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '更新状态失败'),
+    onError: (error) => void message.error(error instanceof Error ? error.message : '更新状态失败'),
   });
 
   const tickets = useMemo(() => ticketsQuery.data?.items ?? [], [ticketsQuery.data?.items]);
@@ -453,22 +396,22 @@ export function TicketsPage() {
       if (!(event.metaKey || event.ctrlKey)) return;
       if (event.key === '[' && previousTicket) {
         event.preventDefault();
-        setSelectedTicketNo(previousTicket.ticketNo);
+        void openTicket(previousTicket.ticketNo);
       } else if (event.key === ']' && nextTicket) {
         event.preventDefault();
-        setSelectedTicketNo(nextTicket.ticketNo);
+        void openTicket(nextTicket.ticketNo);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [selectedTicketNo, previousTicket, nextTicket]);
+  });
 
-  const columns: Column<HydratedSupportTicket>[] = [
+  const columns: TableColumnsType<HydratedSupportTicket> = [
     {
       key: 'ticket',
-      header: '工单',
+      title: '工单',
       className: 'min-w-[260px]',
-      cell: (row) => (
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate text-[13px] font-medium text-foreground">{row.subject}</p>
           <p className="truncate font-mono text-[10px] text-muted-foreground">
@@ -480,11 +423,11 @@ export function TicketsPage() {
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
+      title: '状态',
+      render: (_, row) => (
         <div className="inline-flex items-center gap-1.5">
-          <StatusPill tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
-          <StatusPill
+          <StatusTag tone={ticketStatusTone(row.status)} label={ticketStatusLabel(row.status)} />
+          <StatusTag
             tone={ticketPriorityTone(row.priority)}
             label={ticketPriorityLabel(row.priority)}
           />
@@ -493,13 +436,13 @@ export function TicketsPage() {
     },
     {
       key: 'user',
-      header: '用户',
-      cell: (row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
+      title: '用户',
+      render: (_, row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'assignee',
-      header: '指派 / 更新',
-      cell: (row) => (
+      title: '指派 / 更新',
+      render: (_, row) => (
         <div className="min-w-0">
           <p className="truncate text-[12px] text-foreground">
             {row.assignee?.displayName ?? row.assignee?.email ?? '未分配'}
@@ -512,15 +455,13 @@ export function TicketsPage() {
     },
     {
       key: 'actions',
-      header: '操作',
+      title: '操作',
       className: 'w-[80px]',
-      cell: (row) => (
+      render: (_, row) => (
         <Button
-          type="button"
-          size="sm"
-          variant="outline"
+          size="small"
           className="h-7 px-2.5 text-xs"
-          onClick={() => setSelectedTicketNo(row.ticketNo)}
+          onClick={() => void openTicket(row.ticketNo)}
         >
           处理
         </Button>
@@ -530,59 +471,94 @@ export function TicketsPage() {
 
   const detail = detailQuery.data;
 
-  const chips: FilterChipConfig[] = [
+  async function openTicket(ticketNo: string | null) {
+    if (replyMutation.isPending || statusMutation.isPending || assignMutation.isPending) return;
+    if (
+      form.getFieldValue('body')?.trim() &&
+      !(await modal.confirm({
+        title: '放弃未发送的回复？',
+        okText: '放弃回复',
+        cancelText: '继续编辑',
+      }))
+    )
+      return;
+    form.resetFields();
+    setSelectedTicketNo(ticketNo);
+  }
+  const filterOptions = [
     {
       id: 'status',
       label: '状态',
       values: statusValues,
-      onChange: (next) => setFilter('status', next),
-      options: [
-        { value: 'waiting_staff', label: '待处理' },
-        { value: 'waiting_user', label: '待回复' },
-        { value: 'resolved', label: '已解决' },
-        { value: 'closed', label: '已关闭' },
-      ],
+      options: ['waiting_staff', 'waiting_user', 'resolved', 'closed'].map((value) => ({
+        value,
+        label: ticketStatusLabel(value as HydratedSupportTicket['status']),
+      })),
     },
     {
       id: 'category',
       label: '分类',
       values: categoryValues,
-      onChange: (next) => setFilter('category', next),
       options: [
-        { value: 'billing', label: '账单' },
-        { value: 'access', label: '授权' },
-        { value: 'install', label: '安装' },
-        { value: 'deployment', label: '部署' },
-        { value: 'bug', label: '缺陷' },
-        { value: 'feature', label: '功能' },
-        { value: 'account', label: '账户' },
-        { value: 'other', label: '其他' },
-      ],
+        'billing',
+        'access',
+        'install',
+        'deployment',
+        'bug',
+        'feature',
+        'account',
+        'other',
+      ].map((value) => ({
+        value,
+        label: ticketCategoryLabel(value as HydratedSupportTicket['category']),
+      })),
     },
     {
       id: 'priority',
       label: '优先级',
       values: priorityValues,
-      onChange: (next) => setFilter('priority', next),
-      options: [
-        { value: 'urgent', label: '紧急' },
-        { value: 'high', label: '高' },
-        { value: 'normal', label: '普通' },
-        { value: 'low', label: '低' },
-      ],
+      options: ['urgent', 'high', 'normal', 'low'].map((value) => ({
+        value,
+        label: ticketPriorityLabel(value as HydratedSupportTicket['priority']),
+      })),
     },
   ];
-
   return (
-    <div>
-      <SectionHeader sectionKey="tickets" />
-      <div className="space-y-4 p-6">
-        {deploymentId && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-            <span className="break-all">关联部署：{deploymentId}</span>
+    <PageContainer
+      title="工单管理"
+      filters={
+        <>
+          <Input.Search
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label="搜索工单"
+            allowClear
+            placeholder="搜索工单号、标题、用户、应用、订单号…"
+            style={{ width: 320, maxWidth: '100%' }}
+          />
+          {filterOptions.map((filter) => (
+            <Select
+              key={filter.id}
+              aria-label={`工单${filter.label}`}
+              placeholder={`全部${filter.label}`}
+              allowClear
+              value={filter.values[0]}
+              style={{ width: 130 }}
+              options={filter.options}
+              onChange={(value) => setFilter(filter.id, value ? [value] : [])}
+            />
+          ))}
+          <Button onClick={clearFilters}>清除筛选</Button>
+        </>
+      }
+    >
+      {deploymentId && (
+        <Alert
+          style={{ marginBottom: 16 }}
+          type="info"
+          title={`关联部署：${deploymentId}`}
+          action={
             <Button
-              variant="ghost"
-              size="sm"
               onClick={() =>
                 setContextParams((current) => {
                   const next = new URLSearchParams(current);
@@ -594,132 +570,109 @@ export function TicketsPage() {
             >
               清除部署筛选
             </Button>
-          </div>
-        )}
-        <FilterChipBar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="搜索工单号、标题、用户、应用、订单号..."
-          chips={chips}
-          onClearAll={clearFilters}
+          }
         />
-
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <DataTable
-            columns={columns}
-            data={tickets}
-            isLoading={ticketsQuery.isLoading}
-            emptyMessage="暂无工单"
-            getRowId={(row) => row.ticketNo}
-          />
-        </div>
-
-        <PaginationBar
-          total={total}
-          page={page}
-          pageSize={PAGE_SIZE}
-          isLoading={ticketsQuery.isLoading}
-          itemLabel="条工单"
-          onPageChange={setPage}
+      )}
+      <AsyncState error={ticketsQuery.error} onRetry={() => void ticketsQuery.refetch()}>
+        <Table
+          columns={columns}
+          dataSource={tickets}
+          rowKey="ticketNo"
+          loading={ticketsQuery.isLoading}
+          scroll={{ x: 900 }}
+          locale={{ emptyText: '暂无工单' }}
+          pagination={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total,
+            showSizeChanger: false,
+            onChange: setPage,
+          }}
         />
-
-        {selectedTicketNo && (
-          <Sheet
-            open
-            onOpenChange={(open) => {
-              if (!open) setSelectedTicketNo(null);
-            }}
-          >
-            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-3xl">
-              <SheetHeader className="border-b border-border">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <SheetTitle className="font-mono text-sm">{selectedTicketNo}</SheetTitle>
-                    <SheetDescription>
-                      工单详情与处理
-                      {currentTicketIndex >= 0 ? (
-                        <span className="ml-2 tabular-nums">
-                          ({currentTicketIndex + 1} / {tickets.length})
-                        </span>
-                      ) : null}
-                    </SheetDescription>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2"
-                      disabled={!previousTicket}
-                      onClick={() => previousTicket && setSelectedTicketNo(previousTicket.ticketNo)}
-                      title="上一条 (⌘[)"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2"
-                      disabled={!nextTicket}
-                      onClick={() => nextTicket && setSelectedTicketNo(nextTicket.ticketNo)}
-                      title="下一条 (⌘])"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </SheetHeader>
-
-              <div className="px-4 pb-6">
-                {detail ? (
-                  <TicketDetailPanel
-                    detail={detail}
-                    statusDraft={statusDraft}
-                    onStatusDraftChange={setStatusDraft}
-                    onSaveStatus={() =>
-                      statusMutation.mutate({ ticketNo: selectedTicketNo, status: statusDraft })
-                    }
-                    replyDraft={replyDraft}
-                    onReplyDraftChange={setReplyDraft}
-                    onReply={() =>
-                      replyMutation.mutate({
-                        ticketNo: selectedTicketNo,
-                        body: replyDraft.trim(),
-                        isInternal: internalNote,
-                      })
-                    }
-                    internalNote={internalNote}
-                    onInternalNoteChange={setInternalNote}
-                    onAssignToMe={() => {
-                      if (!user?.id) return;
-                      assignMutation.mutate({
-                        ticketNo: selectedTicketNo,
-                        assignedAdminUserId: user.id,
-                      });
-                    }}
-                    onUnassign={() =>
-                      assignMutation.mutate({
-                        ticketNo: selectedTicketNo,
-                        assignedAdminUserId: null,
-                      })
-                    }
-                    isSavingStatus={statusMutation.isPending}
-                    isReplying={replyMutation.isPending}
-                    isAssigning={assignMutation.isPending}
-                  />
-                ) : detailQuery.isLoading ? (
-                  <div className="space-y-3 pt-4">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <div key={index} className="h-10 animate-pulse rounded-lg bg-muted" />
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
-      </div>
-    </div>
+      </AsyncState>
+      <ManagementDrawer
+        open={!!selectedTicketNo}
+        title={`工单详情 · ${selectedTicketNo ?? ''}`}
+        onClose={() => {
+          void openTicket(null);
+        }}
+        size="large"
+        footer={
+          <Flex justify="space-between" gap={8} wrap>
+            <Flex gap={8}>
+              <Button
+                aria-label="上一条工单"
+                icon={<ChevronLeft size={14} />}
+                disabled={!previousTicket}
+                onClick={() => {
+                  if (previousTicket) void openTicket(previousTicket.ticketNo);
+                }}
+              />
+              <Button
+                aria-label="下一条工单"
+                icon={<ChevronRight size={14} />}
+                disabled={!nextTicket}
+                onClick={() => {
+                  if (nextTicket) void openTicket(nextTicket.ticketNo);
+                }}
+              />
+              {currentTicketIndex >= 0 && (
+                <span>
+                  {currentTicketIndex + 1} / {tickets.length}
+                </span>
+              )}
+            </Flex>
+            <Button
+              onClick={() => {
+                void openTicket(null);
+              }}
+            >
+              关闭
+            </Button>
+          </Flex>
+        }
+      >
+        <AsyncState
+          loading={detailQuery.isLoading}
+          error={detailQuery.error}
+          onRetry={() => void detailQuery.refetch()}
+        >
+          {detail && selectedTicketNo && (
+            <TicketDetailPanel
+              detail={detail}
+              form={form}
+              onSaveStatus={() =>
+                statusMutation.mutate({
+                  ticketNo: selectedTicketNo,
+                  status: form.getFieldValue('status') as TicketDraft['status'],
+                })
+              }
+              onReply={() => {
+                const values = form.getFieldsValue();
+                if (!replyMutation.isPending)
+                  replyMutation.mutate({
+                    ticketNo: selectedTicketNo,
+                    body: values.body.trim(),
+                    isInternal: values.internal,
+                  });
+              }}
+              onAssignToMe={() => {
+                if (user?.id)
+                  assignMutation.mutate({
+                    ticketNo: selectedTicketNo,
+                    assignedAdminUserId: user.id,
+                  });
+              }}
+              onUnassign={() =>
+                assignMutation.mutate({ ticketNo: selectedTicketNo, assignedAdminUserId: null })
+              }
+              isSavingStatus={statusMutation.isPending}
+              isReplying={replyMutation.isPending}
+              isAssigning={assignMutation.isPending}
+            />
+          )}
+        </AsyncState>
+      </ManagementDrawer>
+    </PageContainer>
   );
 }

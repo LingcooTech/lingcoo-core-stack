@@ -1,12 +1,8 @@
-import { useAuth } from '@/lib/auth';
-import { hasPermission, normalizeRole } from '@/lib/rbac';
+import { useItemRefundLedger } from '@/hooks/useItemRefundLedger';
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatAmount, formatTime } from '@/lib/utils';
-import type { ItemRefundCommand } from '@lingcoo/contracts';
 export function ItemRefundLedger({ orderNo, admin = false }: { orderNo: string; admin?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -20,58 +16,24 @@ export function ItemRefundLedger({ orderNo, admin = false }: { orderNo: string; 
   );
 }
 function Ledger({ orderNo, admin }: { orderNo: string; admin: boolean }) {
-  const { user } = useAuth();
-  const canRefund = admin && hasPermission(normalizeRole(user?.role), 'orders.refund');
-  const queryClient = useQueryClient();
-  const key = ['item-refunds', admin, orderNo];
-  const result = useQuery({
-    queryKey: key,
-    queryFn: () =>
-      admin
-        ? apiClient(
-            'GET /v1/admin/billing/orders/:orderNo/item-refunds',
-            `/v1/admin/billing/orders/${encodeURIComponent(orderNo)}/item-refunds`,
-          )
-        : apiClient(
-            'GET /v1/billing/orders/:orderNo/item-refunds',
-            `/v1/billing/orders/${encodeURIComponent(orderNo)}/item-refunds`,
-          ),
-    refetchInterval: 30000,
-  });
-  const [selectedKind, setKind] = useState<'software' | 'hosting' | null>(null);
-  const kind = selectedKind ?? result.data?.lines[0]?.kind ?? 'software';
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [command, setCommand] = useState<ItemRefundCommand | null>(null);
-  const [notice, setNotice] = useState('');
-  const update = async () => {
-    await queryClient.invalidateQueries({ queryKey: key });
-    await queryClient.invalidateQueries({ queryKey: ['orders'] });
-  };
-  const refund = useMutation({
-    mutationFn: (input: ItemRefundCommand) =>
-      apiClient(
-        'POST /v1/admin/billing/orders/:orderNo/item-refunds',
-        `/v1/admin/billing/orders/${encodeURIComponent(orderNo)}/item-refunds`,
-        { body: JSON.stringify(input) },
-      ),
-    onSuccess: async () => {
-      setCommand(null);
-      setAmount('');
-      setReason('');
-      setNotice('申请已记录，请以账本中的处理结果为准。');
-      await update();
-    },
-  });
-  const reconcile = useMutation({
-    mutationFn: (id: string) =>
-      apiClient(
-        'POST /v1/admin/billing/orders/:orderNo/item-refunds/:refundId/reconcile',
-        `/v1/admin/billing/orders/${encodeURIComponent(orderNo)}/item-refunds/${id}/reconcile`,
-        {},
-      ),
-    onSuccess: update,
-  });
+  const {
+    canRefund,
+    result,
+    kind,
+    setKind,
+    amount,
+    setAmount,
+    reason,
+    setReason,
+    command,
+    setCommand,
+    notice,
+    refund,
+    reconcile,
+    cents,
+    valid,
+    error,
+  } = useItemRefundLedger(orderNo, admin);
   if (result.isPending) return <p className="mt-3">正在读取退款记录…</p>;
   if (result.isError)
     return (
@@ -88,16 +50,6 @@ function Ledger({ orderNo, admin }: { orderNo: string; admin: boolean }) {
       </p>
     );
   const ledger = result.data;
-  const line = ledger.lines.find((l) => l.kind === kind);
-  const cents = Math.round(Number(amount) * 100);
-  const valid =
-    /^\d+(\.\d{1,2})?$/.test(amount) &&
-    Number.isSafeInteger(cents) &&
-    cents > 0 &&
-    cents <= (line?.remaining ?? 0) &&
-    reason.trim().length >= 5 &&
-    reason.trim().length <= 500;
-  const error = refund.error ?? reconcile.error;
   return (
     <div className="mt-3 space-y-3">
       {ledger.legacyRefund && <p>此订单使用原整单退款流程，请查看订单状态。</p>}

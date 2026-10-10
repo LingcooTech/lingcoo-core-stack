@@ -1,26 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-
+import { useDeferredValue, useMemo } from 'react';
+import {
+  App,
+  Button,
+  Card,
+  Flex,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Statistic,
+  Table,
+  type TableColumnsType,
+} from 'antd';
 import { listAdminNotifications, publishAnnouncement } from '@/api/admin';
 import type { AdminNotificationItem } from '@/api/types';
-import { DataTable, type Column } from '@/components/shared/DataTable';
-import { FilterChipBar, type FilterChipConfig } from '@/components/shared/FilterChipBar';
-import { PaginationBar } from '@/components/shared/PaginationBar';
-import { SectionHeader } from '@/components/shared/SectionHeader';
-import { StatusPill } from '@/components/shared/StatusPill';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { PageContainer, PageToolbar } from '@/components/admin/PageContainer';
+import { StatusTag } from '@/components/admin/StatusTag';
+import { AsyncState } from '@/components/admin/AsyncState';
 import { useTableState } from '@/hooks/useTableState';
 import { notificationLevelLabel, notificationStatusLabel } from '@/lib/portal-labels';
 import { formatTime } from '@/lib/utils';
@@ -70,6 +67,9 @@ function statusTone(status: AdminNotificationItem['status']) {
 
 export function NotificationsPage() {
   const qc = useQueryClient();
+  const { message } = App.useApp();
+  const [form] = Form.useForm<AnnouncementValues>();
+  const [modal, contextHolder] = Modal.useModal();
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
     defaultPageSize: PAGE_SIZE,
     knownFilters: ['status', 'category'],
@@ -78,20 +78,11 @@ export function NotificationsPage() {
   const categoryValues = useMemo(() => filters.category ?? [], [filters.category]);
   const deferredSearch = useDeferredValue(search);
 
-  const [announcementForm, setAnnouncementForm] = useState({
-    title: '',
-    body: '',
-    level: 'info' as 'info' | 'success' | 'warning' | 'error',
-    ctaLabel: '',
-    ctaUrl: '',
-  });
-
   const query = useMemo(
     () => ({
       limit: PAGE_SIZE,
       offset: (page - 1) * PAGE_SIZE,
       search: deferredSearch.trim() || undefined,
-      // 后端单值，多选时取首项
       status: statusValues[0] as 'unread' | 'read' | 'archived' | undefined,
       category: categoryValues[0] as AdminNotificationItem['category'] | undefined,
     }),
@@ -106,28 +97,22 @@ export function NotificationsPage() {
   const publishMutation = useMutation({
     mutationFn: publishAnnouncement,
     onSuccess: async (result) => {
-      toast.success(`公告已发布，已发送给 ${result.recipientCount} 位活跃用户`);
-      setAnnouncementForm({
-        title: '',
-        body: '',
-        level: 'info',
-        ctaLabel: '',
-        ctaUrl: '',
-      });
+      void message.success(`公告已发布，已发送给 ${result.recipientCount} 位活跃用户`);
+      form.resetFields();
       await qc.invalidateQueries({ queryKey: ['admin-notifications'] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : '发布公告失败'),
+    onError: (error) => void message.error(error instanceof Error ? error.message : '发布公告失败'),
   });
 
   const items = notificationsQuery.data?.items ?? [];
   const total = notificationsQuery.data?.total ?? 0;
 
-  const columns: Column<AdminNotificationItem>[] = [
+  const columns: TableColumnsType<AdminNotificationItem> = [
     {
       key: 'content',
-      header: '通知内容',
+      title: '通知内容',
       className: 'min-w-[320px]',
-      cell: (row) => (
+      render: (_, row) => (
         <div className="space-y-1.5">
           <p className="text-sm font-semibold text-foreground">{row.title}</p>
           <p className="line-clamp-2 text-sm text-muted-foreground">{row.body}</p>
@@ -141,15 +126,15 @@ export function NotificationsPage() {
     },
     {
       key: 'user',
-      header: '接收用户',
-      cell: (row) => (
+      title: '接收用户',
+      render: (_, row) => (
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{row.user?.email ?? '—'}</p>
           {row.user?.displayName ? (
             <p className="text-xs text-muted-foreground">{row.user.displayName}</p>
           ) : null}
           {row.user?.status ? (
-            <StatusPill
+            <StatusTag
               tone={row.user.status === 'active' ? 'ok' : 'warn'}
               label={row.user.status === 'active' ? '活跃' : row.user.status}
               className="mt-1"
@@ -160,28 +145,28 @@ export function NotificationsPage() {
     },
     {
       key: 'meta',
-      header: '分类 / 级别',
-      cell: (row) => (
+      title: '分类 / 级别',
+      render: (_, row) => (
         <div className="space-y-1.5">
-          <StatusPill tone={categoryTone(row.category)} label={categoryLabel(row.category)} />
-          <StatusPill tone={levelTone(row.level)} label={notificationLevelLabel(row.level)} />
+          <StatusTag tone={categoryTone(row.category)} label={categoryLabel(row.category)} />
+          <StatusTag tone={levelTone(row.level)} label={notificationLevelLabel(row.level)} />
         </div>
       ),
     },
     {
       key: 'status',
-      header: '状态',
-      cell: (row) => (
+      title: '状态',
+      render: (_, row) => (
         <div className="space-y-1">
-          <StatusPill tone={statusTone(row.status)} label={notificationStatusLabel(row.status)} />
+          <StatusTag tone={statusTone(row.status)} label={notificationStatusLabel(row.status)} />
           <p className="text-[11px] text-muted-foreground">{row.sourceEventName ?? '手动发布'}</p>
         </div>
       ),
     },
     {
       key: 'time',
-      header: '时间',
-      cell: (row) => (
+      title: '时间',
+      render: (_, row) => (
         <div className="space-y-1">
           <p className="text-xs text-foreground">{formatTime(row.createdAt)}</p>
           <p className="text-[11px] text-muted-foreground">
@@ -192,18 +177,17 @@ export function NotificationsPage() {
     },
     {
       key: 'actions',
-      header: '操作',
-      cell: (row) => (
+      title: '操作',
+      render: (_, row) => (
         <div className="flex items-center gap-2">
           {row.ctaLabel && row.ctaUrl ? (
-            <Button size="sm" variant="outline" asChild>
-              <a
-                href={row.ctaUrl}
-                target={row.ctaUrl.startsWith('/') ? undefined : '_blank'}
-                rel="noreferrer"
-              >
-                {row.ctaLabel}
-              </a>
+            <Button
+              size="small"
+              href={row.ctaUrl}
+              target={row.ctaUrl.startsWith('/') ? undefined : '_blank'}
+              rel="noreferrer"
+            >
+              {row.ctaLabel}
             </Button>
           ) : (
             <span className="text-xs text-muted-foreground">无 CTA</span>
@@ -213,201 +197,179 @@ export function NotificationsPage() {
     },
   ];
 
+  const publish = async (values: AnnouncementValues) => {
+    const confirmed = await modal.confirm({
+      title: '发布站内公告？',
+      content: '公告将发送给所有活跃用户，发布后无法撤回。',
+      okText: '确认发布',
+      cancelText: '取消',
+    });
+    if (!confirmed) return;
+    publishMutation.mutate({
+      title: values.title.trim(),
+      body: values.body.trim(),
+      level: values.level,
+      ctaLabel: values.ctaLabel?.trim() || undefined,
+      ctaUrl: values.ctaUrl?.trim() || undefined,
+    });
+  };
   return (
-    <div>
-      <SectionHeader sectionKey="notifications" />
-      <div className="space-y-4 p-6">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">发布公告</CardTitle>
-              <CardDescription>
-                发布后会作为站内通知发送给所有活跃用户，并直接出现在用户消息中心。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Label>公告标题</Label>
-                <Input
-                  placeholder="例如：平台支付服务升级通知"
-                  value={announcementForm.title}
-                  onChange={(event) =>
-                    setAnnouncementForm((prev) => ({ ...prev, title: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>公告正文</Label>
-                <Textarea
-                  rows={6}
-                  placeholder="输入需要通知用户的公告正文"
-                  value={announcementForm.body}
-                  onChange={(event) =>
-                    setAnnouncementForm((prev) => ({ ...prev, body: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>通知级别</Label>
-                  <Select
-                    value={announcementForm.level}
-                    onValueChange={(value) =>
-                      setAnnouncementForm((prev) => ({
-                        ...prev,
-                        level: value as typeof prev.level,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="info">信息</SelectItem>
-                      <SelectItem value="success">成功</SelectItem>
-                      <SelectItem value="warning">提醒</SelectItem>
-                      <SelectItem value="error">错误</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>操作文案</Label>
-                  <Input
-                    placeholder="例如：查看详情"
-                    value={announcementForm.ctaLabel}
-                    onChange={(event) =>
-                      setAnnouncementForm((prev) => ({ ...prev, ctaLabel: event.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>操作链接</Label>
-                <Input
-                  placeholder="支持 /docs 或 https://..."
-                  value={announcementForm.ctaUrl}
-                  onChange={(event) =>
-                    setAnnouncementForm((prev) => ({ ...prev, ctaUrl: event.target.value }))
-                  }
-                />
-              </div>
-              <Button
-                className="w-full"
-                disabled={
-                  publishMutation.isPending ||
-                  !announcementForm.title.trim() ||
-                  !announcementForm.body.trim()
-                }
-                onClick={() =>
-                  publishMutation.mutate({
-                    title: announcementForm.title.trim(),
-                    body: announcementForm.body.trim(),
-                    level: announcementForm.level,
-                    ctaLabel: announcementForm.ctaLabel.trim() || undefined,
-                    ctaUrl: announcementForm.ctaUrl.trim() || undefined,
-                  })
-                }
-              >
-                {publishMutation.isPending ? '发布中...' : '发布站内公告'}
-              </Button>
-            </CardContent>
+    <PageContainer
+      title="通知管理"
+      description="查看系统通知与管理员公告。发布公告会通知所有活跃用户。"
+    >
+      {contextHolder}
+      <Flex wrap gap={16} style={{ marginBottom: 16 }}>
+        <Card title="发布公告" style={{ flex: '1 1 400px' }}>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ level: 'info' }}
+            disabled={publishMutation.isPending}
+            onFinish={(values) => {
+              void publish(values);
+            }}
+          >
+            <Form.Item
+              name="title"
+              label="公告标题"
+              rules={[
+                { required: true, whitespace: true, message: '请输入公告标题' },
+                { max: 200 },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="body"
+              label="公告正文"
+              rules={[{ required: true, whitespace: true, message: '请输入公告正文' }]}
+            >
+              <Input.TextArea rows={4} />
+            </Form.Item>
+            <Form.Item name="level" label="通知级别" rules={[{ required: true }]}>
+              <Select
+                options={['info', 'success', 'warning', 'error'].map((value) => ({
+                  value,
+                  label: notificationLevelLabel(value as AdminNotificationItem['level']),
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="ctaLabel" label="操作文案">
+              <Input placeholder="例如：查看详情" />
+            </Form.Item>
+            <Form.Item
+              name="ctaUrl"
+              label="操作链接"
+              rules={[
+                {
+                  validator: (_, value: string | undefined) =>
+                    !value || /^\/(?!\/)/.test(value) || /^https?:\/\//.test(value)
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('请输入站内路径或 HTTP(S) 链接')),
+                },
+              ]}
+            >
+              <Input placeholder="/docs 或 https://…" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={publishMutation.isPending}>
+              发布站内公告
+            </Button>
+          </Form>
+        </Card>
+        <Flex wrap gap={16} style={{ flex: '1 1 360px', alignContent: 'flex-start' }}>
+          <Card>
+            <Statistic title="当前筛选结果" value={total} />
           </Card>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { label: '当前筛选结果', value: String(total), note: '符合当前筛选条件的通知总数' },
-              {
-                label: '当前页未读',
-                value: String(items.filter((item) => item.status === 'unread').length),
-                note: '当前页里尚未被用户读取的通知',
-              },
-              {
-                label: '当前页公告',
-                value: String(items.filter((item) => item.category === 'announcement').length),
-                note: '当前页里来自后台公告广播的通知',
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm"
-              >
-                <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-                <p className="mt-1.5 text-[1.75rem] font-semibold tracking-tight text-foreground">
-                  {item.value}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.note}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">通知记录</h2>
-              <p className="text-sm text-muted-foreground">
-                查看系统发出的用户通知，包括事件通知和管理员公告。
-              </p>
-            </div>
-          </div>
-
-          <FilterChipBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="搜索标题、正文、用户邮箱..."
-            chips={
-              [
-                {
-                  id: 'category',
-                  label: '分类',
-                  values: categoryValues,
-                  onChange: (next) => setFilter('category', next),
-                  options: [
-                    { value: 'announcement', label: '公告' },
-                    { value: 'account', label: '账户' },
-                    { value: 'billing', label: '账单' },
-                    { value: 'license', label: '授权' },
-                    { value: 'deployment', label: '部署' },
-                    { value: 'ticket', label: '工单' },
-                    { value: 'system', label: '系统' },
-                  ],
-                },
-                {
-                  id: 'status',
-                  label: '状态',
-                  values: statusValues,
-                  onChange: (next) => setFilter('status', next),
-                  options: [
-                    { value: 'unread', label: '未读' },
-                    { value: 'read', label: '已读' },
-                    { value: 'archived', label: '已归档' },
-                  ],
-                },
-              ] satisfies FilterChipConfig[]
-            }
-            onClearAll={clearFilters}
-          />
-
-          <div className="overflow-hidden rounded-lg border border-border bg-card">
-            <DataTable
-              columns={columns}
-              data={items}
-              isLoading={notificationsQuery.isLoading}
-              emptyMessage="暂无通知记录"
-              getRowId={(row) => row.id}
+          <Card>
+            <Statistic
+              title="当前页未读"
+              value={items.filter((item) => item.status === 'unread').length}
             />
-          </div>
-
-          <PaginationBar
-            total={total}
-            page={page}
-            pageSize={PAGE_SIZE}
-            onPageChange={setPage}
-            isLoading={notificationsQuery.isLoading}
-            itemLabel="条通知"
-          />
-        </div>
-      </div>
-    </div>
+          </Card>
+          <Card>
+            <Statistic
+              title="当前页公告"
+              value={items.filter((item) => item.category === 'announcement').length}
+            />
+          </Card>
+        </Flex>
+      </Flex>
+      <PageToolbar
+        filters={
+          <>
+            <Input.Search
+              aria-label="搜索通知"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="搜索标题、正文、用户邮箱…"
+              allowClear
+              style={{ width: 320, maxWidth: '100%' }}
+            />
+            <Select
+              aria-label="通知分类"
+              placeholder="全部分类"
+              allowClear
+              value={categoryValues[0]}
+              onChange={(value) => setFilter('category', value ? [value] : [])}
+              style={{ width: 140 }}
+              options={[
+                'announcement',
+                'account',
+                'billing',
+                'license',
+                'deployment',
+                'ticket',
+                'system',
+              ].map((value) => ({
+                value,
+                label: categoryLabel(value as AdminNotificationItem['category']),
+              }))}
+            />
+            <Select
+              aria-label="通知状态"
+              placeholder="全部状态"
+              allowClear
+              value={statusValues[0]}
+              onChange={(value) => setFilter('status', value ? [value] : [])}
+              style={{ width: 140 }}
+              options={['unread', 'read', 'archived'].map((value) => ({
+                value,
+                label: notificationStatusLabel(value as AdminNotificationItem['status']),
+              }))}
+            />
+            <Button onClick={clearFilters}>清除筛选</Button>
+          </>
+        }
+      />
+      <AsyncState
+        error={notificationsQuery.error}
+        onRetry={() => void notificationsQuery.refetch()}
+      >
+        <Table
+          columns={columns}
+          dataSource={items}
+          rowKey="id"
+          loading={notificationsQuery.isLoading}
+          scroll={{ x: 1000 }}
+          locale={{ emptyText: '暂无通知记录' }}
+          pagination={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total,
+            showSizeChanger: false,
+            onChange: setPage,
+            showTotal: (value) => `共 ${value} 条通知`,
+          }}
+        />
+      </AsyncState>
+    </PageContainer>
   );
 }
+type AnnouncementValues = {
+  title: string;
+  body: string;
+  level: 'info' | 'success' | 'warning' | 'error';
+  ctaLabel?: string;
+  ctaUrl?: string;
+};

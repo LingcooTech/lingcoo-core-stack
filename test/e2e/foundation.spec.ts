@@ -140,11 +140,14 @@ test('admin navigation, command search and mobile menu preserve route access', a
   await search.press('ArrowDown');
   await search.press('Enter');
   await expect(page).toHaveURL(/\/admin\/deployments$/);
+  await expect(page.getByRole('region', { name: '应用部署', exact: true })).toBeVisible();
+  await expect(page.getByText(deploymentLabel, { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('admin-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '打开侧边栏', exact: true }).click();
   await page.getByRole('dialog').getByRole('menuitem', { name: '订单管理', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/orders$/);
+  await expect(page.getByRole('region', { name: '订单管理', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('admin-mobile.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(

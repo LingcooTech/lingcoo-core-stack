@@ -1,5 +1,6 @@
+import { useHostingService } from '@/hooks/useHostingService';
 import { useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   hostingServiceCommandSchema,
   type HostingService,
@@ -43,23 +44,7 @@ export function HostingServicePanel({
 function ServiceContent({ deploymentId, admin }: { deploymentId: string; admin: boolean }) {
   const { user } = useAuth();
   const canManage = admin && hasPermission(normalizeRole(user?.role), 'hosting.terms.manage');
-  const query = useQuery({
-    queryKey: ['hosting-service', admin, deploymentId],
-    queryFn: async () =>
-      admin
-        ? apiClient(
-            'GET /v1/admin/deployments/:deploymentId/hosting-service',
-            `/v1/admin/deployments/${deploymentId}/hosting-service`,
-          )
-        : {
-            ...(await apiClient(
-              'GET /v1/deployments/:deploymentId/hosting-service',
-              `/v1/deployments/${deploymentId}/hosting-service`,
-            )),
-            changes: [],
-          },
-    refetchInterval: 60_000,
-  });
+  const query = useHostingService(deploymentId, admin);
   if (query.isPending)
     return <p className="mt-4 text-sm text-muted-foreground">正在读取服务期限…</p>;
   if (query.isError)
