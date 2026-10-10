@@ -76,7 +76,6 @@ export function ContentPage() {
   return (
     <PageContainer
       title="内容管理"
-      width="wide"
       filters={
         <>
           <Input.Search

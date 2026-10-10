@@ -13,6 +13,7 @@ import {
   Input,
   Select,
   Table,
+  Typography,
   type TableColumnsType,
   type FormInstance,
 } from 'antd';
@@ -31,7 +32,7 @@ import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
 import { StatusTag } from '@/components/admin/StatusTag';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';
-import { cn, formatTime } from '@/lib/utils';
+import { formatTime } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
 
@@ -140,40 +141,39 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/70 px-3 py-2.5">
-      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className={cn('mt-1 text-sm text-foreground', mono && 'font-mono text-xs')}>
-        {value || '—'}
-      </p>
+    <div className="admin-detail-field">
+      <Typography.Text type="secondary">{label}</Typography.Text>
+      <Typography.Text code={mono}>{value || '—'}</Typography.Text>
     </div>
   );
 }
 
 function TicketMessageList({ messages }: { messages: SupportTicketMessage[] }) {
   if (messages.length === 0) {
-    return <p className="text-sm text-muted-foreground">暂无会话记录。</p>;
+    return <p className="admin-text-secondary text-sm">暂无会话记录。</p>;
   }
 
   return (
-    <div className="space-y-3">
-      {messages.map((message) => {
-        const isInternal = message.isInternal;
-        return (
-          <div
-            key={message.id}
-            className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
+    <div className="admin-detail-stack">
+      {messages.map((message) => (
+        <Card key={message.id} size="small">
+          <Flex wrap gap={8} align="center">
+            <Typography.Text strong>{messageAuthorLabel(message)}</Typography.Text>
+            <Typography.Text type="secondary">{formatTime(message.createdAt)}</Typography.Text>
+            {message.isInternal && <StatusTag tone="neutral" label="内部备注" />}
+          </Flex>
+          <Typography.Paragraph
+            style={{
+              marginTop: 12,
+              marginBottom: 0,
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere',
+            }}
           >
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="font-semibold text-foreground">{messageAuthorLabel(message)}</span>
-              <span>{formatTime(message.createdAt)}</span>
-              {isInternal ? <StatusTag tone="neutral" label="内部备注" /> : null}
-            </div>
-            <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-foreground">
-              {message.body}
-            </p>
-          </div>
-        );
-      })}
+            {message.body}
+          </Typography.Paragraph>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -204,7 +204,7 @@ function TicketDetailPanel({
   const statusDraft = Form.useWatch('status', form);
   const internal = Form.useWatch('internal', form);
   return (
-    <div className="space-y-4">
+    <div className="admin-detail-stack">
       <Card title={ticket.subject} extra={<Link to={userDetailHref(ticket.userId)}>用户 360</Link>}>
         <Flex wrap gap={8} style={{ marginBottom: 16 }}>
           <StatusTag
@@ -217,7 +217,7 @@ function TicketDetailPanel({
           />
           <StatusTag tone="neutral" label={ticketCategoryLabel(ticket.category)} />
         </Flex>
-        <div className="admin-form-grid">
+        <div className="admin-detail-fields">
           <MetaField label="用户" value={ticket.user?.email ?? '—'} />
           <MetaField label="应用" value={ticket.app?.name ?? '未关联'} />
           <MetaField label="订单号" value={ticket.order?.orderNo ?? '未关联'} mono />
@@ -413,8 +413,8 @@ export function TicketsPage() {
       className: 'min-w-[260px]',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-foreground">{row.subject}</p>
-          <p className="truncate font-mono text-[10px] text-muted-foreground">
+          <p className="admin-text truncate text-[13px] font-medium">{row.subject}</p>
+          <p className="admin-text-secondary truncate font-mono text-xs">
             {row.ticketNo}
             {row.app?.name ? ` · ${row.app.name}` : ''}
           </p>
@@ -437,17 +437,17 @@ export function TicketsPage() {
     {
       key: 'user',
       title: '用户',
-      render: (_, row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
+      render: (_, row) => <p className="truncate text-sm">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'assignee',
       title: '指派 / 更新',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate text-[12px] text-foreground">
+          <p className="admin-text truncate text-sm">
             {row.assignee?.displayName ?? row.assignee?.email ?? '未分配'}
           </p>
-          <p className="text-[10px] text-muted-foreground tabular-nums">
+          <p className="admin-text-secondary text-xs tabular-nums">
             {formatTime(row.lastActivityAt)}
           </p>
         </div>

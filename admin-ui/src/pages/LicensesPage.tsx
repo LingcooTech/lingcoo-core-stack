@@ -214,7 +214,7 @@ export function LicensesPage() {
 
   return (
     <PageContainer title="授权管理">
-      <Card title="人工发放授权" style={{ marginBottom: 16 }}>
+      <Card title="人工发放授权">
         <Form
           form={grantForm}
           layout="vertical"

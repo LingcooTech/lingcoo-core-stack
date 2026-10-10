@@ -42,7 +42,7 @@ import {
 import { AlertingSettingsInputSchema } from '@lingcoo/contracts';
 import { PageContainer, PageToolbar, FormActions } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
-import { JsonViewer } from '@/components/shared/JsonViewer';
+import { JsonViewer } from '@/components/admin/JsonViewer';
 import { StatusTag, statusToTone } from '@/components/admin/StatusTag';
 import { useTableState } from '@/hooks/useTableState';
 import { useAuth } from '@/lib/auth';

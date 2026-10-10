@@ -48,7 +48,7 @@ export function PaymentsPage() {
     });
   };
   return (
-    <PageContainer title="支付配置" width="form">
+    <PageContainer title="支付配置">
       {context}
       {query.error ? (
         <Alert

@@ -1,6 +1,6 @@
 import { App, Button, Card, Form, Input, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { z } from 'zod';
 import { createContent, getContent, updateContent } from '@/api/admin';
@@ -88,15 +88,7 @@ export function ContentEditPage() {
     },
   });
   return (
-    <PageContainer
-      title={contentId ? '编辑内容' : '新建内容'}
-      width="form"
-      actions={
-        <Button>
-          <Link to="/admin/content">返回列表</Link>
-        </Button>
-      }
-    >
+    <PageContainer title={contentId ? '编辑内容' : '新建内容'} backTo="/admin/content">
       <AsyncState
         loading={Boolean(contentId) && query.isPending}
         error={query.error}

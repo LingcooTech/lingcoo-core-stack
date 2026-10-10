@@ -19,6 +19,17 @@ export function AdminUiProvider({ children }: { children: ReactNode }) {
     <StyleProvider layer>
       <ConfigProvider
         locale={zhCN}
+        modal={{
+          centered: true,
+          classNames: { root: 'admin-overlay' },
+          styles: {
+            body: {
+              maxHeight: 'calc(100dvh - 220px)',
+              overflowY: 'auto',
+              scrollbarGutter: 'stable',
+            },
+          },
+        }}
         theme={{
           algorithm: resolvedTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {

@@ -111,7 +111,6 @@ export function SettingsPage() {
   return (
     <PageContainer
       title="系统设置"
-      width="form"
       actions={
         <AutoComplete
           style={{ width: 300, maxWidth: '100%' }}

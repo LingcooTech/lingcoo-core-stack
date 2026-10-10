@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { useHostingFulfillment } from './useHostingFulfillment';
 import { formatTime } from '@/lib/utils';
 export function HostingFulfillmentStatus({
   orderNo,
@@ -8,20 +7,7 @@ export function HostingFulfillmentStatus({
   orderNo: string;
   admin?: boolean;
 }) {
-  const result = useQuery({
-    queryKey: ['hosting-fulfillment', admin, orderNo],
-    queryFn: () =>
-      admin
-        ? apiClient(
-            'GET /v1/admin/billing/hosting-fulfillments/:orderNo',
-            `/v1/admin/billing/hosting-fulfillments/${encodeURIComponent(orderNo)}`,
-          )
-        : apiClient(
-            'GET /v1/billing/hosting-fulfillments/:orderNo',
-            `/v1/billing/hosting-fulfillments/${encodeURIComponent(orderNo)}`,
-          ),
-    refetchInterval: 30000,
-  });
+  const result = useHostingFulfillment(orderNo, admin);
   if (result.isError)
     return (
       <p role="alert" className="text-sm text-destructive">

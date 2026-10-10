@@ -216,7 +216,7 @@ export function NotificationsPage() {
   return (
     <PageContainer title="通知管理">
       {contextHolder}
-      <Flex wrap gap={16} style={{ marginBottom: 16 }}>
+      <Flex wrap gap={16}>
         <Card title="发布公告" style={{ flex: '1 1 400px' }}>
           <Form
             form={form}
@@ -275,16 +275,16 @@ export function NotificationsPage() {
           </Form>
         </Card>
         <Flex wrap gap={16} style={{ flex: '1 1 360px', alignContent: 'flex-start' }}>
-          <Card>
+          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
             <Statistic title="当前筛选结果" value={total} />
           </Card>
-          <Card>
+          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
             <Statistic
               title="当前页未读"
               value={items.filter((item) => item.status === 'unread').length}
             />
           </Card>
-          <Card>
+          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
             <Statistic
               title="当前页公告"
               value={items.filter((item) => item.category === 'announcement').length}

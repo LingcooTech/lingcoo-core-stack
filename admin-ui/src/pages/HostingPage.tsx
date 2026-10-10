@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Input, Select, Space, Statistic, Tabs } from 'antd';
+import { Alert, Button, Input, Select, Space, Tabs } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/api/client';
+import { MetricCard, MetricGrid } from '@/components/admin/MetricCard';
 import { PageContainer, PageToolbar } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 import { HostingIncidents } from '@/components/hosting/HostingIncidents';
@@ -137,7 +138,6 @@ export function HostingPage() {
   return (
     <PageContainer
       title="托管运维"
-      width="wide"
       actions={
         <Space>
           <Button
@@ -154,7 +154,7 @@ export function HostingPage() {
         </Space>
       }
     >
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <MetricGrid>
         {[
           {
             title: '服务器在线',
@@ -177,12 +177,9 @@ export function HostingPage() {
             note: '实例、资源、备份与期限',
           },
         ].map((m) => (
-          <Card className="admin-metric" key={m.title}>
-            <Statistic title={m.title} value={m.value} />
-            <small>{m.note}</small>
-          </Card>
+          <MetricCard key={m.title} title={m.title} value={m.value} note={m.note} />
         ))}
-      </div>
+      </MetricGrid>
       <Alert
         type={
           monitor.isError || !monitor.data?.lastScanAt || monitor.data.activeCount

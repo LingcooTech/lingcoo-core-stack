@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { App, Button, Form, Modal, Space, Tabs } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { UpsertAppInputSchema } from '@lingcoo/contracts/models';
 import { listAppsAdmin, listCatalogSnapshot, syncAppDeliveryManifest, upsertApp } from '@/api/apps';
 import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
@@ -246,12 +246,9 @@ function AppEditor({ appCode }: { appCode?: string }) {
   return (
     <PageContainer
       title={appCode ? '编辑应用' : '新建应用'}
-      width="form"
+      backTo="/admin/apps"
       actions={
         <Space>
-          <Button>
-            <Link to="/admin/apps">返回列表</Link>
-          </Button>
           {appCode && (
             <Button href={`/apps/${appCode}`} target="_blank">
               预览应用

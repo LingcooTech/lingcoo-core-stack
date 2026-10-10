@@ -1,0 +1,1941 @@
+{
+  "businessSections": 17,
+  "pageRoutes": 22,
+  "routes": [
+    {
+      "route": "/admin",
+      "section": "dashboard",
+      "page": "DashboardPage"
+    },
+    {
+      "route": "/admin/apps",
+      "section": "apps",
+      "page": "AppsPage"
+    },
+    {
+      "route": "/admin/apps/new",
+      "section": "apps",
+      "page": "AppEditPage"
+    },
+    {
+      "route": "/admin/apps/:appCode/edit",
+      "section": "apps",
+      "page": "AppEditPage"
+    },
+    {
+      "route": "/admin/content",
+      "section": "content",
+      "page": "ContentPage"
+    },
+    {
+      "route": "/admin/content/new",
+      "section": "content",
+      "page": "ContentEditPage"
+    },
+    {
+      "route": "/admin/content/:contentId/edit",
+      "section": "content",
+      "page": "ContentEditPage"
+    },
+    {
+      "route": "/admin/storage",
+      "section": "storage",
+      "page": "StoragePage"
+    },
+    {
+      "route": "/admin/docs",
+      "section": "docs",
+      "page": "DocsPage"
+    },
+    {
+      "route": "/admin/secrets",
+      "section": "secrets",
+      "page": "SecretsPage"
+    },
+    {
+      "route": "/admin/orders",
+      "section": "orders",
+      "page": "OrdersPage"
+    },
+    {
+      "route": "/admin/payments",
+      "section": "payments",
+      "page": "PaymentsPage"
+    },
+    {
+      "route": "/admin/settings",
+      "section": "settings",
+      "page": "SettingsPage"
+    },
+    {
+      "route": "/admin/licenses",
+      "section": "licenses",
+      "page": "LicensesPage"
+    },
+    {
+      "route": "/admin/tickets",
+      "section": "tickets",
+      "page": "TicketsPage"
+    },
+    {
+      "route": "/admin/users",
+      "section": "users",
+      "page": "UsersPage"
+    },
+    {
+      "route": "/admin/installs",
+      "section": "installs",
+      "page": "InstallsPage"
+    },
+    {
+      "route": "/admin/notifications",
+      "section": "notifications",
+      "page": "NotificationsPage"
+    },
+    {
+      "route": "/admin/hosting",
+      "section": "hosting",
+      "page": "HostingPage"
+    },
+    {
+      "route": "/admin/deployments",
+      "section": "deployments",
+      "page": "AdminDeploymentsPage"
+    },
+    {
+      "route": "/admin/observability",
+      "section": "observability",
+      "page": "ObservabilityPage"
+    },
+    {
+      "route": "/admin/login",
+      "section": "login",
+      "page": "LoginPage"
+    }
+  ],
+  "pages": {
+    "DashboardPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/payments.ts",
+        "components/admin/MetricCard.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/DashboardPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "AppsPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/MetricCard.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/app-catalog-ui.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/AppsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "AppEditPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/delivery.ts",
+        "api/storage.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/apps/AppCatalogSections.tsx",
+        "components/admin/apps/AppContentSection.tsx",
+        "components/admin/apps/AppDeliverySection.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/apps/app-edit/AppReadiness.tsx",
+        "components/apps/app-edit/model.ts",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "lib/app-delivery.ts",
+        "lib/app-detail.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "pages/AppEditPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@lingcoo/contracts/models",
+        "@tanstack/react-query",
+        "@uiw/react-md-editor",
+        "antd",
+        "react",
+        "react-dom",
+        "react-router-dom"
+      ],
+      "legacyUiFiles": []
+    },
+    "ContentPage": {
+      "files": [
+        "api/admin.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/settings-form.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/ContentPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "ContentEditPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/storage.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "pages/ContentEditPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "StoragePage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/storage.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/storage/AssetLibrary.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "pages/StoragePage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "react",
+        "react-router-dom"
+      ],
+      "legacyUiFiles": []
+    },
+    "DocsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/storage.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "pages/DocsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "react",
+        "react-router-dom",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "SecretsPage": {
+      "files": [
+        "api/apps.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/page-context.ts",
+        "lib/utils.ts",
+        "pages/SecretsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "OrdersPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/HostingFulfillmentStatus.tsx",
+        "components/admin/ItemRefundLedger.tsx",
+        "components/admin/JsonViewer.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/OrderItems.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "components/hosting/useHostingFulfillment.ts",
+        "hooks/useItemRefundLedger.ts",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/OrdersPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "PaymentsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/payments.ts",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/payments/WechatPaySettingsPanel.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "pages/PaymentsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@lingcoo/contracts/models",
+        "@tanstack/react-query",
+        "antd",
+        "react",
+        "react-router-dom",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "SettingsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "api/storage.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/settings/AiSettingsPanel.tsx",
+        "components/settings/ContentImportSettingsPanel.tsx",
+        "components/settings/IntegrationFields.tsx",
+        "components/settings/PublicPagesSettingsPanel.tsx",
+        "components/settings/RotateSecretsButton.tsx",
+        "components/settings/SiteSettingsPanel.tsx",
+        "components/settings/SmtpSettingsPanel.tsx",
+        "components/settings/integration-definitions.ts",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "components/storage/StorageSettingsPanel.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/settings-schemas.ts",
+        "lib/site-settings.ts",
+        "pages/SettingsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "react",
+        "react-router-dom",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "LicensesPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/portal-labels.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/LicensesPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": []
+    },
+    "TicketsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/TicketsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "UsersPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/MetricCard.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/UsersPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "InstallsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/PageHelp.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/InstallsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "NotificationsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/portal-labels.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/NotificationsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "HostingPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/HostingExitPanel.tsx",
+        "components/admin/HostingHandoverPanel.tsx",
+        "components/admin/HostingServicePanel.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/MetricCard.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/draft-context.ts",
+        "components/admin/page-context.ts",
+        "components/hosting/AddHostingNode.tsx",
+        "components/hosting/HostingIncidents.tsx",
+        "components/hosting/HostingInstances.tsx",
+        "components/hosting/HostingNodeCard.tsx",
+        "components/hosting/HostingOffers.tsx",
+        "components/hosting/HostingUpgradePanel.tsx",
+        "components/hosting/HostingVisuals.tsx",
+        "components/hosting/useHostingOverview.ts",
+        "hooks/useHostingExit.ts",
+        "hooks/useHostingHandover.ts",
+        "hooks/useHostingService.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/settings-form.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/HostingPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "AdminDeploymentsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/HostingExitPanel.tsx",
+        "components/admin/HostingHandoverPanel.tsx",
+        "components/admin/HostingServicePanel.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/PageHelp.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useHostingExit.ts",
+        "hooks/useHostingHandover.ts",
+        "hooks/useHostingService.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/AdminDeploymentsPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "ObservabilityPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "components/admin/AsyncState.tsx",
+        "components/admin/JsonViewer.tsx",
+        "components/admin/PageContainer.tsx",
+        "components/admin/StatusTag.tsx",
+        "components/admin/page-context.ts",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/ObservabilityPage.tsx"
+      ],
+      "packages": [
+        "@ant-design/icons",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "LoginPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "components/admin/AdminUiProvider.tsx",
+        "components/admin/AsyncState.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/theme.tsx",
+        "pages/LoginPage.tsx",
+        "styles/admin.css"
+      ],
+      "packages": [
+        "@ant-design/cssinjs",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "antd",
+        "antd/locale/zh_CN",
+        "react",
+        "react-router-dom"
+      ],
+      "legacyUiFiles": []
+    }
+  },
+  "shell": {
+    "files": [
+      "api/auth.ts",
+      "api/client.ts",
+      "api/settings.ts",
+      "components/admin/AdminCommandPalette.tsx",
+      "components/admin/AdminDraftGuard.tsx",
+      "components/admin/AdminShell.tsx",
+      "components/admin/AdminUiProvider.tsx",
+      "components/admin/AsyncState.tsx",
+      "components/admin/draft-context.ts",
+      "components/admin/page-context.ts",
+      "lib/auth.tsx",
+      "lib/foundation.ts",
+      "lib/rbac.ts",
+      "lib/section-icons.tsx",
+      "lib/site-settings.ts",
+      "lib/theme.tsx",
+      "lib/utils.ts",
+      "styles/admin.css"
+    ],
+    "packages": [
+      "@ant-design/cssinjs",
+      "@ant-design/icons",
+      "@lingcoo/api-client",
+      "@lingcoo/contracts",
+      "@tanstack/react-query",
+      "antd",
+      "antd/locale/zh_CN",
+      "clsx",
+      "lucide-react",
+      "react",
+      "react-error-boundary",
+      "react-router-dom",
+      "tailwind-merge"
+    ],
+    "legacyUiFiles": []
+  },
+  "publicRuntime": {
+    "AccountCenterPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/user.ts",
+        "components/account/AccountTicketsTab.tsx",
+        "components/account/NotificationDetailDialog.tsx",
+        "components/hosting/HostingFulfillmentStatus.tsx",
+        "components/hosting/useHostingFulfillment.ts",
+        "components/portal/EmptyState.tsx",
+        "components/portal/EntitlementProductCard.tsx",
+        "components/portal/OrderCard.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/ItemRefundLedger.tsx",
+        "components/shared/JsonViewer.tsx",
+        "components/shared/OrderItems.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/accordion.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/scroll-area.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useItemRefundLedger.ts",
+        "hooks/useTableState.ts",
+        "lib/app-catalog-ui.ts",
+        "lib/app-delivery.ts",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/AccountCenterPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-accordion",
+        "@radix-ui/react-avatar",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-scroll-area",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/accordion.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/scroll-area.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "AppCatalogPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/user.ts",
+        "components/portal/AppPurchaseDialog.tsx",
+        "components/portal/EmptyState.tsx",
+        "components/portal/OfferCard.tsx",
+        "components/shared/OrderItems.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx",
+        "lib/app-catalog-ui.ts",
+        "lib/app-delivery.ts",
+        "lib/app-detail.ts",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/AppCatalogPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-markdown",
+        "react-router-dom",
+        "rehype-raw",
+        "remark-gfm",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx"
+      ]
+    },
+    "AiTranslateWorkflowPrivacyPage": {
+      "files": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "lib/utils.ts",
+        "pages/AiTranslateWorkflowPrivacyPage.tsx"
+      ],
+      "packages": [
+        "@radix-ui/react-slot",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": ["components/ui/button.tsx", "components/ui/card.tsx"]
+    },
+    "AiTranslateWorkflowSupportPage": {
+      "files": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "lib/utils.ts",
+        "pages/AiTranslateWorkflowSupportPage.tsx"
+      ],
+      "packages": [
+        "@radix-ui/react-slot",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": ["components/ui/button.tsx", "components/ui/card.tsx"]
+    },
+    "ContentDetailPage": {
+      "files": [
+        "api/client.ts",
+        "api/content.ts",
+        "components/portal/ArticleToc.tsx",
+        "components/portal/EmptyState.tsx",
+        "components/shared/CodeBlock.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/button.tsx",
+        "lib/async-events.ts",
+        "lib/markdown.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/ContentDetailPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-avatar",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-markdown",
+        "react-router-dom",
+        "rehype-raw",
+        "remark-gfm",
+        "shiki",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": ["components/ui/avatar.tsx", "components/ui/button.tsx"]
+    },
+    "ContentHubPage": {
+      "files": [
+        "api/client.ts",
+        "api/content.ts",
+        "api/settings.ts",
+        "components/portal/EmptyState.tsx",
+        "components/ui/button.tsx",
+        "components/ui/input.tsx",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/ContentHubPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": ["components/ui/button.tsx", "components/ui/input.tsx"]
+    },
+    "CreateTicketPage": {
+      "files": [
+        "api/apps.ts",
+        "api/client.ts",
+        "api/user.ts",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx",
+        "lib/async-events.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/CreateTicketPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "DocsHubPage": {
+      "files": [
+        "api/client.ts",
+        "api/docs.ts",
+        "api/settings.ts",
+        "components/portal/EmptyState.tsx",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/DocsHubPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "clsx",
+        "lucide-react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "DocsSpacePage": {
+      "files": [
+        "api/client.ts",
+        "api/docs.ts",
+        "components/docs/DocsFeedback.tsx",
+        "components/docs/DocsSidebar.tsx",
+        "components/portal/ArticleToc.tsx",
+        "components/portal/EmptyState.tsx",
+        "components/shared/CodeBlock.tsx",
+        "components/ui/button.tsx",
+        "components/ui/input.tsx",
+        "components/ui/sheet.tsx",
+        "lib/async-events.ts",
+        "lib/markdown.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/DocsSpacePage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-markdown",
+        "react-router-dom",
+        "rehype-raw",
+        "remark-gfm",
+        "shiki",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/input.tsx",
+        "components/ui/sheet.tsx"
+      ]
+    },
+    "DeploymentsPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/user.ts",
+        "components/hosting/HostingCheckout.tsx",
+        "components/hosting/HostingExitPanel.tsx",
+        "components/hosting/HostingHandoverPanel.tsx",
+        "components/hosting/HostingServicePanel.tsx",
+        "components/portal/DeploymentDomains.tsx",
+        "components/portal/DeploymentEditDialog.tsx",
+        "components/portal/DeploymentRecordCard.tsx",
+        "components/portal/DeploymentWizard.tsx",
+        "components/portal/EmptyState.tsx",
+        "components/portal/ManagedDeploymentProgress.tsx",
+        "components/shared/OrderItems.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/tabs.tsx",
+        "hooks/useHostingExit.ts",
+        "hooks/useHostingHandover.ts",
+        "hooks/useHostingService.ts",
+        "lib/app-delivery.ts",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/status-tone.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/DeploymentsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/tabs.tsx"
+      ]
+    },
+    "ForgotPasswordPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "lib/async-events.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/ForgotPasswordPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx"
+      ]
+    },
+    "HomePage": {
+      "files": [
+        "api/apps.ts",
+        "api/client.ts",
+        "components/portal/AppCard.tsx",
+        "components/portal/EmptyState.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/ui/badge.tsx",
+        "lib/app-catalog-ui.ts",
+        "lib/utils.ts",
+        "pages/HomePage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": ["components/ui/badge.tsx"]
+    },
+    "MyTicketsPage": {
+      "files": [
+        "api/client.ts",
+        "api/user.ts",
+        "components/account/AccountTicketsTab.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useTableState.ts",
+        "lib/status-tone.ts",
+        "lib/utils.ts",
+        "pages/MyTicketsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "VerifyEmailPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/VerifyEmailPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx"
+      ]
+    },
+    "UserAuthPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/UserAuthPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx"
+      ]
+    }
+  },
+  "publicEntry": {
+    "files": [
+      "App.tsx",
+      "api/auth.ts",
+      "api/client.ts",
+      "api/settings.ts",
+      "components/portal/EmptyState.tsx",
+      "index.css",
+      "lib/auth.tsx",
+      "lib/foundation.ts",
+      "lib/rbac.ts",
+      "lib/site-settings.ts",
+      "lib/theme.tsx",
+      "lib/utils.ts",
+      "main.tsx"
+    ],
+    "packages": [
+      "@lingcoo/api-client",
+      "@lingcoo/contracts",
+      "@tanstack/react-query",
+      "clsx",
+      "lucide-react",
+      "react",
+      "react-dom/client",
+      "react-router-dom",
+      "tailwind-merge"
+    ],
+    "legacyUiFiles": []
+  },
+  "publicShells": {
+    "UserShell": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "api/user.ts",
+        "components/layout/Container.tsx",
+        "components/layout/RouteSlot.tsx",
+        "components/layout/UserShell.tsx",
+        "components/portal/ConsumerFooter.tsx",
+        "components/shared/ThemeToggle.tsx",
+        "components/ui/accordion.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dropdown-menu.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/theme.tsx",
+        "lib/toast.ts",
+        "lib/utils.ts"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-accordion",
+        "@radix-ui/react-avatar",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-error-boundary",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/accordion.tsx",
+        "components/ui/avatar.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dropdown-menu.tsx"
+      ]
+    },
+    "DocsShell": {
+      "files": [
+        "api/client.ts",
+        "api/docs.ts",
+        "api/settings.ts",
+        "components/docs/DocsCommandPalette.tsx",
+        "components/docs/SpaceSelector.tsx",
+        "components/layout/Container.tsx",
+        "components/layout/DocsShell.tsx",
+        "components/layout/RouteSlot.tsx",
+        "components/shared/ThemeToggle.tsx",
+        "components/ui/button.tsx",
+        "components/ui/command.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/dropdown-menu.tsx",
+        "lib/async-events.ts",
+        "lib/site-settings.ts",
+        "lib/theme.tsx",
+        "lib/toast.ts",
+        "lib/utils.ts"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "cmdk",
+        "lucide-react",
+        "react",
+        "react-error-boundary",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/command.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/dropdown-menu.tsx"
+      ]
+    }
+  },
+  "portalProvider": {
+    "files": [
+      "components/portal/PortalUiProvider.tsx",
+      "components/ui/tooltip.tsx",
+      "lib/utils.ts"
+    ],
+    "packages": ["clsx", "radix-ui", "react", "react-router-dom", "sonner", "tailwind-merge"],
+    "legacyUiFiles": ["components/ui/tooltip.tsx"]
+  },
+  "uiAudit": [
+    {
+      "file": "components/admin/AdminCommandPalette.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/AdminDraftGuard.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/AdminShell.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/AdminUiProvider.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/AsyncState.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "lib/auth.tsx",
+      "nativeControls": [],
+      "antDesign": false,
+      "customSurface": false
+    },
+    {
+      "file": "lib/section-icons.tsx",
+      "nativeControls": [],
+      "antDesign": false,
+      "customSurface": false
+    },
+    {
+      "file": "lib/theme.tsx",
+      "nativeControls": [],
+      "antDesign": false,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/MetricCard.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/PageContainer.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/StatusTag.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/DashboardPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/AppsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/ManagementDrawer.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/apps/AppCatalogSections.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/apps/AppContentSection.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/apps/AppDeliverySection.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/apps/app-edit/AppReadiness.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/storage/AssetImageField.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/storage/AssetImagePickerDialog.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/storage/AssetLibrary.tsx",
+      "nativeControls": [
+        {
+          "tag": "input",
+          "type": "file",
+          "line": 290
+        },
+        {
+          "tag": "input",
+          "type": "file",
+          "line": 674
+        }
+      ],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/AppEditPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/ContentPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/ContentEditPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/StoragePage.tsx",
+      "nativeControls": [],
+      "antDesign": false,
+      "customSurface": false
+    },
+    {
+      "file": "pages/DocsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/SecretsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/HostingFulfillmentStatus.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/ItemRefundLedger.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/JsonViewer.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/OrderItems.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/OrdersPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/payments/WechatPaySettingsPanel.tsx",
+      "nativeControls": [
+        {
+          "tag": "input",
+          "type": "file",
+          "line": 75
+        }
+      ],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/PaymentsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/AiSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/ContentImportSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/IntegrationFields.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/PublicPagesSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/RotateSecretsButton.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/SiteSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/settings/SmtpSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/storage/StorageSettingsPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/SettingsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/LicensesPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/TicketsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/UsersPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/PageHelp.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/InstallsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/NotificationsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/HostingExitPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/HostingHandoverPanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/admin/HostingServicePanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/AddHostingNode.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingIncidents.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingInstances.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingNodeCard.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingOffers.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingUpgradePanel.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/hosting/HostingVisuals.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/HostingPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/AdminDeploymentsPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/ObservabilityPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "pages/LoginPage.tsx",
+      "nativeControls": [],
+      "antDesign": true,
+      "customSurface": false
+    }
+  ]
+}

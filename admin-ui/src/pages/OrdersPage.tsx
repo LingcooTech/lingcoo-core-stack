@@ -1,17 +1,29 @@
 import { AdminItemRefundLedger } from '@/components/admin/ItemRefundLedger';
-import { HostingFulfillmentStatus } from '@/components/hosting/HostingFulfillmentStatus';
-import { OrderItems } from '@/components/shared/OrderItems';
+import { HostingFulfillmentStatus } from '@/components/admin/HostingFulfillmentStatus';
+import { OrderItems } from '@/components/admin/OrderItems';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Eye } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { cancelOrder, getOrderDetail, listOrders, reconcileOrder, refundOrder } from '@/api/admin';
 import type { HydratedOrder, OrderDetail } from '@/api/types';
-import { App, Alert, Button, Flex, Input, Modal, Select, Table, type TableColumnsType } from 'antd';
+import {
+  App,
+  Alert,
+  Card,
+  Typography,
+  Button,
+  Flex,
+  Input,
+  Modal,
+  Select,
+  Table,
+  type TableColumnsType,
+} from 'antd';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
 import { AsyncState } from '@/components/admin/AsyncState';
-import { JsonViewer } from '@/components/shared/JsonViewer';
+import { JsonViewer } from '@/components/admin/JsonViewer';
 import { StatusTag, statusToTone } from '@/components/admin/StatusTag';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole, type AppPermission } from '@/lib/rbac';
@@ -177,24 +189,24 @@ export function OrdersPage() {
   const orderColumns: TableColumnsType<HydratedOrder> = [
     {
       key: 'order',
+      width: 300,
       title: '订单号',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate font-mono text-[12px] font-semibold text-foreground">
-            {row.orderNo}
-          </p>
-          <p className="truncate text-[10px] text-muted-foreground">{row.app?.name ?? row.appId}</p>
+          <p className="admin-text truncate font-mono text-sm font-semibold">{row.orderNo}</p>
+          <p className="admin-text-secondary truncate text-xs">{row.app?.name ?? row.appId}</p>
         </div>
       ),
     },
     {
       key: 'status',
+      width: 160,
       title: '状态',
       render: (_, row) => (
         <div className="inline-flex items-center gap-1.5">
           <StatusTag tone={statusToTone(row.status)} label={orderStatusLabel(row.status)} />
           {row.provider ? (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="admin-text-secondary text-xs">
               {paymentProviderLabel(row.provider)}
             </span>
           ) : null}
@@ -203,23 +215,26 @@ export function OrdersPage() {
     },
     {
       key: 'user',
+      width: 240,
       title: '用户',
-      render: (_, row) => <p className="truncate text-[12px]">{row.user?.email ?? row.userId}</p>,
+      render: (_, row) => <p className="truncate text-sm">{row.user?.email ?? row.userId}</p>,
     },
     {
       key: 'amount',
+      width: 160,
       title: '金额',
       render: (_, row) => (
         <div className="tabular-nums">
-          <p className="text-[12px] font-semibold text-foreground">
+          <p className="admin-text text-sm font-semibold">
             {formatAmount(row.amount, row.currency)}
           </p>
-          <p className="text-[10px] text-muted-foreground">{formatTime(row.createdAt)}</p>
+          <p className="admin-text-secondary text-xs">{formatTime(row.createdAt)}</p>
         </div>
       ),
     },
     {
       key: 'actions',
+      width: 180,
       title: '操作',
       className: 'w-[140px]',
       render: (_, row) => (
@@ -238,7 +253,7 @@ export function OrdersPage() {
           <Button
             size="small"
             type="text"
-            className="h-7 px-2 text-xs text-muted-foreground"
+            className="admin-text-secondary h-7 px-2 text-xs"
             disabled={
               !can('orders.reconcile') ||
               (reconcileMutation.isPending && reconcileMutation.variables === row.orderNo)
@@ -342,7 +357,8 @@ export function OrdersPage() {
           dataSource={orders}
           rowKey="orderNo"
           loading={ordersQuery.isLoading}
-          scroll={{ x: 950 }}
+          scroll={{ x: 1040 }}
+          tableLayout="fixed"
           locale={{ emptyText: '暂无订单' }}
           rowSelection={
             can('orders.reconcile')
@@ -463,48 +479,46 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
   const { item, paymentAttempts, entitlements, events } = detail;
 
   return (
-    <div className="space-y-5 text-sm">
-      <section className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
-        <InfoBlock
-          label="状态"
-          render={
-            <StatusTag tone={statusToTone(item.status)} label={orderStatusLabel(item.status)} />
-          }
-        />
-        <InfoBlock label="渠道" value={paymentProviderLabel(item.provider)} />
-        <InfoBlock
-          label="金额"
-          value={formatAmount(item.amount, item.currency)}
-          valueClassName="text-[15px] font-semibold tabular-nums"
-        />
-        <InfoBlock label="用户" value={item.user?.email ?? item.userId} />
-        <InfoBlock
-          label="应用名"
-          value={item.items?.[0]?.appName ?? item.app?.name ?? item.appId}
-        />
-        <InfoBlock label="应用 Code" value={item.app?.code ?? '—'} mono />
-        <InfoBlock
-          label="套餐"
-          value={
-            item.items?.find((i) => i.kind === 'software')?.title ?? item.plan?.name ?? item.planId
-          }
-        />
-        <InfoBlock label="支付时间" value={item.paidAt ? formatTime(item.paidAt) : '未支付'} />
-        <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
-      </section>
+    <div className="admin-detail-stack">
+      <Card title="基本信息">
+        <div className="admin-detail-fields">
+          <InfoBlock
+            label="状态"
+            render={
+              <StatusTag tone={statusToTone(item.status)} label={orderStatusLabel(item.status)} />
+            }
+          />
+          <InfoBlock label="渠道" value={paymentProviderLabel(item.provider)} />
+          <InfoBlock
+            label="金额"
+            value={formatAmount(item.amount, item.currency)}
+            valueClassName="text-[15px] font-semibold tabular-nums"
+          />
+          <InfoBlock label="用户" value={item.user?.email ?? item.userId} />
+          <InfoBlock
+            label="应用名"
+            value={item.items?.[0]?.appName ?? item.app?.name ?? item.appId}
+          />
+          <InfoBlock label="应用 Code" value={item.app?.code ?? '—'} mono />
+          <InfoBlock
+            label="套餐"
+            value={
+              item.items?.find((i) => i.kind === 'software')?.title ??
+              item.plan?.name ??
+              item.planId
+            }
+          />
+          <InfoBlock label="支付时间" value={item.paidAt ? formatTime(item.paidAt) : '未支付'} />
+          <InfoBlock label="创建时间" value={formatTime(item.createdAt)} />
+        </div>
+      </Card>
 
       <OrderItems items={item.items} />
       {!!item.items?.length && <AdminItemRefundLedger orderNo={item.orderNo} />}
       {item.items?.some((i) => i.hostingTerms?.target) && (
-        <HostingFulfillmentStatus orderNo={item.orderNo} admin />
+        <HostingFulfillmentStatus orderNo={item.orderNo} />
       )}
-      <section className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold text-foreground">关联处理</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            从当前订单继续定位用户、授权与工单上下文，避免在异常处理时重复检索。
-          </p>
-        </div>
+      <Card title="关联处理">
         <div className="flex flex-wrap gap-2">
           <ActionLink to={userDetailHref(item.userId)} label="用户 360" />
           <ActionLink to={adminSearchHref('/admin/tickets', item.orderNo)} label="关联工单" />
@@ -514,11 +528,11 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
             label="用户订单"
           />
         </div>
-      </section>
+      </Card>
 
       {item.checkoutSession && (
         <DetailSection title="支付会话">
-          <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
+          <div className="admin-detail-fields">
             <InfoBlock label="Code" value={item.checkoutSession.sessionCode} mono />
             <InfoBlock
               label="状态"
@@ -540,19 +554,19 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
         <DetailSection title={`支付尝试 (${paymentAttempts.length})`}>
           <div className="space-y-2">
             {paymentAttempts.map((attempt) => (
-              <div key={attempt.id} className="rounded-md border border-border p-3">
+              <Card key={attempt.id} size="small">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[12px] font-semibold">{attempt.attemptNo}</span>
+                  <span className="font-mono text-sm font-semibold">{attempt.attemptNo}</span>
                   <StatusTag
                     tone={statusToTone(attempt.status)}
                     label={checkoutSessionStatusLabel(attempt.status)}
                   />
-                  <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
+                  <span className="admin-text-secondary ml-auto text-xs tabular-nums">
                     {formatTime(attempt.createdAt)}
                   </span>
                 </div>
                 {attempt.providerReference && (
-                  <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+                  <p className="admin-text-secondary mt-1.5 font-mono text-xs">
                     {attempt.providerReference}
                   </p>
                 )}
@@ -560,7 +574,7 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
                   <JsonViewer data={attempt.requestPayload} label="请求" />
                   <JsonViewer data={attempt.responsePayload} label="响应" />
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </DetailSection>
@@ -573,12 +587,12 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
               <Link
                 key={e.id}
                 to={`/admin/licenses?search=${encodeURIComponent(e.id)}`}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs no-underline transition-colors hover:border-foreground/20 hover:bg-muted/40"
+                className="inline-flex items-center gap-2"
                 title="在授权管理中查看"
               >
-                <span className="font-mono text-foreground">{e.plan?.code ?? e.id}</span>
+                <span className="admin-text font-mono">{e.plan?.code ?? e.id}</span>
                 <StatusTag tone={statusToTone(e.status)} label={entitlementStatusLabel(e.status)} />
-                <ArrowUpRight className="h-3 w-3 text-muted-foreground/60" />
+                <ArrowUpRight className="admin-text-secondary h-3 w-3" />
               </Link>
             ))}
           </div>
@@ -587,21 +601,24 @@ function OrderDetailSection({ detail }: { detail: OrderDetail }) {
 
       {events.length > 0 && (
         <DetailSection title={`关联事件 (${events.length})`}>
-          <div className="divide-y divide-border overflow-hidden rounded-md border border-border">
-            {events.map((ev, idx) => (
-              <div key={idx} className="flex items-start gap-3 px-3 py-2 text-xs">
-                <span className="w-28 shrink-0 text-[10px] text-muted-foreground tabular-nums">
-                  {formatTime(ev.eventTime)}
-                </span>
-                <span className="font-mono text-[11px] font-semibold text-foreground">
-                  {ev.eventName}
-                </span>
-                <div className="ml-auto">
-                  <JsonViewer data={ev.properties} label="props" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <Table
+            rowKey="key"
+            size="small"
+            dataSource={events.map((event, index) => ({
+              ...event,
+              key: `${event.eventTime}-${index}`,
+            }))}
+            pagination={false}
+            scroll={{ x: 560 }}
+            columns={[
+              { title: '时间', width: 180, render: (_, event) => formatTime(event.eventTime) },
+              { title: '事件', dataIndex: 'eventName' },
+              {
+                title: '数据',
+                render: (_, event) => <JsonViewer data={event.properties} label="事件数据" />,
+              },
+            ]}
+          />
         </DetailSection>
       )}
     </div>
@@ -614,12 +631,9 @@ function ActionLink({ to, label }: { to: string; label: string }) {
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section>
-      <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {title}
-      </h3>
+    <Card title={title} size="small">
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -637,22 +651,13 @@ function InfoBlock({
   render?: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {label}
-      </p>
-      <div className="mt-1">
-        {render ?? (
-          <p
-            className={
-              valueClassName ??
-              `truncate text-xs text-foreground ${mono ? 'font-mono' : 'font-medium'}`
-            }
-          >
-            {value}
-          </p>
-        )}
-      </div>
+    <div className="admin-detail-field">
+      <Typography.Text type="secondary">{label}</Typography.Text>
+      {render ?? (
+        <Typography.Text className={valueClassName} code={mono}>
+          {value}
+        </Typography.Text>
+      )}
     </div>
   );
 }

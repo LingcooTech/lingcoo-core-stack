@@ -118,7 +118,6 @@ export function DocsPage() {
   return (
     <PageContainer
       title="文档管理"
-      width="wide"
       actions={
         <Button
           type="primary"

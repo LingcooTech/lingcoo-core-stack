@@ -10,12 +10,9 @@ import {
   RouterProvider,
   useLocation,
 } from 'react-router-dom';
-import { Toaster } from 'sonner';
 import { ShieldAlert } from 'lucide-react';
 
 import { getPublicSiteSettings } from '@/api/settings';
-import { DocsShell } from '@/components/layout/DocsShell';
-import { UserShell } from '@/components/layout/UserShell';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
@@ -30,7 +27,6 @@ import {
   syncDocumentFavicon,
 } from '@/lib/site-settings';
 import { ThemeProvider } from '@/lib/theme';
-import { TooltipProvider } from '@/components/ui/tooltip';
 
 /**
  * lazyNamed —— React.lazy 要求 default export，但本项目所有页面都是 named
@@ -44,6 +40,12 @@ function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
 }
 
 const Shell = lazyNamed(() => import('@/components/admin/AdminShell'), 'AdminShell');
+const UserShell = lazyNamed(() => import('@/components/layout/UserShell'), 'UserShell');
+const DocsShell = lazyNamed(() => import('@/components/layout/DocsShell'), 'DocsShell');
+const PortalUiProvider = lazyNamed(
+  () => import('@/components/portal/PortalUiProvider'),
+  'PortalUiProvider',
+);
 const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), 'AccountCenterPage');
 const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
 const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');
@@ -228,41 +230,43 @@ function ProtectedAdminSectionRoute({
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
-      <Route element={<UserShell />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/apps" element={<HomePage />} />
-        <Route
-          path="/apps/ai-translate-workflow/privacy"
-          element={<AiTranslateWorkflowPrivacyPage />}
-        />
-        <Route
-          path="/apps/ai-translate-workflow/support"
-          element={<AiTranslateWorkflowSupportPage />}
-        />
-        <Route path="/apps/:appCode" element={<AppCatalogPage />} />
-        <Route path="/content" element={<ContentHubPage />} />
-        <Route path="/content/:slug" element={<ContentDetailPage />} />
-        <Route path="/login" element={<UserAuthPage mode="login" />} />
-        <Route path="/register" element={<UserAuthPage mode="register" />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route element={<ProtectedUserRoute />}>
-          <Route path="/account" element={<AccountCenterPage />} />
+      <Route element={<PortalUiProvider />}>
+        <Route element={<UserShell />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/apps" element={<HomePage />} />
           <Route
-            path="/notifications"
-            element={<Navigate to="/account?tab=notifications" replace />}
+            path="/apps/ai-translate-workflow/privacy"
+            element={<AiTranslateWorkflowPrivacyPage />}
           />
-          <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
-          <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
-          <Route path="/tickets" element={<MyTicketsPage />} />
-          <Route path="/tickets/new" element={<CreateTicketPage />} />
-          <Route path="/deploy" element={<DeploymentsPage />} />
+          <Route
+            path="/apps/ai-translate-workflow/support"
+            element={<AiTranslateWorkflowSupportPage />}
+          />
+          <Route path="/apps/:appCode" element={<AppCatalogPage />} />
+          <Route path="/content" element={<ContentHubPage />} />
+          <Route path="/content/:slug" element={<ContentDetailPage />} />
+          <Route path="/login" element={<UserAuthPage mode="login" />} />
+          <Route path="/register" element={<UserAuthPage mode="register" />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route element={<ProtectedUserRoute />}>
+            <Route path="/account" element={<AccountCenterPage />} />
+            <Route
+              path="/notifications"
+              element={<Navigate to="/account?tab=notifications" replace />}
+            />
+            <Route path="/orders" element={<Navigate to="/account?tab=orders" replace />} />
+            <Route path="/access" element={<Navigate to="/account?tab=apps" replace />} />
+            <Route path="/tickets" element={<MyTicketsPage />} />
+            <Route path="/tickets/new" element={<CreateTicketPage />} />
+            <Route path="/deploy" element={<DeploymentsPage />} />
+          </Route>
         </Route>
-      </Route>
-      <Route element={<DocsShell />}>
-        <Route path="/docs" element={<DocsHubPage />} />
-        <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
-        <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
+        <Route element={<DocsShell />}>
+          <Route path="/docs" element={<DocsHubPage />} />
+          <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
+          <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
+        </Route>
       </Route>
       <Route path="/admin/login" element={<LoginPage />} />
       <Route element={<ProtectedAdminRoute />}>
@@ -449,17 +453,14 @@ export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={200}>
-          <AuthProvider>
-            <SiteSettingsBootstrap>
-              <SiteAppearanceSync />
-              <Suspense fallback={<div role="status">正在加载页面…</div>}>
-                <RouterProvider router={router} />
-              </Suspense>
-              <Toaster position="top-right" richColors />
-            </SiteSettingsBootstrap>
-          </AuthProvider>
-        </TooltipProvider>
+        <AuthProvider>
+          <SiteSettingsBootstrap>
+            <SiteAppearanceSync />
+            <Suspense fallback={<div role="status">正在加载页面…</div>}>
+              <RouterProvider router={router} />
+            </Suspense>
+          </SiteSettingsBootstrap>
+        </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

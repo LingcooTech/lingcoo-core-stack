@@ -353,6 +353,32 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     expect(response.status(), path).toBe(200);
   }
   await expect(page.getByText('Unexpected server error', { exact: true })).toHaveCount(0);
+  for (const width of [1920, 1440, 1024, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    let expectedBounds: { x: number; width: number } | undefined;
+    for (const route of ['/admin/apps', '/admin/apps/new', '/admin/settings', '/admin/payments']) {
+      await page.goto(route);
+      await expect(page.locator('.admin-page')).toBeVisible();
+      const bounds = await page.locator('.admin-page').boundingBox();
+      expect(bounds).toBeTruthy();
+      if (!expectedBounds) expectedBounds = bounds!;
+      expect(bounds!.x, route).toBeCloseTo(expectedBounds.x, 0);
+      expect(bounds!.width, route).toBeCloseTo(expectedBounds.width, 0);
+      expect(bounds!.width).toBeLessThanOrEqual(1440);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true);
+    }
+    await page.goto('/admin/apps');
+    await expect(page.locator('.admin-metrics > .admin-metric')).toHaveCount(4);
+    await page.screenshot({ path: info.outputPath(`apps-${width}.png`) });
+    await page.goto('/admin/apps/new');
+    await expect(page.getByRole('button', { name: '返回列表', exact: true })).toBeVisible();
+    await expect(page.locator('.admin-toolbar')).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath(`app-editor-${width}.png`) });
+    await page.getByRole('button', { name: '返回列表', exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/apps$/);
+  }
   for (const width of [1440, 1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/admin/settings?tab=smtp');
@@ -376,6 +402,50 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     expect(await page.locator('.stack-admin').count()).toBe(0);
   }
   expect(errors).toEqual([]);
+});
+
+test('admin detail drawers and editing modals fit desktop and mobile without writing business data', async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  const resources: string[] = [];
+  page.on('response', (response) => resources.push(new URL(response.url()).pathname));
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    if (width === 390) {
+      await page.getByRole('button', { name: '切换主题', exact: true }).click();
+      await expect(page.locator('html')).toHaveClass(/dark/);
+    }
+    await page.goto('/admin/orders');
+    await page.getByRole('button', { name: '查看', exact: true }).first().click();
+    const drawer = page.getByRole('dialog');
+    await expect(drawer.getByText('基本信息', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('购买明细', { exact: true })).toBeVisible();
+    const box = await drawer.boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(width);
+    expect(await drawer.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`order-detail-${width}.png`) });
+    await drawer.getByRole('button', { name: '关闭', exact: true }).last().click();
+    await expect(drawer).toBeHidden();
+    await page.goto('/admin/users');
+    await page
+      .getByRole('button', { name: /^编\s*辑$/ })
+      .first()
+      .click();
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByRole('button', { name: /^保\s*存$/ })).toBeVisible();
+    const modalBox = await modal.boundingBox();
+    expect(modalBox!.x).toBeGreaterThanOrEqual(0);
+    expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(width + 1);
+    await page.screenshot({ path: info.outputPath(`user-modal-${width}.png`) });
+    await modal.getByRole('button', { name: /^取\s*消$/ }).click();
+    await expect(modal).toBeHidden();
+  }
+  expect(
+    resources.filter((path) => /\/(?:PortalUiProvider|UserShell|DocsShell)-/.test(path)),
+  ).toEqual([]);
 });
 
 // Real application manifests are copied from their repositories; all writes stay in the disposable test database.

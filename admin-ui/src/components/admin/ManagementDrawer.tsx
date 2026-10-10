@@ -30,14 +30,21 @@ export function ManagementDrawer({
       size={{ small: 560, medium: 840, large: 1080 }[size]}
       onClose={onClose}
       destroyOnHidden
+      rootClassName="admin-overlay"
+      classNames={{ body: 'admin-drawer-body' }}
       styles={{
         wrapper: { maxWidth: '100vw' },
         body: { minHeight: 0, overflowY: 'auto', scrollbarGutter: 'stable' },
-        footer: { textAlign: 'right' },
+        footer: {
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          padding: '12px 24px',
+        },
       }}
       footer={
         footer === undefined ? (
-          <Space>
+          <Space wrap>
             <Button onClick={onClose}>{onSubmit ? '取消' : '关闭'}</Button>
             {onSubmit && (
               <Button type="primary" loading={saving} onClick={onSubmit}>

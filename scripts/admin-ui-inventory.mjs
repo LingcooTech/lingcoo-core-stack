@@ -132,6 +132,55 @@ report.publicRuntime = Object.fromEntries(
   [...new Set(publicPages)].map((page) => [page, walk(path.join(root, 'pages', `${page}.tsx`))]),
 );
 report.publicEntry = walk(path.join(root, 'main.tsx'), false);
+report.publicShells = Object.fromEntries(
+  ['UserShell', 'DocsShell'].map((name) => [
+    name,
+    walk(path.join(root, 'components/layout', `${name}.tsx`)),
+  ]),
+);
+report.portalProvider = walk(path.join(root, 'components/portal/PortalUiProvider.tsx'));
+const adminRuntimeFiles = [
+  ...new Set([report.shell, ...Object.values(pages)].flatMap((item) => item.files)),
+];
+report.uiAudit = adminRuntimeFiles
+  .filter((file) => file.endsWith('.tsx'))
+  .map((file) => {
+    const source = files.get(path.join(root, file));
+    const nativeControls = [];
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    function visit(node) {
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        const tag = node.tagName.getText(ast);
+        if (
+          ['button', 'input', 'select', 'textarea', 'dialog', 'details', 'summary'].includes(tag)
+        ) {
+          const typeAttribute = node.attributes.properties.find(
+            (property) => ts.isJsxAttribute(property) && property.name.getText(ast) === 'type',
+          );
+          const type =
+            typeAttribute?.initializer && ts.isStringLiteral(typeAttribute.initializer)
+              ? typeAttribute.initializer.text
+              : undefined;
+          nativeControls.push({
+            tag,
+            ...(type ? { type } : {}),
+            line: ast.getLineAndCharacterOfPosition(node.getStart()).line + 1,
+          });
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(ast);
+    return {
+      file,
+      nativeControls,
+      antDesign: (graph.get(path.join(root, file)) ?? []).some(
+        ({ specifier }) => specifier === 'antd',
+      ),
+      // Layout utilities are allowed; this flag makes hand-written business surfaces visible to review.
+      customSurface: /className="[^"]*(?:rounded[^" ]*[^\"]*\bborder\b|\bbg-card\b)/.test(source),
+    };
+  });
 if (process.argv.includes('--check')) {
   const failures = [];
   if (routes.length !== 22 || report.businessSections !== 17)
@@ -147,6 +196,8 @@ if (process.argv.includes('--check')) {
   }
   for (const [name, item] of Object.entries({
     ...report.publicRuntime,
+    ...report.publicShells,
+    PortalUiProvider: report.portalProvider,
     PublicEntry: report.publicEntry,
   })) {
     const forbidden = item.packages.filter((dependency) =>
@@ -155,6 +206,20 @@ if (process.argv.includes('--check')) {
     if (forbidden.length)
       failures.push(`${name} eagerly reaches admin UI: ${forbidden.join(', ')}`);
   }
+  for (const item of report.uiAudit) {
+    const unsupported = item.nativeControls.filter(
+      ({ tag, type }) => tag !== 'input' || type !== 'file',
+    );
+    if (unsupported.length)
+      failures.push(
+        `${item.file}: native interactive controls remain: ${JSON.stringify(unsupported)}`,
+      );
+  }
+  const commonUi = report.publicEntry.packages.filter((dependency) =>
+    /^(?:antd(?:\/|$)|@ant-design\/|@radix-ui\/|radix-ui(?:\/|$)|sonner(?:\/|$))/.test(dependency),
+  );
+  if (commonUi.length || report.publicEntry.legacyUiFiles.length)
+    failures.push(`Shared entry eagerly loads route-specific UI: ${commonUi.join(', ')}`);
   if (failures.length) throw new Error(`Admin UI boundary violations:\n${failures.join('\n')}`);
   console.info(
     `Verified ${routes.length} admin routes, shell and ${publicPages.length} public pages: no legacy admin UI or public Ant Design imports`,

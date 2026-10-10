@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { App, Button, Card, Form, Input, Modal, Select, Space, Statistic, Table } from 'antd';
+import { App, Button, Card, Form, Input, Modal, Select, Space, Table } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { archiveApp, listAppsAdmin, purgeAppConfiguration } from '@/api/apps';
 import type { AppWithDetails } from '@/api/types';
+import { MetricCard, MetricGrid } from '@/components/admin/MetricCard';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 import { StatusTag } from '@/components/admin/StatusTag';
@@ -71,7 +72,6 @@ export function AppsPage() {
   return (
     <PageContainer
       title="应用管理"
-      width="wide"
       filters={
         <>
           <Input.Search
@@ -115,18 +115,18 @@ export function AppsPage() {
         )
       }
     >
-      <Space wrap size={24}>
-        <Statistic title="应用总数" value={apps.length} />
-        <Statistic
+      <MetricGrid>
+        <MetricCard title="应用总数" value={apps.length} />
+        <MetricCard
           title="已发布"
           value={apps.filter((a) => !archived(a) && a.status === 'active').length}
         />
-        <Statistic title="已归档" value={apps.filter(archived).length} />
-        <Statistic
-          title="有在售 Offer 的应用"
+        <MetricCard title="已归档" value={apps.filter(archived).length} />
+        <MetricCard
+          title="有在售套餐的应用"
           value={apps.filter((a) => getActiveOffers(a.checkoutOffers ?? []).length > 0).length}
         />
-      </Space>
+      </MetricGrid>
       <AsyncState error={query.error} onRetry={() => void query.refetch()}>
         <Card>
           <Table<AppWithDetails>

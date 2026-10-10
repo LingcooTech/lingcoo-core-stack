@@ -1,9 +1,16 @@
 import { useQueries } from '@tanstack/react-query';
-import { Alert, Button, Card, Descriptions, Space, Statistic, Table, Tag } from 'antd';
+import { Alert, Button, Card, Descriptions, Flex, Space, Table, Tag } from 'antd';
 import { Link } from 'react-router-dom';
-import { listAdminTickets, listContent, listOrders, listUsers } from '@/api/admin';
+import { listAdminTickets, listOrders } from '@/api/admin';
 import { listAppsAdmin } from '@/api/apps';
 import { getPaymentSettings } from '@/api/payments';
+import { MetricCard, MetricGrid } from '@/components/admin/MetricCard';
+import {
+  AppstoreOutlined,
+  KeyOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { StatusTag, statusToTone } from '@/components/admin/StatusTag';
 import { formatAmount, formatTime } from '@/lib/utils';
@@ -33,17 +40,6 @@ export function DashboardPage() {
         staleTime: 30000,
       },
       {
-        queryKey: ['dashboard-users'],
-        queryFn: () => listUsers({ limit: 5 }),
-        enabled: can('users.view'),
-        staleTime: 30000,
-      },
-      {
-        queryKey: ['dashboard-published-content'],
-        queryFn: () => listContent({ status: 'published', limit: 1 }),
-        enabled: can('content.manage'),
-      },
-      {
         queryKey: ['dashboard-paid-orders'],
         queryFn: () => listOrders({ status: 'paid', limit: 1 }),
         enabled: can('orders.view'),
@@ -55,7 +51,7 @@ export function DashboardPage() {
       },
     ],
   });
-  const [payments, orders, apps, tickets, users, content, paid, pending] = results;
+  const [payments, orders, apps, tickets, paid, pending] = results;
   const channels = payments.data?.items ?? [],
     applications = apps.data?.items ?? [],
     activeSecrets = applications
@@ -74,7 +70,7 @@ export function DashboardPage() {
     { label: '售后工单', href: '/admin/tickets', permission: 'tickets.manage' },
   ] as const;
   return (
-    <PageContainer title="仪表盘" width="wide">
+    <PageContainer title="仪表盘">
       {results.filter((r) => r.isError).length > 0 && (
         <Alert
           type="warning"
@@ -91,49 +87,80 @@ export function DashboardPage() {
           }
         />
       )}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <MetricGrid>
         {[
           {
             title: '接入应用',
+            icon: <AppstoreOutlined />,
+            tone: 'blue' as const,
             value: apps.data ? applications.length : '—',
             show: can('apps.manage'),
           },
-          { title: '活跃密钥', value: apps.data ? activeSecrets : '—', show: can('apps.manage') },
-          { title: '已支付订单', value: paid.data?.total ?? '—', show: can('orders.view') },
-          { title: '待支付订单', value: pending.data?.total ?? '—', show: can('orders.view') },
+          {
+            title: '活跃密钥',
+            icon: <KeyOutlined />,
+            tone: 'purple' as const,
+            value: apps.data ? activeSecrets : '—',
+            show: can('apps.manage'),
+          },
+          {
+            title: '已支付订单',
+            icon: <CheckCircleOutlined />,
+            tone: 'green' as const,
+            value: paid.data?.total ?? '—',
+            show: can('orders.view'),
+          },
+          {
+            title: '待支付订单',
+            icon: <ClockCircleOutlined />,
+            tone: 'orange' as const,
+            value: pending.data?.total ?? '—',
+            show: can('orders.view'),
+          },
         ]
           .filter((m) => m.show)
           .map((m) => (
-            <Card className="admin-metric" key={m.title}>
-              <Statistic title={m.title} value={m.value} />
-            </Card>
+            <MetricCard key={m.title} title={m.title} value={m.value} icon={m.icon} tone={m.tone} />
           ))}
-      </div>
+      </MetricGrid>
       <Card title="待处理事项">
-        <Space orientation="vertical" size={16}>
-          {pending.data && (
-            <Link to="/admin/orders?status=pending">{pending.data.total} 笔订单待支付</Link>
-          )}
-          {tickets.data && (
-            <Link to="/admin/tickets?status=waiting_staff">{tickets.data.total} 张工单待回复</Link>
-          )}
-          {payments.data && (
-            <Link to="/admin/payments">
-              {channels.filter((c) => !c.configured).length} 个支付通道未配置
-            </Link>
-          )}
-          {users.data && (
-            <span>
-              最近 {users.data.items.length} 个用户中，
-              {users.data.items.filter((u) => !u.emailVerified).length} 个邮箱未验证（抽样）
-            </span>
-          )}
-          {content.data && (
-            <Link to="/admin/content">
-              {content.data.total ? '查看已发布内容' : '发布第一篇内容'}
-            </Link>
-          )}
-        </Space>
+        {[
+          {
+            title: '待支付订单',
+            count: pending.data?.total,
+            href: '/admin/orders?status=pending',
+            action: '查看订单',
+          },
+          {
+            title: '待回复工单',
+            count: tickets.data?.total,
+            href: '/admin/tickets?status=waiting_staff',
+            action: '处理工单',
+          },
+          {
+            title: '待配置支付通道',
+            count: payments.data ? channels.filter((c) => !c.configured).length : undefined,
+            href: '/admin/payments',
+            action: '配置通道',
+          },
+        ]
+          .filter((task) => task.count !== undefined)
+          .map((task) => (
+            <Flex
+              key={task.title}
+              className="admin-task-row"
+              align="center"
+              justify="space-between"
+              wrap
+              gap={12}
+            >
+              <Space>
+                <span>{task.title}</span>
+                <Tag color={task.count ? 'orange' : undefined}>{task.count}</Tag>
+              </Space>
+              <Link to={task.href}>{task.action}</Link>
+            </Flex>
+          ))}
       </Card>
       {payments.data && (
         <Card title="支付通道">

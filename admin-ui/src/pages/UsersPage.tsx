@@ -2,7 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { App, Button, Form, Input, Modal, Select, Table, type TableColumnsType } from 'antd';
+import {
+  App,
+  Card,
+  Typography,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Table,
+  type TableColumnsType,
+} from 'antd';
 import { AdminUpdateUserInputSchema } from '@lingcoo/contracts';
 import {
   activateUser,
@@ -23,6 +34,7 @@ import type {
   HydratedOrder,
   HydratedSupportTicket,
 } from '@/api/types';
+import { MetricCard as AdminMetricCard } from '@/components/admin/MetricCard';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
@@ -224,9 +236,9 @@ export function UsersPage() {
       title: '用户',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-foreground">{row.email}</p>
+          <p className="admin-text truncate text-sm font-medium">{row.email}</p>
           {row.displayName ? (
-            <p className="truncate text-[10px] text-muted-foreground">{row.displayName}</p>
+            <p className="admin-text-secondary truncate text-xs">{row.displayName}</p>
           ) : null}
         </div>
       ),
@@ -261,7 +273,7 @@ export function UsersPage() {
       key: 'createdAt',
       title: '注册时间',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -299,7 +311,7 @@ export function UsersPage() {
               <Button
                 size="small"
                 type="text"
-                className="h-7 px-2 text-xs text-muted-foreground"
+                className="admin-text-secondary h-7 px-2 text-xs"
                 disabled={isSelf(row)}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -312,7 +324,7 @@ export function UsersPage() {
               <Button
                 size="small"
                 type="text"
-                className="h-7 px-2 text-xs text-muted-foreground"
+                className="admin-text-secondary h-7 px-2 text-xs"
                 onClick={(event) => {
                   event.stopPropagation();
                   setConfirmAction({ type: 'activate', user: row });
@@ -550,19 +562,15 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'orderNo',
       title: '订单号',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.orderNo}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.orderNo}</span>,
     },
     {
       key: 'product',
       title: '产品',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-foreground">
-            {row.app?.name ?? row.appId}
-          </p>
-          <p className="truncate text-[10px] text-muted-foreground">
-            {row.plan?.name ?? row.planId}
-          </p>
+          <p className="admin-text truncate text-sm font-medium">{row.app?.name ?? row.appId}</p>
+          <p className="admin-text-secondary truncate text-xs">{row.plan?.name ?? row.planId}</p>
         </div>
       ),
     },
@@ -577,7 +585,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'amount',
       title: '金额',
       render: (_, row) => (
-        <span className="text-[11px] font-medium tabular-nums">
+        <span className="text-xs font-medium tabular-nums">
           {formatAmount(row.amount, row.currency)}
         </span>
       ),
@@ -586,7 +594,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'createdAt',
       title: '创建时间',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -615,10 +623,8 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       title: '套餐',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-foreground">
-            {row.plan?.name ?? row.planId}
-          </p>
-          <p className="truncate font-mono text-[10px] text-muted-foreground">
+          <p className="admin-text truncate text-sm font-medium">{row.plan?.name ?? row.planId}</p>
+          <p className="admin-text-secondary truncate font-mono text-xs">
             {row.plan?.code ?? row.sourceType}
           </p>
         </div>
@@ -635,7 +641,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'expiresAt',
       title: '到期时间',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.expiresAt)}
         </span>
       ),
@@ -657,7 +663,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'install',
       title: '客户端安装',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.extensionInstallId}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.extensionInstallId}</span>,
     },
     {
       key: 'app',
@@ -675,7 +681,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'lastSeenAt',
       title: '最后活跃',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.lastSeenAt)}
         </span>
       ),
@@ -697,23 +703,23 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'eventName',
       title: '事件',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.eventName}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.eventName}</span>,
     },
     {
       key: 'appId',
       title: '应用',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.appId ?? '—'}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.appId ?? '—'}</span>,
     },
     {
       key: 'installId',
       title: '安装',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.installId ?? '—'}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.installId ?? '—'}</span>,
     },
     {
       key: 'eventTime',
       title: '发生时间',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.eventTime)}
         </span>
       ),
@@ -735,13 +741,13 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
     {
       key: 'action',
       title: '动作',
-      render: (_, row) => <span className="font-mono text-[11px]">{row.action}</span>,
+      render: (_, row) => <span className="font-mono text-xs">{row.action}</span>,
     },
     {
       key: 'resource',
       title: '资源',
       render: (_, row) => (
-        <span className="font-mono text-[11px]">
+        <span className="font-mono text-xs">
           {row.resourceType}/{row.resourceId ?? '—'}
         </span>
       ),
@@ -755,7 +761,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'createdAt',
       title: '时间',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.createdAt)}
         </span>
       ),
@@ -779,10 +785,8 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       title: '工单号',
       render: (_, row) => (
         <div className="min-w-0">
-          <p className="truncate font-mono text-[12px] font-semibold text-foreground">
-            {row.ticketNo}
-          </p>
-          <p className="truncate text-[10px] text-muted-foreground">{row.subject}</p>
+          <p className="admin-text truncate font-mono text-sm font-semibold">{row.ticketNo}</p>
+          <p className="admin-text-secondary truncate text-xs">{row.subject}</p>
         </div>
       ),
     },
@@ -800,7 +804,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'context',
       title: '关联',
       render: (_, row) => (
-        <div className="space-y-0.5 text-[10px] text-muted-foreground">
+        <div className="admin-text-secondary space-y-0.5 text-xs">
           <p>{row.app?.name ?? row.app?.code ?? '未关联应用'}</p>
           {row.order ? <p className="font-mono">order: {row.order.orderNo}</p> : null}
           {row.install ? (
@@ -813,7 +817,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
       key: 'lastActivityAt',
       title: '最近活动',
       render: (_, row) => (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span className="admin-text-secondary text-xs tabular-nums">
           {formatTime(row.lastActivityAt)}
         </span>
       ),
@@ -832,58 +836,52 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
   ];
 
   return (
-    <div className="space-y-5 text-sm">
-      <section className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
-        <InfoBlock label="邮箱" value={detail.email} />
-        <InfoBlock label="显示名称" value={detail.displayName ?? '—'} />
-        <InfoBlock
-          label="角色"
-          render={
-            <StatusTag
-              tone={detail.role === 'admin' ? 'ok' : detail.role === 'user' ? 'neutral' : 'info'}
-              label={roleLabels[(detail.role as AppRole) ?? 'user'] ?? detail.role}
-            />
-          }
-        />
-        <InfoBlock
-          label="账户状态"
-          render={
-            <StatusTag
-              tone={statusToTone(detail.status)}
-              label={recordStatusLabel(detail.status)}
-            />
-          }
-        />
-        <InfoBlock
-          label="邮箱验证"
-          render={
-            <StatusTag
-              tone={detail.emailVerified ? 'ok' : 'warn'}
-              label={detail.emailVerified ? '已验证' : '未验证'}
-            />
-          }
-        />
-        <InfoBlock label="注册时间" value={formatTime(detail.createdAt)} />
-      </section>
+    <div className="admin-detail-stack">
+      <Card title="基本信息">
+        <div className="admin-detail-fields">
+          <InfoBlock label="邮箱" value={detail.email} />
+          <InfoBlock label="显示名称" value={detail.displayName ?? '—'} />
+          <InfoBlock
+            label="角色"
+            render={
+              <StatusTag
+                tone={detail.role === 'admin' ? 'ok' : detail.role === 'user' ? 'neutral' : 'info'}
+                label={roleLabels[(detail.role as AppRole) ?? 'user'] ?? detail.role}
+              />
+            }
+          />
+          <InfoBlock
+            label="账户状态"
+            render={
+              <StatusTag
+                tone={statusToTone(detail.status)}
+                label={recordStatusLabel(detail.status)}
+              />
+            }
+          />
+          <InfoBlock
+            label="邮箱验证"
+            render={
+              <StatusTag
+                tone={detail.emailVerified ? 'ok' : 'warn'}
+                label={detail.emailVerified ? '已验证' : '未验证'}
+              />
+            }
+          />
+          <InfoBlock label="注册时间" value={formatTime(detail.createdAt)} />
+        </div>
+      </Card>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="admin-metrics">
         <MetricCard label="最近订单" value={activity.summary.recentOrders} />
         <MetricCard label="活跃授权" value={activity.summary.activeEntitlements} />
         <MetricCard label="客户端安装" value={activity.summary.installs} />
         <MetricCard label="工单" value={activity.summary.tickets} />
         <MetricCard label="审计日志" value={activity.summary.auditLogs} />
         <MetricCard label="产品事件" value={activity.summary.events} />
-      </section>
+      </div>
 
-      <section className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">运营入口</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              按当前用户过滤关联模块，进入后可继续执行订单同步、退款、授权撤销或排障。
-            </p>
-          </div>
-        </div>
+      <Card title="运营入口">
         <div className="flex flex-wrap gap-2">
           <ActionLink to={adminSearchHref('/admin/orders', detail.email)} label="订单管理" />
           <ActionLink to={adminSearchHref('/admin/licenses', detail.email)} label="授权明细" />
@@ -893,7 +891,7 @@ function UserDetailPanel({ detail }: { detail: AdminUserDetail }) {
           <ActionLink to={observabilityHref('events', detail.email)} label="事件流" />
           <ActionLink to={observabilityHref('audits', detail.id)} label="审计日志" />
         </div>
-      </section>
+      </Card>
 
       <DetailSection title={`最近订单 (${activity.orders.length})`}>
         <Table
@@ -974,24 +972,13 @@ function ActionLink({ to, label }: { to: string; label: string }) {
 }
 
 function MetricCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">{value}</p>
-    </div>
-  );
+  return <AdminMetricCard title={label} value={value} />;
 }
-
 function DetailSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section>
-      <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {title}
-      </h3>
-      <div className="overflow-hidden rounded-lg border border-border bg-card">{children}</div>
-    </section>
+    <Card title={title} size="small">
+      {children}
+    </Card>
   );
 }
 
@@ -1005,13 +992,9 @@ function InfoBlock({
   render?: ReactNode;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {label}
-      </p>
-      <div className="mt-1">
-        {render ?? <p className="truncate text-xs font-medium text-foreground">{value}</p>}
-      </div>
+    <div className="admin-detail-field">
+      <Typography.Text type="secondary">{label}</Typography.Text>
+      {render ?? <Typography.Text>{value}</Typography.Text>}
     </div>
   );
 }
