@@ -1,5 +1,7 @@
 # fd-core-stack Admin UI 架构基线
 
+> 本文保留早期后台架构演进记录。后续管理后台迁移与页面优化按 [Stack 管理后台 Ant Design 迁移与 Edu 对齐方案](admin-ant-design-migration-plan.md) 执行；该方案制定于 2026 年 10 月 10 日，尚不代表迁移已经实施。
+
 ## 1. 目标
 
 管理后台要从“功能堆叠页”升级为“资源驱动的控制台”。

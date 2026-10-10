@@ -1,0 +1,3230 @@
+{
+  "businessSections": 17,
+  "pageRoutes": 22,
+  "routes": [
+    {
+      "route": "/admin",
+      "section": "dashboard",
+      "page": "DashboardPage"
+    },
+    {
+      "route": "/admin/apps",
+      "section": "apps",
+      "page": "AppsPage"
+    },
+    {
+      "route": "/admin/apps/new",
+      "section": "apps",
+      "page": "AppEditPage"
+    },
+    {
+      "route": "/admin/apps/:appCode/edit",
+      "section": "apps",
+      "page": "AppEditPage"
+    },
+    {
+      "route": "/admin/content",
+      "section": "content",
+      "page": "ContentPage"
+    },
+    {
+      "route": "/admin/content/new",
+      "section": "content",
+      "page": "ContentEditPage"
+    },
+    {
+      "route": "/admin/content/:contentId/edit",
+      "section": "content",
+      "page": "ContentEditPage"
+    },
+    {
+      "route": "/admin/storage",
+      "section": "storage",
+      "page": "StoragePage"
+    },
+    {
+      "route": "/admin/docs",
+      "section": "docs",
+      "page": "DocsPage"
+    },
+    {
+      "route": "/admin/secrets",
+      "section": "secrets",
+      "page": "SecretsPage"
+    },
+    {
+      "route": "/admin/orders",
+      "section": "orders",
+      "page": "OrdersPage"
+    },
+    {
+      "route": "/admin/payments",
+      "section": "payments",
+      "page": "PaymentsPage"
+    },
+    {
+      "route": "/admin/settings",
+      "section": "settings",
+      "page": "SettingsPage"
+    },
+    {
+      "route": "/admin/licenses",
+      "section": "licenses",
+      "page": "LicensesPage"
+    },
+    {
+      "route": "/admin/tickets",
+      "section": "tickets",
+      "page": "TicketsPage"
+    },
+    {
+      "route": "/admin/users",
+      "section": "users",
+      "page": "UsersPage"
+    },
+    {
+      "route": "/admin/installs",
+      "section": "installs",
+      "page": "InstallsPage"
+    },
+    {
+      "route": "/admin/notifications",
+      "section": "notifications",
+      "page": "NotificationsPage"
+    },
+    {
+      "route": "/admin/hosting",
+      "section": "hosting",
+      "page": "HostingPage"
+    },
+    {
+      "route": "/admin/deployments",
+      "section": "deployments",
+      "page": "AdminDeploymentsPage"
+    },
+    {
+      "route": "/admin/observability",
+      "section": "observability",
+      "page": "ObservabilityPage"
+    },
+    {
+      "route": "/admin/login",
+      "section": "login",
+      "page": "LoginPage"
+    }
+  ],
+  "pages": {
+    "DashboardPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/client.ts",
+        "api/payments.ts",
+        "components/shared/StatusPill.tsx",
+        "lib/utils.ts",
+        "pages/DashboardPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@tanstack/react-query",
+        "clsx",
+        "lucide-react",
+        "react-router-dom",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": []
+    },
+    "AppsPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dropdown-menu.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx",
+        "hooks/useTableState.ts",
+        "lib/app-catalog-ui.ts",
+        "lib/auth.tsx",
+        "lib/catalog-utils.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/AppsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dropdown-menu.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "AppEditPage": {
+      "files": [
+        "api/apps.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/delivery.ts",
+        "api/storage.ts",
+        "components/apps/app-edit/AppEditAppDetailCard.tsx",
+        "components/apps/app-edit/AppEditBasicsTab.tsx",
+        "components/apps/app-edit/AppEditContentTab.tsx",
+        "components/apps/app-edit/AppEditDeliveryTab.tsx",
+        "components/apps/app-edit/AppEditFaqCard.tsx",
+        "components/apps/app-edit/AppEditHeader.tsx",
+        "components/apps/app-edit/AppEditHighlightsCard.tsx",
+        "components/apps/app-edit/AppEditLinksCard.tsx",
+        "components/apps/app-edit/AppEditOfferCard.tsx",
+        "components/apps/app-edit/AppEditOffersTab.tsx",
+        "components/apps/app-edit/AppEditPlansTab.tsx",
+        "components/apps/app-edit/AppEditSaveBar.tsx",
+        "components/apps/app-edit/AppEditScreenshotsCard.tsx",
+        "components/apps/app-edit/AppReadiness.tsx",
+        "components/apps/app-edit/model.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/separator.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useUnsavedChangesPrompt.ts",
+        "lib/app-delivery.ts",
+        "lib/app-detail.ts",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/AppEditPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-separator",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "@uiw/react-md-editor",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/badge.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/separator.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "ContentPage": {
+      "files": [
+        "api/admin.ts",
+        "api/client.ts",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "hooks/useTableState.ts",
+        "lib/async-events.ts",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/ContentPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "ContentEditPage": {
+      "files": [
+        "api/admin.ts",
+        "api/client.ts",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx",
+        "lib/async-events.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/ContentEditPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "StoragePage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/storage.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/StoragePage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "DocsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/client.ts",
+        "components/shared/SectionHeader.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx",
+        "lib/foundation.ts",
+        "lib/utils.ts",
+        "pages/DocsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/select.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "SecretsPage": {
+      "files": [
+        "api/apps.ts",
+        "api/client.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/select.tsx",
+        "lib/utils.ts",
+        "pages/SecretsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/select.tsx"
+      ]
+    },
+    "OrdersPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/hosting/HostingFulfillmentStatus.tsx",
+        "components/shared/BulkActionBar.tsx",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/ItemRefundLedger.tsx",
+        "components/shared/JsonViewer.tsx",
+        "components/shared/OrderItems.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "hooks/useTableState.ts",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/OrdersPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "PaymentsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/payments.ts",
+        "components/payments/WechatPaySettingsPanel.tsx",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/PaymentsPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@lingcoo/contracts/models",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "react",
+        "react-hook-form",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "SettingsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "api/storage.ts",
+        "components/settings/IntegrationFields.tsx",
+        "components/settings/RotateSecretsButton.tsx",
+        "components/settings/SmtpSettingsPanel.tsx",
+        "components/settings/integration-definitions.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/storage/AssetImageField.tsx",
+        "components/storage/AssetImagePickerDialog.tsx",
+        "components/storage/AssetLibrary.tsx",
+        "components/storage/StorageSettingsPanel.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/scroll-area.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/SettingsPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-scroll-area",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/scroll-area.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "LicensesPage": {
+      "files": [
+        "api/admin.ts",
+        "api/apps.ts",
+        "api/client.ts",
+        "components/shared/ConfirmActionDialog.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useTableState.ts",
+        "lib/async-events.ts",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/LicensesPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-alert-dialog",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/alert-dialog.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "TicketsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/TicketsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "UsersPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/UsersPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "InstallsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/InstallsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "NotificationsPage": {
+      "files": [
+        "api/admin.ts",
+        "api/client.ts",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx",
+        "hooks/useTableState.ts",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/utils.ts",
+        "pages/NotificationsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/textarea.tsx"
+      ]
+    },
+    "HostingPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/hosting/AddHostingNode.tsx",
+        "components/hosting/HostingExitPanel.tsx",
+        "components/hosting/HostingHandoverPanel.tsx",
+        "components/hosting/HostingIncidents.tsx",
+        "components/hosting/HostingInstances.tsx",
+        "components/hosting/HostingNodeCard.tsx",
+        "components/hosting/HostingOffers.tsx",
+        "components/hosting/HostingServicePanel.tsx",
+        "components/hosting/HostingUpgradePanel.tsx",
+        "components/hosting/HostingVisuals.tsx",
+        "components/hosting/useHostingOverview.ts",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/tabs.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/HostingPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-dialog",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/tabs.tsx"
+      ]
+    },
+    "AdminDeploymentsPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/hosting/HostingExitPanel.tsx",
+        "components/hosting/HostingHandoverPanel.tsx",
+        "components/hosting/HostingServicePanel.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/utils.ts",
+        "pages/AdminDeploymentsPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/sheet.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    "ObservabilityPage": {
+      "files": [
+        "api/admin.ts",
+        "api/auth.ts",
+        "api/client.ts",
+        "api/settings.ts",
+        "components/portal/EmptyState.tsx",
+        "components/shared/DataTable.tsx",
+        "components/shared/FilterChipBar.tsx",
+        "components/shared/JsonViewer.tsx",
+        "components/shared/PaginationBar.tsx",
+        "components/shared/SectionHeader.tsx",
+        "components/shared/Skeleton.tsx",
+        "components/shared/StatusPill.tsx",
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx",
+        "hooks/useTableState.ts",
+        "lib/auth.tsx",
+        "lib/foundation.ts",
+        "lib/portal-labels.ts",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/ObservabilityPage.tsx"
+      ],
+      "packages": [
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-checkbox",
+        "@radix-ui/react-label",
+        "@radix-ui/react-select",
+        "@radix-ui/react-slot",
+        "@radix-ui/react-tabs",
+        "@tanstack/react-query",
+        "@tanstack/react-table",
+        "class-variance-authority",
+        "clsx",
+        "lucide-react",
+        "radix-ui",
+        "react",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/checkbox.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "components/ui/popover.tsx",
+        "components/ui/select.tsx",
+        "components/ui/table.tsx",
+        "components/ui/tabs.tsx"
+      ]
+    },
+    "LoginPage": {
+      "files": [
+        "api/auth.ts",
+        "api/client.ts",
+        "components/ui/button.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx",
+        "lib/async-events.ts",
+        "lib/auth.tsx",
+        "lib/rbac.ts",
+        "lib/site-settings.ts",
+        "lib/toast.ts",
+        "lib/utils.ts",
+        "pages/LoginPage.tsx"
+      ],
+      "packages": [
+        "@hookform/resolvers/zod",
+        "@lingcoo/api-client",
+        "@lingcoo/contracts",
+        "@radix-ui/react-label",
+        "@radix-ui/react-slot",
+        "@tanstack/react-query",
+        "class-variance-authority",
+        "clsx",
+        "react",
+        "react-hook-form",
+        "react-router-dom",
+        "sonner",
+        "tailwind-merge",
+        "zod"
+      ],
+      "legacyUiFiles": [
+        "components/ui/button.tsx",
+        "components/ui/form.tsx",
+        "components/ui/input.tsx",
+        "components/ui/label.tsx"
+      ]
+    }
+  },
+  "shell": {
+    "files": [
+      "api/auth.ts",
+      "api/client.ts",
+      "api/settings.ts",
+      "components/layout/RouteSlot.tsx",
+      "components/layout/Shell.tsx",
+      "components/layout/Sidebar.tsx",
+      "components/layout/Topbar.tsx",
+      "components/shared/CommandPalette.tsx",
+      "components/shared/ThemeToggle.tsx",
+      "components/ui/avatar.tsx",
+      "components/ui/button.tsx",
+      "components/ui/command.tsx",
+      "components/ui/dialog.tsx",
+      "components/ui/dropdown-menu.tsx",
+      "components/ui/scroll-area.tsx",
+      "components/ui/sheet.tsx",
+      "components/ui/tooltip.tsx",
+      "lib/async-events.ts",
+      "lib/auth.tsx",
+      "lib/foundation.ts",
+      "lib/rbac.ts",
+      "lib/section-icons.tsx",
+      "lib/site-settings.ts",
+      "lib/theme.tsx",
+      "lib/toast.ts",
+      "lib/utils.ts"
+    ],
+    "packages": [
+      "@lingcoo/api-client",
+      "@lingcoo/contracts",
+      "@radix-ui/react-avatar",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-scroll-area",
+      "@radix-ui/react-slot",
+      "@tanstack/react-query",
+      "class-variance-authority",
+      "clsx",
+      "cmdk",
+      "lucide-react",
+      "radix-ui",
+      "react",
+      "react-error-boundary",
+      "react-router-dom",
+      "sonner",
+      "tailwind-merge"
+    ],
+    "legacyUiFiles": [
+      "components/ui/avatar.tsx",
+      "components/ui/button.tsx",
+      "components/ui/command.tsx",
+      "components/ui/dialog.tsx",
+      "components/ui/dropdown-menu.tsx",
+      "components/ui/scroll-area.tsx",
+      "components/ui/sheet.tsx",
+      "components/ui/tooltip.tsx"
+    ]
+  },
+  "assets": [
+    {
+      "file": "AccountCenterPage-Cfy_DMyB.js",
+      "bytes": 33490,
+      "gzipBytes": 9955
+    },
+    {
+      "file": "AccountTicketsTab-B68WwZR-.js",
+      "bytes": 9643,
+      "gzipBytes": 3494
+    },
+    {
+      "file": "AdminDeploymentsPage-v0puD-Tx.js",
+      "bytes": 7863,
+      "gzipBytes": 3248
+    },
+    {
+      "file": "AiTranslateWorkflowPrivacyPage-BhpOQosl.js",
+      "bytes": 8660,
+      "gzipBytes": 3698
+    },
+    {
+      "file": "AiTranslateWorkflowSupportPage-BPnZMmX7.js",
+      "bytes": 6792,
+      "gzipBytes": 3046
+    },
+    {
+      "file": "AppCatalogPage-CPByfsjw.js",
+      "bytes": 37504,
+      "gzipBytes": 10237
+    },
+    {
+      "file": "AppEditPage-BDMGO-ot.js",
+      "bytes": 791443,
+      "gzipBytes": 276801
+    },
+    {
+      "file": "AppEditPage-CePAQ54o.css",
+      "bytes": 33811,
+      "gzipBytes": 6014
+    },
+    {
+      "file": "AppsPage-BGFo_4i1.js",
+      "bytes": 12927,
+      "gzipBytes": 4984
+    },
+    {
+      "file": "AssetImageField-fQdQS4zf.js",
+      "bytes": 1812,
+      "gzipBytes": 1060
+    },
+    {
+      "file": "AssetLibrary-sjQIGo2d.js",
+      "bytes": 17052,
+      "gzipBytes": 5906
+    },
+    {
+      "file": "ConfirmActionDialog-C_UlgQlW.js",
+      "bytes": 4149,
+      "gzipBytes": 1498
+    },
+    {
+      "file": "ContentDetailPage-C5tFTQBR.js",
+      "bytes": 7202,
+      "gzipBytes": 2796
+    },
+    {
+      "file": "ContentEditPage-COOp--VS.js",
+      "bytes": 4874,
+      "gzipBytes": 1771
+    },
+    {
+      "file": "ContentHubPage-SDHIgMqV.js",
+      "bytes": 3989,
+      "gzipBytes": 1750
+    },
+    {
+      "file": "ContentPage-Dl5E0Jb2.js",
+      "bytes": 8808,
+      "gzipBytes": 2961
+    },
+    {
+      "file": "CreateTicketPage-__ByXfSS.js",
+      "bytes": 5190,
+      "gzipBytes": 2078
+    },
+    {
+      "file": "DashboardPage-DbQUVsKM.js",
+      "bytes": 15054,
+      "gzipBytes": 5413
+    },
+    {
+      "file": "DataTable-xg7ppYvr.js",
+      "bytes": 52795,
+      "gzipBytes": 14529
+    },
+    {
+      "file": "DeploymentsPage-1n5wCOFo.js",
+      "bytes": 65943,
+      "gzipBytes": 17835
+    },
+    {
+      "file": "DocsHubPage-8iYZmvmd.js",
+      "bytes": 2356,
+      "gzipBytes": 1093
+    },
+    {
+      "file": "DocsPage-CZ48Wpg_.js",
+      "bytes": 12031,
+      "gzipBytes": 3568
+    },
+    {
+      "file": "DocsSpacePage-BhIz3PeJ.js",
+      "bytes": 9599,
+      "gzipBytes": 3761
+    },
+    {
+      "file": "ForgotPasswordPage-BPeRpEwb.js",
+      "bytes": 3429,
+      "gzipBytes": 1571
+    },
+    {
+      "file": "HomePage-CED5tlGQ.js",
+      "bytes": 5994,
+      "gzipBytes": 2284
+    },
+    {
+      "file": "HostingFulfillmentStatus-DB-0mpat.js",
+      "bytes": 6687,
+      "gzipBytes": 2639
+    },
+    {
+      "file": "HostingPage-CO8kNg5V.js",
+      "bytes": 50171,
+      "gzipBytes": 14914
+    },
+    {
+      "file": "HostingServicePanel-CP8S5P_q.js",
+      "bytes": 18014,
+      "gzipBytes": 6291
+    },
+    {
+      "file": "InstallsPage-DEOn_SRH.js",
+      "bytes": 5502,
+      "gzipBytes": 2448
+    },
+    {
+      "file": "JsonViewer-BC7leX3J.js",
+      "bytes": 860,
+      "gzipBytes": 505
+    },
+    {
+      "file": "LicensesPage-D_Azt_aq.js",
+      "bytes": 7787,
+      "gzipBytes": 3298
+    },
+    {
+      "file": "LoginPage-xdrsGrTg.js",
+      "bytes": 3359,
+      "gzipBytes": 1593
+    },
+    {
+      "file": "MyTicketsPage-DPkQjME0.js",
+      "bytes": 1345,
+      "gzipBytes": 797
+    },
+    {
+      "file": "NotificationsPage-D3ad5U50.js",
+      "bytes": 8594,
+      "gzipBytes": 3325
+    },
+    {
+      "file": "ObservabilityPage-DYcESlTp.js",
+      "bytes": 18051,
+      "gzipBytes": 5424
+    },
+    {
+      "file": "OrderItems-oJ-6QE2m.js",
+      "bytes": 1458,
+      "gzipBytes": 844
+    },
+    {
+      "file": "OrdersPage-Dw5sG7Xv.js",
+      "bytes": 14853,
+      "gzipBytes": 5149
+    },
+    {
+      "file": "PaginationBar-CMcE7M0s.js",
+      "bytes": 1038,
+      "gzipBytes": 604
+    },
+    {
+      "file": "PaymentsPage-CiZaDTsV.js",
+      "bytes": 12610,
+      "gzipBytes": 4804
+    },
+    {
+      "file": "SecretsPage-BsisPWoE.js",
+      "bytes": 5259,
+      "gzipBytes": 2078
+    },
+    {
+      "file": "SectionHeader-Bhm8kYeB.js",
+      "bytes": 316,
+      "gzipBytes": 245
+    },
+    {
+      "file": "SettingsPage-D9dwNrTj.js",
+      "bytes": 57903,
+      "gzipBytes": 15062
+    },
+    {
+      "file": "Skeleton-DR52spOc.js",
+      "bytes": 1526,
+      "gzipBytes": 528
+    },
+    {
+      "file": "StatusPill-YwzV8PtM.js",
+      "bytes": 1136,
+      "gzipBytes": 557
+    },
+    {
+      "file": "StoragePage-DU-qhhjV.js",
+      "bytes": 509,
+      "gzipBytes": 333
+    },
+    {
+      "file": "TicketsPage-m_W_Z8Ki.js",
+      "bytes": 14304,
+      "gzipBytes": 4944
+    },
+    {
+      "file": "UserAuthPage-B9-6JBsc.js",
+      "bytes": 2886,
+      "gzipBytes": 1418
+    },
+    {
+      "file": "UsersPage-Cp1rR8ue.js",
+      "bytes": 20431,
+      "gzipBytes": 5468
+    },
+    {
+      "file": "VerifyEmailPage-DBl-29ul.js",
+      "bytes": 1820,
+      "gzipBytes": 1005
+    },
+    {
+      "file": "abap-BdImnpbu.js",
+      "bytes": 15852,
+      "gzipBytes": 5905
+    },
+    {
+      "file": "actionscript-3-CoDkCxhg.js",
+      "bytes": 15205,
+      "gzipBytes": 2664
+    },
+    {
+      "file": "ada-bCR0ucgS.js",
+      "bytes": 48082,
+      "gzipBytes": 6030
+    },
+    {
+      "file": "admin-BWTsuRP8.js",
+      "bytes": 5460,
+      "gzipBytes": 1083
+    },
+    {
+      "file": "andromeeda-C4gqWexZ.js",
+      "bytes": 9015,
+      "gzipBytes": 2364
+    },
+    {
+      "file": "angular-html-CU67Zn6k.js",
+      "bytes": 24287,
+      "gzipBytes": 4010
+    },
+    {
+      "file": "angular-ts-BwZT4LLn.js",
+      "bytes": 183820,
+      "gzipBytes": 16631
+    },
+    {
+      "file": "apache-Pmp26Uib.js",
+      "bytes": 12456,
+      "gzipBytes": 3722
+    },
+    {
+      "file": "apex-D8_7TLub.js",
+      "bytes": 46985,
+      "gzipBytes": 6765
+    },
+    {
+      "file": "apl-dKokRX4l.js",
+      "bytes": 24039,
+      "gzipBytes": 4199
+    },
+    {
+      "file": "app-catalog-ui-D1JQS19l.js",
+      "bytes": 2065,
+      "gzipBytes": 902
+    },
+    {
+      "file": "app-delivery-DImv-CDw.js",
+      "bytes": 6556,
+      "gzipBytes": 2174
+    },
+    {
+      "file": "app-detail-DH-pdN6h.js",
+      "bytes": 1861,
+      "gzipBytes": 755
+    },
+    {
+      "file": "applescript-Co6uUVPk.js",
+      "bytes": 29571,
+      "gzipBytes": 5929
+    },
+    {
+      "file": "apps-B7B7lum0.js",
+      "bytes": 1387,
+      "gzipBytes": 410
+    },
+    {
+      "file": "ara-BRHolxvo.js",
+      "bytes": 6362,
+      "gzipBytes": 1812
+    },
+    {
+      "file": "archive-DFGy0rqF.js",
+      "bytes": 426,
+      "gzipBytes": 312
+    },
+    {
+      "file": "arrow-left-Dj5NZeoj.js",
+      "bytes": 338,
+      "gzipBytes": 267
+    },
+    {
+      "file": "asciidoc-Ve4PFQV2.js",
+      "bytes": 131527,
+      "gzipBytes": 9340
+    },
+    {
+      "file": "asm-D_Q5rh1f.js",
+      "bytes": 40717,
+      "gzipBytes": 8206
+    },
+    {
+      "file": "astro-CbQHKStN.js",
+      "bytes": 24008,
+      "gzipBytes": 7544
+    },
+    {
+      "file": "aurora-x-D-2ljcwZ.js",
+      "bytes": 13659,
+      "gzipBytes": 2283
+    },
+    {
+      "file": "awk-DMzUqQB5.js",
+      "bytes": 5461,
+      "gzipBytes": 1383
+    },
+    {
+      "file": "ayu-dark-DYE7WIF3.js",
+      "bytes": 20081,
+      "gzipBytes": 3944
+    },
+    {
+      "file": "ayu-light-BA47KaF1.js",
+      "bytes": 20152,
+      "gzipBytes": 3926
+    },
+    {
+      "file": "ayu-mirage-32ctXXKs.js",
+      "bytes": 20085,
+      "gzipBytes": 3935
+    },
+    {
+      "file": "badge-Dh8RauIP.js",
+      "bytes": 644,
+      "gzipBytes": 349
+    },
+    {
+      "file": "ballerina-BFfxhgS-.js",
+      "bytes": 58693,
+      "gzipBytes": 8150
+    },
+    {
+      "file": "bat-BkioyH1T.js",
+      "bytes": 12888,
+      "gzipBytes": 3223
+    },
+    {
+      "file": "beancount-k_qm7-4y.js",
+      "bytes": 10373,
+      "gzipBytes": 1437
+    },
+    {
+      "file": "bell-ring-B7D9WtDJ.js",
+      "bytes": 570,
+      "gzipBytes": 386
+    },
+    {
+      "file": "berry-uYugtg8r.js",
+      "bytes": 3005,
+      "gzipBytes": 814
+    },
+    {
+      "file": "bibtex-CHM0blh-.js",
+      "bytes": 4795,
+      "gzipBytes": 834
+    },
+    {
+      "file": "bicep-Bmn6On1c.js",
+      "bytes": 5382,
+      "gzipBytes": 1151
+    },
+    {
+      "file": "bird2-DPOp833l.js",
+      "bytes": 16968,
+      "gzipBytes": 3850
+    },
+    {
+      "file": "blade-D4QpJJKB.js",
+      "bytes": 104981,
+      "gzipBytes": 28195
+    },
+    {
+      "file": "bsl-BO_Y6i37.js",
+      "bytes": 33867,
+      "gzipBytes": 8347
+    },
+    {
+      "file": "c-BIGW1oBm.js",
+      "bytes": 72113,
+      "gzipBytes": 10505
+    },
+    {
+      "file": "c3-eo99z4R2.js",
+      "bytes": 25631,
+      "gzipBytes": 3873
+    },
+    {
+      "file": "cadence-Bv_4Rxtq.js",
+      "bytes": 23669,
+      "gzipBytes": 3665
+    },
+    {
+      "file": "cairo-KRGpt6FW.js",
+      "bytes": 2936,
+      "gzipBytes": 805
+    },
+    {
+      "file": "card-CpBNYbsO.js",
+      "bytes": 1002,
+      "gzipBytes": 371
+    },
+    {
+      "file": "catppuccin-frappe-DFWUc33u.js",
+      "bytes": 47258,
+      "gzipBytes": 8015
+    },
+    {
+      "file": "catppuccin-latte-C9dUb6Cb.js",
+      "bytes": 47256,
+      "gzipBytes": 8002
+    },
+    {
+      "file": "catppuccin-macchiato-DQyhUUbL.js",
+      "bytes": 47263,
+      "gzipBytes": 8007
+    },
+    {
+      "file": "catppuccin-mocha-D87Tk5Gz.js",
+      "bytes": 47255,
+      "gzipBytes": 8001
+    },
+    {
+      "file": "checkbox-CsyimTr3.js",
+      "bytes": 4346,
+      "gzipBytes": 1881
+    },
+    {
+      "file": "chevron-left-C9kCSJCg.js",
+      "bytes": 303,
+      "gzipBytes": 249
+    },
+    {
+      "file": "circle-check-Ds5Wr-sz.js",
+      "bytes": 346,
+      "gzipBytes": 272
+    },
+    {
+      "file": "clarity-D53aC0YG.js",
+      "bytes": 14275,
+      "gzipBytes": 2462
+    },
+    {
+      "file": "clojure-P80f7IUj.js",
+      "bytes": 6413,
+      "gzipBytes": 1419
+    },
+    {
+      "file": "cmake-D1j8_8rp.js",
+      "bytes": 9855,
+      "gzipBytes": 3373
+    },
+    {
+      "file": "cobol-nwyudZeR.js",
+      "bytes": 39148,
+      "gzipBytes": 10869
+    },
+    {
+      "file": "codeowners-Bp6g37R7.js",
+      "bytes": 547,
+      "gzipBytes": 318
+    },
+    {
+      "file": "codeql-DsOJ9woJ.js",
+      "bytes": 26883,
+      "gzipBytes": 3791
+    },
+    {
+      "file": "coffee-Ch7k5sss.js",
+      "bytes": 27422,
+      "gzipBytes": 6352
+    },
+    {
+      "file": "common-lisp-Cg-RD9OK.js",
+      "bytes": 22581,
+      "gzipBytes": 6061
+    },
+    {
+      "file": "content-Ckew2m5O.js",
+      "bytes": 391,
+      "gzipBytes": 273
+    },
+    {
+      "file": "copy-BnlS4dXk.js",
+      "bytes": 404,
+      "gzipBytes": 311
+    },
+    {
+      "file": "coq-DkFqJrB1.js",
+      "bytes": 5526,
+      "gzipBytes": 1915
+    },
+    {
+      "file": "cpp-CofmeUqb.js",
+      "bytes": 626081,
+      "gzipBytes": 44821
+    },
+    {
+      "file": "credit-card-BcVWxnzz.js",
+      "bytes": 380,
+      "gzipBytes": 294
+    },
+    {
+      "file": "crystal-tKQVLTB8.js",
+      "bytes": 29388,
+      "gzipBytes": 4444
+    },
+    {
+      "file": "csharp-COcwbKMJ.js",
+      "bytes": 89687,
+      "gzipBytes": 10691
+    },
+    {
+      "file": "css-DPfMkruS.js",
+      "bytes": 49023,
+      "gzipBytes": 11853
+    },
+    {
+      "file": "csv-fuZLfV_i.js",
+      "bytes": 1143,
+      "gzipBytes": 369
+    },
+    {
+      "file": "cue-D82EKSYY.js",
+      "bytes": 16204,
+      "gzipBytes": 2057
+    },
+    {
+      "file": "cypher-COkxafJQ.js",
+      "bytes": 5956,
+      "gzipBytes": 1725
+    },
+    {
+      "file": "d-85-TOEBH.js",
+      "bytes": 43795,
+      "gzipBytes": 8471
+    },
+    {
+      "file": "dark-plus-C3mMm8J8.js",
+      "bytes": 9097,
+      "gzipBytes": 2100
+    },
+    {
+      "file": "dart-CF10PKvl.js",
+      "bytes": 7812,
+      "gzipBytes": 1914
+    },
+    {
+      "file": "dax-CEL-wOlO.js",
+      "bytes": 5365,
+      "gzipBytes": 2226
+    },
+    {
+      "file": "desktop-BmXAJ9_W.js",
+      "bytes": 1833,
+      "gzipBytes": 763
+    },
+    {
+      "file": "diff-D97Zzqfu.js",
+      "bytes": 2569,
+      "gzipBytes": 695
+    },
+    {
+      "file": "docker-BcOcwvcX.js",
+      "bytes": 1741,
+      "gzipBytes": 600
+    },
+    {
+      "file": "dotenv-Da5cRb03.js",
+      "bytes": 1422,
+      "gzipBytes": 534
+    },
+    {
+      "file": "download-B5Z4T5AD.js",
+      "bytes": 435,
+      "gzipBytes": 322
+    },
+    {
+      "file": "dracula-BzJJZx-M.js",
+      "bytes": 21066,
+      "gzipBytes": 4004
+    },
+    {
+      "file": "dracula-soft-BXkSAIEj.js",
+      "bytes": 21076,
+      "gzipBytes": 4035
+    },
+    {
+      "file": "dream-maker-BtqSS_iP.js",
+      "bytes": 10469,
+      "gzipBytes": 2251
+    },
+    {
+      "file": "edge-BkV0erSs.js",
+      "bytes": 2363,
+      "gzipBytes": 702
+    },
+    {
+      "file": "elixir-CDX3lj18.js",
+      "bytes": 16321,
+      "gzipBytes": 2797
+    },
+    {
+      "file": "elm-DbKCFpqz.js",
+      "bytes": 10968,
+      "gzipBytes": 2119
+    },
+    {
+      "file": "emacs-lisp-C9XAeP06.js",
+      "bytes": 779854,
+      "gzipBytes": 196031
+    },
+    {
+      "file": "erb-B12qg9BL.js",
+      "bytes": 2607,
+      "gzipBytes": 843
+    },
+    {
+      "file": "erlang-DsQrWhSR.js",
+      "bytes": 37480,
+      "gzipBytes": 4404
+    },
+    {
+      "file": "everforest-dark-BgDCqdQA.js",
+      "bytes": 53745,
+      "gzipBytes": 8419
+    },
+    {
+      "file": "everforest-light-C8M2exoo.js",
+      "bytes": 53748,
+      "gzipBytes": 8419
+    },
+    {
+      "file": "eye-BkvnfH07.js",
+      "bytes": 424,
+      "gzipBytes": 304
+    },
+    {
+      "file": "eye-off-z-TVnlSz.js",
+      "bytes": 603,
+      "gzipBytes": 379
+    },
+    {
+      "file": "fennel-BYunw83y.js",
+      "bytes": 4768,
+      "gzipBytes": 1534
+    },
+    {
+      "file": "fish-BvzEVeQv.js",
+      "bytes": 13038,
+      "gzipBytes": 1735
+    },
+    {
+      "file": "fluent-C4IJs8-o.js",
+      "bytes": 3610,
+      "gzipBytes": 901
+    },
+    {
+      "file": "form-3W4oA54J.js",
+      "bytes": 46118,
+      "gzipBytes": 16062
+    },
+    {
+      "file": "fortran-fixed-form-CkoXwp7k.js",
+      "bytes": 1665,
+      "gzipBytes": 691
+    },
+    {
+      "file": "fortran-free-form-BxgE0vQu.js",
+      "bytes": 88969,
+      "gzipBytes": 11265
+    },
+    {
+      "file": "fsharp-CXgrBDvD.js",
+      "bytes": 25305,
+      "gzipBytes": 4133
+    },
+    {
+      "file": "gdresource-BOOCDP_w.js",
+      "bytes": 5285,
+      "gzipBytes": 1340
+    },
+    {
+      "file": "gdscript-C5YyOfLZ.js",
+      "bytes": 18992,
+      "gzipBytes": 3748
+    },
+    {
+      "file": "gdshader-DkwncUOv.js",
+      "bytes": 6326,
+      "gzipBytes": 1730
+    },
+    {
+      "file": "genie-D0YGMca9.js",
+      "bytes": 3356,
+      "gzipBytes": 1209
+    },
+    {
+      "file": "gherkin-DyxjwDmM.js",
+      "bytes": 11946,
+      "gzipBytes": 5054
+    },
+    {
+      "file": "git-commit-F4YmCXRG.js",
+      "bytes": 1230,
+      "gzipBytes": 527
+    },
+    {
+      "file": "git-rebase-r7XF79zn.js",
+      "bytes": 983,
+      "gzipBytes": 436
+    },
+    {
+      "file": "github-dark-DHJKELXO.js",
+      "bytes": 11405,
+      "gzipBytes": 2552
+    },
+    {
+      "file": "github-dark-default-Cuk6v7N8.js",
+      "bytes": 14435,
+      "gzipBytes": 3132
+    },
+    {
+      "file": "github-dark-dimmed-DH5Ifo-i.js",
+      "bytes": 14433,
+      "gzipBytes": 3125
+    },
+    {
+      "file": "github-dark-high-contrast-E3gJ1_iC.js",
+      "bytes": 14595,
+      "gzipBytes": 3087
+    },
+    {
+      "file": "github-light-DAi9KRSo.js",
+      "bytes": 11184,
+      "gzipBytes": 2508
+    },
+    {
+      "file": "github-light-default-D7oLnXFd.js",
+      "bytes": 14156,
+      "gzipBytes": 3040
+    },
+    {
+      "file": "github-light-high-contrast-BfjtVDDH.js",
+      "bytes": 14275,
+      "gzipBytes": 3022
+    },
+    {
+      "file": "gleam-BspZqrRM.js",
+      "bytes": 2577,
+      "gzipBytes": 819
+    },
+    {
+      "file": "glimmer-js-Rg0-pVw9.js",
+      "bytes": 20071,
+      "gzipBytes": 2947
+    },
+    {
+      "file": "glimmer-ts-U6CK756n.js",
+      "bytes": 20071,
+      "gzipBytes": 2942
+    },
+    {
+      "file": "glsl-DplSGwfg.js",
+      "bytes": 3634,
+      "gzipBytes": 1407
+    },
+    {
+      "file": "gn-n2N0HUVH.js",
+      "bytes": 4002,
+      "gzipBytes": 1487
+    },
+    {
+      "file": "gnuplot-DdkO51Og.js",
+      "bytes": 14783,
+      "gzipBytes": 3271
+    },
+    {
+      "file": "go-CxLEBnE3.js",
+      "bytes": 46808,
+      "gzipBytes": 5181
+    },
+    {
+      "file": "graphql-ChdNCCLP.js",
+      "bytes": 18002,
+      "gzipBytes": 2521
+    },
+    {
+      "file": "groovy-gcz8RCvz.js",
+      "bytes": 19179,
+      "gzipBytes": 3599
+    },
+    {
+      "file": "gruvbox-dark-hard-CFHQjOhq.js",
+      "bytes": 22633,
+      "gzipBytes": 4175
+    },
+    {
+      "file": "gruvbox-dark-medium-GsRaNv29.js",
+      "bytes": 22637,
+      "gzipBytes": 4177
+    },
+    {
+      "file": "gruvbox-dark-soft-CVdnzihN.js",
+      "bytes": 22633,
+      "gzipBytes": 4174
+    },
+    {
+      "file": "gruvbox-light-hard-CH1njM8p.js",
+      "bytes": 22636,
+      "gzipBytes": 4184
+    },
+    {
+      "file": "gruvbox-light-medium-DRw_LuNl.js",
+      "bytes": 22640,
+      "gzipBytes": 4184
+    },
+    {
+      "file": "gruvbox-light-soft-hJgmCMqR.js",
+      "bytes": 22636,
+      "gzipBytes": 4183
+    },
+    {
+      "file": "hack-CaT9iCJl.js",
+      "bytes": 80241,
+      "gzipBytes": 26205
+    },
+    {
+      "file": "haml-B8DHNrY2.js",
+      "bytes": 8263,
+      "gzipBytes": 1807
+    },
+    {
+      "file": "handlebars-BL8al0AC.js",
+      "bytes": 12150,
+      "gzipBytes": 2377
+    },
+    {
+      "file": "haskell-Df6bDoY_.js",
+      "bytes": 41490,
+      "gzipBytes": 6435
+    },
+    {
+      "file": "haxe-CzTSHFRz.js",
+      "bytes": 35164,
+      "gzipBytes": 5911
+    },
+    {
+      "file": "hcl-BWvSN4gD.js",
+      "bytes": 10053,
+      "gzipBytes": 1931
+    },
+    {
+      "file": "hjson-D5-asLiD.js",
+      "bytes": 12053,
+      "gzipBytes": 1641
+    },
+    {
+      "file": "hlsl-D3lLCCz7.js",
+      "bytes": 7264,
+      "gzipBytes": 2188
+    },
+    {
+      "file": "horizon-BUw7H-hv.js",
+      "bytes": 8780,
+      "gzipBytes": 1957
+    },
+    {
+      "file": "horizon-bright-Cn-bp-IR.js",
+      "bytes": 8786,
+      "gzipBytes": 1967
+    },
+    {
+      "file": "houston-DnULxvSX.js",
+      "bytes": 35422,
+      "gzipBytes": 5782
+    },
+    {
+      "file": "html-GMplVEZG.js",
+      "bytes": 57247,
+      "gzipBytes": 11686
+    },
+    {
+      "file": "html-derivative-BFtXZ54Q.js",
+      "bytes": 900,
+      "gzipBytes": 495
+    },
+    {
+      "file": "http-jrhK8wxY.js",
+      "bytes": 4549,
+      "gzipBytes": 1117
+    },
+    {
+      "file": "hurl-irOxFIW8.js",
+      "bytes": 3652,
+      "gzipBytes": 1162
+    },
+    {
+      "file": "hxml-Bvhsp5Yf.js",
+      "bytes": 1743,
+      "gzipBytes": 884
+    },
+    {
+      "file": "hy-DFXneXwc.js",
+      "bytes": 2648,
+      "gzipBytes": 1181
+    },
+    {
+      "file": "imba-DGztddWO.js",
+      "bytes": 49930,
+      "gzipBytes": 9455
+    },
+    {
+      "file": "index-0bw-alwQ.js",
+      "bytes": 823154,
+      "gzipBytes": 244939
+    },
+    {
+      "file": "index-D33Vt29Z.js",
+      "bytes": 329906,
+      "gzipBytes": 99893
+    },
+    {
+      "file": "index-DDYQ10ZP.js",
+      "bytes": 185854,
+      "gzipBytes": 58565
+    },
+    {
+      "file": "index-DEMwmnjR.css",
+      "bytes": 108299,
+      "gzipBytes": 18127
+    },
+    {
+      "file": "index-Dgwdgj2v.js",
+      "bytes": 13304,
+      "gzipBytes": 5290
+    },
+    {
+      "file": "ini-BEwlwnbL.js",
+      "bytes": 1525,
+      "gzipBytes": 499
+    },
+    {
+      "file": "input-CN0xkzG5.js",
+      "bytes": 564,
+      "gzipBytes": 348
+    },
+    {
+      "file": "java-CylS5w8V.js",
+      "bytes": 27219,
+      "gzipBytes": 4263
+    },
+    {
+      "file": "javascript-wDzz0qaB.js",
+      "bytes": 174827,
+      "gzipBytes": 16513
+    },
+    {
+      "file": "jinja-4LBKfQ-Z.js",
+      "bytes": 5685,
+      "gzipBytes": 1397
+    },
+    {
+      "file": "jison-wvAkD_A8.js",
+      "bytes": 9690,
+      "gzipBytes": 1854
+    },
+    {
+      "file": "json-Cp-IABpG.js",
+      "bytes": 2824,
+      "gzipBytes": 780
+    },
+    {
+      "file": "json5-C9tS-k6U.js",
+      "bytes": 3254,
+      "gzipBytes": 832
+    },
+    {
+      "file": "jsonc-Des-eS-w.js",
+      "bytes": 3109,
+      "gzipBytes": 797
+    },
+    {
+      "file": "jsonl-DcaNXYhu.js",
+      "bytes": 3011,
+      "gzipBytes": 792
+    },
+    {
+      "file": "jsonnet-DFQXde-d.js",
+      "bytes": 3618,
+      "gzipBytes": 1045
+    },
+    {
+      "file": "jssm-C2t-YnRu.js",
+      "bytes": 2238,
+      "gzipBytes": 622
+    },
+    {
+      "file": "jsx-g9-lgVsj.js",
+      "bytes": 177792,
+      "gzipBytes": 16607
+    },
+    {
+      "file": "julia-CxzCAyBv.js",
+      "bytes": 31066,
+      "gzipBytes": 4327
+    },
+    {
+      "file": "just-Cw27pwNe.js",
+      "bytes": 11162,
+      "gzipBytes": 2782
+    },
+    {
+      "file": "kanagawa-dragon-CkXjmgJE.js",
+      "bytes": 17127,
+      "gzipBytes": 2948
+    },
+    {
+      "file": "kanagawa-lotus-CfQXZHmo.js",
+      "bytes": 17126,
+      "gzipBytes": 2932
+    },
+    {
+      "file": "kanagawa-wave-DWedfzmr.js",
+      "bytes": 17123,
+      "gzipBytes": 2929
+    },
+    {
+      "file": "kdl-DV7GczEv.js",
+      "bytes": 3629,
+      "gzipBytes": 1042
+    },
+    {
+      "file": "kotlin-BdnUsdx6.js",
+      "bytes": 8785,
+      "gzipBytes": 2130
+    },
+    {
+      "file": "kusto-DZf3V79B.js",
+      "bytes": 15173,
+      "gzipBytes": 3921
+    },
+    {
+      "file": "label-LeOqYdiu.js",
+      "bytes": 620,
+      "gzipBytes": 421
+    },
+    {
+      "file": "laserwave-DUszq2jm.js",
+      "bytes": 11499,
+      "gzipBytes": 2577
+    },
+    {
+      "file": "latex-CWtU0Tv5.js",
+      "bytes": 72644,
+      "gzipBytes": 6721
+    },
+    {
+      "file": "lean-BZvkOJ9d.js",
+      "bytes": 5784,
+      "gzipBytes": 1915
+    },
+    {
+      "file": "less-B1dDrJ26.js",
+      "bytes": 97633,
+      "gzipBytes": 14697
+    },
+    {
+      "file": "light-plus-B7mTdjB0.js",
+      "bytes": 9941,
+      "gzipBytes": 2274
+    },
+    {
+      "file": "liquid-DYVedYrR.js",
+      "bytes": 18089,
+      "gzipBytes": 3155
+    },
+    {
+      "file": "llvm-DjAJT7YJ.js",
+      "bytes": 5050,
+      "gzipBytes": 2014
+    },
+    {
+      "file": "loader-circle-CpUgtvqm.js",
+      "bytes": 312,
+      "gzipBytes": 256
+    },
+    {
+      "file": "log-2UxHyX5q.js",
+      "bytes": 2852,
+      "gzipBytes": 899
+    },
+    {
+      "file": "logo-BtOb2qkB.js",
+      "bytes": 3127,
+      "gzipBytes": 1470
+    },
+    {
+      "file": "lua-BaeVxFsk.js",
+      "bytes": 15535,
+      "gzipBytes": 3161
+    },
+    {
+      "file": "luau-C-HG3fhB.js",
+      "bytes": 13964,
+      "gzipBytes": 3179
+    },
+    {
+      "file": "make-CHLpvVh8.js",
+      "bytes": 8961,
+      "gzipBytes": 1767
+    },
+    {
+      "file": "markdown-Cvjx9yec.js",
+      "bytes": 59335,
+      "gzipBytes": 5643
+    },
+    {
+      "file": "markdown-DfHw1ja9.js",
+      "bytes": 4677,
+      "gzipBytes": 2274
+    },
+    {
+      "file": "marko-CnJfTvn9.js",
+      "bytes": 25479,
+      "gzipBytes": 3589
+    },
+    {
+      "file": "material-theme-D5KoaKCx.js",
+      "bytes": 18615,
+      "gzipBytes": 3114
+    },
+    {
+      "file": "material-theme-darker-BfHTSMKl.js",
+      "bytes": 18629,
+      "gzipBytes": 3113
+    },
+    {
+      "file": "material-theme-lighter-B0m2ddpp.js",
+      "bytes": 18634,
+      "gzipBytes": 3114
+    },
+    {
+      "file": "material-theme-ocean-CyktbL80.js",
+      "bytes": 18629,
+      "gzipBytes": 3135
+    },
+    {
+      "file": "material-theme-palenight-Csfq5Kiy.js",
+      "bytes": 18635,
+      "gzipBytes": 3128
+    },
+    {
+      "file": "matlab-D7o27uSR.js",
+      "bytes": 16086,
+      "gzipBytes": 3064
+    },
+    {
+      "file": "mdc-BMNejdWA.js",
+      "bytes": 19632,
+      "gzipBytes": 6664
+    },
+    {
+      "file": "mdx-Cmh6b_Ma.js",
+      "bytes": 136114,
+      "gzipBytes": 23351
+    },
+    {
+      "file": "mermaid-mWjccvbQ.js",
+      "bytes": 29511,
+      "gzipBytes": 3660
+    },
+    {
+      "file": "min-dark-CafNBF8u.js",
+      "bytes": 6291,
+      "gzipBytes": 1709
+    },
+    {
+      "file": "min-light-CTRr51gU.js",
+      "bytes": 6969,
+      "gzipBytes": 1889
+    },
+    {
+      "file": "mipsasm-CKIfxQSi.js",
+      "bytes": 3259,
+      "gzipBytes": 1177
+    },
+    {
+      "file": "mojo-rZm6bMo-.js",
+      "bytes": 69799,
+      "gzipBytes": 9267
+    },
+    {
+      "file": "monokai-D4h5O-jR.js",
+      "bytes": 7884,
+      "gzipBytes": 1908
+    },
+    {
+      "file": "moonbit-_H4v1dQx.js",
+      "bytes": 5900,
+      "gzipBytes": 1679
+    },
+    {
+      "file": "move-IF9eRakj.js",
+      "bytes": 17505,
+      "gzipBytes": 3067
+    },
+    {
+      "file": "narrat-DRg8JJMk.js",
+      "bytes": 3672,
+      "gzipBytes": 1106
+    },
+    {
+      "file": "nextflow-Zz6hmt5N.js",
+      "bytes": 4510,
+      "gzipBytes": 1166
+    },
+    {
+      "file": "nextflow-groovy-BeH2EWoN.js",
+      "bytes": 10406,
+      "gzipBytes": 2128
+    },
+    {
+      "file": "nginx-BpAMiNFr.js",
+      "bytes": 35374,
+      "gzipBytes": 4427
+    },
+    {
+      "file": "night-owl-C39BiMTA.js",
+      "bytes": 28913,
+      "gzipBytes": 5156
+    },
+    {
+      "file": "night-owl-light-CMTm3GFP.js",
+      "bytes": 25902,
+      "gzipBytes": 4258
+    },
+    {
+      "file": "nim-CVrawwO9.js",
+      "bytes": 22460,
+      "gzipBytes": 3155
+    },
+    {
+      "file": "nix-CwoSXNpI.js",
+      "bytes": 15511,
+      "gzipBytes": 2481
+    },
+    {
+      "file": "nord-Ddv68eIx.js",
+      "bytes": 26723,
+      "gzipBytes": 4395
+    },
+    {
+      "file": "nushell-Cz2AlsmD.js",
+      "bytes": 20413,
+      "gzipBytes": 5217
+    },
+    {
+      "file": "objective-c-DXmwc3jG.js",
+      "bytes": 105413,
+      "gzipBytes": 23325
+    },
+    {
+      "file": "objective-cpp-CLxacb5B.js",
+      "bytes": 171972,
+      "gzipBytes": 30622
+    },
+    {
+      "file": "ocaml-C0hk2d4L.js",
+      "bytes": 62449,
+      "gzipBytes": 5019
+    },
+    {
+      "file": "odin-BBf5iR-q.js",
+      "bytes": 16513,
+      "gzipBytes": 2938
+    },
+    {
+      "file": "one-dark-pro-DVMEJ2y_.js",
+      "bytes": 33787,
+      "gzipBytes": 5519
+    },
+    {
+      "file": "one-light-C3Wv6jpd.js",
+      "bytes": 25300,
+      "gzipBytes": 3672
+    },
+    {
+      "file": "openscad-C4EeE6gA.js",
+      "bytes": 2824,
+      "gzipBytes": 1010
+    },
+    {
+      "file": "pascal-D93ZcfNL.js",
+      "bytes": 4150,
+      "gzipBytes": 1671
+    },
+    {
+      "file": "payments-DsslN0HZ.js",
+      "bytes": 537,
+      "gzipBytes": 238
+    },
+    {
+      "file": "perl-C0TMdlhV.js",
+      "bytes": 43156,
+      "gzipBytes": 4669
+    },
+    {
+      "file": "php-Dhbhpdrm.js",
+      "bytes": 111058,
+      "gzipBytes": 28522
+    },
+    {
+      "file": "pkl-u5AG7uiY.js",
+      "bytes": 10372,
+      "gzipBytes": 1382
+    },
+    {
+      "file": "plastic-3e1v2bzS.js",
+      "bytes": 9295,
+      "gzipBytes": 1979
+    },
+    {
+      "file": "plsql-ChMvpjG-.js",
+      "bytes": 8512,
+      "gzipBytes": 2996
+    },
+    {
+      "file": "plus-B0dt-GR3.js",
+      "bytes": 326,
+      "gzipBytes": 253
+    },
+    {
+      "file": "po-BTJTHyun.js",
+      "bytes": 3239,
+      "gzipBytes": 909
+    },
+    {
+      "file": "poimandres-CS3Unz2-.js",
+      "bytes": 33494,
+      "gzipBytes": 5498
+    },
+    {
+      "file": "polar-C0HS_06l.js",
+      "bytes": 4671,
+      "gzipBytes": 1124
+    },
+    {
+      "file": "portal-labels-CTMzb-b-.js",
+      "bytes": 2689,
+      "gzipBytes": 864
+    },
+    {
+      "file": "postcss-CXtECtnM.js",
+      "bytes": 6417,
+      "gzipBytes": 1914
+    },
+    {
+      "file": "powerquery-CEu0bR-o.js",
+      "bytes": 5903,
+      "gzipBytes": 1521
+    },
+    {
+      "file": "powershell-Dpen1YoG.js",
+      "bytes": 20151,
+      "gzipBytes": 4068
+    },
+    {
+      "file": "prisma-Dd19v3D-.js",
+      "bytes": 6330,
+      "gzipBytes": 1390
+    },
+    {
+      "file": "prolog-CbFg5uaA.js",
+      "bytes": 11356,
+      "gzipBytes": 3834
+    },
+    {
+      "file": "proto-C7zT0LnQ.js",
+      "bytes": 6548,
+      "gzipBytes": 1415
+    },
+    {
+      "file": "pug-CGlum2m_.js",
+      "bytes": 13842,
+      "gzipBytes": 2578
+    },
+    {
+      "file": "puppet-BMWR74SV.js",
+      "bytes": 11437,
+      "gzipBytes": 2114
+    },
+    {
+      "file": "purescript-CklMAg4u.js",
+      "bytes": 24686,
+      "gzipBytes": 3246
+    },
+    {
+      "file": "python-B6aJPvgy.js",
+      "bytes": 69952,
+      "gzipBytes": 9133
+    },
+    {
+      "file": "qml-3beO22l8.js",
+      "bytes": 5336,
+      "gzipBytes": 1381
+    },
+    {
+      "file": "qmldir-C8lEn-DE.js",
+      "bytes": 1002,
+      "gzipBytes": 452
+    },
+    {
+      "file": "qss-IeuSbFQv.js",
+      "bytes": 7472,
+      "gzipBytes": 2575
+    },
+    {
+      "file": "r-Dspwwk_N.js",
+      "bytes": 6541,
+      "gzipBytes": 1782
+    },
+    {
+      "file": "racket-BqYA7rlc.js",
+      "bytes": 92389,
+      "gzipBytes": 15018
+    },
+    {
+      "file": "raku-DXvB9xmW.js",
+      "bytes": 10472,
+      "gzipBytes": 2944
+    },
+    {
+      "file": "razor-Uh8Bk_45.js",
+      "bytes": 27510,
+      "gzipBytes": 3568
+    },
+    {
+      "file": "red-bN70gL4F.js",
+      "bytes": 6262,
+      "gzipBytes": 1600
+    },
+    {
+      "file": "refresh-cw-Cq84xtwV.js",
+      "bytes": 494,
+      "gzipBytes": 328
+    },
+    {
+      "file": "reg-C-SQnVFl.js",
+      "bytes": 2345,
+      "gzipBytes": 697
+    },
+    {
+      "file": "regexp-CDVJQ6XC.js",
+      "bytes": 7988,
+      "gzipBytes": 1418
+    },
+    {
+      "file": "rel-C3B-1QV4.js",
+      "bytes": 3368,
+      "gzipBytes": 1107
+    },
+    {
+      "file": "riscv-BM1_JUlF.js",
+      "bytes": 6914,
+      "gzipBytes": 1980
+    },
+    {
+      "file": "rocket-DvjcQNV7.js",
+      "bytes": 625,
+      "gzipBytes": 414
+    },
+    {
+      "file": "ron-D8l8udqQ.js",
+      "bytes": 3914,
+      "gzipBytes": 982
+    },
+    {
+      "file": "rose-pine-dawn-DHQR4-dF.js",
+      "bytes": 21754,
+      "gzipBytes": 3888
+    },
+    {
+      "file": "rose-pine-moon-D4_iv3hh.js",
+      "bytes": 21753,
+      "gzipBytes": 3888
+    },
+    {
+      "file": "rose-pine-qdsjHGoJ.js",
+      "bytes": 21743,
+      "gzipBytes": 3869
+    },
+    {
+      "file": "rosmsg-BJDFO7_C.js",
+      "bytes": 4523,
+      "gzipBytes": 1059
+    },
+    {
+      "file": "rst-BrH8l1NY.js",
+      "bytes": 10673,
+      "gzipBytes": 2415
+    },
+    {
+      "file": "ruby-Dw2BHqvy.js",
+      "bytes": 45953,
+      "gzipBytes": 5676
+    },
+    {
+      "file": "rust-B1yitclQ.js",
+      "bytes": 15069,
+      "gzipBytes": 2716
+    },
+    {
+      "file": "sas-cz2c8ADy.js",
+      "bytes": 9062,
+      "gzipBytes": 3813
+    },
+    {
+      "file": "sass-Cj5Yp3dK.js",
+      "bytes": 9289,
+      "gzipBytes": 2492
+    },
+    {
+      "file": "scala-C151Ov-r.js",
+      "bytes": 28884,
+      "gzipBytes": 3935
+    },
+    {
+      "file": "scheme-C98Dy4si.js",
+      "bytes": 7169,
+      "gzipBytes": 2053
+    },
+    {
+      "file": "scss-OYdSNvt2.js",
+      "bytes": 27204,
+      "gzipBytes": 4199
+    },
+    {
+      "file": "sdbl-DVxCFoDh.js",
+      "bytes": 4702,
+      "gzipBytes": 2011
+    },
+    {
+      "file": "select-B9w1Fcwl.js",
+      "bytes": 22794,
+      "gzipBytes": 7916
+    },
+    {
+      "file": "server-CRGJcnX1.js",
+      "bytes": 511,
+      "gzipBytes": 319
+    },
+    {
+      "file": "shaderlab-Dg9Lc6iA.js",
+      "bytes": 5922,
+      "gzipBytes": 2082
+    },
+    {
+      "file": "shellscript-Yzrsuije.js",
+      "bytes": 41479,
+      "gzipBytes": 6092
+    },
+    {
+      "file": "shellsession-BADoaaVG.js",
+      "bytes": 711,
+      "gzipBytes": 426
+    },
+    {
+      "file": "slack-dark-BthQWCQV.js",
+      "bytes": 9117,
+      "gzipBytes": 1967
+    },
+    {
+      "file": "slack-ochin-DqwNpetd.js",
+      "bytes": 9431,
+      "gzipBytes": 2095
+    },
+    {
+      "file": "smalltalk-BERRCDM3.js",
+      "bytes": 6587,
+      "gzipBytes": 1622
+    },
+    {
+      "file": "snazzy-light-Bw305WKR.js",
+      "bytes": 20773,
+      "gzipBytes": 3830
+    },
+    {
+      "file": "solarized-dark-DXbdFlpD.js",
+      "bytes": 6846,
+      "gzipBytes": 1796
+    },
+    {
+      "file": "solarized-light-L9t79GZl.js",
+      "bytes": 6480,
+      "gzipBytes": 1730
+    },
+    {
+      "file": "solidity-rGO070M0.js",
+      "bytes": 16074,
+      "gzipBytes": 3111
+    },
+    {
+      "file": "soy-Brmx7dQM.js",
+      "bytes": 6981,
+      "gzipBytes": 1657
+    },
+    {
+      "file": "sparkles-B5EhJs5i.js",
+      "bytes": 681,
+      "gzipBytes": 404
+    },
+    {
+      "file": "sparql-rVzFXLq3.js",
+      "bytes": 1480,
+      "gzipBytes": 818
+    },
+    {
+      "file": "splunk-BtCnVYZw.js",
+      "bytes": 3436,
+      "gzipBytes": 1520
+    },
+    {
+      "file": "sql-BLtJtn59.js",
+      "bytes": 23407,
+      "gzipBytes": 7398
+    },
+    {
+      "file": "ssh-config-_ykCGR6B.js",
+      "bytes": 3617,
+      "gzipBytes": 1602
+    },
+    {
+      "file": "stata-BH5u7GGu.js",
+      "bytes": 56991,
+      "gzipBytes": 12362
+    },
+    {
+      "file": "stylus-BEDo0Tqx.js",
+      "bytes": 31074,
+      "gzipBytes": 7986
+    },
+    {
+      "file": "surrealql-Bq5Q-fJD.js",
+      "bytes": 22583,
+      "gzipBytes": 4315
+    },
+    {
+      "file": "svelte-C_ipcX3V.js",
+      "bytes": 18242,
+      "gzipBytes": 3138
+    },
+    {
+      "file": "swift-D82vCrfD.js",
+      "bytes": 86687,
+      "gzipBytes": 14733
+    },
+    {
+      "file": "synthwave-84-CbfX1IO0.js",
+      "bytes": 14036,
+      "gzipBytes": 2866
+    },
+    {
+      "file": "system-verilog-CnnmHF94.js",
+      "bytes": 26203,
+      "gzipBytes": 4852
+    },
+    {
+      "file": "systemd-4A_iFExJ.js",
+      "bytes": 7869,
+      "gzipBytes": 2546
+    },
+    {
+      "file": "table-BEjAZkTj.js",
+      "bytes": 1633,
+      "gzipBytes": 583
+    },
+    {
+      "file": "tabs-BccLz1JX.js",
+      "bytes": 3312,
+      "gzipBytes": 1414
+    },
+    {
+      "file": "talonscript-CkByrt1z.js",
+      "bytes": 6757,
+      "gzipBytes": 1491
+    },
+    {
+      "file": "tasl-QIJgUcNo.js",
+      "bytes": 3288,
+      "gzipBytes": 848
+    },
+    {
+      "file": "tcl-dwOrl1Do.js",
+      "bytes": 4429,
+      "gzipBytes": 1515
+    },
+    {
+      "file": "templ-P3uqSqPl.js",
+      "bytes": 24064,
+      "gzipBytes": 5395
+    },
+    {
+      "file": "terraform-BETggiCN.js",
+      "bytes": 11389,
+      "gzipBytes": 2509
+    },
+    {
+      "file": "tex-idrVyKtj.js",
+      "bytes": 9669,
+      "gzipBytes": 3055
+    },
+    {
+      "file": "textarea-DOwtCmjk.js",
+      "bytes": 498,
+      "gzipBytes": 323
+    },
+    {
+      "file": "tokyo-night-hegEt444.js",
+      "bytes": 35665,
+      "gzipBytes": 6235
+    },
+    {
+      "file": "toml-vGWfd6FD.js",
+      "bytes": 6426,
+      "gzipBytes": 1282
+    },
+    {
+      "file": "trash-2-DuXueyxD.js",
+      "bytes": 531,
+      "gzipBytes": 352
+    },
+    {
+      "file": "ts-tags-zn1MmPIZ.js",
+      "bytes": 8948,
+      "gzipBytes": 1224
+    },
+    {
+      "file": "tsv-B_m7g4N7.js",
+      "bytes": 739,
+      "gzipBytes": 342
+    },
+    {
+      "file": "tsx-COt5Ahok.js",
+      "bytes": 175536,
+      "gzipBytes": 16507
+    },
+    {
+      "file": "turtle-BsS91CYL.js",
+      "bytes": 3700,
+      "gzipBytes": 977
+    },
+    {
+      "file": "twig-DNn4PbVi.js",
+      "bytes": 21364,
+      "gzipBytes": 3869
+    },
+    {
+      "file": "typescript-BPQ3VLAy.js",
+      "bytes": 181080,
+      "gzipBytes": 16039
+    },
+    {
+      "file": "typespec-BGHnOYBU.js",
+      "bytes": 24020,
+      "gzipBytes": 2585
+    },
+    {
+      "file": "typst-DHCkPAjA.js",
+      "bytes": 8387,
+      "gzipBytes": 1669
+    },
+    {
+      "file": "useMutation-DQIMTtah.js",
+      "bytes": 3214,
+      "gzipBytes": 1303
+    },
+    {
+      "file": "useTableState-D8jt_UBg.js",
+      "bytes": 10433,
+      "gzipBytes": 4058
+    },
+    {
+      "file": "v-BcVCzyr7.js",
+      "bytes": 13214,
+      "gzipBytes": 2741
+    },
+    {
+      "file": "vala-CsfeWuGM.js",
+      "bytes": 3370,
+      "gzipBytes": 1189
+    },
+    {
+      "file": "vb-D17OF-Vu.js",
+      "bytes": 6093,
+      "gzipBytes": 2340
+    },
+    {
+      "file": "verilog-BQ8w6xss.js",
+      "bytes": 5931,
+      "gzipBytes": 1893
+    },
+    {
+      "file": "vesper-DU1UobuO.js",
+      "bytes": 12692,
+      "gzipBytes": 1973
+    },
+    {
+      "file": "vhdl-CeAyd5Ju.js",
+      "bytes": 24264,
+      "gzipBytes": 3873
+    },
+    {
+      "file": "viml-CJc9bBzg.js",
+      "bytes": 20365,
+      "gzipBytes": 6727
+    },
+    {
+      "file": "vitesse-black-Bkuqu6BP.js",
+      "bytes": 13677,
+      "gzipBytes": 3059
+    },
+    {
+      "file": "vitesse-dark-D0r3Knsf.js",
+      "bytes": 13759,
+      "gzipBytes": 3063
+    },
+    {
+      "file": "vitesse-light-CVO1_9PV.js",
+      "bytes": 13616,
+      "gzipBytes": 3036
+    },
+    {
+      "file": "vue-DN_0RTcg.js",
+      "bytes": 24484,
+      "gzipBytes": 2974
+    },
+    {
+      "file": "vue-html-AaS7Mt5G.js",
+      "bytes": 8472,
+      "gzipBytes": 1679
+    },
+    {
+      "file": "vue-vine-CQOfvN7w.js",
+      "bytes": 190051,
+      "gzipBytes": 17983
+    },
+    {
+      "file": "vyper-CDx5xZoG.js",
+      "bytes": 74648,
+      "gzipBytes": 10735
+    },
+    {
+      "file": "wasm-CG6Dc4jp.js",
+      "bytes": 622336,
+      "gzipBytes": 230293
+    },
+    {
+      "file": "wasm-MzD3tlZU.js",
+      "bytes": 12007,
+      "gzipBytes": 2188
+    },
+    {
+      "file": "wenyan-BV7otONQ.js",
+      "bytes": 2157,
+      "gzipBytes": 1090
+    },
+    {
+      "file": "wgsl-Dx-B1_4e.js",
+      "bytes": 5144,
+      "gzipBytes": 1391
+    },
+    {
+      "file": "wikitext-BhOHFoWU.js",
+      "bytes": 55885,
+      "gzipBytes": 4760
+    },
+    {
+      "file": "wit-5i3qLPDT.js",
+      "bytes": 21467,
+      "gzipBytes": 2888
+    },
+    {
+      "file": "wolfram-lXgVvXCa.js",
+      "bytes": 262391,
+      "gzipBytes": 77136
+    },
+    {
+      "file": "xml-sdJ4AIDG.js",
+      "bytes": 5384,
+      "gzipBytes": 1214
+    },
+    {
+      "file": "xsl-CtQFsRM5.js",
+      "bytes": 1385,
+      "gzipBytes": 522
+    },
+    {
+      "file": "yaml-Buea-lGh.js",
+      "bytes": 10506,
+      "gzipBytes": 2274
+    },
+    {
+      "file": "zenscript-DVFEvuxE.js",
+      "bytes": 3912,
+      "gzipBytes": 1284
+    },
+    {
+      "file": "zig-VOosw3JB.js",
+      "bytes": 5340,
+      "gzipBytes": 1554
+    }
+  ]
+}
