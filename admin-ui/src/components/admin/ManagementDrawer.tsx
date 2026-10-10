@@ -1,8 +1,9 @@
-import { Button, Drawer, Space, type DrawerProps } from 'antd';
+import { Button, Drawer, Space, Typography, type DrawerProps } from 'antd';
 import type { ReactNode } from 'react';
 export function ManagementDrawer({
   open,
   title,
+  description,
   children,
   size = 'medium',
   onClose,
@@ -13,6 +14,7 @@ export function ManagementDrawer({
 }: {
   open: boolean;
   title: ReactNode;
+  description?: ReactNode;
   children: ReactNode;
   size?: 'small' | 'medium' | 'large';
   onClose: () => void;
@@ -48,6 +50,7 @@ export function ManagementDrawer({
         )
       }
     >
+      {description && <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>}
       {children}
     </Drawer>
   );

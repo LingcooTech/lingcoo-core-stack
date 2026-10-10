@@ -1,4 +1,5 @@
 import { act } from 'react';
+import { App, ConfigProvider } from 'antd';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, test, vi } from 'vitest';
@@ -32,7 +33,11 @@ test('monitor-only server cannot allocate and expiry editing preserves China cal
     await act(async () =>
       root.render(
         <QueryClientProvider client={client}>
-          <HostingNodeCard node={node} />
+          <ConfigProvider theme={{ token: { motion: false } }}>
+            <App>
+              <HostingNodeCard node={node} />
+            </App>
+          </ConfigProvider>
         </QueryClientProvider>,
       ),
     );
@@ -46,9 +51,7 @@ test('monitor-only server cannot allocate and expiry editing preserves China cal
         (b) => b.textContent === '启用分配',
       )?.disabled,
     ).toBe(true);
-    await act(async () =>
-      document.querySelector<HTMLButtonElement>('[data-slot=sheet-content] > button')!.click(),
-    );
+    await act(async () => document.querySelector<HTMLButtonElement>('.ant-drawer-close')!.click());
     await act(async () =>
       Array.from(host.querySelectorAll('button'))
         .find((b) => b.textContent === '编辑资产与预算')!

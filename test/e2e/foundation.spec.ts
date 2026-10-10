@@ -229,3 +229,36 @@ test('admin creates an application, content and documentation through Ant Design
   await page.getByRole('button', { name: '保存页面', exact: true }).click();
   await expect(page.getByRole('tree').getByText('Getting started', { exact: true })).toBeVisible();
 });
+
+test('hosting resource registration keeps allocation paused and budget edits survive reload', async ({
+  page,
+}, info) => {
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.goto('/admin/hosting');
+  await page.getByRole('button', { name: '添加服务器', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '添加服务器资源', exact: true });
+  const name = 'Browser monitor ' + randomUUID().slice(0, 8);
+  await dialog.getByLabel('节点名称', { exact: true }).fill(name);
+  await dialog
+    .getByLabel('服务器 IP', { exact: true })
+    .fill('192.0.2.' + (10 + Math.floor(Math.random() * 200)));
+  await dialog.getByRole('button', { name: '登记服务器', exact: true }).click();
+  await expect(dialog.getByText('健康上报凭据仅显示一次', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '已保存，隐藏凭据', exact: true }).click();
+  const card = page.locator('.ant-card').filter({ has: page.getByText(name, { exact: true }) });
+  await expect(card.getByText('暂停新分配', { exact: true })).toBeVisible();
+  await card.getByRole('button', { name: '编辑资产与预算', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: '编辑资产与预算', exact: true });
+  await editor.getByLabel('托管内存预算（MiB）', { exact: true }).fill('768');
+  await editor.getByRole('button', { name: '保存节点配置', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await page.reload();
+  await expect(card.getByText('托管内存预留：0 / 768 MiB', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('hosting-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: info.outputPath('hosting-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+});

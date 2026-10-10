@@ -34,7 +34,7 @@ test('upgrade stays disabled without an approved release and clearly shows rollb
       ),
     );
     expect(mocks.api).not.toHaveBeenCalled();
-    await act(async () => host.querySelector('summary')!.click());
+    await act(async () => host.querySelector<HTMLElement>('.ant-collapse-header')!.click());
     await vi.waitFor(() => expect(host.textContent).toContain('暂无已审核升级版本'));
     expect(host.textContent).toContain('已回退旧版本');
     expect(host.textContent).toContain('无需数据库迁移');

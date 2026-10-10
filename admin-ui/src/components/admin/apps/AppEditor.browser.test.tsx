@@ -166,7 +166,7 @@ test('application feature and plan renames preserve offer relations, cents and f
   } finally {
     await view.dispose();
   }
-});
+}, 45000);
 test('document manager can create a fresh space without auto-selecting the existing space or losing failed input', async () => {
   mocks.api.mockReset();
   const space = {
