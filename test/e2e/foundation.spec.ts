@@ -91,6 +91,9 @@ test('admin settings numeric inputs use Zod output and optimistic version on sav
   await page.reload();
   await expect(page.getByRole('button', { name: '新建文件夹', exact: true })).toBeVisible();
   await page.goto('/admin/settings');
+  await page.getByRole('button', { name: '云存储', exact: true }).first().click();
+  await page.getByRole('dialog').getByRole('link', { name: '存储设置', exact: true }).click();
+  await expect(page.getByText('文件存储 · S3 兼容', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'SMTP', exact: true }).click();
   await page.getByLabel('SMTP Host', { exact: true }).fill('smtp.example.test');
   await page.getByLabel('端口', { exact: true }).fill('587');

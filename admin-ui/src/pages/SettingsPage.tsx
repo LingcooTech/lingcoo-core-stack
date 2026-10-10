@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useLocation } from 'react-router-dom';
 
 import {
   clearContentImportSettings,
@@ -304,9 +305,13 @@ const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function SettingsPage() {
   const qc = useQueryClient();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(() =>
-    new URLSearchParams(window.location.search).get('tab') === 'storage' ? 'storage' : 'site',
+    new URLSearchParams(location.search).get('tab') === 'storage' ? 'storage' : 'site',
   );
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('tab') === 'storage') setActiveTab('storage');
+  }, [location.search]);
   const [settingsQuery, setSettingsQuery] = useState('');
   const [clearSiteOpen, setClearSiteOpen] = useState(false);
   const [clearSmtpOpen, setClearSmtpOpen] = useState(false);
