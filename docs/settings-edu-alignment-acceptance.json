@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-10",
+  "runtimeCommit": "261b158adb517c0406be71d5a7721fd508e1c1b1",
+  "reference": "lingcoo-edu-oms SettingsPage SETTING_FIELD_ORDER and Storage/Mail definitions",
+  "ci": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38030535397",
+    "conclusion": "success",
+    "unitAndNodeTests": 105,
+    "databaseIntegrationTests": 125,
+    "adminComponentTests": 41,
+    "browserCriticalPaths": 4,
+    "totalTests": 275,
+    "skipped": 0,
+    "productionVulnerabilities": 0,
+    "allVulnerabilities": 0
+  },
+  "deployment": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38031000741",
+    "conclusion": "success",
+    "databaseBackupAndIsolatedRestoreVerified": true
+  },
+  "productionUi": {
+    "mode": "production",
+    "storageEightFieldsOrder": true,
+    "smtpEightFieldsOrder": true,
+    "providerOptions": true,
+    "transportOptions": true,
+    "secretsNotEchoed": true,
+    "unchangedSaveDisabled": true,
+    "desktopMobile": true,
+    "productionWrites": 0
+  },
+  "productionConnections": {
+    "ready": {
+      "status": "ready",
+      "version": "261b158adb517c0406be71d5a7721fd508e1c1b1"
+    },
+    "existingConnectionSettingsPreserved": true,
+    "storageProvider": "s3",
+    "mailTransport": "smtp",
+    "fromName": "Stack",
+    "plaintextSecretsReturned": false,
+    "s3Connection": {
+      "ok": true,
+      "status": 200
+    },
+    "smtpConnectionWithoutMail": {
+      "ok": true,
+      "status": 200
+    }
+  },
+  "hostingRegression": {
+    "ready": {
+      "status": "ready",
+      "version": "261b158adb517c0406be71d5a7721fd508e1c1b1"
+    },
+    "nodes": [
+      {
+        "ip": "82.157.22.93",
+        "healthy": true,
+        "canDeploy": false,
+        "enabled": false
+      },
+      {
+        "ip": "118.25.36.15",
+        "healthy": true,
+        "canDeploy": true,
+        "enabled": true
+      }
+    ],
+    "retail": {
+      "state": "ready",
+      "services": 5,
+      "localBackup": "success",
+      "offsiteBackup": "success"
+    },
+    "publicChecks": [
+      {
+        "url": "https://retail-demo-20261008.app.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://retail-demo.lingcoo.com",
+        "status": 200
+      },
+      {
+        "url": "https://edusys.lingcoo.com",
+        "status": 200
+      }
+    ]
+  },
+  "productionSafety": {
+    "sentEmail": false,
+    "storageDriverSwitched": false,
+    "credentialsChanged": false,
+    "temporaryOperatorFileRemoved": true
+  },
+  "scope": {
+    "localStorageOptionImplemented": true,
+    "captureOptionImplemented": true,
+    "smtpFromNameImplemented": true,
+    "secretRotationImplemented": true,
+    "legacyCdnPreservedInCompatibilitySection": true,
+    "stackSettingsPrecedencePreserved": true,
+    "eduMailDomainMigrated": false
+  }
+}
