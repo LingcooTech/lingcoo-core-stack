@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { CurrentUser } from '@lingcoo/contracts';
 import { getCurrentUser, logoutSession } from '@/api/auth';
 import { clearToken } from '@/api/client';
-import { toast } from 'sonner';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY } from '@/lib/site-settings';
 import { canAccessAdminConsole, normalizeRole } from '@/lib/rbac';
 
@@ -37,11 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [client],
   );
   const logout = useCallback(async () => {
-    try {
-      await logoutSession();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : '退出登录失败，请重试');
-    }
+    await logoutSession();
   }, []);
   const setEmailVerified = useCallback(
     () => setUser((previous) => (previous ? { ...previous, emailVerified: true } : previous)),

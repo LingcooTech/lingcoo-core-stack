@@ -110,11 +110,13 @@ test('focus refresh uses the current server role and verification status', async
   expect(context().isAdmin).toBe(false);
   expect(context().isEmailVerified).toBe(false);
 });
-test('a failed server logout keeps the active identity and reports the failure', async () => {
+test('a failed server logout keeps the active identity and lets the caller report the failure', async () => {
   api.getCurrentUser.mockResolvedValue({ authenticated: true, user });
   api.logoutSession.mockRejectedValue(new Error('fixture offline'));
   await mount();
-  await act(async () => context().logout());
+  await act(async () => {
+    await expect(context().logout()).rejects.toThrow('fixture offline');
+  });
   expect(context().isAuthenticated).toBe(true);
-  expect(api.toast).toHaveBeenCalledWith('fixture offline');
+  expect(api.toast).not.toHaveBeenCalled();
 });

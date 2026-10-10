@@ -1,4 +1,4 @@
-import { lazy, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import {
@@ -15,7 +15,6 @@ import { ShieldAlert } from 'lucide-react';
 
 import { getPublicSiteSettings } from '@/api/settings';
 import { DocsShell } from '@/components/layout/DocsShell';
-import { Shell } from '@/components/layout/Shell';
 import { UserShell } from '@/components/layout/UserShell';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { AuthProvider, useAuth } from '@/lib/auth';
@@ -44,6 +43,7 @@ function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
   return lazy(() => loader().then((mod) => ({ default: mod[name] as ComponentType })));
 }
 
+const Shell = lazyNamed(() => import('@/components/layout/Shell'), 'Shell');
 const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), 'AccountCenterPage');
 const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
 const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');
@@ -453,7 +453,9 @@ export default function App() {
           <AuthProvider>
             <SiteSettingsBootstrap>
               <SiteAppearanceSync />
-              <RouterProvider router={router} />
+              <Suspense fallback={<div role="status">正在加载页面…</div>}>
+                <RouterProvider router={router} />
+              </Suspense>
               <Toaster position="top-right" richColors />
             </SiteSettingsBootstrap>
           </AuthProvider>
