@@ -49,3 +49,9 @@ AWS SDK 使用 `WHEN_REQUIRED` 校验策略兼容七牛的 S3 实现，上传显
 - 生产验收仅操作专属测试文件夹和对象，验证七牛 S3 读写及页面桌面/移动端布局，完成后删除测试素材。
 
 参考：[七牛 S3 兼容 API](https://developer.qiniu.com/kodo/4087/compatible-s3-api)、[七牛 S3 地址和空间名称](https://developer.qiniu.com/kodo/4088/s3-access-domainname)、[七牛 AWS JavaScript SDK 示例](https://developer.qiniu.com/kodo/12558/aws-sdk-javascript-examples)。
+
+## 上线验收（2026-10-10）
+
+生产运行版本为 `ea397d5bb7fa97ed2d551c671d9893ba75540c8f`，已推送 main 并完成自动部署。267 项测试全部通过且无跳过，生产及完整依赖审计均为 0 漏洞；发布前已验证数据库备份及隔离恢复。
+
+七牛 S3 真实读写、私有鉴权、公开 HTTPS 图片、Cookie/CSRF 上传、稳定链接替换、业务图片选择、删除及物理清理均已验证。最终版本补测了文件页直接访问、刷新和素材选择器中的存储设置跳转。测试素材已删除，临时浏览器会话已撤销；两台服务器、Retail/Edu 访问及 Retail 备份状态正常。逐项证据见 [storage-s3-acceptance.json](./storage-s3-acceptance.json)。

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-10",
+  "runtimeCommit": "ea397d5bb7fa97ed2d551c671d9893ba75540c8f",
+  "ci": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38007723891",
+    "conclusion": "success",
+    "unitAndNodeTests": 103,
+    "databaseIntegrationTests": 121,
+    "adminComponentTests": 39,
+    "browserCriticalPaths": 4,
+    "skipped": 0,
+    "productionVulnerabilities": 0,
+    "allVulnerabilities": 0
+  },
+  "scope": {
+    "service": "Qiniu Kodo via S3",
+    "region": "cn-north-1",
+    "endpoint": "https://s3.cn-north-1.qiniucs.com",
+    "defaultPrefix": "stack/assets",
+    "legacyUrlsPreserved": true,
+    "legacyBucketInventoryImported": false
+  },
+  "verification": {
+    "productionApi": {
+      "migratedLegacySettings": true,
+      "s3Connection": true,
+      "secretsMasked": true,
+      "privateUploadRead": true,
+      "platformPrivateGuard": true,
+      "publicRead": true,
+      "stableReplacement": true,
+      "etag304": true,
+      "logicalDelete": true,
+      "physicalDelete": true,
+      "fixtureCleanup": true
+    },
+    "productionCookieBrowser": {
+      "pngUpload": true,
+      "cookieCsrfWorkflow": true,
+      "imagePreview": true,
+      "authenticatedDownload": true,
+      "publicHttpsRead": true,
+      "businessImagePicker": true,
+      "stableReplacement": true,
+      "desktopMobile": true,
+      "deleteWorkflow": true,
+      "fixtureCleanup": true
+    },
+    "fixtureCleanupReadOnly": {
+      "ownUiObjects": 3,
+      "allMetadataDeleted": true,
+      "allS3Head404": true,
+      "readOnlyVerification": true
+    },
+    "temporaryBrowserSessionRevoked": true,
+    "finalProductionUi": {
+      "mode": "production",
+      "desktopMobile": true,
+      "settingsSecretsMasked": true,
+      "sharedImagePicker": true,
+      "productionWrites": 0,
+      "directRouteAndRefresh": true,
+      "pickerSettingsNavigation": true
+    },
+    "hostingRegression": {
+      "ready": {
+        "status": "ready",
+        "version": "ea397d5bb7fa97ed2d551c671d9893ba75540c8f"
+      },
+      "nodes": [
+        {
+          "ip": "82.157.22.93",
+          "healthy": true,
+          "canDeploy": false,
+          "enabled": false
+        },
+        {
+          "ip": "118.25.36.15",
+          "healthy": true,
+          "canDeploy": true,
+          "enabled": true
+        }
+      ],
+      "retail": {
+        "state": "ready",
+        "services": 5,
+        "localBackup": "success",
+        "offsiteBackup": "success"
+      },
+      "publicChecks": [
+        {
+          "url": "https://retail-demo-20261008.app.lingcoo.com",
+          "status": 200
+        },
+        {
+          "url": "https://retail-demo.lingcoo.com",
+          "status": 200
+        },
+        {
+          "url": "https://edusys.lingcoo.com",
+          "status": 200
+        }
+      ]
+    },
+    "realReadWriteRuntimeCommit": "6404d2ddaf16505944b81f264378f74ab057e5e5",
+    "finalRuntimeChanges": "SPA deep-route coverage and same-page storage settings navigation; covered by final CI and production read-only browser checks."
+  },
+  "deployment": {
+    "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38008192786",
+    "conclusion": "success",
+    "databaseBackupAndIsolatedRestoreVerified": true
+  },
+  "limitations": [
+    "Existing bucket objects are not automatically imported into the metadata library.",
+    "Private asset access requires a private S3 bucket; platform visibility does not change provider ACL or external CDN access.",
+    "Replaced object contents are retained for one hour; version metadata does not promise historical download or rollback."
+  ]
+}
