@@ -41,7 +41,24 @@
     "testTypes": "passed",
     "adminTypes": "passed",
     "productionBuild": "passed",
-    "staticEntry": "passed"
+    "staticEntry": "passed",
+    "ci": {
+      "main": {
+        "conclusion": "success",
+        "headSha": "902836145ffb2ef0745b410654eaceb837471d6e",
+        "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38047580239"
+      },
+      "migrationBranch": {
+        "conclusion": "success",
+        "headSha": "902836145ffb2ef0745b410654eaceb837471d6e",
+        "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38047562229"
+      },
+      "dockerVerify": {
+        "conclusion": "success",
+        "headSha": "902836145ffb2ef0745b410654eaceb837471d6e",
+        "url": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38047562215"
+      }
+    }
   },
   "assets": {
     "baseline": {
@@ -115,15 +132,186 @@
     "interpretation": "Total covers all emitted JS/CSS, including on-demand language grammars; it is not first-page transfer size. App editor split sizes exclude shared chunks."
   },
   "production": {
-    "status": "pending",
+    "status": "passed",
     "rollbackRevision": "261b158adb517c0406be71d5a7721fd508e1c1b1",
     "rollbackDigest": "sha256:6d60b5ece92d50e34f212768ff9eec35d2aca737f2d912e5f5edabf54366528c",
-    "databaseMigrationsAdded": false
+    "databaseMigrationsAdded": false,
+    "revision": "902836145ffb2ef0745b410654eaceb837471d6e",
+    "digest": "sha256:8e9073ecb93d0e19fedc06efe1fce224edad19d727f2e77f21b8d9d4608f8845",
+    "deploymentWorkflow": "https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38048194224",
+    "jobs": [
+      {
+        "name": "build-and-push-acr",
+        "conclusion": "success",
+        "completedAt": "2026-10-10T11:27:57Z"
+      },
+      {
+        "name": "publish-ghcr",
+        "conclusion": "success",
+        "completedAt": "2026-10-10T11:28:32Z"
+      },
+      {
+        "name": "deploy",
+        "conclusion": "success",
+        "completedAt": "2026-10-10T11:30:21Z"
+      }
+    ],
+    "apiAndWorkerHealthy": true,
+    "health": {
+      "status": "ok",
+      "version": "902836145ffb2ef0745b410654eaceb837471d6e"
+    },
+    "readiness": {
+      "status": "ready",
+      "version": "902836145ffb2ef0745b410654eaceb837471d6e"
+    },
+    "readonlyBrowser": {
+      "checkedAt": "2026-10-10T11:33:23.159Z",
+      "routes": [
+        {
+          "route": "/admin/login",
+          "status": 200,
+          "finalPath": "/admin/login",
+          "readyMs": 12609,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/AsyncState-DUuGx6ly.js",
+            "/assets/LoginPage-DZWCNa7g.js",
+            "/assets/index-AHItdydb.js",
+            "/assets/index-DW7-yer6.js",
+            "/assets/index-DkSe_BdH.js",
+            "/assets/AdminUiProvider-CYZ3f9OU.css",
+            "/assets/AdminUiProvider-kkR7vubH.js",
+            "/assets/TextArea-Cl-AtEqX.js",
+            "/assets/QuestionCircleOutlined-Cxx8HyHn.js",
+            "/assets/index-DcFf_I95.js",
+            "/assets/index-Cz-1r1yB.js"
+          ]
+        },
+        {
+          "route": "/",
+          "status": 200,
+          "finalPath": "/",
+          "readyMs": 5673,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/Skeleton-9kMtOS-B.js",
+            "/assets/arrow-right-BTw4yb_r.js",
+            "/assets/apps-2bAr-MYU.js",
+            "/assets/badge-D9FYsuxb.js",
+            "/assets/app-catalog-ui-Emj8KnzN.js",
+            "/assets/HomePage-DZvszztD.js"
+          ]
+        },
+        {
+          "route": "/apps/lingcoo_retail_oms",
+          "status": 200,
+          "finalPath": "/apps/lingcoo_retail_oms",
+          "readyMs": 6707,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/AppCatalogPage-m68VmW3a.js",
+            "/assets/useMutation-CZUipStN.js",
+            "/assets/app-delivery-DixWhiVP.js",
+            "/assets/OrderItems-BneJdxVS.js",
+            "/assets/apps-2bAr-MYU.js",
+            "/assets/badge-D9FYsuxb.js",
+            "/assets/arrow-left-BmtMpGAR.js",
+            "/assets/rocket-ykrtH7o3.js",
+            "/assets/external-link-DWlw3rj1.js",
+            "/assets/loader-circle-Dm_85bPi.js",
+            "/assets/download-C-tXOKSf.js",
+            "/assets/chevron-left-a9l1hy4W.js",
+            "/assets/app-detail-DH-pdN6h.js",
+            "/assets/credit-card-B9CqGfxm.js",
+            "/assets/app-catalog-ui-Emj8KnzN.js",
+            "/assets/index-KfVMZwB9.js"
+          ]
+        },
+        {
+          "route": "/docs",
+          "status": 200,
+          "finalPath": "/docs",
+          "readyMs": 5631,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/loader-circle-Dm_85bPi.js",
+            "/assets/DocsHubPage-DlIVCOfL.js"
+          ]
+        },
+        {
+          "route": "/admin/settings",
+          "status": 200,
+          "finalPath": "/admin/login",
+          "readyMs": 6355,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/LoginPage-DZWCNa7g.js",
+            "/assets/QuestionCircleOutlined-Cxx8HyHn.js",
+            "/assets/index-DW7-yer6.js",
+            "/assets/AsyncState-DUuGx6ly.js",
+            "/assets/AdminUiProvider-kkR7vubH.js",
+            "/assets/index-Cz-1r1yB.js",
+            "/assets/index-DcFf_I95.js",
+            "/assets/index-AHItdydb.js",
+            "/assets/AdminUiProvider-CYZ3f9OU.css",
+            "/assets/index-DkSe_BdH.js",
+            "/assets/TextArea-Cl-AtEqX.js"
+          ]
+        },
+        {
+          "route": "/admin/hosting",
+          "status": 200,
+          "finalPath": "/admin/login",
+          "readyMs": 5733,
+          "resources": [
+            "/assets/index-_fiBjMGH.css",
+            "/assets/index-CBeMjRJG.js",
+            "/assets/AdminUiProvider-CYZ3f9OU.css",
+            "/assets/LoginPage-DZWCNa7g.js",
+            "/assets/QuestionCircleOutlined-Cxx8HyHn.js",
+            "/assets/AsyncState-DUuGx6ly.js",
+            "/assets/index-DcFf_I95.js",
+            "/assets/index-DW7-yer6.js",
+            "/assets/index-Cz-1r1yB.js",
+            "/assets/AdminUiProvider-kkR7vubH.js",
+            "/assets/index-AHItdydb.js",
+            "/assets/index-DkSe_BdH.js",
+            "/assets/TextArea-Cl-AtEqX.js"
+          ]
+        }
+      ],
+      "errors": [],
+      "mutations": 0
+    },
+    "nodeBudgetsUnchanged": true,
+    "nodeReportsFresh": true,
+    "publishedApplicationRecordsUnchanged": 4,
+    "customerContainerIdentity": {
+      "hosting": {
+        "checkedContainers": 19,
+        "identityUnchanged": true
+      },
+      "control": {
+        "checkedContainers": 5,
+        "identityUnchanged": true
+      }
+    },
+    "customerPublicHttp": {
+      "retail": 200,
+      "edu": 200
+    }
   },
   "validationBoundaries": {
     "productionMutationsForTesting": false,
     "productionAdminSessionForged": false,
     "realPaymentClaimed": false,
-    "customerAppsRedeployed": false
+    "customerAppsRedeployed": false,
+    "authenticatedProductionAdminUiTested": false
   }
 }
