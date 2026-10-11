@@ -23,7 +23,10 @@ export function compileComposePlan(
   if (Object.keys(release.images).length !== definition.images.length)
     throw httpError(422, 'Release image set mismatch');
   for (const image of definition.images)
-    if (!release.images[image.key]?.startsWith(image.repository + '@sha256:'))
+    if (
+      typeof release.images[image.key] !== 'string' ||
+      !release.images[image.key]!.startsWith(image.repository + '@sha256:')
+    )
       throw httpError(422, 'Release image repository mismatch');
   const compose = structuredClone(delivery.compose) as Record<string, unknown>,
     services = compose.services as Record<string, Record<string, unknown>>,

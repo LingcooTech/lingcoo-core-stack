@@ -66,6 +66,7 @@ test('Compose nested settings reject inherited host environment, arbitrary netwo
     { networks: { default: { ipv4_address: '192.168.0.1' } } },
     { networks: ['missing'] },
     { depends_on: ['missing'] },
+    { depends_on: ['toString'] },
     { depends_on: ['web'] },
     { logging: { driver: 'syslog', options: { 'syslog-address': 'tcp://127.0.0.1:514' } } },
     { environment: { VALUE: '${APP_DOMAIN:-example.com}' } },
@@ -86,6 +87,16 @@ test('Compose nested settings reject inherited host environment, arbitrary netwo
     },
   };
   assert.throws(() => validateApplicationDefinition(definition), /Cyclic/);
+  const inherited = sample(),
+    inheritedDelivery = inherited.delivery as Record<string, unknown>;
+  inheritedDelivery.entrypoint = { service: 'toString', port: 80, healthPath: '/' };
+  assert.throws(() => validateApplicationDefinition(inherited), /unknown service/);
+  inheritedDelivery.entrypoint = { service: 'web', port: 80, healthPath: '/' };
+  inheritedDelivery.compose = {
+    services: { web: { image: '${WEB_IMAGE}', volumes: ['constructor:/data'] } },
+    volumes: {},
+  };
+  assert.throws(() => validateApplicationDefinition(inherited), /Undeclared volume/);
 });
 test('GitHub reads public or private definitions and Compose from the same resolved commit without executing code', async () => {
   const commit = 'a'.repeat(40),

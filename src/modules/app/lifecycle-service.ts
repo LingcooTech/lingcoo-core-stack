@@ -215,7 +215,10 @@ export class AppLifecycleService {
     if (Object.keys(value.images).length !== definition.images.length)
       throw httpError(422, 'Release must include exactly the declared images');
     for (const image of definition.images)
-      if (!value.images[image.key]?.startsWith(image.repository + '@sha256:'))
+      if (
+        typeof value.images[image.key] !== 'string' ||
+        !value.images[image.key]!.startsWith(image.repository + '@sha256:')
+      )
         throw httpError(422, `Image ${image.key} does not match its registered repository`);
     const digest = definitionDigest(definition);
     return this.db.transaction(async (tx) => {

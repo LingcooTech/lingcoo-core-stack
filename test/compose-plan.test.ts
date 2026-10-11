@@ -67,6 +67,12 @@ test('version-bound plans pin every image, isolate projects and preserve aggrega
   const tampered = structuredClone(source);
   tampered.images.web = 'registry.example.com/another/image@sha256:' + 'b'.repeat(64);
   assert.throws(() => compileComposePlan(tampered, { instanceId, mode: 'managed' }), /repository/);
+  const inheritedImage = structuredClone(source);
+  inheritedImage.definition.images[0]!.key = 'constructor';
+  inheritedImage.definitionDigest = definitionDigest(inheritedImage.definition);
+  assert.throws(() => compileComposePlan(inheritedImage, { instanceId, mode: 'managed' }), {
+    statusCode: 422,
+  });
   assert.throws(
     () =>
       compileComposePlan({ ...source, definitionDigest: 'wrong' }, { instanceId, mode: 'managed' }),

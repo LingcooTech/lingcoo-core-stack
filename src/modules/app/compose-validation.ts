@@ -86,7 +86,7 @@ export function validateComposeModel(input: Record<string, unknown>) {
     for (const dependency of Array.isArray(value.depends_on)
       ? value.depends_on
       : Object.keys(value.depends_on ?? {}))
-      if (dependency === name || !(dependency in services))
+      if (dependency === name || !Object.hasOwn(services, dependency))
         throw httpError(422, 'Invalid Compose dependency');
     for (const network of value.networks ?? [])
       if (!networks.has(network)) throw httpError(422, 'Undeclared Compose network');

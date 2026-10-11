@@ -95,7 +95,7 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
     )
       throw httpError(422, 'Resource weights must include every service exactly once');
   }
-  if (!serviceMap[delivery.entrypoint.service])
+  if (!Object.hasOwn(serviceMap, delivery.entrypoint.service))
     throw httpError(422, 'Entrypoint references unknown service');
   const imageVariables = new Set(definition.images.map((v) => v.imageEnv));
   const declared = new Set([
@@ -161,7 +161,7 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
         if (
           !compose.volumes ||
           typeof compose.volumes !== 'object' ||
-          !(volumeName in compose.volumes)
+          !Object.hasOwn(compose.volumes, volumeName)
         )
           throw httpError(422, `Undeclared volume ${volumeName}`);
       }
@@ -190,7 +190,7 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
     ...delivery.lifecycle.backup,
     ...delivery.lifecycle.restore,
   ])
-    if (!serviceMap[step.service])
+    if (!Object.hasOwn(serviceMap, step.service))
       throw httpError(422, 'Lifecycle step references unknown service');
   if (
     Object.keys((compose.volumes ?? {}) as object).length &&
