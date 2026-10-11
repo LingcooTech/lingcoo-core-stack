@@ -90,7 +90,7 @@ test('admin settings numeric inputs use Zod output and optimistic version on sav
   await page.reload();
   await expect(page.getByRole('button', { name: '新建文件夹', exact: true })).toBeVisible();
   await page.goto('/admin/settings');
-  await page.getByRole('button', { name: '云存储', exact: true }).first().click();
+  await page.getByRole('button', { name: /^(选择|更换)站点 Logo$/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: '存储设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '文件存储', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: '邮件服务', exact: true }).click();
