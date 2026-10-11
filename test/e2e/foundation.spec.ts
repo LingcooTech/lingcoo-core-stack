@@ -146,8 +146,10 @@ test('dashboard filtered links and storage settings return navigation remain usa
   await expect(page).toHaveURL(/\/admin\/orders$/);
   await page.goto('/admin');
   await page.getByRole('button', { name: '处理工单', exact: true }).click();
-  await expect(page).toHaveURL(/status=waiting_staff/);
-  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/tickets\?status=waiting_staff$/);
+  await expect(
+    page.getByRole('region', { name: '工单管理', exact: true }).getByRole('table'),
+  ).toBeVisible();
   await page.goto('/admin/storage');
   await expect(
     page.getByText('统一管理图片、PDF 和 UTF-8 文本；替换文件保持素材链接稳定。'),
