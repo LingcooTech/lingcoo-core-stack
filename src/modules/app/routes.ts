@@ -6,6 +6,8 @@ import {
   applicationConnectionInputSchema,
   applicationReleaseInputSchema,
   buildRequestInputSchema,
+  applicationImageQuerySchema,
+  applicationImageResolveSchema,
 } from '@lingcoo/contracts';
 
 import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
@@ -21,6 +23,22 @@ import {
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
   const managed = { preHandler: app.requirePermission('apps.manage') };
+  app.get('/v1/admin/apps/:appCode/images/:imageKey/tags', managed, (r) => {
+    const p = appCodeParamsSchema
+      .extend({ imageKey: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/) })
+      .parse(r.params);
+    return app.services.AppService.lifecycle()
+      .images()
+      .tags(p.appCode, p.imageKey, applicationImageQuerySchema.parse(r.query));
+  });
+  app.post('/v1/admin/apps/:appCode/images/:imageKey/resolve', managed, (r) => {
+    const p = appCodeParamsSchema
+      .extend({ imageKey: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/) })
+      .parse(r.params);
+    return app.services.AppService.lifecycle()
+      .images()
+      .resolve(p.appCode, p.imageKey, applicationImageResolveSchema.parse(r.body));
+  });
   app.put('/v1/admin/apps/:appCode/source', managed, (r) =>
     app.services.AppService.lifecycle()
       .publishing()

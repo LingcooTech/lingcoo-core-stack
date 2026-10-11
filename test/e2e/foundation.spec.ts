@@ -67,6 +67,7 @@ test('application lifecycle imports a draft, registers an immutable version and 
   page,
 }) => {
   await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
   const code = 'browser_import_' + randomUUID().replaceAll('-', '');
   await page.goto('/admin/apps/import');
   await page.getByRole('tab', { name: '上传交付定义', exact: true }).click();

@@ -59,6 +59,16 @@
 
 调用示例：`node scripts/publish-application-release.mjs stack/app.yaml images.json 1.0.0 <40位commit>`。脚本解析同一 checkout 内的 Compose，将定义快照和镜像摘要提交到 Stack，只登记草稿。未通过通用执行器运行验收的容器版本仍不能发布。只配置工作流不代表已完成真实 ACR 构建回传，须用实际应用验证。
 
+## 镜像仓库管理
+
+应用生命周期页的组件镜像表提供“查看仓库版本”。公开仓库可匿名读取；私有仓库选择与声明中 registry host 完全匹配的拉取连接。后台分页读取标签，可以将标签或已有摘要解析为固定 repository@sha256，独立计算 Manifest 内容摘要并与仓库声明核对。镜像标签可以变化，不作为已登记交付版本的身份。
+
+只查询当前应用声明的组件仓库；不开放任意地址代理，不跟随重定向。HTTPS 连接在实际 socket 的 DNS 查询中限制为公网地址，防止域名重绑定访问内网。认证仅向本仓库同源令牌服务，以及已知阿里云个人版、Docker Hub 认证端点发送；申请的令牌 scope 固定为该仓库 pull。其他跨域认证服务暂不支持，会明确报错。只读账号仍需在镜像厂商侧授予最小拉取权限。
+
+该操作验证 Manifest 可访问及摘要一致，不下载全部镜像层，不代表平台架构兼容、初始化、就绪或备份恢复已验收。实际交付仍需运行验证。开发机的代理若将域名解析为 198.18.0.0/15 等保留地址，会被内网访问保护拒绝；不应为测试关闭保护，可在正常公网 DNS 的部署环境验证。
+
+管理员接口：GET `/v1/admin/apps/:appCode/images/:imageKey/tags` 查询标签，connectionId/last 为可选查询参数；POST `/v1/admin/apps/:appCode/images/:imageKey/resolve` 以 reference 和可选 connectionId 核对固定镜像摘要。
+
 ## 接口
 
 管理员接口需 apps.manage 权限，浏览器请求沿用现有会话与 CSRF 保护。

@@ -1,6 +1,7 @@
 import { storageResponseContracts } from './storage.js';
 import { lifecycleResponseContracts } from './app-lifecycle.js';
 import { appPublishingResponseContracts } from './app-publishing.js';
+import { appImagesResponseContracts } from './app-images.js';
 import { UpgradeOptionsSchema, upgradeReleaseSchema } from './hosting-upgrade.js';
 import { HandoverListSchema, HandoverResultSchema } from './hosting-handover.js';
 import { AppReadinessSchema } from './app-readiness.js';
@@ -33,6 +34,7 @@ import * as core from './core-responses.js';
 const clientResponseContracts = [
   ...lifecycleResponseContracts,
   ...appPublishingResponseContracts,
+  ...appImagesResponseContracts,
   {
     method: 'GET',
     path: '/v1/admin/deployments/:deploymentId/upgrades',

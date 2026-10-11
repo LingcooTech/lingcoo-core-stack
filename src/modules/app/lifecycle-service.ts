@@ -24,8 +24,12 @@ import {
 import type { AppService } from './service';
 import type { AppDependencies } from './dependencies';
 import { AppPublishingService } from './publishing-service';
+import { AppImagesService } from './images-service';
 
 export class AppLifecycleService {
+  images() {
+    return new AppImagesService(this.db, this.env);
+  }
   publishing() {
     return new AppPublishingService(
       this.db,

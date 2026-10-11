@@ -6,6 +6,8 @@ import { appConnections, appPublishingTokens, apps } from '../../src/db/schema';
 import { testDatabase, seedPurchase } from './helpers';
 import { AppService } from '../../src/modules/app/service';
 import { AppLifecycleService } from '../../src/modules/app/lifecycle-service';
+import { AppImagesService } from '../../src/modules/app/images-service';
+import { readFileSync } from 'node:fs';
 import { buildApp } from '../../src/app';
 import { users } from '../../src/db/schema';
 import { createServiceFactories } from '../../src/composition/service-factories';
@@ -309,4 +311,64 @@ test('build dispatch pins checkout commit, is idempotent, and preserves ambiguou
   await assert.rejects(() => mocked.dispatch(code, unknown, user.id), { statusCode: 502 });
   assert.equal((await mocked.dispatch(code, unknown, user.id)).status, 'unknown');
   assert.equal(calls, 2, 'uncertain dispatch must not be repeated automatically');
+});
+
+test('registry browsing is bound to the declared application component and matching credential host', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'registry_' + randomUUID().replaceAll('-', '');
+  const raw = JSON.parse(readFileSync('examples/stack-compose-app.json', 'utf8'));
+  raw.app.code = code;
+  raw.features = [];
+  const preview = await service.preview({ document: JSON.stringify(raw) });
+  await service.import(preview, user.id);
+  const good = await service.connect(
+    {
+      kind: 'registry',
+      name: 'Pull',
+      host: 'registry.example.com',
+      username: 'robot',
+      password: 'private-password',
+    },
+    user.id,
+  );
+  const wrong = await service.connect(
+    {
+      kind: 'registry',
+      name: 'Other',
+      host: 'other.example.com',
+      username: 'other',
+      password: 'never-send',
+    },
+    user.id,
+  );
+  let calls = 0;
+  const images = new AppImagesService(db, env, async (url, headers) => {
+    calls++;
+    assert.equal(url.host, 'registry.example.com');
+    assert.equal(url.pathname, '/v2/lingcoo/example-web/tags/list');
+    if (!headers.Authorization)
+      return {
+        status: 401,
+        headers: new Headers({ 'www-authenticate': 'Basic realm="registry"' }),
+        body: Buffer.alloc(0),
+      };
+    assert.equal(
+      headers.Authorization,
+      'Basic ' + Buffer.from('robot:private-password').toString('base64'),
+    );
+    return {
+      status: 200,
+      headers: new Headers(),
+      body: Buffer.from('{"name":"lingcoo/example-web","tags":["v1"]}'),
+    };
+  });
+  await assert.rejects(() => images.tags(code, 'web', { connectionId: wrong.id }), {
+    statusCode: 422,
+  });
+  await assert.rejects(() => images.tags(code, 'undeclared', { connectionId: good.id }), {
+    statusCode: 404,
+  });
+  assert.equal(calls, 0);
+  assert.deepEqual((await images.tags(code, 'web', { connectionId: good.id })).tags, ['v1']);
+  assert.equal(calls, 2);
 });

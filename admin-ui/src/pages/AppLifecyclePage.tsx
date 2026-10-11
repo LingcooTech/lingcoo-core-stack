@@ -22,6 +22,7 @@ import {
 } from '@/api/app-lifecycle';
 import { AppConnections } from '@/components/admin/apps/AppConnections';
 import { AppSourceBuilds } from '@/components/admin/apps/AppSourceBuilds';
+import { AppImageBrowser } from '@/components/admin/apps/AppImageBrowser';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 
@@ -132,6 +133,12 @@ export function AppLifecyclePage() {
                 { title: '组件', dataIndex: 'key' },
                 { title: '镜像仓库', dataIndex: 'repository' },
                 { title: '镜像变量', dataIndex: 'imageEnv' },
+                {
+                  title: '操作',
+                  render: (_, row) => (
+                    <AppImageBrowser code={code} imageKey={row.key} repository={row.repository} />
+                  ),
+                },
               ]}
             />
           ) : null}
