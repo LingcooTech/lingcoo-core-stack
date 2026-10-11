@@ -94,6 +94,29 @@ export const appConnections = pgTable('app_connections', {
   credentials: jsonb('credentials').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const appPublishingTokens = pgTable('app_publishing_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  actorUserId: uuid('actor_user_id').notNull(),
+  name: varchar('name', { length: 120 }).notNull(),
+  tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
+  revoked: boolean('revoked').notNull().default(false),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+export const appBuildRequests = pgTable('app_build_requests', {
+  id: uuid('id').primaryKey(),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  version: varchar('version', { length: 80 }).notNull(),
+  commit: varchar('commit', { length: 40 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('dispatching'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
 export const appSources = pgTable('app_sources', {
   appId: uuid('app_id')
     .primaryKey()

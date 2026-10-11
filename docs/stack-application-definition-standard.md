@@ -47,6 +47,18 @@
 
 当前容器版本发布要求通用执行器运行验收；相关阶段未完成时 API 会阻止发布。免部署版本可登记、发布和撤回，但商品仍需单独配置销售与授权规则。没有通过真实镜像拉取、初始化、就绪、HTTPS、备份恢复验收时，不能宣称可正式交付。
 
+## 源码同步和 CI
+
+应用生命周期页的“关联仓库定义 / 同步交付定义”重新读取固定提交，比较候选定义后保存。同步不覆盖商品名称、价格、权益销售配置、已有版本快照或实例；这些内容有各自的发布与交付步骤。
+
+“构建新版本”调用仓库已有 GitHub Actions workflow_dispatch。连接需拥有该仓库 Contents: Read、Actions: Read/Write；公开仓库匿名读取仍可用，但触发构建必须选择有写权限的连接。构建流程在默认分支存在，接收 stack_commit、stack_version、stack_build_id 三个字符串输入，checkout 必须固定 stack_commit。Stack 保存请求 ID、提交和版本，展示 GitHub 运行状态和日志链接。网络失败时请求标记为待核对，不自动重新触发；先检查 Actions 运行记录，确认没有运行后再创建新请求。
+
+在应用内生成“CI 发布凭证”，有效期 90 天，只显示一次，存入该应用仓库 Secret `STACK_PUBLISH_TOKEN`。后台可撤销；凭证不能访问管理接口，也不能给其他应用登记版本或发布商品。后台只保存凭证摘要。到期前生成新凭证替换 CI Secret，再撤销旧凭证。
+
+将 [便携登记脚本](../scripts/publish-application-release.mjs) 复制到应用仓库的 scripts 目录，参照 [构建工作流模板](../examples/stack-publish-workflow.yml) 配置；模板须补上应用自身测试与生产启动校验。应用依赖可以是自己的 Node/pnpm 版本，登记脚本用单独 Node 22 步骤执行，并在临时目录安装 yaml@2.9.1。配置变量 STACK_API_URL 为平台 HTTPS 地址，WEB_IMAGE_REPOSITORY 为定义中的镜像仓库；ACR 推送凭证仅保存在应用 CI Secret。多镜像应用逐一构建，在 images.json 中提供每个声明 key 对应的完整 repository@sha256 摘要。
+
+调用示例：`node scripts/publish-application-release.mjs stack/app.yaml images.json 1.0.0 <40位commit>`。脚本解析同一 checkout 内的 Compose，将定义快照和镜像摘要提交到 Stack，只登记草稿。未通过通用执行器运行验收的容器版本仍不能发布。只配置工作流不代表已完成真实 ACR 构建回传，须用实际应用验证。
+
 ## 接口
 
 管理员接口需 apps.manage 权限，浏览器请求沿用现有会话与 CSRF 保护。
@@ -61,5 +73,10 @@
 | POST     | /v1/admin/apps/:appCode/releases                     | 登记不可变版本                                                 |
 | POST     | /v1/admin/apps/:appCode/releases/:releaseId/publish  | 发布版本，独立于商品销售                                       |
 | POST     | /v1/admin/apps/:appCode/releases/:releaseId/withdraw | 撤回版本                                                       |
+| PUT      | /v1/admin/apps/:appCode/source                       | 保存候选来源与定义                                             |
+| GET/POST | /v1/admin/apps/:appCode/builds                       | 读取运行记录 / 触发固定提交构建                                |
+| GET/POST | /v1/admin/apps/:appCode/publishing-tokens            | 列表 / 生成应用 CI 凭证                                        |
+| DELETE   | /v1/admin/apps/:appCode/publishing-tokens/:tokenId   | 撤销 CI 凭证                                                   |
+| POST     | /v1/publishing/apps/:appCode/releases                | 应用专属 Bearer CI 凭证登记版本草稿                            |
 
 GitHub 读取规则参照 [Contents API](https://docs.github.com/en/rest/repos/contents?apiVersion=2022-11-28)。CI 触发参照 [Actions Workflow API](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28)。镜像识别遵循 [Registry HTTP API v2](https://distribution.github.io/distribution/spec/api/)。

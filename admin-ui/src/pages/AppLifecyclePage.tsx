@@ -21,6 +21,7 @@ import {
   withdrawApplicationRelease,
 } from '@/api/app-lifecycle';
 import { AppConnections } from '@/components/admin/apps/AppConnections';
+import { AppSourceBuilds } from '@/components/admin/apps/AppSourceBuilds';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 
@@ -29,6 +30,7 @@ export function AppLifecyclePage() {
     qc = useQueryClient(),
     { message, modal } = App.useApp();
   const [open, setOpen] = useState(false),
+    [detailsId, setDetailsId] = useState<string | null>(null),
     [form] = Form.useForm();
   const query = useQuery({
     queryKey: ['app-lifecycle', code],
@@ -94,6 +96,7 @@ export function AppLifecyclePage() {
         error={query.error}
         onRetry={() => void query.refetch()}
       >
+        <AppSourceBuilds code={code} />
         <Card title="源码与交付定义">
           <Descriptions
             column={{ xs: 1, md: 2 }}
@@ -189,6 +192,9 @@ export function AppLifecyclePage() {
                 title: '操作',
                 render: (_, row) => (
                   <Space>
+                    <Button type="link" onClick={() => setDetailsId(row.id)}>
+                      详情
+                    </Button>
                     {row.status === 'draft' && (
                       <Button
                         type="link"
@@ -231,6 +237,55 @@ export function AppLifecyclePage() {
           />
         </Card>
       </AsyncState>
+      <Drawer
+        title="版本快照"
+        size="large"
+        open={Boolean(detailsId)}
+        onClose={() => setDetailsId(null)}
+        destroyOnHidden
+      >
+        {(() => {
+          const release = data?.releases.find((v) => v.id === detailsId);
+          if (!release) return null;
+          return (
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+              <Descriptions
+                column={1}
+                items={[
+                  { key: 'version', label: '版本', children: release.version },
+                  { key: 'commit', label: '源码提交', children: release.commit },
+                  { key: 'digest', label: '定义摘要', children: release.definitionDigest },
+                  { key: 'license', label: '软件许可证', children: release.definition.app.license },
+                  {
+                    key: 'delivery',
+                    label: '交付类型',
+                    children: release.definition.delivery.kind,
+                  },
+                  { key: 'notes', label: '版本说明', children: release.notes || '—' },
+                ]}
+              />
+              <Table
+                rowKey="key"
+                pagination={false}
+                dataSource={Object.entries(release.images).map(([key, image]) => ({ key, image }))}
+                columns={[
+                  { title: '组件', dataIndex: 'key' },
+                  {
+                    title: '不可变镜像',
+                    dataIndex: 'image',
+                    render: (v: string) => <span style={{ wordBreak: 'break-all' }}>{v}</span>,
+                  },
+                ]}
+              />
+              <Card title="交付定义">
+                <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: 0 }}>
+                  {JSON.stringify(release.definition, null, 2)}
+                </pre>
+              </Card>
+            </Space>
+          );
+        })()}
+      </Drawer>
       <Drawer
         title="登记交付版本"
         open={open}

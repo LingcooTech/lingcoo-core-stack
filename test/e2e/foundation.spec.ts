@@ -63,6 +63,47 @@ async function login(page: import('@playwright/test').Page, path: string, email:
   await page.getByLabel('密码', { exact: true }).fill(password);
   await page.locator('form button[type="submit"]').click();
 }
+test('application lifecycle imports a draft, registers an immutable version and keeps CI credentials scoped', async ({
+  page,
+}) => {
+  await login(page, '/admin/login', adminEmail);
+  const code = 'browser_import_' + randomUUID().replaceAll('-', '');
+  await page.goto('/admin/apps/import');
+  await page.getByRole('tab', { name: '上传交付定义', exact: true }).click();
+  await page
+    .getByLabel('应用定义', { exact: true })
+    .fill(
+      JSON.stringify({
+        schemaVersion: 1,
+        app: { code, name: 'Browser imported application', license: 'MIT', acquisition: 'free' },
+        delivery: { kind: 'none', url: 'https://example.com' },
+      }),
+    );
+  await page.getByRole('button', { name: '读取并校验', exact: true }).click();
+  await page.getByRole('button', { name: '创建应用草稿', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/lifecycle$`));
+  await page.reload();
+  await expect(page.getByText('Browser imported application', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '登记版本', exact: true }).click();
+  await page.getByLabel('版本号', { exact: true }).fill('1.0.0');
+  await page.getByLabel('源码提交 SHA', { exact: true }).fill('a'.repeat(40));
+  await page.getByRole('button', { name: '保存版本草稿', exact: true }).click();
+  await expect(page.getByText('交付版本已登记为草稿', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '详情', exact: true }).click();
+  await expect(page.getByText('版本快照', { exact: true })).toBeVisible();
+  await expect(page.getByText('软件许可证', { exact: true })).toBeVisible();
+  await page.locator('.ant-drawer-close').click();
+  await page.getByRole('button', { name: 'CI 发布凭证', exact: true }).click();
+  await page.getByLabel('凭证名称', { exact: true }).fill('Browser Actions');
+  await page.getByRole('button', { name: '生成发布凭证', exact: true }).click();
+  await expect(page.getByRole('button', { name: '复制一次性凭证', exact: true })).toBeVisible();
+  const records = await (await page.request.get(`/v1/admin/apps/${code}/publishing-tokens`)).json();
+  expect(records.items[0].name).toBe('Browser Actions');
+  expect(JSON.stringify(records)).not.toContain('stk_publish_');
+  await page.locator('.ant-drawer-close').click();
+  const overview = await (await page.request.get(`/v1/admin/apps/${code}/lifecycle`)).json();
+  expect(overview.releases[0].status).toBe('draft');
+});
 test('user login, orders, entitlements and deployment survive deep-route refresh', async ({
   page,
 }) => {

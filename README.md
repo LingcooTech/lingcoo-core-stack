@@ -14,6 +14,7 @@
 
 ## 应用接入文档
 
+- [仓库应用定义与交付版本标准](docs/stack-application-definition-standard.md)：公开/私有仓库导入、源码同步、构建和不可变版本；阶段进度见文档中的任务清单。
 - [当前应用接入标准](docs/stack-app-delivery-onboarding-standard.md)：商品、交付清单、自部署、托管与验收。
 - [托管适配器协议 v2](docs/stack-hosting-adapter-contract.md)：应用与节点的执行接口。
 - [解耦审计与能力边界](docs/stack-application-decoupling-audit-20261011.md)。

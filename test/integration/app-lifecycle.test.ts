@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { appConnections, apps } from '../../src/db/schema';
+import { appConnections, appPublishingTokens, apps } from '../../src/db/schema';
 import { testDatabase, seedPurchase } from './helpers';
 import { AppService } from '../../src/modules/app/service';
+import { AppLifecycleService } from '../../src/modules/app/lifecycle-service';
 import { buildApp } from '../../src/app';
 import { users } from '../../src/db/schema';
 import { createServiceFactories } from '../../src/composition/service-factories';
@@ -146,4 +147,166 @@ test('a new repository cannot take ownership of another application feature', as
     (await service.overview(first)).definition?.features[0]?.code,
     original.features[0]?.code,
   );
+});
+
+test('CI credentials register drafts only for their own application and stop working after revocation or expiry', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'ci_' + randomUUID().replaceAll('-', ''),
+    other = 'ci_other_' + randomUUID().replaceAll('-', '');
+  const preview = await service.preview({ document: JSON.stringify(definition(code)) });
+  await service.import(preview, user.id);
+  await service.import(
+    await service.preview({ document: JSON.stringify(definition(other)) }),
+    user.id,
+  );
+  const publishing = service.publishing();
+  const credential = await publishing.issueToken(code, 'Actions fixture', user.id);
+  const input = {
+    version: '1.0.0',
+    commit: 'a'.repeat(40),
+    definition: preview.definition,
+    images: {},
+    notes: '',
+  };
+  const [a, b] = await Promise.all([
+    publishing.submit(code, credential.token, input),
+    publishing.submit(code, credential.token, input),
+  ]);
+  assert.equal(a.id, b.id);
+  assert.equal(a.status, 'draft');
+  assert.ok(!JSON.stringify(await publishing.tokens(code)).includes(credential.token));
+  await assert.rejects(() => publishing.submit(other, credential.token, input), {
+    statusCode: 401,
+  });
+  await publishing.revokeToken(code, credential.record.id, user.id);
+  await assert.rejects(() => publishing.submit(code, credential.token, input), { statusCode: 401 });
+  const expired = await publishing.issueToken(code, 'Expired fixture', user.id);
+  await db
+    .update(appPublishingTokens)
+    .set({ expiresAt: new Date(0) })
+    .where(eq(appPublishingTokens.id, expired.record.id));
+  await assert.rejects(() => publishing.submit(code, expired.token, input), { statusCode: 401 });
+});
+
+test('source synchronization preserves immutable releases and app sales metadata', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'sync_' + randomUUID().replaceAll('-', '');
+  const preview = await service.preview({ document: JSON.stringify(definition(code)) });
+  await service.import(preview, user.id);
+  const release = await service.registerRelease(
+    code,
+    {
+      version: '1.0.0',
+      commit: 'a'.repeat(40),
+      definition: preview.definition,
+      images: {},
+      notes: '',
+    },
+    user.id,
+  );
+  const changed = definition(code);
+  changed.app.name = 'New source name';
+  const next = await service.preview({ document: JSON.stringify(changed) });
+  await service.publishing().applySource(code, next, user.id);
+  const overview = await service.overview(code);
+  assert.equal(overview.definition?.app.name, 'New source name');
+  assert.equal(overview.releases[0]?.definition.app.name, release.definition.app.name);
+  const [app] = await db.select().from(apps).where(eq(apps.code, code));
+  assert.equal(app?.name, 'Lifecycle fixture');
+  assert.equal(app?.status, 'inactive');
+});
+
+test('CI HTTP endpoint accepts its scoped credential without an admin session', async () => {
+  const http = await buildApp(env);
+  try {
+    const { user } = await seedPurchase(db),
+      code = 'ci_http_' + randomUUID().replaceAll('-', '');
+    const preview = await service.preview({ document: JSON.stringify(definition(code)) });
+    await service.import(preview, user.id);
+    const credential = await service.publishing().issueToken(code, 'HTTP fixture', user.id);
+    const payload = {
+      version: '1.0.0',
+      commit: 'a'.repeat(40),
+      definition: preview.definition,
+      images: {},
+      notes: '',
+    };
+    const response = await http.inject({
+      method: 'POST',
+      url: `/v1/publishing/apps/${code}/releases`,
+      headers: { authorization: `Bearer ${credential.token}` },
+      payload,
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().status, 'draft');
+    const admin = await http.inject({
+      method: 'GET',
+      url: `/v1/admin/apps/${code}/publishing-tokens`,
+      headers: { authorization: `Bearer ${credential.token}` },
+    });
+    assert.equal(admin.statusCode, 401);
+  } finally {
+    await http.close();
+  }
+});
+
+test('build dispatch pins checkout commit, is idempotent, and preserves ambiguous failures for manual inspection', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'build_' + randomUUID().replaceAll('-', '');
+  const preview = await service.preview({
+    document: JSON.stringify({ ...definition(code), build: { workflow: 'publish.yml' } }),
+  });
+  await service.import(preview, user.id);
+  const connection = await service.connect(
+    { kind: 'github', name: 'Actions', token: 'test-actions-token' },
+    user.id,
+  );
+  await service.publishing().applySource(
+    code,
+    {
+      ...preview,
+      source: {
+        repository: 'https://github.com/example/app',
+        ref: 'main',
+        path: 'stack/app.yaml',
+        commit: 'a'.repeat(40),
+        connectionId: connection.id,
+      },
+    },
+    user.id,
+  );
+  let calls = 0,
+    fail = false;
+  const dependencies = createServiceFactories();
+  const mocked = new AppLifecycleService(
+    db,
+    env,
+    dependencies,
+    (tx) => new AppService(dependencies, tx, env),
+    (async (_url, init) => {
+      calls++;
+      assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer test-actions-token');
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.ref, 'main');
+      assert.equal(body.inputs.stack_commit, 'a'.repeat(40));
+      if (fail) throw Error('transport failed with sensitive detail');
+      return new Response(null, { status: 204 });
+    }) as typeof fetch,
+  ).publishing();
+  const request = { requestId: randomUUID(), version: '1.0.0' };
+  const [a, b] = await Promise.all([
+    mocked.dispatch(code, request, user.id),
+    mocked.dispatch(code, request, user.id),
+  ]);
+  assert.equal(a.id, b.id);
+  assert.equal(calls, 1);
+  assert.equal((await mocked.dispatch(code, request, user.id)).status, 'dispatched');
+  await assert.rejects(() => mocked.dispatch(code, { ...request, version: '2.0.0' }, user.id), {
+    statusCode: 409,
+  });
+  fail = true;
+  const unknown = { requestId: randomUUID(), version: '3.0.0' };
+  await assert.rejects(() => mocked.dispatch(code, unknown, user.id), { statusCode: 502 });
+  assert.equal((await mocked.dispatch(code, unknown, user.id)).status, 'unknown');
+  assert.equal(calls, 2, 'uncertain dispatch must not be repeated automatically');
 });

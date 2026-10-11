@@ -23,8 +23,19 @@ import {
 } from './definition';
 import type { AppService } from './service';
 import type { AppDependencies } from './dependencies';
+import { AppPublishingService } from './publishing-service';
 
 export class AppLifecycleService {
+  publishing() {
+    return new AppPublishingService(
+      this.db,
+      this.env,
+      this.dependencies,
+      (db) =>
+        new AppLifecycleService(db, this.env, this.dependencies, this.createApps, this.fetcher),
+      this.fetcher,
+    );
+  }
   constructor(
     private readonly db: DbExecutor,
     private readonly env: AppEnv,

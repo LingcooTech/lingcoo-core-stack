@@ -5,6 +5,7 @@ import {
   applicationPreviewSchema,
   applicationConnectionInputSchema,
   applicationReleaseInputSchema,
+  buildRequestInputSchema,
 } from '@lingcoo/contracts';
 
 import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
@@ -20,6 +21,61 @@ import {
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
   const managed = { preHandler: app.requirePermission('apps.manage') };
+  app.put('/v1/admin/apps/:appCode/source', managed, (r) =>
+    app.services.AppService.lifecycle()
+      .publishing()
+      .applySource(
+        appCodeParamsSchema.parse(r.params).appCode,
+        applicationPreviewSchema.parse(r.body),
+        r.user.sub,
+      ),
+  );
+  app.get('/v1/admin/apps/:appCode/builds', managed, (r) =>
+    app.services.AppService.lifecycle()
+      .publishing()
+      .builds(appCodeParamsSchema.parse(r.params).appCode),
+  );
+  app.post('/v1/admin/apps/:appCode/builds', managed, (r) =>
+    app.services.AppService.lifecycle()
+      .publishing()
+      .dispatch(
+        appCodeParamsSchema.parse(r.params).appCode,
+        buildRequestInputSchema.parse(r.body),
+        r.user.sub,
+      ),
+  );
+  app.get('/v1/admin/apps/:appCode/publishing-tokens', managed, (r) =>
+    app.services.AppService.lifecycle()
+      .publishing()
+      .tokens(appCodeParamsSchema.parse(r.params).appCode),
+  );
+  app.post('/v1/admin/apps/:appCode/publishing-tokens', managed, (r) =>
+    app.services.AppService.lifecycle()
+      .publishing()
+      .issueToken(
+        appCodeParamsSchema.parse(r.params).appCode,
+        z.object({ name: z.string().trim().min(1).max(120) }).parse(r.body).name,
+        r.user.sub,
+      ),
+  );
+  app.delete('/v1/admin/apps/:appCode/publishing-tokens/:tokenId', managed, (r) => {
+    const p = appCodeParamsSchema.extend({ tokenId: z.uuid() }).parse(r.params);
+    return app.services.AppService.lifecycle()
+      .publishing()
+      .revokeToken(p.appCode, p.tokenId, r.user.sub);
+  });
+  app.post(
+    '/v1/publishing/apps/:appCode/releases',
+    { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+    (r) =>
+      app.services.AppService.lifecycle()
+        .publishing()
+        .submit(
+          appCodeParamsSchema.parse(r.params).appCode,
+          (r.headers.authorization ?? '').replace(/^Bearer /, ''),
+          applicationReleaseInputSchema.parse(r.body),
+        ),
+  );
   app.get('/v1/admin/app-connections', managed, () =>
     app.services.AppService.lifecycle().connections(),
   );

@@ -61,5 +61,7 @@
   "storageReferences": "storage",
   "appConnections": "app",
   "appSources": "app",
-  "appReleases": "app"
+  "appReleases": "app",
+  "appPublishingTokens": "app",
+  "appBuildRequests": "app"
 }

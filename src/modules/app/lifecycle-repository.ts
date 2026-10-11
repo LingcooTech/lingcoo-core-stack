@@ -1,9 +1,65 @@
 import { and, desc, eq } from 'drizzle-orm';
-import { appConnections, appSources, appReleases } from '../../db/schema';
+import {
+  appConnections,
+  appSources,
+  appReleases,
+  appPublishingTokens,
+  appBuildRequests,
+} from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 
 export class AppLifecycleRepository {
   constructor(private readonly db: DbExecutor) {}
+  tokens(appId: string) {
+    return this.db
+      .select()
+      .from(appPublishingTokens)
+      .where(eq(appPublishingTokens.appId, appId))
+      .orderBy(desc(appPublishingTokens.createdAt));
+  }
+  async token(hash: string) {
+    return (
+      await this.db
+        .select()
+        .from(appPublishingTokens)
+        .where(eq(appPublishingTokens.tokenHash, hash))
+        .limit(1)
+    )[0];
+  }
+  async createPublishingToken(values: typeof appPublishingTokens.$inferInsert) {
+    return (await this.db.insert(appPublishingTokens).values(values).returning())[0]!;
+  }
+  revokeToken(appId: string, id: string) {
+    return this.db
+      .update(appPublishingTokens)
+      .set({ revoked: true })
+      .where(and(eq(appPublishingTokens.appId, appId), eq(appPublishingTokens.id, id)));
+  }
+  builds(appId: string) {
+    return this.db
+      .select()
+      .from(appBuildRequests)
+      .where(eq(appBuildRequests.appId, appId))
+      .orderBy(desc(appBuildRequests.createdAt))
+      .limit(30);
+  }
+  async build(id: string) {
+    return (
+      await this.db.select().from(appBuildRequests).where(eq(appBuildRequests.id, id)).limit(1)
+    )[0];
+  }
+  async createBuild(values: typeof appBuildRequests.$inferInsert) {
+    return (await this.db.insert(appBuildRequests).values(values).returning())[0]!;
+  }
+  async setBuildStatus(id: string, status: string) {
+    return (
+      await this.db
+        .update(appBuildRequests)
+        .set({ status })
+        .where(eq(appBuildRequests.id, id))
+        .returning()
+    )[0]!;
+  }
   listConnections() {
     return this.db.select().from(appConnections).orderBy(desc(appConnections.createdAt));
   }
