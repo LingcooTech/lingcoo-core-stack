@@ -1,3 +1,5 @@
+import { getAppDetailProfile } from './app-detail';
+import { getAppDeliveryMode } from './app-delivery';
 import type { AppCatalog, AppWithDetails, AppLink } from '@/api/types';
 import { formatAmount } from '@/lib/utils';
 
@@ -170,4 +172,17 @@ export function getAccessLinkLabel(link: Pick<AppLink, 'label' | 'type'>) {
   }
 
   return '访问链接';
+}
+
+/** A free default in metadata is not a purchasable offer or an application entry. */
+export function getAppAvailabilityLabel(app: Pick<AppWithDetails, 'meta' | 'links'>) {
+  const detail = getAppDetailProfile(app);
+  const externalPurchase = detail.purchaseType === 'offsite' && Boolean(detail.purchaseUrl);
+  const directAccess =
+    getAppDeliveryMode(app) !== 'one_click' &&
+    (getPrimaryWebsiteLink(app.links) || getPrimaryDownloadLink(app.links));
+  if (!externalPurchase && !directAccess) return '即将开放';
+  if (externalPurchase) return detail.price || '站外购买';
+  if (detail.purchaseType === 'free') return '免费使用';
+  return detail.price || '可直接访问';
 }

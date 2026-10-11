@@ -173,7 +173,7 @@ export function AiTranslateWorkflowPrivacyPage() {
         })}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           {sections.map((section) => (
             <Card key={section.title} className="border-border/80 bg-card/95">

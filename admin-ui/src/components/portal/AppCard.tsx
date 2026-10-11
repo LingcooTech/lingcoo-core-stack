@@ -5,6 +5,7 @@ import type { AppWithDetails } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import {
   formatOfferStartingPriceLabel,
+  getAppAvailabilityLabel,
   getActiveOffers,
   getAppTypeLabel,
 } from '@/lib/app-catalog-ui';
@@ -37,7 +38,9 @@ function AppIdentity({ app }: { app: AppWithDetails }) {
 
 function AppCardBody({ app }: { app: AppWithDetails }) {
   const activeOffers = getActiveOffers(app.checkoutOffers ?? []);
-  const priceLabel = formatOfferStartingPriceLabel(activeOffers);
+  const priceLabel = activeOffers.length
+    ? formatOfferStartingPriceLabel(activeOffers)
+    : getAppAvailabilityLabel(app);
 
   return (
     <div className="flex h-full flex-col p-5">

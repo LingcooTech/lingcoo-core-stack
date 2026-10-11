@@ -1,3 +1,5 @@
+import '@/index.css';
+import { page } from 'vitest/browser';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,8 +14,9 @@ vi.mock('@/api/user', () => ({
   getCheckoutSessionStatus: vi.fn(),
   reconcileCheckoutSession: vi.fn(),
 }));
-test('purchase confirms software plus hosting total and sends only offer identity and version', async () => {
+test('short mobile purchase dialog remains reachable and confirms software plus hosting total and sends only offer identity and version', async () => {
   Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true);
+  await page.viewport(390, 667);
   mocks.catalog.mockResolvedValue({
     items: [
       {
@@ -75,7 +78,10 @@ test('purchase confirms software plus hosting total and sends only offer identit
     });
     expect(document.body.textContent).toContain('119.90');
     expect(document.body.textContent).toContain('宽限 7 天');
-    await act(async () => button('下一步').click());
+    const dialog = document.querySelector('[role=dialog]')!;
+    await expect.poll(() => dialog.getBoundingClientRect().top).toBeGreaterThanOrEqual(15);
+    expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(652);
+    await act(async () => page.getByRole('button', { name: '下一步', exact: true }).click());
     expect(document.body.textContent).toContain('119.90');
     await act(async () => button('创建订单').click());
     expect(mocks.create).toHaveBeenCalledOnce();
@@ -88,5 +94,6 @@ test('purchase confirms software plus hosting total and sends only offer identit
     await act(async () => root.unmount());
     client.clear();
     host.remove();
+    await page.viewport(1280, 720);
   }
 });

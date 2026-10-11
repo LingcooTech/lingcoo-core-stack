@@ -205,8 +205,8 @@ export function AppPurchaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={resetDialog}>
-      <DialogContent className="max-w-3xl rounded-xl border-border p-0">
-        <DialogHeader className="border-b border-border px-6 py-5">
+      <DialogContent className="max-w-3xl grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border-border p-0">
+        <DialogHeader className="border-b border-border px-4 py-4 pr-12 sm:px-6 sm:pr-12">
           <DialogTitle className="text-xl font-semibold text-foreground">
             购买 {appName}
           </DialogTitle>
@@ -215,7 +215,7 @@ export function AppPurchaseDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 px-6 py-6">
+        <div className="min-h-0 space-y-6 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
           <div className="flex items-center gap-3 text-sm">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1.5 font-medium ${
@@ -237,7 +237,7 @@ export function AppPurchaseDialog({
             </span>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr),240px]">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
             <div className="rounded-xl border border-border bg-muted p-5">
               <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
                 软件套餐

@@ -1,3 +1,4 @@
+import { BrandMark } from '@/components/portal/BrandMark';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -11,7 +12,6 @@ import { SpaceSelector } from '@/components/docs/SpaceSelector';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, getSiteDisplayName } from '@/lib/site-settings';
-import { getInitials } from '@/lib/utils';
 
 export function DocsShell() {
   const location = useLocation();
@@ -36,17 +36,7 @@ export function DocsShell() {
           <div className="flex min-h-[52px] items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
               <Link to="/docs" className="flex min-w-0 items-center gap-3">
-                {siteSettings?.logoUrl ? (
-                  <img
-                    src={siteSettings.logoUrl}
-                    alt={siteName}
-                    className="h-9 w-9 rounded-xl border border-border bg-card object-contain p-1.5 shadow-sm"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-500 text-sm font-semibold text-white shadow-sm shadow-primary/20">
-                    {getInitials(siteName)}
-                  </div>
-                )}
+                <BrandMark src={siteSettings?.logoUrl} name={siteName} />
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold tracking-tight text-foreground">
                     {siteName}

@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, LoaderCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,6 +10,7 @@ import { EmptyState } from '@/components/portal/EmptyState';
 import { PUBLIC_SITE_SETTINGS_QUERY_KEY, getDocsHubContent } from '@/lib/site-settings';
 
 export function DocsHubPage() {
+  usePageMetadata('文档中心');
   const docsQuery = useQuery({
     queryKey: ['public-doc-spaces'],
     queryFn: listPublicDocSpaces,
@@ -44,6 +47,8 @@ export function DocsHubPage() {
         <div className="flex min-h-[30vh] items-center justify-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-muted-foreground" />
         </div>
+      ) : docsQuery.isError ? (
+        <QueryErrorState retry={() => void docsQuery.refetch()} busy={docsQuery.isFetching} />
       ) : items.length === 0 ? (
         <EmptyState
           icon={BookOpen}

@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, FileText, Search } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
@@ -14,6 +16,7 @@ import { formatTime } from '@/lib/utils';
 const PAGE_SIZE = 12;
 
 export function ContentHubPage() {
+  usePageMetadata('内容中心');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
@@ -66,6 +69,7 @@ export function ContentHubPage() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            aria-label="搜索文章标题、摘要或作者"
             placeholder="搜索文章标题、摘要或作者..."
             className="h-9 pl-9 text-[13px]"
           />
@@ -88,6 +92,8 @@ export function ContentHubPage() {
             </div>
           ))}
         </div>
+      ) : contentQuery.isError ? (
+        <QueryErrorState retry={() => void contentQuery.refetch()} busy={contentQuery.isFetching} />
       ) : items.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -123,7 +129,7 @@ export function ContentHubPage() {
               <p className="line-clamp-3 flex-1 text-[13px] leading-6 text-muted-foreground">
                 {item.excerpt || '暂无摘要。'}
               </p>
-              <div className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/60 transition-colors group-hover:text-foreground">
+              <div className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">
                 阅读全文
                 <ArrowRight className="h-3 w-3" />
               </div>

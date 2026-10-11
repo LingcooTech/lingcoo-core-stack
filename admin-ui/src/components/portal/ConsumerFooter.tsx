@@ -1,9 +1,9 @@
+import { BrandMark } from '@/components/portal/BrandMark';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import type { PublicSiteSettings } from '@/api/types';
 import { Container } from '@/components/layout/Container';
-import { getInitials } from '@/lib/utils';
 import { getSiteDisplayName, isExternalSiteUrl, resolveFooterCopyright } from '@/lib/site-settings';
 
 interface ConsumerFooterProps {
@@ -21,20 +21,10 @@ export function ConsumerFooter({ siteSettings }: ConsumerFooterProps) {
   return (
     <footer className="border-t border-border bg-muted/40">
       <Container className="py-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-start">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              {siteSettings?.logoUrl ? (
-                <img
-                  src={siteSettings.logoUrl}
-                  alt={siteName}
-                  className="h-10 w-10 rounded-xl border border-border bg-card object-contain p-1.5 shadow-sm"
-                />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-sm font-semibold tracking-wide text-background">
-                  {getInitials(siteName)}
-                </div>
-              )}
+              <BrandMark src={siteSettings?.logoUrl} name={siteName} />
               <div>
                 <p className="text-sm font-semibold tracking-tight text-foreground">{siteName}</p>
               </div>

@@ -1,3 +1,4 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { runAsync } from '@/lib/async-events';
 import { useMutation } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
 export function VerifyEmailPage() {
+  usePageMetadata('验证邮箱');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, setEmailVerified } = useAuth();

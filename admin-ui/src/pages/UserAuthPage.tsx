@@ -1,3 +1,4 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { runAsync, handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
@@ -29,6 +30,7 @@ const formSchema = loginSchema.extend({
 type FormValues = z.infer<typeof formSchema>;
 
 export function UserAuthPage({ mode }: { mode: 'login' | 'register' }) {
+  usePageMetadata(mode === 'login' ? '登录' : '注册');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();

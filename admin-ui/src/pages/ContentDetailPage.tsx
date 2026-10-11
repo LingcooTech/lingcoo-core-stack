@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { handleAsync } from '@/lib/async-events';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Clock, FileText, Link2, LoaderCircle, Share2 } from 'lucide-react';
@@ -36,6 +38,8 @@ export function ContentDetailPage() {
     staleTime: 60_000,
   });
 
+  usePageMetadata(contentQuery.data?.title ?? '内容详情', contentQuery.data?.excerpt || undefined);
+
   const toc = useMemo(
     () => (contentQuery.data?.content ? extractToc(contentQuery.data.content) : []),
     [contentQuery.data?.content],
@@ -53,6 +57,17 @@ export function ContentDetailPage() {
       </div>
     );
   }
+
+  if (contentQuery.isError)
+    return (
+      <QueryErrorState
+        error={contentQuery.error}
+        retry={() => void contentQuery.refetch()}
+        busy={contentQuery.isFetching}
+        backTo="/content"
+        backLabel="返回内容中心"
+      />
+    );
 
   if (!contentQuery.data) {
     return (
@@ -143,7 +158,7 @@ export function ContentDetailPage() {
         ) : null}
       </header>
 
-      <div className="mx-auto max-w-[1040px] lg:grid lg:grid-cols-[minmax(0,1fr),200px] lg:gap-12">
+      <div className="mx-auto max-w-[1040px] lg:grid lg:grid-cols-[minmax(0,1fr)_200px] lg:gap-12">
         <section className="content-body content-body-readable mx-auto">
           <ReactMarkdown
             rehypePlugins={[rehypeRaw]}

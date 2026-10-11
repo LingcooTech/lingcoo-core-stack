@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -225,7 +227,7 @@ function AccountProfileTab() {
             <p className="inline-flex items-center gap-2 font-mono text-[13px] text-muted-foreground">
               <span className="truncate">{currentUser.email}</span>
             </p>
-            <p className="text-[12px] text-muted-foreground/80">
+            <p className="text-[12px] text-muted-foreground">
               用户 ID
               <span className="ml-2 font-mono text-muted-foreground">{currentUser.id}</span>
             </p>
@@ -403,7 +405,12 @@ function AccountOrdersTab() {
         </div>
 
         <div className="grid gap-3">
-          {ordersQuery.isLoading ? (
+          {ordersQuery.isError ? (
+            <QueryErrorState
+              retry={() => void ordersQuery.refetch()}
+              busy={ordersQuery.isFetching}
+            />
+          ) : ordersQuery.isLoading ? (
             <Card>
               <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
                 <LoaderCircle className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -655,7 +662,12 @@ function AccountNotificationsTab() {
           </Button>
         </div>
 
-        {notificationsQuery.isLoading ? (
+        {notificationsQuery.isError ? (
+          <QueryErrorState
+            retry={() => void notificationsQuery.refetch()}
+            busy={notificationsQuery.isFetching}
+          />
+        ) : notificationsQuery.isLoading ? (
           <Card className="rounded-xl border-border bg-card">
             <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
               <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
@@ -801,7 +813,15 @@ function AccountAppsTab() {
         ))}
       </div>
 
-      {entitlementsQuery.isLoading ? (
+      {entitlementsQuery.isError || appsQuery.isError ? (
+        <QueryErrorState
+          retry={() => {
+            void entitlementsQuery.refetch();
+            void appsQuery.refetch();
+          }}
+          busy={entitlementsQuery.isFetching || appsQuery.isFetching}
+        />
+      ) : entitlementsQuery.isLoading ? (
         <Card>
           <CardContent className="flex items-center justify-center gap-3 p-10 text-muted-foreground">
             <LoaderCircle className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -872,6 +892,7 @@ function AccountAppsTab() {
 }
 
 export function AccountCenterPage() {
+  usePageMetadata('账户与订单');
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = normalizeAccountTab(searchParams.get('tab'));
 
@@ -891,7 +912,7 @@ export function AccountCenterPage() {
         className="space-y-6"
       >
         <div className="sticky top-12 z-10 -mx-1 border-b border-border bg-background/80 px-1 py-2 backdrop-blur-md">
-          <TabsList className="h-auto w-full justify-start gap-1 bg-transparent p-0">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             <TabsTrigger value="profile" className="text-[13px]">
               个人资料
             </TabsTrigger>

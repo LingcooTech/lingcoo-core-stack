@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -11,7 +13,11 @@ import { SkeletonAppCard } from '@/components/shared/Skeleton';
 import { cn } from '@/lib/utils';
 
 export function HomePage() {
-  const { data, isLoading } = useQuery({ queryKey: ['public-apps'], queryFn: listApps });
+  usePageMetadata('应用中心');
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['public-apps'],
+    queryFn: listApps,
+  });
   const apps = useMemo(() => data?.items ?? [], [data?.items]);
 
   const [activeCategory, setActiveCategory] = useState<string>('');
@@ -48,6 +54,8 @@ export function HomePage() {
               <SkeletonAppCard key={index} />
             ))}
           </div>
+        ) : isError ? (
+          <QueryErrorState retry={() => void refetch()} busy={isFetching} />
         ) : filteredApps.length === 0 ? (
           <EmptyState
             icon={Sparkles}
@@ -168,6 +176,7 @@ function CategoryChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'shrink-0 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
         active

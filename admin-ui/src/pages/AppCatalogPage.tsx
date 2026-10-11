@@ -1,16 +1,17 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { runAsync } from '@/lib/async-events';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ArrowUpRight,
   CheckCircle2,
-  ChevronDown,
   CreditCard,
   Download,
   LoaderCircle,
   Rocket,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -19,13 +20,25 @@ import remarkGfm from 'remark-gfm';
 import { getAppCatalog } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
 import type { MyEntitlement } from '@/api/types';
-import { AppPurchaseDialog } from '@/components/portal/AppPurchaseDialog';
+const AppPurchaseDialog = lazy(() =>
+  import('@/components/portal/AppPurchaseDialog').then((module) => ({
+    default: module.AppPurchaseDialog,
+  })),
+);
 import { EmptyState } from '@/components/portal/EmptyState';
 import { OfferCard } from '@/components/portal/OfferCard';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   getAccessLinkLabel,
+  getAppAvailabilityLabel,
   formatOfferRangeLabel,
   getAppStatusLabel,
   getAppTypeLabel,
@@ -70,15 +83,19 @@ export function AppCatalogPage() {
   const qc = useQueryClient();
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<DetailTabKey>('intro');
-  const [openFaqIndices, setOpenFaqIndices] = useState<Set<number>>(new Set());
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedPurchaseOfferCode, setSelectedPurchaseOfferCode] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['app-catalog', params.appCode],
     queryFn: () => getAppCatalog(params.appCode ?? ''),
     enabled: Boolean(params.appCode),
   });
+
+  usePageMetadata(
+    data?.app.name ?? '应用详情',
+    data?.app.tagline || data?.app.description || undefined,
+  );
 
   const entitlementsQuery = useQuery({
     queryKey: ['my-entitlements'],
@@ -88,7 +105,6 @@ export function AppCatalogPage() {
 
   useEffect(() => {
     setActiveTab('intro');
-    setOpenFaqIndices(new Set());
     setPurchaseDialogOpen(false);
     setSelectedPurchaseOfferCode(null);
   }, [params.appCode]);
@@ -129,18 +145,6 @@ export function AppCatalogPage() {
     [currentAppEntitlements],
   );
 
-  const toggleFaq = (index: number) => {
-    setOpenFaqIndices((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
-
   const startCheckout = (offerCode?: string | null) => {
     if (!isAuthenticated) {
       runAsync(() => navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`));
@@ -157,6 +161,17 @@ export function AppCatalogPage() {
       </div>
     );
   }
+
+  if (isError)
+    return (
+      <QueryErrorState
+        error={error}
+        retry={() => void refetch()}
+        busy={isFetching}
+        backTo="/"
+        backLabel="返回应用中心"
+      />
+    );
 
   if (!data) {
     return (
@@ -199,13 +214,7 @@ export function AppCatalogPage() {
   const canShowEntitledResourceLinks = !offers.length || hasActiveEntitlement;
   const hasDirectAccess = !isDeployable && (websiteLinks.length > 0 || downloadLinks.length > 0);
   const primarySubscriptionPlan = appDetail.subscriptionPlans[0] ?? null;
-  const fallbackPriceLabel =
-    appDetail.purchaseType === 'free'
-      ? '免费'
-      : appDetail.purchaseType === 'onsite_subscription' && primarySubscriptionPlan?.price
-        ? primarySubscriptionPlan.price
-        : appDetail.price || (hasDirectAccess ? '免费使用' : '即将开放');
-  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : fallbackPriceLabel;
+  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : getAppAvailabilityLabel(app);
   const heroPriceDescription =
     offers.length > 1
       ? `${offers.length} 个套餐，购买时选择`
@@ -292,9 +301,9 @@ export function AppCatalogPage() {
           />
         ) : null}
 
-        <div className="relative grid gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr),300px] lg:items-start">
+        <div className="relative grid gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
           <div className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-[112px,minmax(0,1fr)]">
+            <div className="grid gap-4 md:grid-cols-[112px_minmax(0,1fr)]">
               <div className="flex justify-center md:justify-start">
                 {app.iconUrl ? (
                   <img
@@ -383,7 +392,14 @@ export function AppCatalogPage() {
                 ) : null}
               </div>
 
-              {entitlementStateLoading ? (
+              {entitlementsQuery.isError ? (
+                <div className="mt-4">
+                  <QueryErrorState
+                    retry={() => void entitlementsQuery.refetch()}
+                    busy={entitlementsQuery.isFetching}
+                  />
+                </div>
+              ) : entitlementStateLoading ? (
                 <Button className="mt-4 h-10 w-full rounded-xl" disabled>
                   正在确认授权...
                 </Button>
@@ -495,27 +511,25 @@ export function AppCatalogPage() {
 
       <section className="py-1">
         <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="min-w-0 flex-1 lg:max-w-[calc(100%-300px-1.5rem)]">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as DetailTabKey)}
+            className="min-w-0 flex-1 lg:max-w-[calc(100%-300px-1.5rem)]"
+          >
             <div className="rounded-xl border border-border bg-card p-2 shadow-sm">
-              <nav className="flex gap-2 overflow-x-auto" aria-label="Tabs">
+              <TabsList
+                aria-label="应用详情"
+                className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0"
+              >
                 {visibleTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                      activeTab === tab.key
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
+                  <TabsTrigger key={tab.key} value={tab.key} className="px-4 py-2">
                     {tab.label}
-                  </button>
+                  </TabsTrigger>
                 ))}
-              </nav>
+              </TabsList>
             </div>
 
-            <div className="pt-5">
+            <TabsContent value={activeTab} className="mt-0 pt-5">
               {activeTab === 'intro' ? (
                 hasContent ? (
                   <div className="content-body max-w-none">
@@ -660,38 +674,22 @@ export function AppCatalogPage() {
               {activeTab === 'support' ? (
                 <div className="space-y-6">
                   {hasFaq ? (
-                    <div className="space-y-3">
-                      {app.faq.map((item, index) => {
-                        const open = openFaqIndices.has(index);
-
-                        return (
-                          <div
-                            key={index}
-                            className="overflow-hidden rounded-xl border border-border bg-card"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => toggleFaq(index)}
-                              className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-                            >
-                              <span className="text-base font-semibold text-foreground">
-                                {item.question}
-                              </span>
-                              <ChevronDown
-                                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                                  open ? 'rotate-180' : ''
-                                }`}
-                              />
-                            </button>
-                            {open ? (
-                              <div className="border-t border-border px-6 py-5 text-sm leading-7 text-muted-foreground">
-                                {item.answer}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <Accordion type="multiple" className="space-y-3">
+                      {app.faq.map((item, index) => (
+                        <AccordionItem
+                          key={index}
+                          value={String(index)}
+                          className="rounded-xl border border-border bg-card px-5"
+                        >
+                          <AccordionTrigger className="gap-4 text-left">
+                            {item.question}
+                          </AccordionTrigger>
+                          <AccordionContent className="leading-7 text-muted-foreground">
+                            {item.answer}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
                   ) : null}
 
                   {resourceCards.length > 0 ? (
@@ -749,8 +747,8 @@ export function AppCatalogPage() {
                   ) : null}
                 </div>
               ) : null}
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
 
           <aside className="w-full shrink-0 lg:w-[300px]">
             <div className="space-y-4 lg:sticky lg:top-20">
@@ -761,20 +759,21 @@ export function AppCatalogPage() {
                 <dl className="mt-4 space-y-3 text-sm">
                   {[
                     { label: '类型', value: getAppTypeLabel(app.type) },
-                    { label: '分类', value: app.category || '未设置' },
+                    { label: '分类', value: app.category },
                     { label: '状态', value: getAppStatusLabel(app.status) },
-                    { label: '开发者', value: appDetail.developer || '未设置' },
-                    { label: '版本', value: appDetail.version || '未设置' },
+                    { label: '开发者', value: appDetail.developer },
+                    { label: '版本', value: appDetail.version },
                     { label: '更新日期', value: appDetail.updateDate || formatTime(app.updatedAt) },
-                    { label: '大小', value: appDetail.size || '未设置' },
-                    { label: '语言', value: languages.length ? languages.join(' / ') : '未设置' },
-                    { label: '更新时间', value: formatTime(app.updatedAt) },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-start justify-between gap-4">
-                      <dt className="text-muted-foreground">{item.label}</dt>
-                      <dd className="text-right font-medium text-foreground">{item.value}</dd>
-                    </div>
-                  ))}
+                    { label: '大小', value: appDetail.size },
+                    { label: '语言', value: languages.join(' / ') },
+                  ]
+                    .filter((item) => Boolean(item.value))
+                    .map((item) => (
+                      <div key={item.label} className="flex items-start justify-between gap-4">
+                        <dt className="text-muted-foreground">{item.label}</dt>
+                        <dd className="text-right font-medium text-foreground">{item.value}</dd>
+                      </div>
+                    ))}
                 </dl>
               </div>
 
@@ -868,19 +867,32 @@ export function AppCatalogPage() {
         </div>
       </section>
 
-      <AppPurchaseDialog
-        appCode={app.code}
-        appName={app.name}
-        open={purchaseDialogOpen}
-        onOpenChange={setPurchaseDialogOpen}
-        offers={offers}
-        initialOfferCode={selectedPurchaseOfferCode ?? preferredOffer?.code ?? null}
-        websiteUrl={websiteLink?.url ?? null}
-        deliveryMode={isDeployable ? 'one_click' : 'direct_access'}
-        onPaymentSuccess={() => {
-          void qc.invalidateQueries({ queryKey: ['my-entitlements'] });
-        }}
-      />
+      {purchaseDialogOpen && (
+        <Suspense
+          fallback={
+            <div
+              role="status"
+              className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border bg-card px-4 py-3 shadow-lg"
+            >
+              正在加载购买窗口…
+            </div>
+          }
+        >
+          <AppPurchaseDialog
+            appCode={app.code}
+            appName={app.name}
+            open={purchaseDialogOpen}
+            onOpenChange={setPurchaseDialogOpen}
+            offers={offers}
+            initialOfferCode={selectedPurchaseOfferCode ?? preferredOffer?.code ?? null}
+            websiteUrl={websiteLink?.url ?? null}
+            deliveryMode={isDeployable ? 'one_click' : 'direct_access'}
+            onPaymentSuccess={() => {
+              void qc.invalidateQueries({ queryKey: ['my-entitlements'] });
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

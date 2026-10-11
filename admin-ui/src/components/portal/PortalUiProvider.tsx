@@ -5,7 +5,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 export function PortalUiProvider() {
   return (
     <TooltipProvider delayDuration={200}>
-      <Outlet />
+      <div className="portal-ui">
+        <Outlet />
+      </div>
       <Toaster position="top-right" richColors />
     </TooltipProvider>
   );

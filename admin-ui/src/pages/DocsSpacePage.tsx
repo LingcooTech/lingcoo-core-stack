@@ -1,3 +1,5 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ChevronRight, FileText, LoaderCircle, Menu } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -13,7 +15,7 @@ import { DocsSidebar } from '@/components/docs/DocsSidebar';
 import { EmptyState } from '@/components/portal/EmptyState';
 import { CodeBlock } from '@/components/shared/CodeBlock';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { extractToc, headingId } from '@/lib/markdown';
 
 function resolveEditUrl(space: { meta?: Record<string, unknown> }, pagePath: string) {
@@ -53,6 +55,11 @@ export function DocsSpacePage() {
     enabled: Boolean(params.spaceSlug),
   });
 
+  usePageMetadata(
+    pageQuery.data?.page.title ?? '文档详情',
+    pageQuery.data?.page.summary || undefined,
+  );
+
   const toc = useMemo(
     () => (pageQuery.data?.page?.content ? extractToc(pageQuery.data.page.content) : []),
     [pageQuery.data?.page?.content],
@@ -65,6 +72,17 @@ export function DocsSpacePage() {
       </div>
     );
   }
+
+  if (pageQuery.isError)
+    return (
+      <QueryErrorState
+        error={pageQuery.error}
+        retry={() => void pageQuery.refetch()}
+        busy={pageQuery.isFetching}
+        backTo="/docs"
+        backLabel="返回文档中心"
+      />
+    );
 
   if (!pageQuery.data) {
     return (
@@ -98,7 +116,7 @@ export function DocsSpacePage() {
         </div>
       </div>
 
-      <main className="min-w-0 space-y-6 min-[960px]:max-w-none">
+      <article className="min-w-0 space-y-6 min-[960px]:max-w-none">
         <div className="flex items-center gap-2 min-[960px]:hidden">
           <Button
             variant="outline"
@@ -206,7 +224,7 @@ export function DocsSpacePage() {
             </Button>
           ) : null}
         </div>
-      </main>
+      </article>
 
       <aside className="hidden min-[1280px]:block">
         <div className="sticky top-[88px]">
@@ -220,7 +238,8 @@ export function DocsSpacePage() {
           className="w-[280px] p-3 min-[960px]:hidden"
           aria-describedby={undefined}
         >
-          <div className="h-full pt-2">
+          <SheetTitle className="sr-only">文档目录</SheetTitle>
+          <div className="min-h-0 flex-1 pt-2">
             <DocsSidebar
               spaceTitle={space.title}
               spaceDescription={space.description}

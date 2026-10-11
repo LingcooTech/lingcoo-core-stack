@@ -668,3 +668,13 @@
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
+
+/* Customer surfaces need readable secondary text on both card and muted backgrounds. */
+.portal-ui,
+[data-portal-dialog] {
+  --muted-foreground: 215.4 16.3% 42%;
+}
+.dark .portal-ui,
+.dark [data-portal-dialog] {
+  --muted-foreground: 215 20.2% 70%;
+}

@@ -7,6 +7,13 @@ export default mergeConfig(
     optimizeDeps: {
       include: [
         '@uiw/react-md-editor',
+        'react-markdown',
+        'rehype-raw',
+        'remark-gfm',
+        '@radix-ui/react-accordion',
+        '@radix-ui/react-avatar',
+        '@radix-ui/react-scroll-area',
+        '@tanstack/react-table',
         '@radix-ui/react-dialog',
         'radix-ui',
         'react-router-dom',

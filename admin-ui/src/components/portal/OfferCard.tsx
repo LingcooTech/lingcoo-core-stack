@@ -37,6 +37,16 @@ export function OfferCard({
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onClick={onSelect}
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelect?.();
+              }
+            }
+          : undefined
+      }
       className={`rounded-xl border p-6 text-left transition-colors ${
         selected
           ? 'border-foreground bg-muted/30 ring-1 ring-foreground/5'

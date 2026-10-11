@@ -1,9 +1,11 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { Link } from 'react-router-dom';
 
 import { AccountTicketsTab } from '@/components/account/AccountTicketsTab';
 import { Button } from '@/components/ui/button';
 
 export function MyTicketsPage() {
+  usePageMetadata('我的工单');
   return (
     <div className="space-y-5">
       <section className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-card/95 px-6 py-6 shadow-sm">

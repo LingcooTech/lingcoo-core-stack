@@ -1,3 +1,4 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { runAsync, handleAsync } from '@/lib/async-events';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -36,6 +37,7 @@ type RequestValues = z.infer<typeof requestSchema>;
 type ResetValues = z.infer<typeof resetSchema>;
 
 export function ForgotPasswordPage() {
+  usePageMetadata('找回密码');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [submittedEmail, setSubmittedEmail] = useState(searchParams.get('email') ?? '');

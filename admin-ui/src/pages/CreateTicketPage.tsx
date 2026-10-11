@@ -1,3 +1,4 @@
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { runAsync } from '@/lib/async-events';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 
 export function CreateTicketPage() {
+  usePageMetadata('创建工单');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState({

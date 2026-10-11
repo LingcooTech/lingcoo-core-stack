@@ -1,3 +1,4 @@
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -441,13 +442,20 @@ export function AccountTicketsTab() {
         />
 
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <DataTable
-            columns={columns}
-            data={tickets}
-            isLoading={ticketsQuery.isLoading}
-            emptyMessage="暂无工单"
-            getRowId={(row) => row.ticketNo}
-          />
+          {ticketsQuery.isError ? (
+            <QueryErrorState
+              retry={() => void ticketsQuery.refetch()}
+              busy={ticketsQuery.isFetching}
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={tickets}
+              isLoading={ticketsQuery.isLoading}
+              emptyMessage="暂无工单"
+              getRowId={(row) => row.ticketNo}
+            />
+          )}
         </div>
 
         <PaginationBar

@@ -1,3 +1,5 @@
+import { QueryErrorState } from '@/components/portal/QueryErrorState';
+import { usePageMetadata } from '@/lib/use-page-metadata';
 import { hostingProfileSchema } from '@lingcoo/contracts';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,6 +79,7 @@ function isEffectiveEntitlement(item: { status: string; expiresAt: string | null
 }
 
 export function DeploymentsPage() {
+  usePageMetadata('应用部署');
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const [issuedToken, setIssuedToken] = useState<IssueDeploymentTokenResult | null>(null);
@@ -449,14 +452,14 @@ export function DeploymentsPage() {
           </CardContent>
         </Card>
       ) : loadError ? (
-        <Card className="rounded-xl border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10">
-          <CardContent className="flex items-start gap-3 p-5 text-sm leading-6 text-red-800 dark:text-red-300">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              {loadError instanceof Error ? loadError.message : '部署数据加载失败，请稍后重试。'}
-            </span>
-          </CardContent>
-        </Card>
+        <QueryErrorState
+          retry={() => {
+            void appsQuery.refetch();
+            void entitlementsQuery.refetch();
+            void deploymentsQuery.refetch();
+          }}
+          busy={appsQuery.isFetching || entitlementsQuery.isFetching || deploymentsQuery.isFetching}
+        />
       ) : deployableApps.length === 0 && deployments.length === 0 ? (
         <EmptyState
           icon={Boxes}
@@ -508,15 +511,7 @@ export function DeploymentsPage() {
 
           <Tabs defaultValue={initialDeployApp ? 'create' : 'active'} className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                  部署工作台
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  默认只展示当前运行中的部署；新建和历史记录放到独立标签页。
-                </p>
-              </div>
-              <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
+              <TabsList className="h-auto w-full flex-wrap justify-start sm:w-auto">
                 <TabsTrigger value="active">运行中部署</TabsTrigger>
                 <TabsTrigger value="create">新建部署</TabsTrigger>
                 <TabsTrigger value="history">历史记录</TabsTrigger>

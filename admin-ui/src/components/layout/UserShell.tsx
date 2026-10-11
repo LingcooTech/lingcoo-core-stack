@@ -1,3 +1,4 @@
+import { BrandMark } from '@/components/portal/BrandMark';
 import { runAsync, handleAsync } from '@/lib/async-events';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -144,17 +145,7 @@ export function UserShell() {
           <div className="flex min-h-[44px] items-center justify-between gap-3">
             <div className="min-w-0 flex-1 lg:max-w-[220px]">
               <Link to="/" className="flex items-center gap-2.5">
-                {siteSettings?.logoUrl ? (
-                  <img
-                    src={siteSettings.logoUrl}
-                    alt={siteName}
-                    className="h-9 w-9 rounded-xl border border-border/90 bg-card object-contain p-1.5 shadow-sm"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-[13px] font-semibold tracking-wide text-background">
-                    {getInitials(siteName)}
-                  </div>
-                )}
+                <BrandMark src={siteSettings?.logoUrl} name={siteName} />
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold tracking-tight text-foreground">
                     {siteName}
@@ -248,6 +239,8 @@ export function UserShell() {
                 size="icon"
                 className="h-8 w-8 rounded-full lg:hidden"
                 onClick={() => setMobileMenuOpen((current) => !current)}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="portal-mobile-menu"
                 aria-label={mobileMenuOpen ? '关闭导航菜单' : '打开导航菜单'}
               >
                 {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
@@ -430,7 +423,10 @@ export function UserShell() {
           </div>
 
           {mobileMenuOpen ? (
-            <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-lg lg:hidden">
+            <div
+              id="portal-mobile-menu"
+              className="mt-3 rounded-xl border border-border bg-card p-4 shadow-lg lg:hidden"
+            >
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   导航
