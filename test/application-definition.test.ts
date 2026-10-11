@@ -62,6 +62,7 @@ test('Compose nested settings reject inherited host environment, arbitrary netwo
   for (const change of [
     { environment: ['HOST_SECRET'] },
     { environment: { HOST_SECRET: null } },
+    { environment: { ENABLED: true } },
     { networks: { default: { ipv4_address: '192.168.0.1' } } },
     { networks: ['missing'] },
     { depends_on: ['missing'] },

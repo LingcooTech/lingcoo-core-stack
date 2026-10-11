@@ -7,7 +7,7 @@ const duration = z.string().regex(/^(?:\d+(?:\.\d+)?(?:ns|us|ms|s|m|h))+$/);
 const environment = z.union([
   z.record(
     z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
-    z.union([z.string(), z.number().finite(), z.boolean()]),
+    z.union([z.string(), z.number().finite()]),
   ),
   z.array(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*=/)),
 ]);
