@@ -35,16 +35,6 @@ export const DeploymentSummarySchema = z.object({
   lastTokenIssuedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
   lastDeployedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
   updatePolicy: z.union([z.literal('manual'), z.literal('auto')]),
-  currentRuntimeImages: z.object({
-    frontendImage: z.union([z.string(), z.null()]),
-    websocketImage: z.union([z.string(), z.null()]),
-  }),
-  availableRuntimeImages: z.object({
-    frontendImage: z.union([z.string(), z.null()]),
-    websocketImage: z.union([z.string(), z.null()]),
-    offeredAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
-    appliedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
-  }),
   runtimeAssets: z.array(
     z.object({
       key: z.string(),
@@ -55,17 +45,10 @@ export const DeploymentSummarySchema = z.object({
   ),
   runtimeAssetsOfferedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
   runtimeAssetsAppliedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
-  currentWordpressAssetReleases: z.record(z.string(), z.union([z.string(), z.null()])),
-  availableWordpressAssetReleases: z.record(z.string(), z.union([z.string(), z.null()])),
   pendingAction: z.union([
     z.object({
       id: z.string(),
-      kind: z.union([
-        z.literal('apply_runtime_images'),
-        z.literal('apply_wordpress_assets'),
-        z.literal('ignore_runtime_images'),
-        z.literal('ignore_wordpress_assets'),
-      ]),
+      kind: z.union([z.literal('apply_runtime_images'), z.literal('ignore_runtime_images')]),
       requestedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),
     }),
     z.null(),
@@ -73,12 +56,7 @@ export const DeploymentSummarySchema = z.object({
   lastAction: z.union([
     z.object({
       id: z.string(),
-      kind: z.union([
-        z.literal('apply_runtime_images'),
-        z.literal('apply_wordpress_assets'),
-        z.literal('ignore_runtime_images'),
-        z.literal('ignore_wordpress_assets'),
-      ]),
+      kind: z.union([z.literal('apply_runtime_images'), z.literal('ignore_runtime_images')]),
       status: z.union([z.literal('completed'), z.literal('failed')]),
       message: z.union([z.string(), z.null()]),
       finishedAt: z.union([z.iso.datetime({ offset: true }), z.null()]),

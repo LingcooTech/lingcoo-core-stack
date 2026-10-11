@@ -1,3 +1,4 @@
+import { httpError } from '../../lib/errors';
 import type {
   DeliveryManifest,
   DeliveryManifestDomainSourceField,
@@ -10,11 +11,7 @@ import type {
   DeliverySettingSecrets,
 } from './delivery-settings';
 import type { DeploymentRepository } from './repository';
-import {
-  DEFAULT_INSTALLER,
-  normalizeHostname,
-  type DeploymentRuntimeUpdatePolicy,
-} from './configuration-model';
+import { normalizeHostname, type DeploymentRuntimeUpdatePolicy } from './configuration-model';
 export function quoteShellArgument(value: string): string {
   return "'" + value.replaceAll("'", "'\"'\"'") + "'";
 }
@@ -26,6 +23,7 @@ export function buildRemoteInstallCommand(input: {
   repoUrl?: string;
   repoBranch?: string;
 }) {
+  if (!input.remoteInstallScriptUrl) throw httpError(422, 'Delivery installer is required');
   const commandParts = [
     `FD_STACK_DEPLOY_TOKEN=${quoteShellArgument(input.token)}`,
     `FD_STACK_EXCHANGE_URL=${quoteShellArgument(input.exchangeUrl)}`,
@@ -43,9 +41,7 @@ export function buildRemoteInstallCommand(input: {
     commandParts.push(`REPO_BRANCH=${quoteShellArgument(input.repoBranch)}`);
   }
 
-  commandParts.push(
-    `bash <(curl -fsSL ${quoteShellArgument(input.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl)})`,
-  );
+  commandParts.push(`bash <(curl -fsSL ${quoteShellArgument(input.remoteInstallScriptUrl)})`);
 
   return commandParts.join(' ');
 }
@@ -55,10 +51,6 @@ export function buildExchangeCurl(token: string, publicBaseUrl: string) {
 interface BootstrapInput {
   deployment: NonNullable<Awaited<ReturnType<DeploymentRepository['findDeploymentById']>>>;
   manifest: DeliveryManifest | null;
-  appDefaults: {
-    values: DeliverySettingValues;
-    installer: { repoUrl?: string; repoBranch?: string };
-  };
   deliverySettings: Awaited<ReturnType<DeliverySettingsService['getStoredSettings']>>;
   deploymentValues: DeliverySettingValues;
   deploymentSecrets: DeliverySettingSecrets;
@@ -79,7 +71,6 @@ interface BootstrapInput {
 export function assembleDeploymentBootstrap({
   deployment,
   manifest,
-  appDefaults,
   deliverySettings,
   deploymentValues,
   deploymentSecrets,
@@ -92,27 +83,15 @@ export function assembleDeploymentBootstrap({
   resolveField,
 }: BootstrapInput) {
   const appValues: DeliverySettingValues = {
-    ...appDefaults.values,
     ...(deliverySettings?.values ?? {}),
   };
   const appSecrets: DeliverySettingSecrets = {
     ...(deliverySettings?.secrets ?? {}),
   };
+  if (!manifest) throw httpError(422, 'A valid delivery manifest is required');
   const installer = {
-    repoUrl:
-      manifest?.installer.repoUrl ||
-      appDefaults.installer.repoUrl ||
-      deliverySettings?.installer.repoUrl ||
-      DEFAULT_INSTALLER.repoUrl,
-    repoBranch:
-      manifest?.installer.repoBranch ||
-      appDefaults.installer.repoBranch ||
-      deliverySettings?.installer.repoBranch ||
-      DEFAULT_INSTALLER.repoBranch,
-    remoteInstallScriptUrl:
-      manifest?.installer.remoteInstallScriptUrl || DEFAULT_INSTALLER.remoteInstallScriptUrl,
-    installPath:
-      deployment?.installPath || manifest?.installer.installPath || DEFAULT_INSTALLER.installPath,
+    ...manifest.installer,
+    installPath: deployment.installPath || manifest.installer.installPath,
   };
 
   const envDefaults: Record<string, string> = {};
@@ -145,26 +124,6 @@ export function assembleDeploymentBootstrap({
           envDefaults.GITHUB_TOKEN = resolved;
         }
       }
-    }
-  } else {
-    const fallbackEntries = Object.entries({
-      ...Object.fromEntries(
-        Object.entries(appValues).map(([key, value]) => [
-          key,
-          typeof value === 'boolean' ? String(value) : value,
-        ]),
-      ),
-      ...appSecrets,
-    }).filter(([, value]) => typeof value === 'string' && value.length > 0);
-
-    for (const [key, value] of fallbackEntries) {
-      if (typeof value === 'string') {
-        envDefaults[key] = value;
-      }
-    }
-
-    if (envDefaults.GH_TOKEN && !envDefaults.GITHUB_TOKEN) {
-      envDefaults.GITHUB_TOKEN = envDefaults.GH_TOKEN;
     }
   }
 

@@ -351,6 +351,13 @@
       "when": 1791612164575,
       "tag": "0049_far_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791709247101,
+      "tag": "0050_lowly_slapstick",
+      "breakpoints": true
     }
   ]
 }

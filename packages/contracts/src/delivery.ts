@@ -17,7 +17,7 @@ const field = z
   })
   .strict();
 
-/** Strict publishing contract. Runtime legacy normalization remains compatible. */
+/** Strict publishing contract for application-owned delivery artifacts. */
 export const deliveryManifestSchema = z
   .object({
     version: z.literal('1'),

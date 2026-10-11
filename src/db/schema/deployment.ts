@@ -70,9 +70,7 @@ export const deployments = pgTable(
     hostingResources: jsonb('hosting_resources'),
     environment: varchar('environment', { length: 32 }).notNull().default('production'),
     serverHost: varchar('server_host', { length: 255 }),
-    installPath: varchar('install_path', { length: 255 })
-      .notNull()
-      .default('/opt/fd-headless-wp-system'),
+    installPath: varchar('install_path', { length: 255 }).notNull().default(''),
     status: recordStatusEnum('status').notNull().default('active'),
     lastTokenIssuedAt: timestamp('last_token_issued_at', { withTimezone: true }),
     lastDeployedAt: timestamp('last_deployed_at', { withTimezone: true }),

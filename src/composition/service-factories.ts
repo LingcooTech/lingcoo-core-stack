@@ -6,7 +6,6 @@ import {
 } from '../modules/deployment/public';
 import { getBillingProviderAdapter } from '../modules/billing/providers';
 import { deleteAppDeliverySettings } from '../modules/deployment/public';
-import { deleteLegacyDeliverySettings } from '../modules/settings/public';
 import type { LicenseRepositoryFactory } from '../modules/license/public';
 import { LicenseRepository } from '../modules/license/repository';
 import type { BillingRepositoryFactory } from '../modules/billing/public';
@@ -35,7 +34,6 @@ export interface ServiceFactories {
   now: () => Date;
   getBillingProviderAdapter: typeof getBillingProviderAdapter;
   deleteAppDeliverySettings: typeof deleteAppDeliverySettings;
-  deleteLegacyDeliverySettings: typeof deleteLegacyDeliverySettings;
   createLicenseAccess: LicenseRepositoryFactory;
   createBillingAccess: BillingRepositoryFactory;
   createCheckoutAccess: CheckoutRepositoryFactory;
@@ -57,7 +55,6 @@ export function createServiceFactories(
     now: () => new Date(),
     getBillingProviderAdapter,
     deleteAppDeliverySettings,
-    deleteLegacyDeliverySettings,
     createLicenseAccess: (db) => {
       const value = new LicenseRepository(db);
       return {

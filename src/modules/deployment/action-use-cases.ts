@@ -10,11 +10,7 @@ import { httpError } from '../../lib/errors';
 import { decryptJson } from '../../lib/settings-crypto';
 
 import { DeploymentRepository } from './repository';
-import {
-  AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
-  type DeploymentActionKind,
-  normalizeString,
-} from './configuration-model';
+import { type DeploymentActionKind, normalizeString } from './configuration-model';
 
 interface DeploymentActionDependencies {
   createLicenseAccess: (db: DbExecutor) => DeploymentEntitlementAccess;
@@ -69,37 +65,19 @@ export class DeploymentActionUseCases {
       throw httpError(404, 'Deployment not found');
     }
     if (deployment.deploymentMode === 'managed') {
-      throw httpError(409, '托管执行器尚未接入，暂不支持运行时操作');
+      throw httpError(409, '托管实例请使用托管运维中的受控升级');
     }
     await loadDeploymentEntitlement(this.capabilities.createLicenseAccess(this.db), deployment);
 
     const meta = normalizeDeploymentMeta(deployment.meta);
-    const runtimeUpdate = normalizeDeploymentMeta(meta.runtimeUpdate);
     const runtimeAssetsUpdate = normalizeDeploymentMeta(meta.runtimeAssetsUpdate);
-    const wordpressAssetsUpdate = normalizeDeploymentMeta(meta.wordpressAssetsUpdate);
 
     if (input.kind === 'apply_runtime_images' || input.kind === 'ignore_runtime_images') {
-      const hasAvailableRuntimeImage =
-        normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-        normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
-        Object.values(normalizeDeploymentMeta(runtimeAssetsUpdate.available)).some(
-          (value) => normalizeString(value).length > 0,
-        );
+      const hasAvailableRuntimeImage = Object.values(
+        normalizeDeploymentMeta(runtimeAssetsUpdate.available),
+      ).some((value) => normalizeString(value).length > 0);
       if (!hasAvailableRuntimeImage) {
         throw httpError(409, 'No available runtime image update to process');
-      }
-    }
-
-    if (input.kind === 'apply_wordpress_assets' || input.kind === 'ignore_wordpress_assets') {
-      const hasAvailableWordpressAssets =
-        Object.values(normalizeDeploymentMeta(wordpressAssetsUpdate.available)).some(
-          (value) => normalizeString(value).length > 0,
-        ) ||
-        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-          (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
-        );
-      if (!hasAvailableWordpressAssets) {
-        throw httpError(409, 'No available WordPress asset update to process');
       }
     }
 

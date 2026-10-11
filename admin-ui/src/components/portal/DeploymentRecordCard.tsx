@@ -23,91 +23,25 @@ function summarizeImageRef(value: string | null) {
   return segments[segments.length - 1] || value;
 }
 
-function getActionLabel(
-  kind:
-    | 'apply_runtime_images'
-    | 'apply_wordpress_assets'
-    | 'ignore_runtime_images'
-    | 'ignore_wordpress_assets',
-) {
+function getActionLabel(kind: 'apply_runtime_images' | 'ignore_runtime_images') {
   switch (kind) {
     case 'apply_runtime_images':
       return '应用运行镜像更新';
-    case 'apply_wordpress_assets':
-      return '应用 WP 资产更新';
     case 'ignore_runtime_images':
       return '忽略运行镜像更新';
-    case 'ignore_wordpress_assets':
-      return '忽略 WP 资产更新';
     default:
       return '未知动作';
   }
 }
 
 function getRuntimeDiffRows(deployment: DeploymentSummary) {
-  if (deployment.runtimeAssets.length > 0) {
-    return deployment.runtimeAssets
-      .filter((asset) => asset.available && asset.current !== asset.available)
-      .map((asset) => ({
-        label: asset.label,
-        current: summarizeImageRef(asset.current),
-        next: summarizeImageRef(asset.available),
-      }));
-  }
-
-  const rows = [];
-
-  if (
-    deployment.currentRuntimeImages.frontendImage !==
-      deployment.availableRuntimeImages.frontendImage &&
-    deployment.availableRuntimeImages.frontendImage
-  ) {
-    rows.push({
-      label: 'Frontend',
-      current: summarizeImageRef(deployment.currentRuntimeImages.frontendImage),
-      next: summarizeImageRef(deployment.availableRuntimeImages.frontendImage),
-    });
-  }
-
-  if (
-    deployment.currentRuntimeImages.websocketImage !==
-      deployment.availableRuntimeImages.websocketImage &&
-    deployment.availableRuntimeImages.websocketImage
-  ) {
-    rows.push({
-      label: 'WebSocket',
-      current: summarizeImageRef(deployment.currentRuntimeImages.websocketImage),
-      next: summarizeImageRef(deployment.availableRuntimeImages.websocketImage),
-    });
-  }
-
-  return rows;
-}
-
-function getWordpressDiffRows(deployment: DeploymentSummary) {
-  const pairs: Array<[string, string, string]> = [
-    ['主题', 'FD_THEME_RELEASE_TAG', 'AVAILABLE_FD_THEME_RELEASE_TAG'],
-    ['Composer', 'FD_PAGE_COMPOSER_RELEASE_TAG', 'AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG'],
-    ['Admin UI', 'FD_ADMIN_UI_RELEASE_TAG', 'AVAILABLE_FD_ADMIN_UI_RELEASE_TAG'],
-    ['Member', 'FD_MEMBER_RELEASE_TAG', 'AVAILABLE_FD_MEMBER_RELEASE_TAG'],
-    ['Payment', 'FD_PAYMENT_RELEASE_TAG', 'AVAILABLE_FD_PAYMENT_RELEASE_TAG'],
-    ['Commerce', 'FD_COMMERCE_RELEASE_TAG', 'AVAILABLE_FD_COMMERCE_RELEASE_TAG'],
-    ['Content Types', 'FD_CONTENT_TYPES_RELEASE_TAG', 'AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG'],
-    ['Forms', 'FD_FORMS_RELEASE_TAG', 'AVAILABLE_FD_FORMS_RELEASE_TAG'],
-    ['AI Router', 'FD_AI_ROUTER_RELEASE_TAG', 'AVAILABLE_FD_AI_ROUTER_RELEASE_TAG'],
-    ['WS Push', 'FD_WEBSOCKET_PUSH_RELEASE_TAG', 'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG'],
-    ['WPGraphQL', 'WPGRAPHQL_RELEASE_TAG', 'AVAILABLE_WPGRAPHQL_RELEASE_TAG'],
-    ['JWT Auth', 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', 'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG'],
-    ['Tax Query', 'WPGRAPHQL_TAX_QUERY_REF', 'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF'],
-  ];
-
-  return pairs
-    .map(([label, currentKey, availableKey]) => ({
-      label,
-      current: deployment.currentWordpressAssetReleases[currentKey] ?? null,
-      next: deployment.availableWordpressAssetReleases[availableKey] ?? null,
-    }))
-    .filter((item) => item.next && item.current !== item.next);
+  return deployment.runtimeAssets
+    .filter((asset) => asset.available && asset.current !== asset.available)
+    .map((asset) => ({
+      label: asset.label,
+      current: summarizeImageRef(asset.current),
+      next: summarizeImageRef(asset.available),
+    }));
 }
 
 function getDomainScopeLabel(scope: 'registrable_domain' | 'exact_host') {
@@ -120,42 +54,29 @@ export function DeploymentRecordCard({
   issuing,
   deactivating,
   applyingRuntimeUpdate,
-  applyingWordpressUpdate,
   ignoringRuntimeUpdate,
-  ignoringWordpressUpdate,
   onIssueToken,
   onEdit,
   onDeactivate,
   onApplyRuntimeUpdate,
-  onApplyWordpressUpdate,
   onIgnoreRuntimeUpdate,
-  onIgnoreWordpressUpdate,
 }: {
   deployment: DeploymentSummary;
   issuedToken?: IssueDeploymentTokenResult | null;
   issuing?: boolean;
   deactivating?: boolean;
   applyingRuntimeUpdate?: boolean;
-  applyingWordpressUpdate?: boolean;
   ignoringRuntimeUpdate?: boolean;
-  ignoringWordpressUpdate?: boolean;
   onIssueToken: (deploymentId: string) => void;
   onEdit: (deployment: DeploymentSummary) => void;
   onDeactivate: (deployment: DeploymentSummary) => void;
   onApplyRuntimeUpdate: (deployment: DeploymentSummary) => void;
-  onApplyWordpressUpdate: (deployment: DeploymentSummary) => void;
   onIgnoreRuntimeUpdate: (deployment: DeploymentSummary) => void;
-  onIgnoreWordpressUpdate: (deployment: DeploymentSummary) => void;
 }) {
-  const hasAvailableRuntimeUpdate =
-    deployment.runtimeAssets.some((asset) => Boolean(asset.available)) ||
-    Boolean(deployment.availableRuntimeImages.frontendImage) ||
-    Boolean(deployment.availableRuntimeImages.websocketImage);
-  const hasAvailableWordpressUpdate = Object.values(
-    deployment.availableWordpressAssetReleases,
-  ).some(Boolean);
+  const hasAvailableRuntimeUpdate = deployment.runtimeAssets.some((asset) =>
+    Boolean(asset.available),
+  );
   const runtimeDiffRows = getRuntimeDiffRows(deployment);
-  const wordpressDiffRows = getWordpressDiffRows(deployment);
   const domainBindingLabel =
     deployment.domainBinding.sourceLabel ??
     (deployment.domainBinding.sourceField !== 'none'
@@ -256,28 +177,6 @@ export function DeploymentRecordCard({
               {ignoringRuntimeUpdate ? '提交中...' : '忽略运行镜像更新'}
             </Button>
           ) : null}
-          {hasAvailableWordpressUpdate ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              onClick={() => onApplyWordpressUpdate(deployment)}
-              disabled={applyingWordpressUpdate || Boolean(deployment.pendingAction)}
-            >
-              {applyingWordpressUpdate ? '提交中...' : '应用 WP 资产更新'}
-            </Button>
-          ) : null}
-          {hasAvailableWordpressUpdate ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-lg"
-              onClick={() => onIgnoreWordpressUpdate(deployment)}
-              disabled={ignoringWordpressUpdate || Boolean(deployment.pendingAction)}
-            >
-              {ignoringWordpressUpdate ? '提交中...' : '忽略 WP 资产更新'}
-            </Button>
-          ) : null}
           {deployment.status === 'active' ? (
             <Button
               variant="destructive"
@@ -330,29 +229,14 @@ export function DeploymentRecordCard({
             label="镜像更新策略"
             value={deployment.updatePolicy === 'auto' ? '自动应用新镜像' : '仅记录可用镜像'}
           />
-          {deployment.runtimeAssets.length > 0 ? (
-            deployment.runtimeAssets.map((asset) => (
-              <InfoLine
-                key={asset.key}
-                label={`当前${asset.label}`}
-                value={summarizeImageRef(asset.current)}
-                mono
-              />
-            ))
-          ) : (
-            <>
-              <InfoLine
-                label="当前前端镜像"
-                value={summarizeImageRef(deployment.currentRuntimeImages.frontendImage)}
-                mono
-              />
-              <InfoLine
-                label="当前 WebSocket 镜像"
-                value={summarizeImageRef(deployment.currentRuntimeImages.websocketImage)}
-                mono
-              />
-            </>
-          )}
+          {deployment.runtimeAssets.map((asset) => (
+            <InfoLine
+              key={asset.key}
+              label={`当前${asset.label}`}
+              value={summarizeImageRef(asset.current)}
+              mono
+            />
+          ))}
           <InfoLine label="安装路径" value={deployment.installPath} mono />
           <InfoLine label="创建时间" value={formatTime(deployment.createdAt)} />
         </div>
@@ -361,21 +245,7 @@ export function DeploymentRecordCard({
           <DiffSection
             title="运行镜像更新差异"
             rows={runtimeDiffRows}
-            offeredAt={
-              deployment.runtimeAssets.length > 0
-                ? deployment.runtimeAssetsOfferedAt
-                : deployment.availableRuntimeImages.offeredAt
-            }
-          />
-        ) : null}
-
-        {wordpressDiffRows.length > 0 ? (
-          <DiffSection
-            title="WP 资产更新差异"
-            rows={wordpressDiffRows}
-            offeredAt={
-              Object.values(deployment.availableWordpressAssetReleases).some(Boolean) ? null : null
-            }
+            offeredAt={deployment.runtimeAssetsOfferedAt}
           />
         ) : null}
 

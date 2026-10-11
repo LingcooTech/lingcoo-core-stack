@@ -109,7 +109,7 @@ export function DeploymentEditDialog({
   const [environment, setEnvironment] = useState('production');
   const [serverHost, setServerHost] = useState('');
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
-  const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [installPath, setInstallPath] = useState('');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(
     createEditDraft(null, null),
@@ -146,7 +146,7 @@ export function DeploymentEditDialog({
       setEnvironment('production');
       setServerHost('');
       setDomainValues({});
-      setInstallPath(appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
+      setInstallPath(appOption?.defaultInstallPath ?? '');
       setUpdatePolicy('manual');
       setDeploymentDraft(createEditDraft(manifest, null));
       setAdvancedOpen(false);
@@ -157,9 +157,7 @@ export function DeploymentEditDialog({
     setEnvironment(deployment.environment);
     setServerHost(deployment.serverHost ?? '');
     setDomainValues(deployment.domainValues ?? {});
-    setInstallPath(
-      deployment.installPath || appOption?.defaultInstallPath || '/opt/fd-headless-wp-system',
-    );
+    setInstallPath(deployment.installPath || appOption?.defaultInstallPath || '');
     setUpdatePolicy(deployment.updatePolicy ?? 'manual');
     setDeploymentDraft(createEditDraft(manifest, deployment));
     setAdvancedOpen(Boolean(deployment.serverHost));
@@ -471,7 +469,7 @@ export function DeploymentEditDialog({
                       disabled={deployment?.deploymentMode === 'managed'}
                       value={installPath}
                       onChange={(event) => setInstallPath(event.target.value)}
-                      placeholder={appOption?.defaultInstallPath ?? '/opt/fd-headless-wp-system'}
+                      placeholder={appOption?.defaultInstallPath ?? ''}
                     />
                   </div>
                   <div className="space-y-2">

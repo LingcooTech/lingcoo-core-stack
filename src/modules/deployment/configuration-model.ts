@@ -4,72 +4,6 @@ import { type AppServicePort as AppService } from '../app/public';
 
 export type DeploymentAppRecord = Awaited<ReturnType<AppService['getPublicApp']>>;
 
-export const DEFAULT_INSTALLER = {
-  repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-  repoBranch: 'main',
-  remoteInstallScriptUrl:
-    'https://raw.githubusercontent.com/FutureDecade/fd-headless-wp-system/main/scripts/remote-install.sh',
-  installPath: '/opt/fd-headless-wp-system',
-};
-
-export const LEGACY_APP_DEFAULT_VALUE_KEYS: Record<
-  string,
-  { envKey: string; kind: 'string' | 'boolean' }
-> = {
-  frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
-  websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
-  letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
-  acrUsername: { envKey: 'ACR_USERNAME', kind: 'string' },
-  wordpressFetchReleaseAssets: { envKey: 'WORDPRESS_FETCH_RELEASE_ASSETS', kind: 'boolean' },
-  wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
-  wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
-  fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
-  fdPageComposerReleaseTag: { envKey: 'FD_PAGE_COMPOSER_RELEASE_TAG', kind: 'string' },
-  fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
-  fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
-  fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
-  fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
-  fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
-  fdFormsReleaseTag: { envKey: 'FD_FORMS_RELEASE_TAG', kind: 'string' },
-  fdAiRouterReleaseTag: { envKey: 'FD_AI_ROUTER_RELEASE_TAG', kind: 'string' },
-  fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
-  wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' },
-};
-
-export const WORDPRESS_ASSET_RELEASE_KEYS = [
-  'FD_THEME_RELEASE_TAG',
-  'FD_PAGE_COMPOSER_RELEASE_TAG',
-  'FD_ADMIN_UI_RELEASE_TAG',
-  'FD_MEMBER_RELEASE_TAG',
-  'FD_PAYMENT_RELEASE_TAG',
-  'FD_COMMERCE_RELEASE_TAG',
-  'FD_CONTENT_TYPES_RELEASE_TAG',
-  'FD_FORMS_RELEASE_TAG',
-  'FD_AI_ROUTER_RELEASE_TAG',
-  'FD_WEBSOCKET_PUSH_RELEASE_TAG',
-  'WPGRAPHQL_RELEASE_TAG',
-  'WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'WPGRAPHQL_TAX_QUERY_REF',
-] as const;
-
-export const AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS = [
-  'AVAILABLE_FD_THEME_RELEASE_TAG',
-  'AVAILABLE_FD_PAGE_COMPOSER_RELEASE_TAG',
-  'AVAILABLE_FD_ADMIN_UI_RELEASE_TAG',
-  'AVAILABLE_FD_MEMBER_RELEASE_TAG',
-  'AVAILABLE_FD_PAYMENT_RELEASE_TAG',
-  'AVAILABLE_FD_COMMERCE_RELEASE_TAG',
-  'AVAILABLE_FD_CONTENT_TYPES_RELEASE_TAG',
-  'AVAILABLE_FD_FORMS_RELEASE_TAG',
-  'AVAILABLE_FD_AI_ROUTER_RELEASE_TAG',
-  'AVAILABLE_FD_WEBSOCKET_PUSH_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_JWT_AUTH_RELEASE_TAG',
-  'AVAILABLE_WPGRAPHQL_TAX_QUERY_REF',
-] as const;
-
 export type DeploymentStatusReportPayload = {
   deploymentId: string;
   token: string;
@@ -80,27 +14,9 @@ export type DeploymentStatusReportPayload = {
     offeredAt?: string | null;
     appliedAt?: string | null;
   };
-  runtimeImages?: {
-    currentFrontendImage?: string | null;
-    currentWebsocketImage?: string | null;
-    availableFrontendImage?: string | null;
-    availableWebsocketImage?: string | null;
-    offeredAt?: string | null;
-    appliedAt?: string | null;
-  };
-  wordpressAssets?: {
-    current?: Record<string, string | null>;
-    available?: Record<string, string | null>;
-    offeredAt?: string | null;
-    appliedAt?: string | null;
-  };
 };
 
-export type DeploymentActionKind =
-  | 'apply_runtime_images'
-  | 'apply_wordpress_assets'
-  | 'ignore_runtime_images'
-  | 'ignore_wordpress_assets';
+export type DeploymentActionKind = 'apply_runtime_images' | 'ignore_runtime_images';
 
 export function normalizeObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {

@@ -1,0 +1,22 @@
+{
+  "frontendImage": "FRONTEND_IMAGE",
+  "websocketImage": "WEBSOCKET_IMAGE",
+  "letsencryptEmail": "LETSENCRYPT_EMAIL",
+  "acrUsername": "ACR_USERNAME",
+  "wordpressFetchReleaseAssets": "WORDPRESS_FETCH_RELEASE_ASSETS",
+  "wordpressRunInit": "WORDPRESS_RUN_INIT",
+  "wordpressReleaseOwner": "WORDPRESS_RELEASE_OWNER",
+  "fdThemeReleaseTag": "FD_THEME_RELEASE_TAG",
+  "fdPageComposerReleaseTag": "FD_PAGE_COMPOSER_RELEASE_TAG",
+  "fdAdminUiReleaseTag": "FD_ADMIN_UI_RELEASE_TAG",
+  "fdMemberReleaseTag": "FD_MEMBER_RELEASE_TAG",
+  "fdPaymentReleaseTag": "FD_PAYMENT_RELEASE_TAG",
+  "fdCommerceReleaseTag": "FD_COMMERCE_RELEASE_TAG",
+  "fdContentTypesReleaseTag": "FD_CONTENT_TYPES_RELEASE_TAG",
+  "fdFormsReleaseTag": "FD_FORMS_RELEASE_TAG",
+  "fdAiRouterReleaseTag": "FD_AI_ROUTER_RELEASE_TAG",
+  "fdWebsocketPushReleaseTag": "FD_WEBSOCKET_PUSH_RELEASE_TAG",
+  "wpgraphqlReleaseTag": "WPGRAPHQL_RELEASE_TAG",
+  "wpgraphqlJwtAuthReleaseTag": "WPGRAPHQL_JWT_AUTH_RELEASE_TAG",
+  "wpgraphqlTaxQueryRef": "WPGRAPHQL_TAX_QUERY_REF"
+}

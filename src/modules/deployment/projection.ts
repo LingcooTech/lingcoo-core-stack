@@ -11,8 +11,6 @@ import { createAuthAccess } from '../auth/public';
 import { DeploymentRepository } from './repository';
 import {
   type DeploymentAppRecord,
-  WORDPRESS_ASSET_RELEASE_KEYS,
-  AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
   type DeploymentActionKind,
   normalizeString,
 } from './configuration-model';
@@ -91,9 +89,7 @@ export async function hydrateDeploymentViews(
       const configuredSecretKeys = Object.keys(context.readDeploymentInputSecrets(row));
       const updatePolicy = context.readDeploymentRuntimeUpdatePolicy(row);
       const meta = context.normalizeMeta(row.meta);
-      const runtimeUpdateMeta = context.normalizeMeta(meta.runtimeUpdate);
       const runtimeAssetsMeta = context.normalizeMeta(meta.runtimeAssetsUpdate);
-      const wordpressAssetsMeta = context.normalizeMeta(meta.wordpressAssetsUpdate);
       const policy = entitlement ? context.readEntitlementDeploymentPolicy(entitlement) : null;
       const binding = context.readEntitlementBinding(entitlement);
       const activeBindingSource =
@@ -109,30 +105,6 @@ export async function hydrateDeploymentViews(
         activeBindingSource !== 'none' &&
         Boolean(binding.boundDomain) &&
         currentBoundValue === binding.boundDomain;
-      const envDefaults = context.buildDeploymentDisplayEnvDefaults({
-        app: app ? (app as DeploymentAppRecord) : null,
-        deploymentValues: deliveryValues,
-      });
-      const reportedCurrentRuntimeImages = {
-        frontendImage: normalizeString(runtimeUpdateMeta.currentFrontendImage) || null,
-        websocketImage: normalizeString(runtimeUpdateMeta.currentWebsocketImage) || null,
-      };
-      const currentRuntimeImages = {
-        frontendImage:
-          reportedCurrentRuntimeImages.frontendImage ||
-          normalizeString(envDefaults.FRONTEND_IMAGE) ||
-          null,
-        websocketImage:
-          reportedCurrentRuntimeImages.websocketImage ||
-          normalizeString(envDefaults.WEBSOCKET_IMAGE) ||
-          null,
-      };
-      const availableRuntimeImages = {
-        frontendImage: normalizeString(runtimeUpdateMeta.availableFrontendImage) || null,
-        websocketImage: normalizeString(runtimeUpdateMeta.availableWebsocketImage) || null,
-        offeredAt: normalizeString(runtimeUpdateMeta.offeredAt) || null,
-        appliedAt: normalizeString(runtimeUpdateMeta.appliedAt) || null,
-      };
       const reportedCurrentRuntimeAssets = context.normalizeMeta(runtimeAssetsMeta.current);
       const reportedAvailableRuntimeAssets = context.normalizeMeta(runtimeAssetsMeta.available);
       const runtimeAssetLabels = new Map(
@@ -152,22 +124,6 @@ export async function hydrateDeploymentViews(
         current: normalizeString(reportedCurrentRuntimeAssets[key]) || null,
         available: normalizeString(reportedAvailableRuntimeAssets[key]) || null,
       }));
-      const currentWordpressAssetReleases = Object.fromEntries(
-        WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
-          key,
-          normalizeString(context.normalizeMeta(wordpressAssetsMeta.current)[key]) ||
-            normalizeString(envDefaults[key]) ||
-            null,
-        ]),
-      ) as Record<(typeof WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
-      const availableWordpressAssetReleases = Object.fromEntries(
-        AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.map((key) => [
-          key,
-          normalizeString(context.normalizeMeta(wordpressAssetsMeta.available)[key]) ||
-            normalizeString(wordpressAssetsMeta[key]) ||
-            null,
-        ]),
-      ) as Record<(typeof AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS)[number], string | null>;
       const pendingAction = context.normalizeMeta(meta.pendingAction);
       const lastAction = context.normalizeMeta(meta.lastAction);
 
@@ -202,13 +158,9 @@ export async function hydrateDeploymentViews(
         domainValues,
         configuredSecretKeys,
         updatePolicy,
-        currentRuntimeImages,
-        availableRuntimeImages,
         runtimeAssets,
         runtimeAssetsOfferedAt: normalizeString(runtimeAssetsMeta.offeredAt) || null,
         runtimeAssetsAppliedAt: normalizeString(runtimeAssetsMeta.appliedAt) || null,
-        currentWordpressAssetReleases,
-        availableWordpressAssetReleases,
         pendingAction:
           normalizeString(pendingAction.id).length > 0
             ? {

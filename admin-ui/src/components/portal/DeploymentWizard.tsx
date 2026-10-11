@@ -151,7 +151,7 @@ export function DeploymentWizard({
   const [environment, setEnvironment] = useState('production');
   const [serverHost, setServerHost] = useState('');
   const [domainValues, setDomainValues] = useState<Record<string, string>>({});
-  const [installPath, setInstallPath] = useState('/opt/fd-headless-wp-system');
+  const [installPath, setInstallPath] = useState('');
   const [updatePolicy, setUpdatePolicy] = useState<'manual' | 'auto'>('manual');
   const [deploymentDraft, setDeploymentDraft] = useState<DeploymentDraft>(createWizardDraft(null));
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -213,7 +213,7 @@ export function DeploymentWizard({
   useEffect(() => {
     if (!selectedApp || initializedAppCode.current === selectedAppCode) return;
     initializedAppCode.current = selectedAppCode;
-    setInstallPath(selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system');
+    setInstallPath(selectedApp?.defaultInstallPath ?? '');
     setSelectedEntitlementId(
       selectedApp?.entitlements.length === 1 ? (selectedApp.entitlements[0]?.id ?? '') : '',
     );
@@ -421,7 +421,7 @@ export function DeploymentWizard({
     setEnvironment('production');
     setServerHost('');
     setDomainValues({});
-    setInstallPath('/opt/fd-headless-wp-system');
+    setInstallPath('');
     setUpdatePolicy('manual');
     setDeploymentDraft(createWizardDraft(null));
     setAdvancedOpen(false);
@@ -853,9 +853,7 @@ export function DeploymentWizard({
                         disabled={deploymentMode === 'managed'}
                         value={installPath}
                         onChange={(event) => setInstallPath(event.target.value)}
-                        placeholder={
-                          selectedApp?.defaultInstallPath ?? '/opt/fd-headless-wp-system'
-                        }
+                        placeholder={selectedApp?.defaultInstallPath ?? ''}
                       />
                     </div>
                     <div className="space-y-2">

@@ -23,7 +23,27 @@ export async function seedPurchase(db: ReturnType<typeof testDatabase>['db']) {
   if (!user) throw new Error('Missing test fixture: user');
   const [app] = await db
     .insert(schema.apps)
-    .values({ code, name: 'Integration fixture', meta: { deliveryMode: 'one_click' } })
+    .values({
+      code,
+      name: 'Integration fixture',
+      meta: {
+        deliveryMode: 'one_click',
+        deliveryManifest: {
+          version: '1',
+          installer: {
+            repoUrl: 'https://example.test/fixture',
+            repoBranch: 'main',
+            remoteInstallScriptUrl: 'https://example.test/install.sh',
+            installPath: '/opt/fixture',
+          },
+          groups: [],
+          domainSlots: [],
+          envFields: [],
+          secretFields: [],
+          assets: [],
+        },
+      },
+    })
     .returning();
   if (!app) throw new Error('Missing test fixture: app');
   const [plan] = await db

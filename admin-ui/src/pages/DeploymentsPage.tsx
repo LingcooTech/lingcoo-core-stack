@@ -124,7 +124,7 @@ export function DeploymentsPage() {
                 appCode: app.code,
                 appName: app.name,
                 manifest,
-                defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+                defaultInstallPath: manifest?.installer.installPath ?? '',
                 entitlements: [],
               },
             ];
@@ -177,7 +177,7 @@ export function DeploymentsPage() {
           managedAvailable: hostingProfileSchema.safeParse(app.meta?.hostingProfile).success,
           featureCount: summaryMap.get(app.code)?.length ?? 0,
           manifest,
-          defaultInstallPath: manifest?.installer.installPath ?? '/opt/fd-headless-wp-system',
+          defaultInstallPath: manifest?.installer.installPath ?? '',
           entitlements: appEntitlements,
         };
       })
@@ -286,23 +286,11 @@ export function DeploymentsPage() {
     mutationFn: (deploymentId: string) =>
       requestDeploymentAction({ deploymentId, kind: 'apply_runtime_images' }),
     onSuccess: () => {
-      toast.success('前端更新动作已提交，等待服务器拉取执行');
+      toast.success('运行镜像更新动作已提交，等待服务器拉取执行');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '提交前端更新动作失败');
-    },
-  });
-
-  const requestWordpressUpdateMutation = useMutation({
-    mutationFn: (deploymentId: string) =>
-      requestDeploymentAction({ deploymentId, kind: 'apply_wordpress_assets' }),
-    onSuccess: () => {
-      toast.success('WP 资产更新动作已提交，等待服务器拉取执行');
-      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '提交 WP 资产更新动作失败');
+      toast.error(err instanceof Error ? err.message : '提交运行镜像更新动作失败');
     },
   });
 
@@ -310,23 +298,11 @@ export function DeploymentsPage() {
     mutationFn: (deploymentId: string) =>
       requestDeploymentAction({ deploymentId, kind: 'ignore_runtime_images' }),
     onSuccess: () => {
-      toast.success('前端更新忽略动作已提交，等待服务器拉取执行');
+      toast.success('运行镜像更新忽略动作已提交，等待服务器拉取执行');
       void qc.invalidateQueries({ queryKey: ['my-deployments'] });
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '提交忽略前端更新动作失败');
-    },
-  });
-
-  const ignoreWordpressUpdateMutation = useMutation({
-    mutationFn: (deploymentId: string) =>
-      requestDeploymentAction({ deploymentId, kind: 'ignore_wordpress_assets' }),
-    onSuccess: () => {
-      toast.success('WP 资产更新忽略动作已提交，等待服务器拉取执行');
-      void qc.invalidateQueries({ queryKey: ['my-deployments'] });
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : '提交忽略 WP 资产更新动作失败');
+      toast.error(err instanceof Error ? err.message : '提交忽略运行镜像更新动作失败');
     },
   });
 
@@ -376,17 +352,9 @@ export function DeploymentsPage() {
         requestRuntimeUpdateMutation.isPending &&
         requestRuntimeUpdateMutation.variables === deployment.id
       }
-      applyingWordpressUpdate={
-        requestWordpressUpdateMutation.isPending &&
-        requestWordpressUpdateMutation.variables === deployment.id
-      }
       ignoringRuntimeUpdate={
         ignoreRuntimeUpdateMutation.isPending &&
         ignoreRuntimeUpdateMutation.variables === deployment.id
-      }
-      ignoringWordpressUpdate={
-        ignoreWordpressUpdateMutation.isPending &&
-        ignoreWordpressUpdateMutation.variables === deployment.id
       }
       deactivating={
         deactivateDeploymentMutation.isPending &&
@@ -399,14 +367,8 @@ export function DeploymentsPage() {
       onApplyRuntimeUpdate={(target) => {
         requestRuntimeUpdateMutation.mutate(target.id);
       }}
-      onApplyWordpressUpdate={(target) => {
-        requestWordpressUpdateMutation.mutate(target.id);
-      }}
       onIgnoreRuntimeUpdate={(target) => {
         ignoreRuntimeUpdateMutation.mutate(target.id);
-      }}
-      onIgnoreWordpressUpdate={(target) => {
-        ignoreWordpressUpdateMutation.mutate(target.id);
       }}
       onDeactivate={(target) => {
         if (

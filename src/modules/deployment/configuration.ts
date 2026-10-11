@@ -32,9 +32,7 @@ import { type LicenseRepositoryPort as LicenseRepository } from '../license/publ
 import { DeploymentRepository } from './repository';
 import {
   type DeploymentAppRecord,
-  LEGACY_APP_DEFAULT_VALUE_KEYS,
   normalizeString,
-  normalizeBoolean,
   normalizeValueRecord,
   normalizeSecretRecord,
   normalizeDomainValueRecord,
@@ -206,42 +204,11 @@ export class DeploymentConfigurationUseCases {
     return normalizeDeliveryManifest(meta.deliveryManifest);
   }
 
-  protected readLegacyDeploymentDefaults(app: DeploymentAppRecord) {
-    const meta = this.normalizeMeta(app.meta);
-    const raw = this.normalizeMeta(meta.deploymentDefaults);
-    const values: DeliverySettingValues = {};
-
-    for (const [legacyKey, config] of Object.entries(LEGACY_APP_DEFAULT_VALUE_KEYS)) {
-      const entry = raw[legacyKey];
-      if (config.kind === 'boolean') {
-        const normalized = normalizeBoolean(entry);
-        if (typeof normalized === 'boolean') {
-          values[config.envKey] = normalized;
-        }
-        continue;
-      }
-
-      const normalized = normalizeString(entry);
-      if (normalized.length > 0) {
-        values[config.envKey] = normalized;
-      }
-    }
-
-    return {
-      values,
-      installer: {
-        repoUrl: normalizeString(raw.repoUrl) || undefined,
-        repoBranch: normalizeString(raw.repoBranch) || undefined,
-      },
-    };
-  }
-
   protected buildDeploymentDisplayEnvDefaults(input: {
     app: DeploymentAppRecord | null;
     deploymentValues: DeliverySettingValues;
   }) {
     const values: DeliverySettingValues = {
-      ...(input.app ? this.readLegacyDeploymentDefaults(input.app).values : {}),
       ...input.deploymentValues,
     };
 
@@ -718,7 +685,6 @@ export class DeploymentConfigurationUseCases {
     const statusReportAuth = await this.ensureDeploymentStatusReportAuth(input.deployment);
     input.deployment = statusReportAuth.deployment;
     const manifest = this.readManifest(input.app);
-    const appDefaults = this.readLegacyDeploymentDefaults(input.app);
     const entitlement =
       input.entitlement ??
       (input.deployment?.entitlementId
@@ -747,7 +713,6 @@ export class DeploymentConfigurationUseCases {
     return assembleDeploymentBootstrap({
       deployment: statusReportAuth.deployment,
       manifest,
-      appDefaults,
       deliverySettings,
       deploymentValues,
       deploymentSecrets,

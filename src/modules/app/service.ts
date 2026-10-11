@@ -636,7 +636,6 @@ export class AppService {
       if (hasAppDeliverySettingsTable) {
         await this.capabilities.deleteAppDeliverySettings(tx, app.id);
       }
-      await this.capabilities.deleteLegacyDeliverySettings(tx, app.code);
       await repository.updateAppById(app.id, {
         tagline: null,
         description: null,

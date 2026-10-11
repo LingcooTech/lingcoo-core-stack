@@ -64,45 +64,24 @@ export const exchangeDeploymentTokenSchema = z.object({
   token: z.string().trim().min(16).max(255),
 });
 
-export const reportDeploymentStatusSchema = z.object({
-  deploymentId: z.string().uuid(),
-  token: z.string().trim().min(16).max(255),
-  runtimeHealth: z.enum(['ready', 'unhealthy']).optional(),
-  runtimeAssets: z
-    .object({
-      current: z.record(z.string(), z.string().trim().min(1).max(4096).nullable()).optional(),
-      available: z.record(z.string(), z.string().trim().min(1).max(4096).nullable()).optional(),
-      offeredAt: z.string().trim().min(1).max(255).nullable().optional(),
-      appliedAt: z.string().trim().min(1).max(255).nullable().optional(),
-    })
-    .optional(),
-  runtimeImages: z
-    .object({
-      currentFrontendImage: z.string().trim().min(1).max(4096).nullable().optional(),
-      currentWebsocketImage: z.string().trim().min(1).max(4096).nullable().optional(),
-      availableFrontendImage: z.string().trim().min(1).max(4096).nullable().optional(),
-      availableWebsocketImage: z.string().trim().min(1).max(4096).nullable().optional(),
-      offeredAt: z.string().trim().min(1).max(255).nullable().optional(),
-      appliedAt: z.string().trim().min(1).max(255).nullable().optional(),
-    })
-    .optional(),
-  wordpressAssets: z
-    .object({
-      current: z.record(z.string(), z.string().trim().min(1).max(255).nullable()).optional(),
-      available: z.record(z.string(), z.string().trim().min(1).max(255).nullable()).optional(),
-      offeredAt: z.string().trim().min(1).max(255).nullable().optional(),
-      appliedAt: z.string().trim().min(1).max(255).nullable().optional(),
-    })
-    .optional(),
-});
+export const reportDeploymentStatusSchema = z
+  .object({
+    deploymentId: z.string().uuid(),
+    token: z.string().trim().min(16).max(255),
+    runtimeHealth: z.enum(['ready', 'unhealthy']).optional(),
+    runtimeAssets: z
+      .object({
+        current: z.record(z.string(), z.string().trim().min(1).max(4096).nullable()).optional(),
+        available: z.record(z.string(), z.string().trim().min(1).max(4096).nullable()).optional(),
+        offeredAt: z.string().trim().min(1).max(255).nullable().optional(),
+        appliedAt: z.string().trim().min(1).max(255).nullable().optional(),
+      })
+      .optional(),
+  })
+  .strict();
 
 export const requestDeploymentActionSchema = z.object({
-  kind: z.enum([
-    'apply_runtime_images',
-    'apply_wordpress_assets',
-    'ignore_runtime_images',
-    'ignore_wordpress_assets',
-  ]),
+  kind: z.enum(['apply_runtime_images', 'ignore_runtime_images']),
 });
 
 export const pullDeploymentActionSchema = z.object({

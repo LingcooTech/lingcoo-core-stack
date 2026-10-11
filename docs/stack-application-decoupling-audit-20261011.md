@@ -1,12 +1,12 @@
 # Stack 与应用的解耦审计
 
-核对日期：2026-10-11；运行代码基线 `c444b6f`，本次仅整理文档，不调整生产配置、不执行客户部署。
+核对日期：2026-10-11；本次在审计基础上清理运行兼容分支，并增加迁移及免部署购买回归。生产发布结果以部署记录为准。
 
 ## 结论
 
 Stack 核心运行流程已从 Retail/Edu 的应用名称和服务拓扑中解耦，采用 App Code + Manifest + hostingProfile + 节点 Adapter v2。新增符合现有协议的应用应通过交付产物、商品配置和节点适配接入，不应向 Stack 核心增加 `if appCode == retail/edu` 分支。
 
-不能称为“完全零适配、任意软件都能接入”：托管执行仍有固定技术约定、受控升级能力限制和首次节点适配安装步骤。当前是“通用平台协议 + 应用适配包”，不是“只填镜像就自动识别所有依赖”的平台。尤其不能据此声称整个核心已清除全部历史应用专用结构：状态上报、动作和配置兼容仍包含 WordPress 与 frontend/websocket 专用字段。
+不能称为“完全零适配、任意软件都能接入”：托管执行仍有固定技术约定、受控升级能力限制和首次节点适配安装步骤。当前是“通用平台协议 + 应用适配包”，不是“只填镜像就自动识别所有依赖”的平台。Docker/Compose 是明确支持的交付技术约定，应用应提供相应镜像、安装脚本及托管适配包。
 
 ## 审计证据
 
@@ -23,11 +23,31 @@ Stack 核心运行流程已从 Retail/Edu 的应用名称和服务拓扑中解�
 
 名称搜索是静态审计的一部分，不能单独证明全部解耦。依据还包括调用路径、适配器解析、异构 Docker 测试及业务回归。最新运行基线的 [CI 38123233937](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38123233937) 已成功；本次文档核对不重新声称完成所有应用的生产验收。
 
-### 历史应用专用结构仍存在
+### 历史应用专用结构清理
 
-[部署契约](../packages/contracts/src/deployment.ts) 保留 runtimeImages、wordpressAssets；[交付设置](../src/modules/deployment/delivery-settings.ts) 保留 FRONTEND*IMAGE、WEBSOCKET_IMAGE、WORDPRESS*\* 的旧映射；[动作处理](../src/modules/deployment/action-use-cases.ts) 和 [状态处理](../src/modules/deployment/service.ts) 仍处理 WordPress 专用动作及状态。它们不构成 Retail/Edu 的运行依赖，但说明“所有历史应用特例已消失”的说法不成立。
+- 部署状态接口移除 `runtimeImages`、`wordpressAssets`；旧字段会被拒绝，新安装器使用 `runtimeAssets.current/available`，键对应 Manifest asset key。
+- 移除 WordPress 更新动作、通知、门户按钮以及 frontend/websocket 的特定资源差异逻辑。通用 Docker 镜像动作 `apply_runtime_images` / `ignore_runtime_images` 保持兼容。
+- 删除默认 WordPress 仓库、安装脚本和安装目录；创建部署必须有应用自己的安装 URL 与绝对安装目录。
+- 交付设置只读写 `app_delivery_settings` 的 `values/secrets/installer`，不再运行时回退旧系统设置或应用 meta 中的扁平默认配置。
+- 数据升级在迁移锁内执行；旧设置、资源状态转为通用结构，原始数据保留加密审计备份。旧 WordPress 待执行动作被撤销。事务失败会中止升级。
+- 历史 SQL、一次性迁移映射保留用于升级；内容导入的 WordPress 功能属于独立业务，不是部署特例。节点资源报告的 `runtimeImages` 是通用容器清单，也不是退休的部署状态结构。
 
-新应用必须使用 Manifest assets 与 runtimeAssets 通用协议。后续清理需要先统计已有数据/客户端依赖，再做兼容迁移和回归，不能仅删除字段。本次只识别和记录，不移除生产兼容接口。
+### 免部署扩展的两个购买入口
+
+`lingcoo-workflow-ai-web-translator` 使用公开 App Code `ai_translate_workflow`：
+
+1. 从 Chrome 应用商店安装后，在扩展登录 Stack 用户，调用 `POST /v1/checkout/sessions` 发起 Stack 支付；支付确认后发放权益。
+2. 在 Stack 应用页面使用同一账号购买；扩展登录同一账号，通过 `GET /v1/entitlements/me` 获取相同权益。
+
+这是两个销售入口共用 Stack 结算，不是 Chrome 应用商店代收款。平台账号不同不会自动合并授权。免部署商品使用 `deliveryMode=none`，无需 Manifest、Deploy Token 或服务器。
+
+扩展是公开客户端，只使用用户 Bearer Token，不内置 App Secret 或支付密钥。按 App Code 和 feature code 筛选功能。授权缓存最长五分钟；付款后强制刷新，网站购买后可以刷新授权或等待缓存更新。扩展 API 和 host permission 已从旧域名修正到 `https://stack.lingcoo.com`，版本提升为 2.6.1；已安装旧版本仍需更新扩展。
+
+Retail/Edu 当前 `delivery/stack-delivery.py` 均已使用 `runtimeAssets`，不依赖删除的旧上报结构。
+
+回归覆盖两种认证入口下单、支付通知发放、授权一致性、其他账号隔离、无需创建部署实例及扩展缓存刷新。支付提供商使用测试替身，不替代真实付款验收，也不代表新版扩展已经发布到 Chrome 应用商店。
+
+2026-10-11 生产公开接口核对：支付宝 configured=true、微信支付 configured=false；扩展商品中 `translator_pay_test_fen`（0.01 元测试报价）仍启用。本次不修改商品定价或支付配置，正式销售前需要运营确认测试报价是否保留。
 
 ## 仍需明确的限制
 
@@ -48,4 +68,4 @@ Stack 核心运行流程已从 Retail/Edu 的应用名称和服务拓扑中解�
 - [托管适配器协议](stack-hosting-adapter-contract.md) 明确文件、字段、钩子、登记和执行边界。
 - 早期责任规划与第二应用实施记录标为历史资料；移除“旧节点默认兼容 Retail”“公网必须 /health/ready”等与现状不符的描述。
 - 新需求若属于应用服务名、初始化、数据位置等差异，放入应用适配包；只有跨应用的新能力才演进通用协议，并增加异构样本验收。
-- 后续优先统一发布校验、版本化接入验收及历史专用接口迁移，再按真实需求扩展凭据与多镜像能力，不先宣称未实现能力。
+- 后续优先统一发布校验、版本化接入验收，再按真实需求扩展凭据与多镜像能力，不先宣称未实现能力。

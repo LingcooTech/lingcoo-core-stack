@@ -2,7 +2,7 @@ import { createServiceFactories } from '../../src/composition/service-factories'
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { eq } from 'drizzle-orm';
-import { deployments, entitlements } from '../../src/db/schema';
+import { apps, deployments, entitlements } from '../../src/db/schema';
 import { encryptJson } from '../../src/lib/settings-crypto';
 import { BillingService } from '../../src/modules/billing/service';
 import { DeploymentService } from '../../src/modules/deployment/service';
@@ -12,6 +12,28 @@ const { db, pool, env } = testDatabase();
 after(() => pool.end());
 async function fixture() {
   const seeded = await seedPurchase(db);
+  await db
+    .update(apps)
+    .set({
+      meta: {
+        deliveryMode: 'one_click',
+        deliveryManifest: {
+          version: '1',
+          installer: {
+            repoUrl: 'https://example.test/app',
+            repoBranch: 'main',
+            remoteInstallScriptUrl: 'https://example.test/install.sh',
+            installPath: '/opt/fixture',
+          },
+          groups: [],
+          domainSlots: [],
+          envFields: [],
+          secretFields: [],
+          assets: [{ key: 'app', type: 'docker_image', label: 'App', imageEnv: 'APP_IMAGE' }],
+        },
+      },
+    })
+    .where(eq(apps.id, seeded.app.id));
   await new BillingService(createServiceFactories(), db, env).handlePaymentNotification({
     kind: 'paid',
     provider: 'wechat_pay',
@@ -101,4 +123,12 @@ test('pending actions cannot be overwritten and completion is safely replayed', 
   };
   assert.deepEqual(await service.completeDeploymentAction(complete), { ok: true });
   assert.deepEqual(await service.completeDeploymentAction(complete), { ok: true });
+});
+test('deployment without an application installer fails instead of falling back to a sample', async () => {
+  const f = await fixture();
+  await db
+    .update(apps)
+    .set({ meta: { deliveryMode: 'one_click' } })
+    .where(eq(apps.id, f.app.id));
+  await assert.rejects(f.service.createDeployment(f.input), /delivery manifest/);
 });

@@ -1,0 +1,1 @@
+ALTER TABLE "deployments" ALTER COLUMN "install_path" SET DEFAULT '';

@@ -3,7 +3,6 @@ import type { EventServiceFactory } from '../event/public';
 import type { LicenseRepositoryFactory } from '../license/public';
 import type { LicenseServiceFactory } from '../license/public';
 import type { deleteAppDeliverySettings } from '../deployment/public';
-import type { deleteLegacyDeliverySettings } from '../settings/public';
 
 export interface AppDependencies {
   readonly createDeliverySettings: (
@@ -33,7 +32,6 @@ export interface AppDependencies {
     ...args: Parameters<LicenseServiceFactory>
   ) => Pick<ReturnType<LicenseServiceFactory>, 'listUserEntitlementsByAppId'>;
   readonly deleteAppDeliverySettings: typeof deleteAppDeliverySettings;
-  readonly deleteLegacyDeliverySettings: typeof deleteLegacyDeliverySettings;
   readonly now: () => Date;
 }
 export function pickAppDependencies(input: AppDependencies): AppDependencies {
@@ -71,7 +69,6 @@ export function pickAppDependencies(input: AppDependencies): AppDependencies {
       return { listUserEntitlementsByAppId: port.listUserEntitlementsByAppId.bind(port) };
     },
     deleteAppDeliverySettings: input.deleteAppDeliverySettings,
-    deleteLegacyDeliverySettings: input.deleteLegacyDeliverySettings,
     now: input.now,
   };
 }

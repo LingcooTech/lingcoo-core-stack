@@ -1,3 +1,4 @@
+import { migrateCanonicalDelivery } from './migrations/canonical-delivery.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -205,6 +206,7 @@ export async function migrateDatabase(databaseUrl, folder = migrationsFolder) {
       throw error;
     }
     await migrate(drizzle(client), { migrationsFolder: folder });
+    if (folder === migrationsFolder) await migrateCanonicalDelivery(client);
     log('migrations applied successfully');
   } finally {
     if (locked) await client.query('select pg_advisory_unlock(73012402)').catch(() => {});

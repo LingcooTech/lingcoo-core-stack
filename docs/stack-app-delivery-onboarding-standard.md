@@ -33,6 +33,8 @@
 | 节点登记的 Adapter v2        | 不适用             | 不要求平台节点适配器 | 需要                   |
 | 真实交付验收                 | 需要验证承诺的服务 | 需要                 | 需要                   |
 
+Chrome 扩展等免部署应用可以同时在应用内部调用 Stack 支付、在 Stack 商品页购买：两者使用同一 App Code、用户和授权接口，具体见[双入口与解耦审计](stack-application-decoupling-audit-20261011.md)。
+
 “免部署”只表示购买后不创建服务器实例。当前不自动为任意第三方 SaaS 开通账号、生成兑换码或交付下载资源；需要对应应用已有交付集成或明确人工履约方式。不能只配置商品就宣称这些能力已经实现。
 
 ## 3. 商品声明
@@ -97,7 +99,7 @@
 
 新应用使用通用 `runtimeAssets.current/available` 字典，key 对应 Manifest 中的 asset key。例如 `runtimeAssets: {current: {"app-runtime": "registry/repo@sha256:..."}, available: {}}`；省略号是说明占位符，不能作为实际 digest。状态上报令牌与初始 deploy token 职责不同，不能混用或写入日志。
 
-现有接口保留 `runtimeImages`、`wordpressAssets` 和部分旧更新动作作为历史兼容；这不是新应用接入标准。新应用不得以这些旧字段复制应用专用耦合。
+部署状态接口仅接受通用 `runtimeAssets`，不再接受 `runtimeImages`、`wordpressAssets` 或 WordPress 专用动作。旧数据由一次性迁移转为通用结构并加密归档，安装器必须升级到当前协议。通用 Docker 镜像更新动作仍为 `apply_runtime_images` / `ignore_runtime_images`。
 
 ## 7. 平台托管交付
 

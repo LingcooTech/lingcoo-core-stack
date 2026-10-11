@@ -54,7 +54,7 @@ export function DeploymentDomains({ deploymentId }: { deploymentId: string }) {
       >
         <Input
           aria-label="自定义域名"
-          placeholder="retail.example.com"
+          placeholder="app.example.com"
           value={hostname}
           onChange={(event) => setHostname(event.target.value)}
         />

@@ -16,8 +16,6 @@ import { createAppAccess } from '../app/public';
 import { DeploymentRepository } from './repository';
 import {
   DeploymentConfigurationUseCases,
-  DEFAULT_INSTALLER,
-  AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS,
   type DeploymentStatusReportPayload,
   normalizeString,
   normalizeValueRecord,
@@ -94,6 +92,14 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     }
 
     const manifest = this.readManifest(selection.app);
+    if (
+      !manifest?.installer.remoteInstallScriptUrl ||
+      !manifest.installer.installPath.startsWith('/')
+    )
+      throw httpError(
+        422,
+        'A delivery manifest with an installer URL and absolute install path is required',
+      );
     const deploymentValues = normalizeValueRecord(input.values);
     const deploymentSecrets = normalizeSecretRecord(input.secrets);
     const mode = input.deploymentMode ?? 'self_hosted';
@@ -193,7 +199,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       installPath:
         mode === 'managed'
           ? `/opt/lingcoo/instances/${prefix}`
-          : (input.installPath ?? manifest?.installer.installPath ?? DEFAULT_INSTALLER.installPath),
+          : (input.installPath ?? manifest.installer.installPath),
       meta: deploymentMeta,
     });
 
@@ -561,15 +567,11 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(401, 'Deployment status report token is invalid');
     }
 
-    const runtimeUpdate = this.normalizeMeta(meta.runtimeUpdate);
     const runtimeAssetsUpdate = this.normalizeMeta(meta.runtimeAssetsUpdate);
     const previousRuntimeAssetsAvailable = this.normalizeMeta(runtimeAssetsUpdate.available);
-    const hadAvailableRuntimeUpdate =
-      normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
-      Object.values(previousRuntimeAssetsAvailable).some(
-        (value) => normalizeString(value).length > 0,
-      );
+    const hadAvailableRuntimeUpdate = Object.values(previousRuntimeAssetsAvailable).some(
+      (value) => normalizeString(value).length > 0,
+    );
     if (input.runtimeAssets) {
       if (typeof input.runtimeAssets.current !== 'undefined') {
         runtimeAssetsUpdate.current = input.runtimeAssets.current ?? {};
@@ -585,64 +587,9 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       }
     }
     meta.runtimeAssetsUpdate = runtimeAssetsUpdate;
-    if (input.runtimeImages) {
-      if (typeof input.runtimeImages.currentFrontendImage !== 'undefined') {
-        runtimeUpdate.currentFrontendImage = input.runtimeImages.currentFrontendImage ?? '';
-      }
-      if (typeof input.runtimeImages.currentWebsocketImage !== 'undefined') {
-        runtimeUpdate.currentWebsocketImage = input.runtimeImages.currentWebsocketImage ?? '';
-      }
-      if (typeof input.runtimeImages.availableFrontendImage !== 'undefined') {
-        runtimeUpdate.availableFrontendImage = input.runtimeImages.availableFrontendImage ?? '';
-      }
-      if (typeof input.runtimeImages.availableWebsocketImage !== 'undefined') {
-        runtimeUpdate.availableWebsocketImage = input.runtimeImages.availableWebsocketImage ?? '';
-      }
-      if (typeof input.runtimeImages.offeredAt !== 'undefined') {
-        runtimeUpdate.offeredAt = input.runtimeImages.offeredAt ?? '';
-      }
-      if (typeof input.runtimeImages.appliedAt !== 'undefined') {
-        runtimeUpdate.appliedAt = input.runtimeImages.appliedAt ?? '';
-      }
-    }
-    meta.runtimeUpdate = runtimeUpdate;
-    const hasAvailableRuntimeUpdate =
-      normalizeString(runtimeUpdate.availableFrontendImage).length > 0 ||
-      normalizeString(runtimeUpdate.availableWebsocketImage).length > 0 ||
-      Object.values(this.normalizeMeta(runtimeAssetsUpdate.available)).some(
-        (value) => normalizeString(value).length > 0,
-      );
-
-    const wordpressAssetsUpdate = this.normalizeMeta(meta.wordpressAssetsUpdate);
-    const previousWordpressAvailable = this.normalizeMeta(wordpressAssetsUpdate.available);
-    const hadAvailableWordpressUpdate =
-      Object.values(previousWordpressAvailable).some(
-        (value) => normalizeString(value).length > 0,
-      ) ||
-      AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
-      );
-    if (input.wordpressAssets) {
-      if (typeof input.wordpressAssets.current !== 'undefined') {
-        wordpressAssetsUpdate.current = input.wordpressAssets.current ?? {};
-      }
-      if (typeof input.wordpressAssets.available !== 'undefined') {
-        wordpressAssetsUpdate.available = input.wordpressAssets.available ?? {};
-      }
-      if (typeof input.wordpressAssets.offeredAt !== 'undefined') {
-        wordpressAssetsUpdate.offeredAt = input.wordpressAssets.offeredAt ?? '';
-      }
-      if (typeof input.wordpressAssets.appliedAt !== 'undefined') {
-        wordpressAssetsUpdate.appliedAt = input.wordpressAssets.appliedAt ?? '';
-      }
-    }
-    meta.wordpressAssetsUpdate = wordpressAssetsUpdate;
-    const currentWordpressAvailable = this.normalizeMeta(wordpressAssetsUpdate.available);
-    const hasAvailableWordpressUpdate =
-      Object.values(currentWordpressAvailable).some((value) => normalizeString(value).length > 0) ||
-      AVAILABLE_WORDPRESS_ASSET_RELEASE_KEYS.some(
-        (key) => normalizeString(wordpressAssetsUpdate[key]).length > 0,
-      );
+    const hasAvailableRuntimeUpdate = Object.values(
+      this.normalizeMeta(runtimeAssetsUpdate.available),
+    ).some((value) => normalizeString(value).length > 0);
 
     meta.runtimeStatusReport = {
       ...runtimeStatusReport,
@@ -673,17 +620,6 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
         userId: deployment.userId,
         appId: deployment.appId,
         eventName: 'deployment.runtime_update_available',
-        properties: {
-          deploymentId: deployment.id,
-        },
-      });
-    }
-
-    if (!hadAvailableWordpressUpdate && hasAvailableWordpressUpdate) {
-      await this.capabilities.createEventService(this.db).capture({
-        userId: deployment.userId,
-        appId: deployment.appId,
-        eventName: 'deployment.wordpress_update_available',
         properties: {
           deploymentId: deployment.id,
         },

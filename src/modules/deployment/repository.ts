@@ -26,7 +26,7 @@ export class DeploymentRepository {
     hostingState?: string | null;
     hostingResources?: { cpuMillis: number; memoryMb: number; diskMb: number } | null;
     serverHost?: string | null;
-    installPath?: string | null;
+    installPath: string;
     meta?: Record<string, unknown>;
   }) {
     const [deployment] = await this.db
@@ -43,7 +43,7 @@ export class DeploymentRepository {
         hostingState: input.hostingState,
         hostingResources: input.hostingResources,
         serverHost: input.serverHost ?? null,
-        installPath: input.installPath ?? '/opt/fd-headless-wp-system',
+        installPath: input.installPath,
         status: 'active',
         meta: input.meta ?? {},
         createdAt: new Date(),

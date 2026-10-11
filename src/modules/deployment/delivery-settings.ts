@@ -1,14 +1,8 @@
-import {
-  findLegacyDeliverySettings,
-  saveLegacyDeliverySettings,
-  deleteLegacyDeliverySettings,
-} from '../settings/public';
 import { eq } from 'drizzle-orm';
 
 import { appDeliverySettings } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 import { createAppAccess } from '../app/public';
-import { hasPublicTable } from '../../lib/db-compat';
 import {
   listDeliveryManifestAssetRequiredSecretKeys,
   listDeliveryManifestFields,
@@ -50,39 +44,6 @@ export type StoredDeliverySettings = {
     repoUrl: string;
     repoBranch: string;
   };
-};
-
-const DEFAULT_INSTALLER = {
-  repoUrl: 'https://github.com/FutureDecade/fd-headless-wp-system.git',
-  repoBranch: 'main',
-};
-
-const LEGACY_VALUE_KEY_MAP: Record<string, { envKey: string; kind: 'string' | 'boolean' }> = {
-  frontendImage: { envKey: 'FRONTEND_IMAGE', kind: 'string' },
-  websocketImage: { envKey: 'WEBSOCKET_IMAGE', kind: 'string' },
-  letsencryptEmail: { envKey: 'LETSENCRYPT_EMAIL', kind: 'string' },
-  acrUsername: { envKey: 'ACR_USERNAME', kind: 'string' },
-  wordpressFetchReleaseAssets: { envKey: 'WORDPRESS_FETCH_RELEASE_ASSETS', kind: 'boolean' },
-  wordpressRunInit: { envKey: 'WORDPRESS_RUN_INIT', kind: 'boolean' },
-  wordpressReleaseOwner: { envKey: 'WORDPRESS_RELEASE_OWNER', kind: 'string' },
-  fdThemeReleaseTag: { envKey: 'FD_THEME_RELEASE_TAG', kind: 'string' },
-  fdPageComposerReleaseTag: { envKey: 'FD_PAGE_COMPOSER_RELEASE_TAG', kind: 'string' },
-  fdAdminUiReleaseTag: { envKey: 'FD_ADMIN_UI_RELEASE_TAG', kind: 'string' },
-  fdMemberReleaseTag: { envKey: 'FD_MEMBER_RELEASE_TAG', kind: 'string' },
-  fdPaymentReleaseTag: { envKey: 'FD_PAYMENT_RELEASE_TAG', kind: 'string' },
-  fdCommerceReleaseTag: { envKey: 'FD_COMMERCE_RELEASE_TAG', kind: 'string' },
-  fdContentTypesReleaseTag: { envKey: 'FD_CONTENT_TYPES_RELEASE_TAG', kind: 'string' },
-  fdFormsReleaseTag: { envKey: 'FD_FORMS_RELEASE_TAG', kind: 'string' },
-  fdAiRouterReleaseTag: { envKey: 'FD_AI_ROUTER_RELEASE_TAG', kind: 'string' },
-  fdWebsocketPushReleaseTag: { envKey: 'FD_WEBSOCKET_PUSH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlReleaseTag: { envKey: 'WPGRAPHQL_RELEASE_TAG', kind: 'string' },
-  wpgraphqlJwtAuthReleaseTag: { envKey: 'WPGRAPHQL_JWT_AUTH_RELEASE_TAG', kind: 'string' },
-  wpgraphqlTaxQueryRef: { envKey: 'WPGRAPHQL_TAX_QUERY_REF', kind: 'string' },
-};
-
-const LEGACY_SECRET_KEY_MAP: Record<string, string> = {
-  acrPassword: 'ACR_PASSWORD',
-  githubToken: 'GH_TOKEN',
 };
 
 function normalizeString(value: unknown) {
@@ -159,7 +120,7 @@ function createEmptyStoredSettings(): StoredDeliverySettings {
   return {
     values: {},
     secrets: {},
-    installer: { ...DEFAULT_INSTALLER },
+    installer: { repoUrl: '', repoBranch: '' },
   };
 }
 
@@ -167,48 +128,9 @@ function normalizeInstallerOverrides(value: unknown) {
   const raw = normalizeObject(value);
 
   return {
-    repoUrl: normalizeString(raw.repoUrl) || DEFAULT_INSTALLER.repoUrl,
-    repoBranch: normalizeString(raw.repoBranch) || DEFAULT_INSTALLER.repoBranch,
+    repoUrl: normalizeString(raw.repoUrl),
+    repoBranch: normalizeString(raw.repoBranch),
   };
-}
-
-function normalizeLegacySettings(value: Record<string, unknown>): StoredDeliverySettings {
-  const next = createEmptyStoredSettings();
-
-  for (const [legacyKey, config] of Object.entries(LEGACY_VALUE_KEY_MAP)) {
-    const entry = value[legacyKey];
-    if (config.kind === 'boolean') {
-      const normalized = normalizeBoolean(entry);
-      if (typeof normalized === 'boolean') {
-        next.values[config.envKey] = normalized;
-      }
-      continue;
-    }
-
-    const normalized = normalizeString(entry);
-    if (normalized.length > 0) {
-      next.values[config.envKey] = normalized;
-    }
-  }
-
-  for (const [legacyKey, envKey] of Object.entries(LEGACY_SECRET_KEY_MAP)) {
-    const normalized = normalizeString(value[legacyKey]);
-    if (normalized.length > 0) {
-      next.secrets[envKey] = normalized;
-    }
-  }
-
-  const githubTokenAlias = normalizeString(value.GITHUB_TOKEN);
-  if (githubTokenAlias.length > 0 && !next.secrets.GH_TOKEN) {
-    next.secrets.GH_TOKEN = githubTokenAlias;
-  }
-
-  next.installer = {
-    repoUrl: normalizeString(value.repoUrl) || DEFAULT_INSTALLER.repoUrl,
-    repoBranch: normalizeString(value.repoBranch) || DEFAULT_INSTALLER.repoBranch,
-  };
-
-  return next;
 }
 
 function normalizeStoredSettings(value: unknown): StoredDeliverySettings {
@@ -222,7 +144,9 @@ function normalizeStoredSettings(value: unknown): StoredDeliverySettings {
     };
   }
 
-  return normalizeLegacySettings(raw);
+  if (Object.keys(raw).length)
+    throw httpError(409, 'Delivery settings require migration to the manifest-based format');
+  return createEmptyStoredSettings();
 }
 
 function normalizeInputPatch(input: DeliverySettingsInput) {
@@ -235,7 +159,9 @@ function normalizeInputPatch(input: DeliverySettingsInput) {
     };
   }
 
-  return normalizeLegacySettings(raw);
+  if (Object.keys(raw).length)
+    throw httpError(409, 'Delivery settings require migration to the manifest-based format');
+  return createEmptyStoredSettings();
 }
 
 function resolveFieldValue(field: DeliveryManifestField, values: DeliverySettingValues) {
@@ -269,8 +195,6 @@ function isFieldConfigured(field: DeliveryManifestField, settings: StoredDeliver
 }
 
 export class DeliverySettingsService {
-  private appDeliverySettingsTableAvailable: Promise<boolean> | null = null;
-
   constructor(
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
@@ -280,23 +204,7 @@ export class DeliverySettingsService {
     return getEncryptionKeys(this.env);
   }
 
-  private getSettingKey(appCode: string) {
-    return `deployment.delivery.${appCode}`;
-  }
-
-  private async hasCurrentSettingsStore() {
-    if (!this.appDeliverySettingsTableAvailable) {
-      this.appDeliverySettingsTableAvailable = hasPublicTable(this.db, 'app_delivery_settings');
-    }
-
-    return this.appDeliverySettingsTableAvailable;
-  }
-
   private async findCurrentSettingRow(appId: string) {
-    if (!(await this.hasCurrentSettingsStore())) {
-      return null;
-    }
-
     const [row] = await this.db
       .select()
       .from(appDeliverySettings)
@@ -304,10 +212,6 @@ export class DeliverySettingsService {
       .limit(1);
 
     return row ?? null;
-  }
-
-  private async findLegacySettingRow(appCode: string) {
-    return findLegacyDeliverySettings(this.db, appCode);
   }
 
   private decodeSetting(row: { value: unknown; isEncrypted: boolean }) {
@@ -318,19 +222,6 @@ export class DeliverySettingsService {
     return row.value;
   }
 
-  private async saveLegacyEncryptedSetting(
-    appCode: string,
-    value: StoredDeliverySettings,
-    updatedByUserId: string,
-  ) {
-    await saveLegacyDeliverySettings(
-      this.db,
-      appCode,
-      encryptJson(value, this.getEncryptionSecret()),
-      updatedByUserId,
-    );
-  }
-
   private async saveEncryptedSetting(
     appCode: string,
     value: StoredDeliverySettings,
@@ -339,11 +230,6 @@ export class DeliverySettingsService {
     const app = await createAppAccess(this.db).findAppByCode(appCode);
     if (!app) {
       throw httpError(404, 'App not found');
-    }
-
-    if (!(await this.hasCurrentSettingsStore())) {
-      await this.saveLegacyEncryptedSetting(appCode, value, updatedByUserId);
-      return;
     }
 
     const now = new Date();
@@ -368,17 +254,13 @@ export class DeliverySettingsService {
           updatedAt: now,
         },
       });
-
-    await deleteLegacyDeliverySettings(this.db, appCode);
   }
 
   async deleteSettings(appCode: string) {
     const app = await createAppAccess(this.db).findAppByCode(appCode);
-    if (app && (await this.hasCurrentSettingsStore())) {
+    if (app) {
       await this.db.delete(appDeliverySettings).where(eq(appDeliverySettings.appId, app.id));
     }
-
-    await deleteLegacyDeliverySettings(this.db, appCode);
   }
 
   async getStoredSettings(appCode: string) {
@@ -390,12 +272,7 @@ export class DeliverySettingsService {
       }
     }
 
-    const legacyRow = await this.findLegacySettingRow(appCode);
-    if (!legacyRow) {
-      return null;
-    }
-
-    return normalizeStoredSettings(this.decodeSetting(legacyRow));
+    return null;
   }
 
   async getOverview(appCode: string): Promise<DeliverySettingsOverview> {
@@ -457,10 +334,6 @@ export class DeliverySettingsService {
         repoBranch: patch.installer.repoBranch || current.installer.repoBranch,
       },
     };
-
-    if (next.secrets.GH_TOKEN && !next.secrets.GITHUB_TOKEN) {
-      next.secrets.GITHUB_TOKEN = next.secrets.GH_TOKEN;
-    }
 
     await this.saveEncryptedSetting(appCode, next, updatedByUserId);
     return this.getOverview(appCode);

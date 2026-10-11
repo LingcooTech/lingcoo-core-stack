@@ -256,21 +256,8 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
         userId: event.userId,
         category: 'deployment',
         level: 'info',
-        title: '有新的前端更新可用',
+        title: '有新的运行镜像更新可用',
         body: '你的部署检测到了新的运行时镜像版本，可以选择立即应用或稍后处理。',
-        ctaLabel: '查看部署',
-        ctaUrl: '/deploy',
-        sourceEventId: event.id,
-        sourceEventName: event.eventName,
-        dedupeKey: `event:${event.id}`,
-      };
-    case 'deployment.wordpress_update_available':
-      return {
-        userId: event.userId,
-        category: 'deployment',
-        level: 'info',
-        title: '有新的 WP 资产更新可用',
-        body: '你的部署检测到了新的主题、插件或 GraphQL 资产版本，可以选择立即应用或稍后处理。',
         ctaLabel: '查看部署',
         ctaUrl: '/deploy',
         sourceEventId: event.id,
@@ -280,13 +267,7 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
     case 'deployment.action_requested': {
       const kind = normalizeString(properties.kind);
       const title =
-        kind === 'apply_runtime_images'
-          ? '运行镜像更新已排队'
-          : kind === 'apply_wordpress_assets'
-            ? 'WP 资产更新已排队'
-            : kind === 'ignore_runtime_images'
-              ? '运行镜像更新忽略已排队'
-              : 'WP 资产忽略已排队';
+        kind === 'apply_runtime_images' ? '运行镜像更新已排队' : '运行镜像更新忽略已排队';
       return {
         userId: event.userId,
         category: 'deployment',
@@ -302,14 +283,7 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
     }
     case 'deployment.action_completed': {
       const kind = normalizeString(properties.kind);
-      const title =
-        kind === 'apply_runtime_images'
-          ? '运行镜像更新已完成'
-          : kind === 'apply_wordpress_assets'
-            ? 'WP 资产更新已完成'
-            : kind === 'ignore_runtime_images'
-              ? '运行镜像更新已忽略'
-              : 'WP 资产更新已忽略';
+      const title = kind === 'apply_runtime_images' ? '运行镜像更新已完成' : '运行镜像更新已忽略';
       return {
         userId: event.userId,
         category: 'deployment',
@@ -325,14 +299,7 @@ function buildNotificationFromEvent(event: EventProjectionInput): NotificationDr
     }
     case 'deployment.action_failed': {
       const kind = normalizeString(properties.kind);
-      const title =
-        kind === 'apply_runtime_images'
-          ? '运行镜像更新失败'
-          : kind === 'apply_wordpress_assets'
-            ? 'WP 资产更新失败'
-            : kind === 'ignore_runtime_images'
-              ? '运行镜像更新忽略失败'
-              : 'WP 资产更新忽略失败';
+      const title = kind === 'apply_runtime_images' ? '运行镜像更新失败' : '运行镜像更新忽略失败';
       const message = normalizeString(properties.message);
       return {
         userId: event.userId,

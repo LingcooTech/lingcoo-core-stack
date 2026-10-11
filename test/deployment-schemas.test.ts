@@ -24,17 +24,15 @@ test('accepts generic runtime asset status reports', () => {
   );
 });
 
-test('keeps legacy runtime image status reports compatible', () => {
-  const payload = reportDeploymentStatusSchema.parse({
-    deploymentId: '22222222-2222-4222-8222-222222222222',
-    token: 'legacy-deployment-status-token',
-    runtimeImages: {
-      currentFrontendImage: 'registry.example.com/frontend:current',
-    },
-  });
-
-  assert.equal(
-    payload.runtimeImages?.currentFrontendImage,
-    'registry.example.com/frontend:current',
-  );
+test('rejects retired application-specific status payloads', () => {
+  for (const key of ['runtimeImages', 'wordpressAssets']) {
+    assert.equal(
+      reportDeploymentStatusSchema.safeParse({
+        deploymentId: '22222222-2222-4222-8222-222222222222',
+        token: 'legacy-deployment-status-token',
+        [key]: {},
+      }).success,
+      false,
+    );
+  }
 });

@@ -279,7 +279,7 @@ export function normalizeDeliveryManifest(value: unknown): DeliveryManifest | nu
     repoUrl: normalizeString(installerRaw.repoUrl),
     repoBranch: normalizeString(installerRaw.repoBranch) || 'main',
     remoteInstallScriptUrl: normalizeString(installerRaw.remoteInstallScriptUrl),
-    installPath: normalizeString(installerRaw.installPath) || '/opt/fd-headless-wp-system',
+    installPath: normalizeString(installerRaw.installPath),
   };
 
   return {
