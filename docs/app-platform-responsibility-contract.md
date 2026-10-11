@@ -1,5 +1,7 @@
 # 应用与 Stack 接入责任契约
 
+> 历史规划资料（2026-10-11 标注）：文中的“已实现/待完成”描述按当时阶段保留，不代表当前状态。现行要求见 [应用接入标准](stack-app-delivery-onboarding-standard.md)，执行接口见 [托管适配器协议](stack-hosting-adapter-contract.md)。
+
 日期：2026-10-03。状态：责任规划。Manifest v1 严格发布校验和 Retail 自部署样本已实现；完整 Release 服务、开发者 SDK 和云托管仍属后续阶段。当前实施证据见 [Retail 接入验收](retail-stack-onboarding-runbook.md)。
 
 本文明确应用方、Stack、客户与基础设施供应商的职责，是 [业务闭环与托管方案](app-lifecycle-and-managed-hosting-plan.md) 的接入边界补充。现有自部署操作参考 [镜像交付标准](stack-app-delivery-onboarding-standard.md)；发生差异时，当前可执行能力仍以代码为准，新接入要求按阶段实施。

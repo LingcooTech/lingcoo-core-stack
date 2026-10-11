@@ -12,6 +12,13 @@
 
 底座升级分支的工程验证、生产切换与回退流程见 [升级操作说明](docs/foundation-release-runbook.md)，分阶段结果见 [实施记录](docs/foundation-upgrade-progress.md)。
 
+## 应用接入文档
+
+- [当前应用接入标准](docs/stack-app-delivery-onboarding-standard.md)：商品、交付清单、自部署、托管与验收。
+- [托管适配器协议 v2](docs/stack-hosting-adapter-contract.md)：应用与节点的执行接口。
+- [解耦审计与能力边界](docs/stack-application-decoupling-audit-20261011.md)。
+- [后台填写指南](docs/app-configuration-and-images-20261011.md)。
+
 ## 技术选择
 
 - 应用框架：Fastify

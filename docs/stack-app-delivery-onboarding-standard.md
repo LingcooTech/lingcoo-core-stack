@@ -1,824 +1,159 @@
-# Stack 应用接入与镜像交付标准
+# Stack 应用接入标准
 
-本文定义后续应用上架到 `fd-core-stack` 的统一标准。目标是让每个应用都可以按同一套模式完成购买、授权、部署、更新和运维，同时保证客户拿到的是镜像和部署权益，而不是源码。
+状态：当前可执行标准，核对日期 2026-10-11。覆盖免部署、自有服务器部署、平台托管；不包含 CloudBase、SAE 或第三方开发者分账。本文替代本文件此前的早期接入指南。代码事实、运营要求和待实现能力分别标注，不把规划当作已实现能力。
 
-本文主要对应现有自有服务器交付方式。前后端分离、不可变 Release 和独立云托管实例的下一阶段设计见 [应用业务闭环与独立实例托管方案](app-lifecycle-and-managed-hosting-plan.md)，其中新增能力尚未实现。自部署目标服务器的管理员能够访问下发到该服务器的凭据，镜像也不构成源码不可提取的保证；后续标准应采用受限、可撤销的实例凭据。
+阅读顺序：本文 → [托管适配器协议](stack-hosting-adapter-contract.md) → [后台填写指南](app-configuration-and-images-20261011.md)。平台解耦情况和剩余限制见 [解耦审计](stack-application-decoupling-audit-20261011.md)。Retail、Edu 是实现样本，不是平台协议的定义来源。
 
-## 1. 核心原则
+## 1. 接入的含义与责任
 
-后续接入的责任分工与协议边界见 [应用与 Stack 接入责任契约](app-platform-responsibility-contract.md)；该规划不代表新增托管与 SDK 能力已经实现。
+接入由四部分组成：商品声明、交付声明、可执行交付产物、验收证据。Manifest 是安装说明书，不是安装器；后台表单不会自动把任意镜像转化成可交付应用。
 
-### 1.1 镜像交付
+| 边界       | 应用提供                                     | Stack 提供                                     |
+| ---------- | -------------------------------------------- | ---------------------------------------------- |
+| 商品       | 名称、介绍、素材、功能权益、套餐、适用范围   | 商品展示、报价、订单、支付、授权权益           |
+| 交付       | 固定版本制品、Manifest、安装/迁移/初始化逻辑 | 参数表单、配置与凭据管理、部署授权、状态记录   |
+| 自有服务器 | 可重试的安装入口与运维脚本                   | deploy token、配置交换、交付状态与更新任务协议 |
+| 平台托管   | 托管运行声明及受信任适配包                   | 容量调度、任务执行、域名/证书、实例与运维管理  |
+| 数据运维   | 数据位置、一致性备份、恢复和版本兼容规则     | 托管操作编排、归属校验、异机备份和操作审计     |
 
-上架到 Stack 的部署型应用必须按镜像交付：
+应用不得导入 Stack 业务领域模块或直接访问 Stack 数据库。Stack 不参与应用内部业务表和业务流程。Starter、编程语言、Web 框架和 PostgreSQL 都不是通用接入门槛；应用应使用当前执行环境支持的运行形式，额外依赖由交付包负责声明和适配。
 
-- 应用源码留在私有源码仓。
-- CI/CD 构建 runtime image。
-- 镜像发布到 ACR。
-- 客户服务器只拉取镜像。
-- 公开 delivery 仓只包含部署脚本、compose、manifest 和文档。
+当前只支持客户自有服务器与 Lingcoo 自管 Linux 虚拟机托管。平台托管执行依赖 Docker/Compose；不表示支持任意操作系统、纯静态托管供应商或任意无容器应用。
 
-不得把业务源码放进公开 delivery 仓。
+## 2. 三种接入层次
 
-### 1.2 权限分层
+| 项目                         | 免部署             | 一键部署：自有服务器 | 一键部署：平台托管     |
+| ---------------------------- | ------------------ | -------------------- | ---------------------- |
+| `meta.deliveryMode`          | `none`             | `one_click`          | `one_click`            |
+| 商品、Plan、Feature、Offer   | 需要               | 需要                 | 需要                   |
+| 明确购买后实际交付方式       | 需要               | 安装后获得系统       | 托管就绪后获得访问地址 |
+| Manifest v1                  | 不要求             | 需要                 | 需要                   |
+| 生产镜像、安装脚本、编排文件 | 不因该分类而要求   | 需要                 | 需要                   |
+| `meta.hostingProfile`        | 不适用             | 不要求               | 需要                   |
+| 节点登记的 Adapter v2        | 不适用             | 不要求平台节点适配器 | 需要                   |
+| 真实交付验收                 | 需要验证承诺的服务 | 需要                 | 需要                   |
 
-接入时必须明确三类信息：
+“免部署”只表示购买后不创建服务器实例。当前不自动为任意第三方 SaaS 开通账号、生成兑换码或交付下载资源；需要对应应用已有交付集成或明确人工履约方式。不能只配置商品就宣称这些能力已经实现。
 
-- Stack 管理员 preset：由平台配置，用户不可改或默认不需要关心。
-- 用户输入：购买部署时由用户填写。
-- secret：只在服务端或目标服务器临时使用，不在页面明文展示。
+## 3. 商品声明
 
-典型例子：
+- 使用稳定 App Code；为同时满足节点能力声明，统一使用 `^[a-z][a-z0-9_]{0,63}$`，不使用会改变的市场名称。
+- 配置基础信息、展示内容、图片、功能权益 Feature、套餐 Plan 和报价 Offer。
+- 报价关联套餐，套餐关联有效权益；部署型套餐声明部署数量及域名绑定等 deployment policy。
+- 标准运营流程要求正式人民币报价为正数，验收专用价格保持草稿。
+- 软件购买权益与托管服务资格分别管理；购买软件不自动等于获得免费托管。
 
-| 类型          | 示例                        | 存储位置                              |
-| ------------- | --------------------------- | ------------------------------------- |
-| preset        | `FD_EDU_RUNTIME_IMAGE`      | Stack delivery settings encrypted row |
-| preset        | `ACR_USERNAME`              | Stack delivery settings encrypted row |
-| preset secret | `ACR_PASSWORD`              | Stack delivery settings encrypted row |
-| user input    | `INITIAL_ORGANIZATION_NAME` | deployment input/meta/bootstrap env   |
-| user secret   | `INITIAL_ADMIN_PASSWORD`    | bootstrap env only                    |
-| domain slot   | `EDU_DOMAIN`                | deployment domain binding             |
+后台创建和维护是可用入口。`app-products/<app-code>/product.json` 是推荐的版本化导入与复现方式，不是后台建商品的强制文件条件。字段结构以 [商品校验器](../src/lib/app-product-validation.ts) 为准；密钥仅通过环境变量映射注入，不能提交真实值。
 
-### 1.3 凭据不可见
+## 4. 交付声明：Manifest v1
 
-ACR 只读凭据必须由 Stack 后台保存：
+权威结构：[deliveryManifestSchema](../packages/contracts/src/delivery.ts)。`version` 为字符串 `"1"`；严格发布校验拒绝未知结构字段。托管 Adapter 的版本号 `2` 与这里的 Manifest 版本独立。
 
-- 用户不能在页面看到 ACR password。
-- delivery 仓不能写入 ACR password。
-- 部署 `.env` 不保留 ACR password。
-- 目标服务器执行 `docker login` 后依赖 Docker credential store 拉取后续镜像。
+| 字段              | 必须表达的内容                                                   |
+| ----------------- | ---------------------------------------------------------------- |
+| `installer`       | 交付仓库 URL、版本引用、远程安装脚本 URL、绝对安装目录           |
+| `domainSlots`     | 域名标识、名称、环境变量、部署输入字段、是否必填                 |
+| `envFields`       | 普通配置的 key、label、type、scope、required、editable、advanced |
+| `secretFields`    | 敏感配置；type 为 secret，禁止嵌入默认值                         |
+| `assets`          | 资源唯一标识、类型、是否必需、公开/私有及镜像/文件/凭据引用      |
+| `groups`、`notes` | 可选分组与操作说明                                               |
 
-### 1.4 可重复部署
+普通字段类型为 text、email、boolean；scope 为 preset（平台配置）或 user_input（客户部署时填写）。环境变量名必须为大写字母开头的字母、数字和下划线。字段不能重名，资源引用必须能解析到声明字段。
 
-安装脚本必须幂等：
+资源枚举包括 docker_image、http_file、github_release、qiniu_object、custom，但“能声明某类型”不等于平台内置了该类型的安装执行器。新应用仍需要执行适配。镜像型应用的必需 Docker 镜像固定到完整 `@sha256:<64位摘要>`，不能以 latest 或仅 Git SHA tag 替代发布检查要求。
 
-- 已存在 Git repo 时执行 fast-forward 更新。
-- 已存在 `.env` 时保留内部 secret。
-- 数据库已初始化时不重复创建管理员。
-- 失败后可重新执行同一条 remote install 命令。
+清单来源可以是直接返回 JSON 的正式 HTTPS 地址，或公开 GitHub 交付仓库。两者同时配置时 URL 优先；应用源码不需要公开。更换来源后先保存，再同步。同步读取并保存清单，不自动执行安装，不构成制品发布方认证或安装安全证明。
 
-## 2. 仓库分层
+## 5. 应用交付包必须满足的运营要求
 
-每个部署型应用建议至少有两个仓库。
+下列是接入验收要求，不表示当前 Schema 可以自动证明全部成立：
 
-### 2.1 私有源码仓
+- 运行镜像包含所需运行文件，不包含真实密钥、测试数据和开发缓存；默认采用最小权限运行。
+- 固定应用版本、镜像 digest、交付包校验和及安装入口；记录可追溯源码版本。仓库供应商不是 ACR 专属约束，但当前托管登录字段仍叫 `ACR_USERNAME`、`ACR_PASSWORD`。
+- 提供 Compose 编排，声明所有应用服务、基础服务、网络、端口和持久数据；资源预算基于实测。
+- 迁移、首次初始化支持无人值守；重复运行不破坏既有数据和内部密钥，失败有非零退出码。命令名称和实现语言不限定为 npm。
+- 需要初始化的应用仅在首次安装消费初始化凭据，不写入日志或可公开文件。
+- 提供可验证的就绪检查；检查路径按应用声明，不要求所有应用固定使用 `/health/ready`。Worker 进程存活与业务队列正常消费应分别验收。
+- 应用入口正确处理平台域名、代理和公网地址。需要域名授权约束时，交付包负责实现相应绑定，不能仅依赖前端按钮隐藏。
+- 持久数据必须有备份、隔离恢复和退出交付方案。数据库不兼容迁移不能仅靠回退镜像处理。
+- 不提交业务源码、真实 `.env`、私钥或拉取密码到公开交付仓库。镜像并不保证源码不可提取；客户自有服务器管理员也能接触下发凭据，应使用专用受限凭据。
 
-职责：
+## 6. 自有服务器交付
 
-- 业务源码
-- Dockerfile
-- 数据库 schema/migration
-- 单元测试和集成测试
-- 构建 runtime image
-- 推送 ACR / GHCR
+流程：购买取得权益 → 创建部署并填写 IP、域名与应用输入 → 获取 deploy token → 客户在服务器执行安装命令 → 安装器交换部署配置 → 拉取镜像、迁移、初始化、启动 → 就绪检查并上报结果。
 
-命名建议：
+安装器负责理解 Stack 配置交换与状态协议，准备依赖并执行应用安装。客户负责服务器与域名解析。仅在后台填写 IP 不授予 Stack SSH 权限，也不会自动远程执行命令。
 
-```text
-FutureDecade/<app-system>
+安装器实现参考 [部署模块](../src/modules/deployment) 与应用发布后的安装脚本。不同应用可以实现相同协议，不要求导入 Retail 或 Edu 代码。
+
+安装器的协议入口（请求类型以 [deployment.ts](../packages/contracts/src/deployment.ts) 为准）：
+
+| 入口                                      | 用途                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `POST /v1/deployments/bootstrap/exchange` | 提交 `{token}`，获取部署信息与 `bootstrap.envDefaults`；使用安装命令提供的 `FD_STACK_EXCHANGE_URL` |
+| `POST /v1/deployments/status/report`      | 使用部署 ID 与状态上报凭据提交就绪和资源版本；地址与凭据由交换结果提供                             |
+| `POST /v1/deployments/actions/pull`       | 拉取此部署的待执行动作                                                                             |
+| `POST /v1/deployments/actions/complete`   | 回报动作结果；失败不应冒充成功                                                                     |
+
+新应用使用通用 `runtimeAssets.current/available` 字典，key 对应 Manifest 中的 asset key。例如 `runtimeAssets: {current: {"app-runtime": "registry/repo@sha256:..."}, available: {}}`；省略号是说明占位符，不能作为实际 digest。状态上报令牌与初始 deploy token 职责不同，不能混用或写入日志。
+
+现有接口保留 `runtimeImages`、`wordpressAssets` 和部分旧更新动作作为历史兼容；这不是新应用接入标准。新应用不得以这些旧字段复制应用专用耦合。
+
+## 7. 平台托管交付
+
+除上述交付要求，还需要两份声明：
+
+- `meta.hostingProfile`：平台调度/监测信息，包括 enabled、domainField、CPU/内存/磁盘预算、monitoring 和可选 httpChecks。以 [hostingProfileSchema](../packages/contracts/src/hosting.ts) 及 [监测协议](../packages/contracts/src/hosting-monitor.ts) 为准。
+- 节点 `adapters[appCode]`：运维管理员预装的 Adapter v2，包含编排、初始化、健康检查、数据卷、备份和文件摘要。见 [完整适配接口](stack-hosting-adapter-contract.md)。
+
+当前托管创建要求 Manifest 恰有一个域名槽位，其 sourceField 与 hostingProfile.domainField 一致。后台普通交付表单不会自动生成或部署托管适配包；首次托管接入由工程和运维完成。
+
+节点只有在受信任适配包验证通过后才报告 supportedApps，平台按应用能力与可用容量调度；未匹配节点不会回退到 Retail 或强行部署。托管执行完成后，平台处理默认子域名、路由、证书和公网验证。自定义域名由客户解析到平台指定地址，再验证绑定。
+
+## 8. 识别与验证分层
+
+| 阶段         | 当前做什么                                                                                                | 不代表什么                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 同步         | 下载 JSON，做兼容解析，保存原始清单及来源                                                                 | 不等于严格发布校验或来源认证                   |
+| 商品离线校验 | 校验商品结构、清单与引用；`--ready` 增加售卖配置要求                                                      | 不访问真实镜像仓库、不证明安装成功             |
+| 后台配置检查 | 报价权益、严格 Manifest、参数/凭据存在、安装 URL、资源引用及 digest；声明托管时检查 profile 与 monitoring | 不下载执行安装器、不验证凭据权限、不做真实付款 |
+| 节点运行前   | 应用能力、资源、适配器摘要、实例归属、固定镜像、任务参数                                                  | 文件摘要不是第三方代码安全审计或发布方签名     |
+| 真实验收     | 拉取、安装、就绪、HTTPS、状态、备份恢复、支持范围内的更新及失败路径                                       | 不能用一次样本成功保证任意新应用可用           |
+
+代码入口：[商品校验](../src/lib/app-product-validation.ts)、[配置检查](../src/modules/app/readiness.ts)、[同步](../src/modules/app/manifest-service.ts)、[调度](../src/modules/deployment/hosting.ts)、[节点校验](../scripts/hosting_adapter.py)。
+
+当前缺口：服务端强制配置检查主要用于 one_click 首次启用或从其他模式切换到启用的 one_click；免部署发布、已经启用商品的后续修改没有完全统一的强制发布门禁。离线校验、同步兼容解析、后台检查的覆盖范围也不同。运营必须遵循完整验收流程，不能把缺少拦截理解为允许跳过要求。
+
+## 9. 新应用接入步骤与完成定义
+
+1. 确认免部署/自有服务器/托管支持范围，明确购买后实际交付物。
+2. 应用方准备运行制品、Manifest、安装入口；需要托管时准备 Adapter v2 和 hostingProfile。
+3. 在 Stack 创建草稿，同步正式清单，填写 preset 和密钥，配置 Feature/Plan/Offer；可使用 product.json 导入复现。
+4. 运维登记并验证托管适配包、备份配置及 supportedApps；自部署不需要平台节点适配器。
+5. 执行离线、后台和真实交付验收，记录版本、结果及不支持范围。
+6. 正式报价、权益、交付和售后安排确认后再启用商品。
+
+可用离线命令（在 Stack 仓库，使用项目规定 Node 版本）：
+
+```sh
+npm run app:validate -- app-products/<app-code>/product.json
+npm run app:validate -- app-products/<app-code>/product.json --ready
 ```
 
-示例：
-
-```text
-FutureDecade/fd-edu-system
-```
-
-### 2.2 公开 delivery 仓
-
-职责：
-
-- `fd-delivery.manifest.json`
-- `docker-compose.yml`
-- `Caddyfile`
-- 安装脚本
-- 备份/恢复脚本
-- 状态上报脚本
-- 镜像更新脚本
-- 商品配置说明
-
-命名建议：
-
-```text
-FutureDecade/<app-system>-delivery
-```
-
-示例：
-
-```text
-FutureDecade/fd-edu-system-delivery
-```
-
-公开 delivery 仓必须通过 secret scan：
-
-```bash
-rg -n "(BEGIN (RSA|OPENSSH|PRIVATE)|ghp_|github_pat_|AKIA|LTAI|ACR_PASSWORD=.+|JWT_SECRET=.+|INITIAL_ADMIN_PASSWORD=.+)" .
-```
-
-命中变量名本身可以接受；命中真实值必须删除并轮换密钥。
-
-## 3. 源码仓接入要求
-
-### 3.1 Dockerfile
-
-必须提供可用于生产的 runtime image：
-
-- image 内包含运行必需的 `dist`、静态资源、migration 文件和 package scripts。
-- image 默认以非 root 用户运行。
-- image 不包含开发缓存、测试数据库、真实 `.env`。
-- image 应标注 revision label。
-
-推荐标签：
-
-```text
-org.opencontainers.image.title=<app-name>
-org.opencontainers.image.source=https://github.com/FutureDecade/<repo>
-org.opencontainers.image.version=<git-sha>
-org.opencontainers.image.revision=<git-sha>
-```
-
-### 3.2 迁移
-
-必须提供生产可执行迁移命令：
-
-```bash
-npm run db:migrate
-```
-
-要求：
-
-- 可以在空库执行。
-- 可以在已迁移数据库重复执行。
-- 失败时有明确非零退出码。
-- 不依赖交互式 prompt。
-- 不依赖源码仓 `.git`。
-
-如使用 Drizzle，优先用 programmatic migrator 或经过验证的 CLI 路径。
-
-### 3.3 首次初始化
-
-需要租户/机构/管理员的应用必须提供 bootstrap 命令：
-
-```bash
-npm run db:bootstrap
-```
-
-输入从环境变量读取。
-
-标准字段：
-
-```text
-INITIAL_ADMIN_EMAIL
-INITIAL_ADMIN_PASSWORD
-INITIAL_ADMIN_DISPLAY_NAME
-INITIAL_ORGANIZATION_NAME
-INITIAL_ORGANIZATION_BRAND_NAME
-INITIAL_ORGANIZATION_PHONE
-INITIAL_ORGANIZATION_ADDRESS
-```
-
-要求：
-
-- 初始密码只用于首次写入 hash。
-- 初始密码不写入部署 `.env`。
-- 初始化已完成时幂等退出。
-- 半初始化状态必须拒绝继续，避免产生不可恢复数据。
-
-### 3.4 域名绑定
-
-部署型 Web 应用必须支持绑定部署域名。
-
-标准变量：
-
-```text
-FD_DOMAIN_BINDING_SOURCE=primaryDomain
-FD_DOMAIN_BINDING_SCOPE=exact_host
-FD_BOUND_HOST=<locked-host>
-```
-
-应用应在入口层校验 Host：
-
-- 匹配：继续处理。
-- 不匹配：返回 `421` 或明确错误。
-
-健康检查需要在绑定域名时带 Host header。
-
-### 3.5 健康检查
-
-应用必须提供：
-
-```text
-GET /health
-GET /ready
-```
-
-推荐语义：
-
-- `/health`: 进程存活，轻量检查。
-- `/ready`: 数据库等依赖可用。
-
-安装脚本只应在 `/ready` 成功后向 Stack 上报部署成功。
-
-### 3.6 生产环境校验
-
-应用生产启动时必须拒绝危险默认值：
-
-- 默认 JWT secret
-- 过短 JWT secret
-- 缺失数据库连接
-- 启用域名绑定但未传 `FD_BOUND_HOST`
-
-## 4. 镜像发布标准
-
-### 4.1 镜像仓库
-
-当前标准 ACR registry：
-
-```text
-crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com
-```
-
-当前 namespace：
-
-```text
-futuredecade
-```
-
-镜像命名：
-
-```text
-<registry>/<namespace>/<app-image-name>:<git-sha>
-```
-
-示例：
-
-```text
-crpi-8y82lbqoc1haiday.cn-beijing.personal.cr.aliyuncs.com/futuredecade/fd-edu-system:<git-sha>
-```
-
-正式 Stack preset 应使用 immutable SHA tag 或 digest，不使用 `latest`。
-
-### 4.2 GitHub Actions
-
-源码仓至少需要：
-
-- CI workflow
-  - migration
-  - seed
-  - typecheck
-  - test
-  - build
-- Deploy/build workflow
-  - checkout exact commit
-  - build runtime image
-  - push ACR `latest`
-  - push ACR `<git-sha>`
-  - 可选 mirror GHCR
-
-Deploy workflow 输出应能确认：
-
-- image tag
-- image digest
-- build job conclusion
-
-## 5. Delivery Manifest 标准
-
-每个 delivery 仓必须有：
-
-```text
-fd-delivery.manifest.json
-```
-
-### 5.1 installer
-
-标准结构：
-
-```json
-{
-  "installer": {
-    "repoUrl": "https://github.com/FutureDecade/<app>-delivery.git",
-    "repoBranch": "main",
-    "remoteInstallScriptUrl": "https://raw.githubusercontent.com/FutureDecade/<app>-delivery/main/scripts/remote-install.sh",
-    "installPath": "/opt/<app>"
-  }
-}
-```
-
-要求：
-
-- `repoUrl` 指向公开 delivery 仓。
-- `remoteInstallScriptUrl` 可以被目标服务器直接 curl。
-- `installPath` 不与其他产品冲突。
-
-### 5.2 domainSlots
-
-Web 应用必须声明域名 slot：
-
-```json
-{
-  "key": "primary",
-  "envKey": "APP_DOMAIN",
-  "sourceField": "primaryDomain",
-  "required": true
-}
-```
-
-Stack 会根据 plan deployment policy 锁定域名。
-
-### 5.3 envFields
-
-字段必须区分 scope：
-
-- `preset`: Stack 管理员配置。
-- `user_input`: 用户购买/部署时填写。
-
-镜像字段示例：
-
-```json
-{
-  "key": "APP_RUNTIME_IMAGE",
-  "type": "text",
-  "scope": "preset",
-  "required": true,
-  "advanced": true
-}
-```
-
-### 5.4 secretFields
-
-secret 字段必须声明：
-
-```json
-{
-  "key": "ACR_PASSWORD",
-  "type": "secret",
-  "scope": "preset",
-  "required": true
-}
-```
-
-用户 secret 示例：
-
-```json
-{
-  "key": "INITIAL_ADMIN_PASSWORD",
-  "type": "secret",
-  "scope": "user_input",
-  "required": true
-}
-```
-
-### 5.5 assets
-
-私有 Docker 镜像必须声明 asset：
-
-```json
-{
-  "key": "app-runtime-image",
-  "label": "应用运行镜像",
-  "type": "docker_image",
-  "required": true,
-  "visibility": "private",
-  "imageEnv": "APP_RUNTIME_IMAGE",
-  "authSecret": "ACR_PASSWORD"
-}
-```
-
-asset key 必须稳定，因为 deployment status report 和更新动作会引用它。
-
-## 6. Delivery 脚本标准
-
-推荐脚本结构：
-
-```text
-scripts/
-  remote-install.sh
-  prepare-server.sh
-  stack-bootstrap.sh
-  quick-install.sh
-  install-deployment-timers.sh
-  report-deployment-status.sh
-  run-pending-deployment-action.sh
-  apply-runtime-image-update.sh
-  record-runtime-image-update.sh
-  backup.sh
-  restore.sh
-  common.sh
-```
-
-### 6.1 remote-install.sh
-
-职责：
-
-- 安装基础依赖。
-- clone 或 pull delivery 仓。
-- 调用 `prepare-server.sh`。
-- 调用 `quick-install.sh`。
-
-输入：
-
-```text
-FD_STACK_DEPLOY_TOKEN
-FD_STACK_EXCHANGE_URL 或 FD_STACK_PUBLIC_BASE_URL
-```
-
-### 6.2 stack-bootstrap.sh
-
-职责：
-
-- 用 deploy token 向 Stack exchange endpoint 换取 bootstrap env。
-- 将 Stack 后台 preset、用户输入、用户 secret、状态上报 URL 注入环境变量。
-
-要求：
-
-- 不把 bootstrap JSON 写入持久文件。
-- 脚本退出时 unset token 和 secret。
-
-### 6.3 quick-install.sh
-
-职责：
-
-- 校验必填字段。
-- 生成或保留内部 secret。
-- 写入部署 `.env`。
-- 使用 `ACR_PASSWORD` 执行 docker login。
-- 拉取镜像。
-- 启动数据库。
-- 运行迁移。
-- 运行 bootstrap。
-- 启动服务。
-- 等待 `/ready`。
-- 安装 systemd timer。
-- 上报部署状态。
-
-要求：
-
-- 不把 `ACR_PASSWORD` 写入 `.env`。
-- 不把 `INITIAL_ADMIN_PASSWORD` 写入 `.env`。
-- `.env` 权限为 `600`。
-- 重复执行不会覆盖已生成的内部 secret。
-
-### 6.4 report-deployment-status.sh
-
-必须向 Stack 上报：
-
-- 服务状态
-- 当前 runtime image
-- 可用 runtime image
-- runtime asset key
-
-标准 payload 中应使用：
-
-```json
-{
-  "runtimeAssets": {
-    "app-runtime-image": {
-      "current": "registry/app:<current>",
-      "available": "registry/app:<available>",
-      "offeredAt": "2026-01-01T00:00:00.000Z",
-      "appliedAt": "2026-01-01T00:00:00.000Z"
-    }
-  }
-}
-```
-
-### 6.5 更新动作
-
-如果 Stack 发起 `apply_runtime_assets`，delivery 仓应：
-
-- 读取 pending action。
-- 写入目标 image。
-- 备份数据库。
-- `docker compose pull`。
-- 运行迁移。
-- 重启服务。
-- 等待健康检查。
-- 成功后上报 applied。
-- 失败时回滚 `.env` 和 compose 服务。
-
-## 7. Stack 商品配置标准
-
-### 7.1 App code
-
-App code 必须稳定，使用 snake_case：
-
-```text
-fd_edu_system
-fd_headless_wp_system
-```
-
-不要使用会变的市场名或中文名作为 code。
-
-### 7.2 App metadata
-
-必须配置：
-
-- `name`
-- `tagline`
-- `description`
-- `content`
-- `category`
-- `type`
-- `status`
-- `meta.deliveryMode = "one_click"`
-- `meta.deliveryManifest`
-- `meta.deliveryManifestSource`
-
-### 7.3 Plan
-
-部署型主商品的 plan 必须设置 deployment policy：
-
-```json
-{
-  "maxActiveDeployments": 1,
-  "domainBindingMode": "lock_on_first_success",
-  "domainBindingSource": "primaryDomain",
-  "domainBindingScope": "exact_host",
-  "allowMultiplePurchases": false
-}
-```
-
-如果是加购服务或不创建服务器部署的商品，不要给它创建 server deployment entitlement。
-
-### 7.4 Offer
-
-测试阶段可以使用测试价 offer。
-
-正式上架前必须确认：
-
-- 价格
-- 货币
-- billing interval
-- 是否默认 offer
-- 是否有测试 badge
-
-### 7.5 Delivery settings
-
-所有 preset 和 secret 应写入 `DeliverySettingsService`：
-
-```ts
-await deliverySettings.upsertSettings(
-  appCode,
-  {
-    values: {
-      APP_RUNTIME_IMAGE: '<immutable-image>',
-      ACR_USERNAME: '<read-only-user>',
-      FD_RUNTIME_IMAGE_UPDATE_POLICY: 'manual',
-    },
-    secrets: {
-      ACR_PASSWORD: '<read-only-password>',
-    },
-    installer: {
-      repoUrl: 'https://github.com/FutureDecade/<app>-delivery.git',
-      repoBranch: 'main',
-    },
-  },
-  actorUserId,
-);
-```
-
-不要把 secret 写进 `apps.meta`。
-
-### 7.6 版本化商品配置
-
-每个可上架应用必须在 Stack 仓库中提交一份版本化商品配置：
-
-```text
-app-products/<app-code>/product.json
-```
-
-这份配置是应用上架的可重复导入源，必须包含：
-
-- `app`: 商品基础信息、前台展示内容、分类、状态和 `meta.deliveryMode`。
-- `features`: 该商品授权包含的功能。
-- `plans`: 套餐、价格、计费周期和 deployment policy。
-- `offers`: 前台购买 offer。
-- `delivery.manifestSource`: 公开 delivery 仓和 manifest 路径。
-- `delivery.manifest`: 当前审核通过的 manifest 快照。
-- `delivery.settings.values`: 可公开 preset，例如 runtime image、ACR 用户名、更新策略。
-- `delivery.settings.secretsFromEnv`: secret key 到环境变量名的映射。
-
-secret 值不得进入 JSON。导入时通过环境变量注入：
-
-```bash
-FD_APP_IMPORT_ACTOR_USER_ID=<admin-user-id> \
-FD_EDU_ACR_PASSWORD=<readonly-acr-password> \
-npm run app:import -- app-products/fd_edu_system/product.json --require-secrets
-```
-
-如果生产库里已有 secret，可以不传对应环境变量，导入脚本会保留已有 encrypted secret 并输出 missing secret env 提示。全新环境首次导入时必须使用 `--require-secrets`，避免商品显示已上架但镜像凭据未配置。
-
-## 8. 上架流程
-
-### 8.1 准备源码仓
-
-检查项：
-
-- Dockerfile 可构建 runtime image。
-- migration 可从空库执行。
-- bootstrap 可幂等执行。
-- health/ready 可用。
-- production env validation 完整。
-- 域名绑定可用。
-- CI 全绿。
-
-### 8.2 发布镜像
-
-步骤：
-
-1. 合并源码仓 main。
-2. 等 CI 成功。
-3. 等 ACR build/push 成功。
-4. 记录 immutable tag 和 digest。
-
-### 8.3 创建 delivery 仓
-
-步骤：
-
-1. 新建公开仓。
-2. 写 manifest、compose、Caddyfile、scripts、docs。
-3. 本地静态校验。
-4. secret scan。
-5. push main。
-
-### 8.4 配置 Stack 商品
-
-步骤：
-
-1. 编写 `app-products/<app-code>/product.json`。
-2. 确认 JSON 内不包含 secret 值。
-3. 在目标 Stack 环境设置必要 secret 环境变量。
-4. 执行 `npm run app:import -- app-products/<app-code>/product.json`。
-5. 校验 public catalog。
-6. 校验 delivery settings overview。
-7. 校验后台 App 编辑页可继续维护该商品。
-
-### 8.5 E2E 验收
-
-需要一台空白目标服务器和一个测试域名。
-
-验收步骤：
-
-1. 用户购买测试 offer。
-2. Stack 发放 entitlement。
-3. 创建 deployment。
-4. 生成 deploy token。
-5. 在目标服务器执行 remote install 命令。
-6. 检查目标服务健康。
-7. 登录应用后台。
-8. Stack deployment record 显示运行状态和 runtime asset。
-9. 触发一次 runtime image update action。
-10. 验证备份、迁移、重启、状态上报和回滚路径。
-
-## 9. 发布前检查清单
-
-### 源码仓
-
-- [ ] `npm run typecheck`
-- [ ] `npm test`
-- [ ] `npm run build:all`
-- [ ] 空库 migration 验证
-- [ ] bootstrap 首次执行验证
-- [ ] bootstrap 二次执行验证
-- [ ] production env validation 验证
-- [ ] domain binding 验证
-- [ ] Docker image build 验证
-
-### Delivery 仓
-
-- [ ] `bash -n scripts/*.sh`
-- [ ] `node -e "JSON.parse(fs.readFileSync('fd-delivery.manifest.json'))"`
-- [ ] `docker compose --env-file .env.example config`
-- [ ] 所有脚本有执行位
-- [ ] `.env` 不存在
-- [ ] secret scan 无真实密钥
-- [ ] public raw manifest 可访问
-- [ ] remote install script URL 可访问
-
-### Stack 配置
-
-- [ ] App code 稳定
-- [ ] App status active
-- [ ] deliveryMode one_click
-- [ ] deliveryManifest 已写入
-- [ ] plan deploymentPolicy 已配置
-- [ ] offer 已配置
-- [ ] runtime image preset 使用 immutable tag 或 digest
-- [ ] ACR_USERNAME 已配置
-- [ ] ACR_PASSWORD configured
-- [ ] public catalog API 返回正确
-- [ ] deployment settings overview configured
-
-### E2E
-
-- [ ] 测试购买成功
-- [ ] entitlement 发放成功
-- [ ] deploy token 生成成功
-- [ ] 目标服务器安装成功
-- [ ] HTTPS 域名可访问
-- [ ] 初始管理员登录成功
-- [ ] Stack deployment 状态上报成功
-- [ ] runtime asset update 成功
-
-## 10. 小程序和 Add-on 标准
-
-不要默认把小程序与 Web 主商品绑定在同一个 deployment entitlement 中。
-
-建议规则：
-
-- Web 系统：创建 server deployment entitlement。
-- 小程序：创建独立 App 或 add-on offer。
-- 小程序权益可以关联到 Web deployment，但不自动创建第二个服务器部署。
-- 小程序配置字段应独立管理：
-  - AppId
-  - AppSecret
-  - env version
-  - upload/audit/release 状态
-  - 支付主体配置
-
-适合单独售卖的小程序场景：
-
-- 客户已有 Web 系统，只需要小程序。
-- 小程序审核周期和 Web 上线周期不同。
-- 不同客户主体需要不同小程序账号。
-- 小程序包含额外开发、审核、发布或运营服务。
-
-## 11. 常见风险
-
-### 11.1 把源码放进公开仓
-
-风险：
-
-- 泄漏业务实现。
-- 泄漏私有依赖结构。
-- 客户误以为可以自行构建。
-
-标准做法：
-
-- 公开仓只放 delivery。
-- 镜像由私有源码仓 CI 发布。
-
-### 11.2 把 ACR 密码写进 `.env`
-
-风险：
-
-- 客户可见。
-- 备份泄漏。
-- support 时被复制传播。
-
-标准做法：
-
-- 仅安装时通过环境变量传入。
-- `docker login --password-stdin`。
-- 退出前 unset。
-
-### 11.3 使用 `latest`
-
-风险：
-
-- 无法精确回滚。
-- 不知道客户实际运行版本。
-- runtime asset 状态不可审计。
-
-标准做法：
-
-- Stack preset 使用 git SHA tag 或 digest。
-- `latest` 只作为人工排查或默认展示，不作为正式上架配置。
-
-### 11.4 没有 bootstrap 幂等
-
-风险：
-
-- 安装失败后重试产生重复管理员、重复机构或半初始化数据。
-
-标准做法：
-
-- bootstrap 事务化。
-- 明确 already initialized 条件。
-- 半初始化拒绝继续。
-
-### 11.5 服务器不能访问 GitHub raw
-
-风险：
-
-- manifest sync 或 remote install 失败。
-
-标准做法：
-
-- Stack 后台支持将 manifest 内容写入 `apps.meta.deliveryManifest`。
-- remote install 脚本必要时提供镜像源或代理方案。
-- 上架时验证目标服务器能访问该应用实际使用的交付源。旧安装器可能使用 `raw.githubusercontent.com`；Retail 样本使用国内可访问的 HTTPS 下载入口与镜像仓库，不在客户服务器克隆源码。
-
-## 12. 后续平台改进建议
-
-为了让后续上架更标准化，建议继续建设：
-
-- Admin UI 中的“一键同步 manifest + 配置 preset + 检查 secret”向导。
-- App 上架状态检查页。
-- Runtime image digest 自动读取和写入。
-- ACR 只读账号集中管理。
-- E2E 部署测试环境池。
-- Add-on / bundled offer 建模。
-- 小程序独立交付模型。
-
-严格发布校验已提供：`npm run app:validate -- <product.json>`；正式商品增加 `--ready`，导入增加 `--ready-for-sale`。这仍是离线校验，不能替代下载入口、镜像凭据和目标网络验收。真实 Retail 样本见 [接入与交付验收](retail-stack-onboarding-runbook.md)，正式上线事项集中见 [统一待办](retail-stack-user-tasks.md)。
+导入会写入数据库，应在目标环境明确后使用 `npm run app:import -- <product.json> --require-secrets --ready-for-sale`；草稿导入不要加 ready-for-sale。命令通过不替代后台配置检查和实际验收。
+
+完成清单：
+
+- [ ] 草稿商品与正式版本一致，真实密钥没有进入仓库或日志。
+- [ ] 售价、套餐和授权权益正确，支持的交付类型明确。
+- [ ] 安装、重复执行、失败重试、健康及状态回报有证据。
+- [ ] 托管的节点能力、预算、域名/证书、公网访问有证据。
+- [ ] 持久数据备份和隔离恢复有证据，更新/回退适用范围明确。
+- [ ] 真实支付等外部环节另行验收；未验收项明确记录，不能伪记为通过。
+
+## 10. 样本与历史材料
+
+- [Retail 接入记录](retail-stack-onboarding-runbook.md)：具体样本和历史证据，不是新应用必须复制的业务模型。
+- [后台填写指南](app-configuration-and-images-20261011.md)：当前交付字段操作。
+- [应用与平台责任规划](app-platform-responsibility-contract.md)：保留早期规划，当前范围以本文为准。
+- 历史具体 registry、namespace、Retail/Edu 字段和 npm 命令是样本值，不是通用平台标准。

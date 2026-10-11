@@ -1,12 +1,14 @@
 # 第二应用与受信任节点适配器
 
+> 第二应用接入阶段的历史记录。当前规范见 [应用接入标准](../../docs/stack-app-delivery-onboarding-standard.md) 和 [Adapter v2](../../docs/stack-hosting-adapter-contract.md)，当前解耦结论见 [审计](../../docs/stack-application-decoupling-audit-20261011.md)。
+
 样本已由用户明确为 `/Users/admin/Projects/lingcoo-edu-oms`。教育 OMS 的 API 同时提供静态 Web/Admin，常驻 Worker 独立运行，使用 PostgreSQL 17 和共享本地存储卷；不需要 Retail 的独立 Web 服务。
 
 ## 平台边界
 
 节点私有配置 `adapters` 按应用编码登记受信任适配包。登记包含固定文件摘要、Compose project 前缀、服务列表、资源权重、健康检查和最低预算。客户任务不能提供脚本路径、任意命令或未经管理员登记的适配器。
 
-平台与节点均校验能力：节点仅报告通过摘要核验的 `supportedApps`；调度只向支持该应用且容量允许的节点分配。旧报告只兼容 Retail，不默认支持任意应用。已有安装日志保留 Retail 兼容，新日志持久化 appCode/project，重试、入口、重启和备份都验证同一实例归属。
+平台与节点均校验能力：节点仅报告通过摘要核验的 `supportedApps`；调度只向支持该应用且容量允许的节点分配。当前缺少 supportedApps 的旧报告不匹配任何应用；既有日志需要显式迁移到 appCode/project，重试、入口、重启和备份都验证同一实例归属。
 
 不允许两个应用适配器复用 project 前缀；任务仍必须使用固定镜像 digest。节点内存不足时排队或失败关闭，不停止其他业务腾空间，不自动增购资源。
 
@@ -26,4 +28,4 @@ Edu 仓库提供 Manifest、仅含部署文件的交付包、安装入口、备�
 
 当前两台主机仍承载现有业务，第二应用的运行验证优先使用隔离 CI。正式报价、客户用只读拉取凭据和真实资金验收继续独立管理。
 
-平台 `hostingProfile.httpChecks` 定义默认域名与自定义域名共同使用的公网检查清单，必须包含 `/health/ready`，只接受站内路径；节点适配器维护对应内部检查。节点级告警不再从备份记录推导 Retail 服务清单，实例完整性由登记实例监测负责。
+平台 `hostingProfile.httpChecks` 定义默认域名与自定义域名共同使用的公网检查清单，只接受站内路径，未配置时使用 `/`；不强制 `/health/ready`；节点适配器维护对应内部检查。节点级告警不再从备份记录推导 Retail 服务清单，实例完整性由登记实例监测负责。
