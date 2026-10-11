@@ -120,3 +120,21 @@ test('a failed server logout keeps the active identity and lets the caller repor
   expect(context().isAuthenticated).toBe(true);
   expect(api.toast).not.toHaveBeenCalled();
 });
+
+test('anonymous identity completion preserves in-flight public catalog while removing account data', async () => {
+  api.getCurrentUser.mockReturnValue(new Promise(() => {}));
+  await mount();
+  const pending = deferred<{ items: string[] }>();
+  const fetch = client.fetchQuery({ queryKey: ['public-apps'], queryFn: () => pending.promise });
+  client.setQueryData(['my-entitlements'], ['private license']);
+  await act(async () => window.dispatchEvent(new Event('stack:session-expired')));
+  expect(client.getQueryData(['my-entitlements'])).toBeUndefined();
+  expect(client.getQueryState(['public-apps'])?.fetchStatus).toBe('fetching');
+  pending.resolve({ items: ['public app'] });
+  await fetch;
+  expect(client.getQueryData(['public-apps'])).toEqual({ items: ['public app'] });
+  client.setQueryData(['private-orders'], ['old account order']);
+  await act(async () => context().login(user));
+  expect(client.getQueryData(['private-orders'])).toBeUndefined();
+  expect(client.getQueryData(['public-apps'])).toEqual({ items: ['public app'] });
+});

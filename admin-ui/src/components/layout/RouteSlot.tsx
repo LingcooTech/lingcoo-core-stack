@@ -1,25 +1,10 @@
+import { PageSkeleton } from './PageSkeleton';
 import { Suspense } from 'react';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-
-function RouteLoading() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-xl space-y-4">
-        <div className="h-7 w-1/3 animate-pulse rounded-md bg-muted" />
-        <div className="h-4 w-2/3 animate-pulse rounded-md bg-muted" />
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function RouteErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -55,7 +40,7 @@ export function RouteSlot() {
   const location = useLocation();
   return (
     <ErrorBoundary key={location.pathname} FallbackComponent={RouteErrorFallback}>
-      <Suspense fallback={<RouteLoading />}>
+      <Suspense fallback={<PageSkeleton pathname={location.pathname} />}>
         <Outlet />
       </Suspense>
     </ErrorBoundary>

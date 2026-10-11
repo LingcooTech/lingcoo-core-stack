@@ -16,6 +16,17 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   setEmailVerified: () => void;
 }
+// Only explicitly anonymous endpoints survive identity changes. All other caches remain private.
+const publicQueryRoots = new Set<unknown>([
+  PUBLIC_SITE_SETTINGS_QUERY_KEY[0],
+  'public-apps',
+  'app-catalog',
+  'public-content',
+  'public-content-item',
+  'public-content-related',
+  'public-doc-spaces',
+  'public-doc-page',
+]);
 const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -27,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       generation.current++;
       clearToken();
       client.removeQueries({
-        predicate: (query) => query.queryKey[0] !== PUBLIC_SITE_SETTINGS_QUERY_KEY[0],
+        predicate: (query) => !publicQueryRoots.has(query.queryKey[0]),
       });
       client.getMutationCache().clear();
       setUser(current);
@@ -48,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const expired = () => {
       generation.current++;
       client.removeQueries({
-        predicate: (query) => query.queryKey[0] !== PUBLIC_SITE_SETTINGS_QUERY_KEY[0],
+        predicate: (query) => !publicQueryRoots.has(query.queryKey[0]),
       });
       client.getMutationCache().clear();
       setUser(null);

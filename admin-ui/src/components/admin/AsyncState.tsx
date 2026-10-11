@@ -1,4 +1,4 @@
-import { Alert, Button, Empty, Flex, Spin } from 'antd';
+import { Alert, Button, Empty, Skeleton } from 'antd';
 import type { ReactNode } from 'react';
 export function AsyncState({
   loading,
@@ -17,9 +17,17 @@ export function AsyncState({
 }) {
   if (loading)
     return (
-      <Flex justify="center" align="center" style={{ minHeight: 160 }}>
-        <Spin description="加载中" />
-      </Flex>
+      <div
+        role="status"
+        aria-label="正在准备内容"
+        aria-busy="true"
+        className="page-skeleton"
+        style={{ minHeight: 240, padding: 24 }}
+      >
+        <div aria-hidden="true">
+          <Skeleton active title={{ width: '30%' }} paragraph={{ rows: 5 }} />
+        </div>
+      </div>
     );
   if (error)
     return (

@@ -679,3 +679,22 @@
 .dark [data-portal-dialog] {
   --muted-foreground: 215 20.2% 70%;
 }
+
+/* Keep geometry immediately, but avoid flashing skeletons for cache-fast transitions. */
+.page-skeleton > [aria-hidden='true'] {
+  animation: skeleton-reveal 160ms step-end both;
+}
+@keyframes skeleton-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-skeleton *,
+  [data-loading-shell] * {
+    animation: none !important;
+  }
+}

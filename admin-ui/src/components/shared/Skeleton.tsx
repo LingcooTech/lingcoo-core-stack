@@ -14,7 +14,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        'bg-gray-200/60',
+        'bg-muted motion-reduce:animate-none',
         {
           'rounded-md': variant === 'default' || variant === 'rectangular',
           'rounded-full': variant === 'circular',

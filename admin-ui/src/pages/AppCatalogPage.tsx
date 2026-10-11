@@ -1,3 +1,4 @@
+import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { usePageMetadata } from '@/lib/use-page-metadata';
 import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { runAsync } from '@/lib/async-events';
@@ -155,11 +156,7 @@ export function AppCatalogPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton pathname="/apps/detail" />;
   }
 
   if (isError)

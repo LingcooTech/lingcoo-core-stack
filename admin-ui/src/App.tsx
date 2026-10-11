@@ -1,8 +1,13 @@
-import { lazy, Suspense, type ComponentType, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { lazyNamed, lazyRoute, preloadRouteElements } from '@/lib/lazy-route';
+import { AppLoadingShell } from '@/components/layout/AppLoadingShell';
+import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import {
   createBrowserRouter,
+  matchRoutes,
   createRoutesFromElements,
   Navigate,
   Outlet,
@@ -27,17 +32,6 @@ import {
   syncDocumentFavicon,
 } from '@/lib/site-settings';
 import { ThemeProvider } from '@/lib/theme';
-
-/**
- * lazyNamed —— React.lazy 要求 default export，但本项目所有页面都是 named
- * export（`export function FooPage`），用此 helper 包装一次。
- */
-function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
-  loader: () => Promise<T>,
-  name: K,
-): ComponentType {
-  return lazy(() => loader().then((mod) => ({ default: mod[name] as ComponentType })));
-}
 
 const Shell = lazyNamed(() => import('@/components/admin/AdminShell'), 'AdminShell');
 const UserShell = lazyNamed(() => import('@/components/layout/UserShell'), 'UserShell');
@@ -94,7 +88,7 @@ const UsersPage = lazyNamed(() => import('@/pages/UsersPage'), 'UsersPage');
 const VerifyEmailPage = lazyNamed(() => import('@/pages/VerifyEmailPage'), 'VerifyEmailPage');
 
 // UserAuthPage 接收 mode prop，单独 lazy 拿到组件类型后再用
-const UserAuthPage = lazy(() =>
+const UserAuthPage = lazyRoute<{ mode: 'login' | 'register' }>(() =>
   import('@/pages/UserAuthPage').then((m) => ({ default: m.UserAuthPage })),
 );
 
@@ -125,51 +119,10 @@ function SiteAppearanceSync() {
   return null;
 }
 
-function SiteSettingsBootstrap({ children }: { children: ReactNode }) {
-  const siteSettingsQuery = useQuery({
-    queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
-    queryFn: getPublicSiteSettings,
-    staleTime: 5 * 60_000,
-  });
-
-  useEffect(() => {
-    syncDocumentFavicon(siteSettingsQuery.data?.faviconUrl);
-  }, [siteSettingsQuery.data?.faviconUrl]);
-
-  useEffect(() => {
-    syncBrandPrimaryColor(siteSettingsQuery.data?.brandPrimaryColor);
-  }, [siteSettingsQuery.data?.brandPrimaryColor]);
-
-  if (siteSettingsQuery.isLoading && !siteSettingsQuery.data) {
-    return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.08),_transparent_24%),linear-gradient(180deg,#fcfdff_0%,#f5f8fc_48%,#f7f9fc_100%)]">
-        <div className="mx-auto flex min-h-screen max-w-6xl items-start justify-center px-4 pt-24 sm:px-6">
-          <div className="w-full max-w-xl rounded-2xl border border-white/70 bg-white/80 p-6 shadow-md backdrop-blur">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 animate-pulse rounded-2xl bg-slate-200" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
-                <div className="h-5 w-48 animate-pulse rounded bg-slate-200" />
-              </div>
-            </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-100" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
-
 function ProtectedUserRoute() {
   const location = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) return <div role="status">正在验证登录状态…</div>;
+  if (isLoading) return <PageSkeleton pathname={location.pathname} />;
   if (!isAuthenticated) {
     return (
       <Navigate
@@ -183,7 +136,7 @@ function ProtectedUserRoute() {
 
 function ProtectedAdminRoute() {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  if (isLoading) return <div role="status">正在验证登录状态…</div>;
+  if (isLoading) return <AppLoadingShell />;
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
@@ -449,17 +402,41 @@ const router = createBrowserRouter(
   ),
 );
 
+// Start shell/provider/page imports together, without waiting for settings or authentication.
+function preloadCurrentBranch() {
+  const location = router.state.navigation.location ?? router.state.location;
+  preloadRouteElements(
+    (matchRoutes(router.routes, location) ?? []).map(({ route }) => route.element),
+  );
+}
+preloadCurrentBranch();
+router.subscribe(preloadCurrentBranch);
+
 export default function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <SiteSettingsBootstrap>
+          <ErrorBoundary
+            fallbackRender={() => (
+              <div role="alert" className="mx-auto max-w-lg space-y-4 p-8">
+                <h1 className="text-xl font-semibold">页面加载失败</h1>
+                <p>请检查网络连接后重试。</p>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-4 py-2"
+                  onClick={() => window.location.reload()}
+                >
+                  重新加载
+                </button>
+              </div>
+            )}
+          >
             <SiteAppearanceSync />
-            <Suspense fallback={<div role="status">正在加载页面…</div>}>
+            <Suspense fallback={<AppLoadingShell />}>
               <RouterProvider router={router} />
             </Suspense>
-          </SiteSettingsBootstrap>
+          </ErrorBoundary>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/shared/Skeleton';
 import { BrandMark } from '@/components/portal/BrandMark';
 import { runAsync, handleAsync } from '@/lib/async-events';
 import { useEffect, useState } from 'react';
@@ -88,7 +89,7 @@ function desktopNavItemClass(isActive: boolean) {
 export function UserShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, isAdmin, logout, user } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading: authLoading, logout, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: siteSettings } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
@@ -265,7 +266,9 @@ export function UserShell() {
                   ) : null}
                 </Button>
               ) : null}
-              {isAuthenticated ? (
+              {authLoading ? (
+                <Skeleton aria-label="正在验证登录状态" className="hidden h-9 w-24 sm:block" />
+              ) : isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -606,6 +609,8 @@ export function UserShell() {
                       </div>
                     </div>
                   </div>
+                ) : authLoading ? (
+                  <Skeleton aria-label="正在验证登录状态" className="h-9 w-full sm:hidden" />
                 ) : (
                   <div className="flex gap-2 border-t border-border pt-3 sm:hidden">
                     <Button variant="ghost" asChild className="flex-1">
