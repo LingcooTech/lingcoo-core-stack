@@ -12,6 +12,18 @@ import { AccountCenterPage } from '@/pages/AccountCenterPage';
 import { BrandMark } from './BrandMark';
 const mocks = vi.hoisted(() => ({ apps: vi.fn(), catalog: vi.fn() }));
 vi.mock('@/api/apps', () => ({ listApps: mocks.apps, getAppCatalog: mocks.catalog }));
+vi.mock('@/api/auth', async (original) => ({
+  ...(await original<object>()),
+  getCurrentUser: async () => ({
+    user: {
+      id: 'ebe2850f-58be-42bb-982a-3715386c93dd',
+      displayName: null,
+      email: 'long_customer_identifier_5ffbf65f64f841e9b29659bdef6c4dc7@example.test',
+      role: 'user',
+      emailVerified: true,
+    },
+  }),
+}));
 vi.mock('@/api/settings', () => ({
   getPublicSiteSettings: async () => ({ siteName: 'Test shop' }),
 }));
@@ -135,4 +147,13 @@ test('a confirmed 404 is presented as unavailable with a return route', async ()
     .element(page.getByRole('link', { name: '返回应用中心' }))
     .toHaveAttribute('href', '/');
   expect(host.textContent).not.toContain('重新加载');
+});
+
+test('profile forms wrap long account identifiers instead of widening a mobile page', async () => {
+  await page.viewport(390, 667);
+  await mount(<AccountCenterPage />, '/account?tab=profile');
+  await expect.element(page.getByRole('button', { name: '发送邮件', exact: true })).toBeVisible();
+  expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
+  for (const input of host.querySelectorAll('input'))
+    expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(390);
 });

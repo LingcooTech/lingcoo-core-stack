@@ -673,6 +673,7 @@
 .portal-ui,
 [data-portal-dialog] {
   --muted-foreground: 215.4 16.3% 42%;
+  --color-muted-foreground: hsl(var(--muted-foreground));
 }
 .dark .portal-ui,
 .dark [data-portal-dialog] {

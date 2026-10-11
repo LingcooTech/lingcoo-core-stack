@@ -224,10 +224,10 @@ function AccountProfileTab() {
                 label={currentUser.emailVerified ? '邮箱已验证' : '邮箱待验证'}
               />
             </div>
-            <p className="inline-flex items-center gap-2 font-mono text-[13px] text-muted-foreground">
-              <span className="truncate">{currentUser.email}</span>
+            <p className="font-mono text-[13px] break-all text-muted-foreground">
+              {currentUser.email}
             </p>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[12px] break-all text-muted-foreground">
               用户 ID
               <span className="ml-2 font-mono text-muted-foreground">{currentUser.id}</span>
             </p>
@@ -235,7 +235,7 @@ function AccountProfileTab() {
         </CardContent>
       </Card>
 
-      <section className="grid gap-5 xl:grid-cols-2">
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">个人资料</CardTitle>
@@ -328,10 +328,10 @@ function AccountProfileTab() {
               </form>
             </Form>
 
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <div className="min-w-0">
                 <p className="text-[13px] font-medium text-foreground">忘记当前密码？</p>
-                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                <p className="mt-0.5 text-[12px] break-all text-muted-foreground">
                   我们会向 {currentUser.email} 发送重置链接。
                 </p>
               </div>
