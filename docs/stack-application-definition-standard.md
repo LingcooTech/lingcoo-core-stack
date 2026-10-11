@@ -29,11 +29,15 @@
 
 每个应用组件使用 `${IMAGE_ENV}`，必须与 images.imageEnv 对应；数据库等基础镜像直接固定完整 `@sha256:`。CI 提交版本时填入应用镜像摘要。允许多个服务共享同一镜像变量。
 
-声明普通参数 envFields、secretFields、domainSlots，语义沿用现有交付字段；镜像变量和域名变量独立声明，不重复放入 envFields。所有 Compose 插值必须有对应声明，容器内部 shell 变量使用 `$$` 转义。
+声明普通参数 envFields、secretFields、domainSlots，语义沿用现有交付字段；镜像变量和域名变量独立声明，不重复放入 envFields。所有 Compose 插值必须使用完整 `${VARIABLE}` 并有对应声明，默认值写在字段定义中，不在 Compose 中使用 `:-` 等运算符。容器内部 shell 变量或字面量美元符号使用 `$$` 转义。环境变量列表必须显式写 `KEY=value`，不允许继承宿主机环境变量。
 
 根节点只支持 services/volumes/networks。服务设置采用白名单；不允许 build、privileged、主机目录挂载、Docker socket、固定 container_name、主机网络、外部资源和直接发布主机端口。只允许项目隔离的命名卷与默认网络。入口端口由 Stack 执行器注入，避免客户实例冲突。超出支持范围会明确拒绝，不静默丢弃。
 
 `resources` 声明实测 CPU/内存/磁盘预算；`entrypoint` 声明入口服务、容器端口、健康路径；`lifecycle` 声明 migrate/initialize/backup/restore 的服务和 argv 命令。持久化应用必须提供备份和恢复命令，upgradePolicy 指明 same_schema/migration_required。初始化必须可重试，不能在日志输出秘密；回滚镜像不替代数据库恢复。
+
+可选 `resources.serviceWeights` 为全部服务逐一声明正整数权重，不填则均分。计划编译器先给每个服务 64 MiB 内存和 10 mCPU，再按权重分配剩余额度，余数以确定性顺序分配，合计严格等于实例预算；预算不足时拒绝生成计划。实际执行必须通过样本实测确认预算合适。磁盘字段目前用于容量预算，并非 Docker 文件系统硬配额。
+
+嵌套环境配置、健康检查、依赖和网络也采用契约校验；未知服务、循环依赖、未声明网络与远端日志驱动会拒绝。执行计划覆盖源码中的 CPU/内存限制，关闭超额 swap，限制 PID 和日志，并启用 no-new-privileges。实例使用独立 `stack-<instance UUID>` Compose 项目，命名卷保持项目作用域。入口只绑定宿主机回环端口，公网访问由平台网关提供。
 
 开发者可运行 `npm run app:definition:validate -- <app.yaml|app.json> <仓库根目录>`，复用服务端校验规则；通过仅表示定义结构有效。
 
@@ -46,6 +50,8 @@
 版本以应用+version 唯一，包含完整源码 commit、解析后的 definition 快照、所有 images 的固定摘要、notes 和可选 buildUrl。同内容重复提交幂等，内容不同返回冲突，已登记快照不得编辑。发布不自动上架或升级实例；撤回保留历史快照。
 
 当前容器版本发布要求通用执行器运行验收；相关阶段未完成时 API 会阻止发布。免部署版本可登记、发布和撤回，但商品仍需单独配置销售与授权规则。没有通过真实镜像拉取、初始化、就绪、HTTPS、备份恢复验收时，不能宣称可正式交付。
+
+容器版本行中的“部署计划”按该版本的定义和镜像快照生成只读预览；即使来源候选定义后来改变，预览也不改用新定义。可选择定义支持的部署模式，查看逐服务镜像/资源、持久化卷、入口及必填参数。预览不创建实例、不预留服务器、不显示实例密钥。接口 POST `/v1/admin/apps/:appCode/releases/:releaseId/plan` 接收 `{instanceId,mode}`，当前 `executionEnabled=false`，不等于运行验收通过。
 
 ## 源码同步和 CI
 

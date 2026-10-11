@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { parseDocument } from 'yaml';
 import { applicationDefinitionSchema, type ApplicationDefinition } from '@lingcoo/contracts';
 import { httpError } from '../../lib/errors';
+import { validateComposeModel } from './compose-validation';
 
 export function parseApplicationDocument(text: string): unknown {
   if (Buffer.byteLength(text) > 512000) throw httpError(422, 'Application document exceeds 500 KB');
@@ -85,6 +86,15 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
   )
     throw httpError(422, 'Compose services required');
   const serviceMap = services as Record<string, unknown>;
+  validateComposeModel(compose);
+  if (delivery.resources.serviceWeights) {
+    const weights = delivery.resources.serviceWeights;
+    if (
+      Object.keys(weights).length !== Object.keys(serviceMap).length ||
+      Object.keys(serviceMap).some((v) => weights[v] === undefined)
+    )
+      throw httpError(422, 'Resource weights must include every service exactly once');
+  }
   if (!serviceMap[delivery.entrypoint.service])
     throw httpError(422, 'Entrypoint references unknown service');
   const imageVariables = new Set(definition.images.map((v) => v.imageEnv));
@@ -97,13 +107,11 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
   const checkVariables = (v: unknown): void => {
     if (typeof v === 'string') {
       const expanded = v.replaceAll('$$', '');
-      if (/\$[A-Za-z_]/.test(expanded))
-        throw httpError(422, 'Compose variables must use declared ${VARIABLE} syntax');
-      for (const match of expanded.matchAll(/\$\{([A-Z][A-Z0-9_]*)(?:[^}]*)\}/g))
-        if (!declared.has(match[1]!))
+      for (const match of expanded.matchAll(/\$\{([^}]*)\}/g))
+        if (!/^[A-Z][A-Z0-9_]*$/.test(match[1]!) || !declared.has(match[1]!))
           throw httpError(422, `Undeclared Compose variable ${match[1]}`);
-      if (/\$\{(?![A-Z][A-Z0-9_]*(?:\}|[:?+-]))/.test(expanded))
-        throw httpError(422, 'Invalid Compose variable');
+      if (expanded.replace(/\$\{[A-Z][A-Z0-9_]*\}/g, '').includes('$') || v.includes('\0'))
+        throw httpError(422, 'Compose variables require ${VARIABLE}; literal dollars require $$');
     } else if (Array.isArray(v)) v.forEach(checkVariables);
     else if (v && typeof v === 'object') Object.values(v).forEach(checkVariables);
   };

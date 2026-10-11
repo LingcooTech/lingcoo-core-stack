@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { appConnections, appPublishingTokens, apps } from '../../src/db/schema';
+import { appConnections, appPublishingTokens, apps, deployments } from '../../src/db/schema';
 import { testDatabase, seedPurchase } from './helpers';
 import { AppService } from '../../src/modules/app/service';
 import { AppLifecycleService } from '../../src/modules/app/lifecycle-service';
@@ -19,6 +19,62 @@ const definition = (code: string) => ({
   app: { code, name: 'Lifecycle fixture', license: 'MIT', acquisition: 'free' },
   features: [{ code: code + '_access', name: 'Access' }],
   delivery: { kind: 'none', url: 'https://example.com/app' },
+});
+test('Compose plan HTTP preview is scoped to the immutable release and never reserves an instance', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'plan_' + randomUUID().replaceAll('-', '');
+  const raw = JSON.parse(readFileSync('examples/stack-compose-app.json', 'utf8'));
+  raw.app.code = code;
+  raw.features[0].code = code + '_access';
+  const preview = await service.preview({ document: JSON.stringify(raw) });
+  await service.import(preview, user.id);
+  const release = await service.registerRelease(
+    code,
+    {
+      version: '1.0.0',
+      commit: 'a'.repeat(40),
+      definition: preview.definition,
+      images: { web: raw.images[0].repository + '@sha256:' + 'b'.repeat(64) },
+      notes: '',
+    },
+    user.id,
+  );
+  raw.delivery.resources.memoryMb = 512;
+  await service
+    .publishing()
+    .applySource(code, await service.preview({ document: JSON.stringify(raw) }), user.id);
+  const http = await buildApp(env);
+  try {
+    const headers = { authorization: `Bearer ${http.jwt.sign({ sub: user.id, kind: 'user' })}` },
+      payload = { instanceId: randomUUID(), mode: 'managed' },
+      url = `/v1/admin/apps/${code}/releases/${release.id}/plan`;
+    assert.equal((await http.inject({ method: 'POST', url, headers, payload })).statusCode, 403);
+    await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
+    const response = await http.inject({ method: 'POST', url, headers, payload });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().executionEnabled, false);
+    assert.equal(response.json().plan.releaseId, release.id);
+    assert.equal(response.json().plan.services[0].image, release.images.web);
+    assert.equal(response.json().plan.resources.memoryMb, 256);
+    assert.equal(response.json().plan.instanceId, payload.instanceId);
+    assert.equal(
+      (await db.select().from(deployments).where(eq(deployments.id, payload.instanceId))).length,
+      0,
+    );
+    const missing = await http.inject({
+      method: 'POST',
+      url: `/v1/admin/apps/${code}/releases/${randomUUID()}/plan`,
+      headers,
+      payload,
+    });
+    assert.equal(missing.statusCode, 404);
+    assert.equal((await service.overview(code)).releases[0]?.status, 'draft');
+    await assert.rejects(() => service.transition(code, release.id, 'published', user.id), {
+      statusCode: 422,
+    });
+  } finally {
+    await http.close();
+  }
 });
 test('import is atomic, always a draft, prevents parallel overwrites, and does not expose connection credentials', async () => {
   const { user } = await seedPurchase(db),

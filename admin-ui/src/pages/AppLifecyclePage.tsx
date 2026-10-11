@@ -23,6 +23,7 @@ import {
 import { AppConnections } from '@/components/admin/apps/AppConnections';
 import { AppSourceBuilds } from '@/components/admin/apps/AppSourceBuilds';
 import { AppImageBrowser } from '@/components/admin/apps/AppImageBrowser';
+import { AppComposePlan } from '@/components/admin/apps/AppComposePlan';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 
@@ -199,6 +200,13 @@ export function AppLifecyclePage() {
                 title: '操作',
                 render: (_, row) => (
                   <Space>
+                    {row.definition.delivery.kind === 'compose' && (
+                      <AppComposePlan
+                        code={code}
+                        releaseId={row.id}
+                        modes={row.definition.delivery.modes}
+                      />
+                    )}
                     <Button type="link" onClick={() => setDetailsId(row.id)}>
                       详情
                     </Button>

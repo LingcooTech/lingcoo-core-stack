@@ -26,7 +26,16 @@ export const gitSourceSchema = z
 const stepSchema = z
   .object({
     service: z.string().regex(/^[a-zA-Z0-9_-]+$/),
-    command: z.array(z.string().min(1).max(2000)).min(1).max(50),
+    command: z
+      .array(
+        z
+          .string()
+          .min(1)
+          .max(2000)
+          .refine((v) => !v.includes('\0')),
+      )
+      .min(1)
+      .max(50),
   })
   .strict();
 const composeDeliverySchema = z
@@ -42,6 +51,9 @@ const composeDeliverySchema = z
         cpuMillis: z.number().int().min(100).max(64000),
         memoryMb: z.number().int().min(128).max(262144),
         diskMb: z.number().int().min(256).max(10485760),
+        serviceWeights: z
+          .record(z.string().regex(/^[A-Za-z0-9_-]+$/), z.number().int().min(1).max(1000))
+          .optional(),
       })
       .strict(),
     entrypoint: z

@@ -58,6 +58,34 @@ test('Compose contract rejects host access, image tags, unknown variables and un
   ];
   assert.throws(() => validateApplicationDefinition(raw));
 });
+test('Compose nested settings reject inherited host environment, arbitrary network settings and cyclic dependencies', () => {
+  for (const change of [
+    { environment: ['HOST_SECRET'] },
+    { environment: { HOST_SECRET: null } },
+    { networks: { default: { ipv4_address: '192.168.0.1' } } },
+    { networks: ['missing'] },
+    { depends_on: ['missing'] },
+    { depends_on: ['web'] },
+    { logging: { driver: 'syslog', options: { 'syslog-address': 'tcp://127.0.0.1:514' } } },
+    { environment: { VALUE: '${APP_DOMAIN:-example.com}' } },
+    { environment: { VALUE: '${APP_DOMAIN' } },
+    { command: ['echo', 'bad\0argument'] },
+  ]) {
+    const definition = sample();
+    const delivery = definition.delivery as Record<string, unknown>;
+    delivery.compose = { services: { web: { image: '${WEB_IMAGE}', ...change } } };
+    assert.throws(() => validateApplicationDefinition(definition));
+  }
+  const definition = sample(),
+    delivery = definition.delivery as Record<string, unknown>;
+  delivery.compose = {
+    services: {
+      web: { image: '${WEB_IMAGE}', depends_on: ['worker'] },
+      worker: { image: '${WEB_IMAGE}', depends_on: ['web'] },
+    },
+  };
+  assert.throws(() => validateApplicationDefinition(definition), /Cyclic/);
+});
 test('GitHub reads public or private definitions and Compose from the same resolved commit without executing code', async () => {
   const commit = 'a'.repeat(40),
     requests: string[] = [];

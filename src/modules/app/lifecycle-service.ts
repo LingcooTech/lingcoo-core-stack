@@ -7,6 +7,7 @@ import {
   applicationReleaseInputSchema,
   applicationReleaseSchema,
   applicationLifecycleSchema,
+  composePlanInputSchema,
 } from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
@@ -25,8 +26,18 @@ import type { AppService } from './service';
 import type { AppDependencies } from './dependencies';
 import { AppPublishingService } from './publishing-service';
 import { AppImagesService } from './images-service';
+import { compileComposePlan } from './compose-plan';
 
 export class AppLifecycleService {
+  async plan(code: string, releaseId: string, input: z.input<typeof composePlanInputSchema>) {
+    const app = await this.app(code),
+      row = await this.repository().release(app.id, releaseId);
+    if (!row) throw httpError(404, 'Release not found');
+    return {
+      plan: compileComposePlan(this.releaseView(row), composePlanInputSchema.parse(input)),
+      executionEnabled: false as const,
+    };
+  }
   images() {
     return new AppImagesService(this.db, this.env);
   }
