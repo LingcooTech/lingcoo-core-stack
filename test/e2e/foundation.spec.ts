@@ -70,15 +70,13 @@ test('application lifecycle imports a draft, registers an immutable version and 
   const code = 'browser_import_' + randomUUID().replaceAll('-', '');
   await page.goto('/admin/apps/import');
   await page.getByRole('tab', { name: '上传交付定义', exact: true }).click();
-  await page
-    .getByLabel('应用定义', { exact: true })
-    .fill(
-      JSON.stringify({
-        schemaVersion: 1,
-        app: { code, name: 'Browser imported application', license: 'MIT', acquisition: 'free' },
-        delivery: { kind: 'none', url: 'https://example.com' },
-      }),
-    );
+  await page.getByLabel('应用定义', { exact: true }).fill(
+    JSON.stringify({
+      schemaVersion: 1,
+      app: { code, name: 'Browser imported application', license: 'MIT', acquisition: 'free' },
+      delivery: { kind: 'none', url: 'https://example.com' },
+    }),
+  );
   await page.getByRole('button', { name: '读取并校验', exact: true }).click();
   await page.getByRole('button', { name: '创建应用草稿', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/lifecycle$`));
