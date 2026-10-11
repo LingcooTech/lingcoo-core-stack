@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AutoComplete, Input, Tabs } from 'antd';
+import { AutoComplete, Grid, Input, Tabs } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import { PageContainer } from '@/components/admin/PageContainer';
 import { SiteSettingsPanel } from '@/components/settings/SiteSettingsPanel';
@@ -8,6 +8,7 @@ import { SmtpSettingsPanel } from '@/components/settings/SmtpSettingsPanel';
 import { StorageSettingsPanel } from '@/components/storage/StorageSettingsPanel';
 import { ContentImportSettingsPanel } from '@/components/settings/ContentImportSettingsPanel';
 import { AiSettingsPanel } from '@/components/settings/AiSettingsPanel';
+import { adminReturnPath } from '@/lib/admin-navigation';
 interface SettingsSearchHit {
   tab: string;
   tabLabel: string;
@@ -92,6 +93,7 @@ const SETTINGS_SEARCH_INDEX: SettingsSearchHit[] = [
 ];
 
 export function SettingsPage() {
+  const compact = !Grid.useBreakpoint().lg;
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const items = [
@@ -103,42 +105,48 @@ export function SettingsPage() {
     { key: 'ai', label: 'AI 服务', children: <AiSettingsPanel /> },
   ];
   const active = items.some((item) => item.key === params.get('tab')) ? params.get('tab')! : 'site';
+  const returnTo = adminReturnPath(params.get('returnTo'));
   const jump = (tab: string) => {
     const next = new URLSearchParams(params);
     next.set('tab', tab);
     setParams(next, { replace: true });
   };
+  const searchControl = (
+    <AutoComplete
+      className="admin-settings-search"
+      value={search}
+      onChange={setSearch}
+      options={
+        search.trim()
+          ? SETTINGS_SEARCH_INDEX.filter((hit) =>
+              [hit.field, hit.tabLabel, ...hit.keywords]
+                .join(' ')
+                .toLowerCase()
+                .includes(search.toLowerCase()),
+            ).map((hit) => ({ value: hit.tab, label: `${hit.tabLabel} · ${hit.field}` }))
+          : []
+      }
+      onSelect={(value) => {
+        jump(value);
+        setSearch('');
+      }}
+    >
+      <Input.Search aria-label="搜索设置" placeholder="搜索设置项" />
+    </AutoComplete>
+  );
   return (
     <PageContainer
       title="系统设置"
-      actions={
-        <AutoComplete
-          style={{ width: 300, maxWidth: '100%' }}
-          value={search}
-          onChange={setSearch}
-          options={
-            search.trim()
-              ? SETTINGS_SEARCH_INDEX.filter((hit) =>
-                  [hit.field, hit.tabLabel, ...hit.keywords]
-                    .join(' ')
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-                ).map((hit) => ({ value: hit.tab, label: `${hit.tabLabel} · ${hit.field}` }))
-              : []
-          }
-          onSelect={(value) => {
-            jump(value);
-            setSearch('');
-          }}
-        >
-          <Input.Search aria-label="搜索设置" placeholder="搜索设置项" />
-        </AutoComplete>
-      }
+      backTo={returnTo}
+      backLabel={returnTo?.startsWith('/admin/storage') ? '返回云存储' : '返回来源页面'}
     >
+      {compact && searchControl}
       <Tabs
+        className="admin-section-tabs admin-settings-tabs"
         activeKey={active}
         onChange={jump}
         items={items.map((item) => ({ ...item, forceRender: true }))}
+        tabBarExtraContent={compact ? undefined : searchControl}
       />
     </PageContainer>
   );

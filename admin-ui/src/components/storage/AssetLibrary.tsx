@@ -25,7 +25,7 @@ import {
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { AssetSummary, AssetDetail } from '@lingcoo/contracts';
 import * as api from '@/api/storage';
 import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
@@ -72,6 +72,8 @@ export function AssetLibrary({
   imagesOnly?: boolean;
   onConfigure?: () => void;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth(),
     role = normalizeRole(user?.role),
     { message } = App.useApp();
@@ -223,12 +225,13 @@ export function AssetLibrary({
       : []),
   ];
   return (
-    <div>
+    <div className="admin-asset-library">
       {context}
-      <Typography.Paragraph type="secondary">
-        统一管理图片、PDF 和 UTF-8 文本；替换文件保持素材链接稳定。
-        {onSelect && '此处上传的图片将公开供业务页面使用。'}
-      </Typography.Paragraph>
+      {onSelect && (
+        <Typography.Paragraph type="secondary">
+          此处上传的图片将公开供业务页面使用。
+        </Typography.Paragraph>
+      )}
       <PageToolbar
         filters={
           <>
@@ -269,9 +272,18 @@ export function AssetLibrary({
               </Button>
             )}
             {canConfigure && (
-              <Link to="/admin/settings?tab=storage" onClick={onConfigure}>
+              <Button
+                onClick={() => {
+                  onConfigure?.();
+                  const params = new URLSearchParams({
+                    tab: 'storage',
+                    returnTo: location.pathname + location.search + location.hash,
+                  });
+                  void navigate(`/admin/settings?${params.toString()}`);
+                }}
+              >
                 存储设置
-              </Link>
+              </Button>
             )}
             {canManage && (
               <Button

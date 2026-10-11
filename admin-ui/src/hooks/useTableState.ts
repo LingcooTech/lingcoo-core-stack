@@ -60,7 +60,11 @@ function parseSort(raw: string | null): TableSort | null {
  * 保持 URL 干净。
  */
 export function useTableState(options?: UseTableStateOptions): TableState & TableStateActions {
-  const { defaultPageSize = DEFAULT_PAGE_SIZE, prefix, knownFilters = [] } = options ?? {};
+  const { defaultPageSize = DEFAULT_PAGE_SIZE, prefix } = options ?? {};
+  // Callers commonly pass an inline array. Normalize by value so filtered URLs
+  // don't recreate filter arrays on every render and retrigger selection effects.
+  const knownFilterKey = JSON.stringify(options?.knownFilters ?? []);
+  const knownFilters = useMemo(() => JSON.parse(knownFilterKey) as string[], [knownFilterKey]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // 派生 state

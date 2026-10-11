@@ -457,6 +457,7 @@
         "components/storage/AssetImagePickerDialog.tsx",
         "components/storage/AssetLibrary.tsx",
         "components/storage/StorageSettingsPanel.tsx",
+        "lib/admin-navigation.ts",
         "lib/auth.tsx",
         "lib/rbac.ts",
         "lib/settings-form.ts",
@@ -608,6 +609,8 @@
         "api/admin.ts",
         "api/client.ts",
         "components/admin/AsyncState.tsx",
+        "components/admin/ManagementDrawer.tsx",
+        "components/admin/MetricCard.tsx",
         "components/admin/PageContainer.tsx",
         "components/admin/StatusTag.tsx",
         "components/admin/page-context.ts",
@@ -1668,12 +1671,12 @@
         {
           "tag": "input",
           "type": "file",
-          "line": 290
+          "line": 302
         },
         {
           "tag": "input",
           "type": "file",
-          "line": 674
+          "line": 686
         }
       ],
       "antDesign": true,

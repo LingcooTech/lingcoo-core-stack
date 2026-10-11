@@ -91,7 +91,7 @@ test('admin settings numeric inputs use Zod output and optimistic version on sav
   await expect(page.getByRole('button', { name: '新建文件夹', exact: true })).toBeVisible();
   await page.goto('/admin/settings');
   await page.getByRole('button', { name: '云存储', exact: true }).first().click();
-  await page.getByRole('dialog').getByRole('link', { name: '存储设置', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '存储设置', exact: true }).click();
   await expect(page.getByRole('heading', { name: '文件存储', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: '邮件服务', exact: true }).click();
   await page
@@ -125,6 +125,145 @@ test('ordinary user cannot enter the admin console or invoke admin settings', as
   expect(status).toBe(403);
   await page.goto('/admin/settings');
   await expect(page).not.toHaveURL(/\/admin\/settings$/);
+});
+test('dashboard filtered links and storage settings return navigation remain usable', async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  await page.getByRole('button', { name: '查看订单', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/orders\?status=pending$/);
+  await expect(
+    page.locator('.ant-select').filter({ has: page.getByLabel('订单状态', { exact: true }) }),
+  ).toContainText('待支付');
+  await expect(page.getByRole('table')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('table')).toBeVisible();
+  await page.getByRole('button', { name: '清除筛选', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/orders$/);
+  await page.goto('/admin');
+  await page.getByRole('button', { name: '处理工单', exact: true }).click();
+  await expect(page).toHaveURL(/status=waiting_staff/);
+  await expect(page.getByRole('table')).toBeVisible();
+  await page.goto('/admin/storage');
+  await expect(
+    page.getByText('统一管理图片、PDF 和 UTF-8 文本；替换文件保持素材链接稳定。'),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: '存储设置', exact: true }).click();
+  await expect(page.getByRole('button', { name: '返回云存储', exact: true })).toBeVisible();
+  const prefix = page.getByLabel('默认上传目录', { exact: true });
+  await expect(prefix).toBeVisible();
+  const original = await prefix.inputValue();
+  await prefix.fill('browser-return-draft');
+  await page.getByRole('button', { name: '返回云存储', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '继续编辑', exact: true }).click();
+  await expect(prefix).toHaveValue('browser-return-draft');
+  await prefix.fill(original);
+  await page.getByRole('button', { name: '返回云存储', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/storage$/);
+  await page.getByRole('button', { name: '存储设置', exact: true }).click();
+  await prefix.fill(`browser-return-${randomUUID()}`);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/v1/admin/system-settings/storage') &&
+      response.request().method() === 'PUT',
+  );
+  await page.getByRole('button', { name: '保存配置', exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByRole('button', { name: /保存配置$/ })).toBeDisabled();
+  await expect(
+    page
+      .getByRole('tabpanel', { name: '文件存储', exact: true })
+      .getByText('敏感项留空保留原值', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: '返回云存储', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/storage$/);
+  expect(errors).toEqual([]);
+});
+test('contextual admin commands and announcement draft drawer work on desktop and mobile', async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of [
+      '/admin',
+      '/admin/docs',
+      '/admin/storage',
+      '/admin/notifications',
+      '/admin/hosting',
+      '/admin/settings',
+    ]) {
+      await page.goto(route);
+      await expect(page.getByRole('region').last()).toBeVisible();
+      if (route === '/admin/docs') {
+        await expect(
+          page
+            .locator('.ant-card')
+            .filter({ has: page.getByText('文档空间', { exact: true }) })
+            .getByRole('button', { name: '新建空间', exact: true }),
+        ).toBeVisible();
+      }
+      if (route === '/admin/hosting') {
+        await expect(
+          page.locator('.admin-toolbar').getByRole('button', { name: '添加服务器', exact: true }),
+        ).toBeVisible();
+      }
+      if (route === '/admin/settings') {
+        await expect(page.getByLabel('搜索设置', { exact: true })).toBeVisible();
+        if (width >= 992)
+          await expect(
+            page.locator('.ant-tabs-nav').getByLabel('搜索设置', { exact: true }),
+          ).toBeVisible();
+        const selectedTab = await page
+          .getByRole('tab', { name: '品牌与页脚', exact: true })
+          .boundingBox();
+        expect(selectedTab!.x).toBeGreaterThanOrEqual(0);
+        expect(selectedTab!.x + selectedTab!.width).toBeLessThanOrEqual(width);
+      }
+      await expect(page.locator('.admin-main')).toHaveCSS(
+        'margin-left',
+        width < 768 ? '0px' : '240px',
+      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(`feedback-${route.split('/').at(-1) || 'dashboard'}-${width}.png`),
+        fullPage: false,
+        animations: 'disabled',
+      });
+    }
+    await page.goto('/admin/notifications');
+    await page.getByRole('button', { name: '发布公告', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '发布公告', exact: true });
+    await expect(drawer).toBeVisible();
+    await drawer.getByLabel('公告标题', { exact: true }).fill('Unsaved local fixture');
+    await drawer.getByRole('button', { name: /^取\s*消$/ }).click();
+    await page
+      .getByRole('dialog', { name: '放弃未发布的公告？', exact: true })
+      .getByRole('button', { name: '继续编辑', exact: true })
+      .click();
+    await expect(drawer.getByLabel('公告标题', { exact: true })).toHaveValue(
+      'Unsaved local fixture',
+    );
+    await page.screenshot({
+      path: info.outputPath(`announcement-${width}.png`),
+      fullPage: false,
+      animations: 'disabled',
+    });
+    await drawer.getByRole('button', { name: /^取\s*消$/ }).click();
+    await page
+      .getByRole('dialog', { name: '放弃未发布的公告？', exact: true })
+      .getByRole('button', { name: /^放\s*弃$/ })
+      .click();
+    await expect(drawer).toBeHidden();
+  }
 });
 test('admin navigation, command search and mobile menu preserve route access', async ({
   page,

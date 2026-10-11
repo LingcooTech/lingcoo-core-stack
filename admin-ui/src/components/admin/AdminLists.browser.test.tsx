@@ -48,7 +48,11 @@ const input = async (label: string, value: string) => {
     node.dispatchEvent(new Event('input', { bubbles: true }));
   });
 };
-async function renderPage(children: ReactNode, verify: (host: HTMLElement) => Promise<void>) {
+async function renderPage(
+  children: ReactNode,
+  verify: (host: HTMLElement) => Promise<void>,
+  initialEntries = ['/'],
+) {
   Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true);
   const host = document.createElement('div');
   document.body.append(host);
@@ -59,7 +63,7 @@ async function renderPage(children: ReactNode, verify: (host: HTMLElement) => Pr
   try {
     await act(async () =>
       root.render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <QueryClientProvider client={client}>
             <ConfigProvider theme={{ token: { motion: false } }}>
               <App>{children}</App>
@@ -134,6 +138,39 @@ test('support can inspect orders without reconcile, cancellation or refund actio
     expect(body).not.toContain('关闭订单');
     expect(body).not.toContain('全额退款');
   });
+});
+test('pending-order deep link renders and keeps a selected row until filters are cleared', async () => {
+  mocks.role = 'admin';
+  mocks.listOrders.mockResolvedValue({
+    items: [
+      {
+        id: 'pending-id',
+        orderNo: 'pending-fixture',
+        appId: 'retail',
+        userId: 'customer',
+        amount: 2500,
+        currency: 'CNY',
+        status: 'pending',
+        createdAt: '2026-10-11T00:00:00Z',
+        app: { name: 'Retail' },
+      },
+    ],
+    total: 1,
+  });
+  await renderPage(
+    <OrdersPage />,
+    async (host) => {
+      await vi.waitFor(() => expect(host.textContent).toContain('pending-fixture'));
+      expect(mocks.listOrders.mock.lastCall?.[0]).toMatchObject({ status: 'pending' });
+      const rowCheckbox = host.querySelectorAll<HTMLInputElement>('input[type=checkbox]')[1]!;
+      await act(async () => rowCheckbox.click());
+      expect(rowCheckbox.checked).toBe(true);
+      await click('清除筛选');
+      await vi.waitFor(() => expect(mocks.listOrders.mock.lastCall?.[0]?.status).toBeUndefined());
+      expect(rowCheckbox.checked).toBe(false);
+    },
+    ['/admin/orders?status=pending'],
+  );
 });
 test('editing an own account sends display name only, retains failed input and blocks accidental close', async () => {
   mocks.role = 'admin';

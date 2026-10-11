@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Card, Collapse, Form, Input } from 'antd';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   storageSettingsSchema,
   type StorageSettingsOverview,
@@ -22,6 +22,7 @@ export function StorageSettingsPanel() {
   );
 }
 function SettingsForm({ overview }: { overview: StorageSettingsOverview }) {
+  const navigate = useNavigate();
   const qc = useQueryClient(),
     { message } = App.useApp();
   const values: StorageSettings = {
@@ -133,7 +134,7 @@ function SettingsForm({ overview }: { overview: StorageSettingsOverview }) {
             保存配置
           </Button>
           <Button onClick={() => mutation.mutate('test')}>测试存储连接</Button>
-          <Link to="/admin/storage">管理营销素材</Link>
+          <Button onClick={() => void navigate('/admin/storage')}>管理素材</Button>
         </FormActions>
       </Form>
     </Card>

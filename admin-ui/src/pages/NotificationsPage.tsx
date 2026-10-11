@@ -1,21 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDeferredValue, useMemo } from 'react';
-import {
-  App,
-  Button,
-  Card,
-  Flex,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Statistic,
-  Table,
-  type TableColumnsType,
-} from 'antd';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { App, Button, Form, Input, Modal, Select, Table, type TableColumnsType } from 'antd';
 import { listAdminNotifications, publishAnnouncement } from '@/api/admin';
 import type { AdminNotificationItem } from '@/api/types';
 import { PageContainer, PageToolbar } from '@/components/admin/PageContainer';
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import { MetricCard } from '@/components/admin/MetricCard';
 import { StatusTag } from '@/components/admin/StatusTag';
 import { AsyncState } from '@/components/admin/AsyncState';
 import { useTableState } from '@/hooks/useTableState';
@@ -70,6 +60,7 @@ export function NotificationsPage() {
   const { message } = App.useApp();
   const [form] = Form.useForm<AnnouncementValues>();
   const [modal, contextHolder] = Modal.useModal();
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
   const { page, search, filters, setPage, setSearch, setFilter, clearFilters } = useTableState({
     defaultPageSize: PAGE_SIZE,
     knownFilters: ['status', 'category'],
@@ -99,6 +90,7 @@ export function NotificationsPage() {
     onSuccess: async (result) => {
       void message.success(`公告已发布，已发送给 ${result.recipientCount} 位活跃用户`);
       form.resetFields();
+      setAnnouncementOpen(false);
       await qc.invalidateQueries({ queryKey: ['admin-notifications'] });
     },
     onError: (error) => void message.error(error instanceof Error ? error.message : '发布公告失败'),
@@ -213,86 +205,99 @@ export function NotificationsPage() {
       ctaUrl: values.ctaUrl?.trim() || undefined,
     });
   };
+  const closeAnnouncement = async () => {
+    if (publishMutation.isPending) return;
+    if (form.isFieldsTouched()) {
+      const discard = await modal.confirm({
+        title: '放弃未发布的公告？',
+        content: '关闭后将清除当前填写的内容。',
+        okText: '放弃',
+        cancelText: '继续编辑',
+      });
+      if (!discard) return;
+    }
+    form.resetFields();
+    setAnnouncementOpen(false);
+  };
   return (
     <PageContainer title="通知管理">
       {contextHolder}
-      <Flex wrap gap={16}>
-        <Card title="发布公告" style={{ flex: '1 1 400px' }}>
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={{ level: 'info' }}
-            disabled={publishMutation.isPending}
-            onFinish={(values) => {
-              void publish(values);
-            }}
+      <div className="admin-metrics admin-metrics--three">
+        <MetricCard title="当前筛选结果" value={total} />
+        <MetricCard
+          title="当前页未读"
+          value={items.filter((item) => item.status === 'unread').length}
+        />
+        <MetricCard
+          title="当前页公告"
+          value={items.filter((item) => item.category === 'announcement').length}
+        />
+      </div>
+      <ManagementDrawer
+        open={announcementOpen}
+        title="发布公告"
+        size="small"
+        onClose={() => void closeAnnouncement()}
+        onSubmit={() => form.submit()}
+        saving={publishMutation.isPending}
+        submitText="发布站内公告"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ level: 'info' }}
+          disabled={publishMutation.isPending}
+          onFinish={(values) => {
+            void publish(values);
+          }}
+        >
+          <Form.Item
+            name="title"
+            label="公告标题"
+            rules={[{ required: true, whitespace: true, message: '请输入公告标题' }, { max: 200 }]}
           >
-            <Form.Item
-              name="title"
-              label="公告标题"
-              rules={[
-                { required: true, whitespace: true, message: '请输入公告标题' },
-                { max: 200 },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="body"
-              label="公告正文"
-              rules={[{ required: true, whitespace: true, message: '请输入公告正文' }]}
-            >
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            <Form.Item name="level" label="通知级别" rules={[{ required: true }]}>
-              <Select
-                options={['info', 'success', 'warning', 'error'].map((value) => ({
-                  value,
-                  label: notificationLevelLabel(value as AdminNotificationItem['level']),
-                }))}
-              />
-            </Form.Item>
-            <Form.Item name="ctaLabel" label="操作文案">
-              <Input placeholder="例如：查看详情" />
-            </Form.Item>
-            <Form.Item
-              name="ctaUrl"
-              label="操作链接"
-              rules={[
-                {
-                  validator: (_, value: string | undefined) =>
-                    !value || /^\/(?!\/)/.test(value) || /^https?:\/\//.test(value)
-                      ? Promise.resolve()
-                      : Promise.reject(new Error('请输入站内路径或 HTTP(S) 链接')),
-                },
-              ]}
-            >
-              <Input placeholder="/docs 或 https://…" />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" loading={publishMutation.isPending}>
-              发布站内公告
-            </Button>
-          </Form>
-        </Card>
-        <Flex wrap gap={16} style={{ flex: '1 1 360px', alignContent: 'flex-start' }}>
-          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
-            <Statistic title="当前筛选结果" value={total} />
-          </Card>
-          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
-            <Statistic
-              title="当前页未读"
-              value={items.filter((item) => item.status === 'unread').length}
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="body"
+            label="公告正文"
+            rules={[{ required: true, whitespace: true, message: '请输入公告正文' }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item name="level" label="通知级别" rules={[{ required: true }]}>
+            <Select
+              options={['info', 'success', 'warning', 'error'].map((value) => ({
+                value,
+                label: notificationLevelLabel(value as AdminNotificationItem['level']),
+              }))}
             />
-          </Card>
-          <Card className="admin-metric" style={{ flex: '1 1 180px' }}>
-            <Statistic
-              title="当前页公告"
-              value={items.filter((item) => item.category === 'announcement').length}
-            />
-          </Card>
-        </Flex>
-      </Flex>
+          </Form.Item>
+          <Form.Item name="ctaLabel" label="操作文案">
+            <Input placeholder="例如：查看详情" />
+          </Form.Item>
+          <Form.Item
+            name="ctaUrl"
+            label="操作链接"
+            rules={[
+              {
+                validator: (_, value: string | undefined) =>
+                  !value || /^\/(?!\/)/.test(value) || /^https?:\/\//.test(value)
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('请输入站内路径或 HTTP(S) 链接')),
+              },
+            ]}
+          >
+            <Input placeholder="/docs 或 https://…" />
+          </Form.Item>
+        </Form>
+      </ManagementDrawer>
       <PageToolbar
+        actions={
+          <Button type="primary" onClick={() => setAnnouncementOpen(true)}>
+            发布公告
+          </Button>
+        }
         filters={
           <>
             <Input.Search

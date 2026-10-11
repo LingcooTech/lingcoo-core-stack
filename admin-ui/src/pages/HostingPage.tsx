@@ -78,6 +78,7 @@ export function HostingPage() {
       children: (
         <Space orientation="vertical" size={16} style={{ width: '100%' }}>
           <PageToolbar
+            actions={<AddHostingNode />}
             filters={
               <>
                 <Input.Search
@@ -136,24 +137,7 @@ export function HostingPage() {
   ];
   const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab')! : 'servers';
   return (
-    <PageContainer
-      title="托管运维"
-      actions={
-        <Space>
-          <Button
-            loading={nodes.isFetching || overview.isFetching || monitor.isFetching}
-            onClick={() => {
-              void nodes.refetch();
-              void overview.refetch();
-              void monitor.refetch();
-            }}
-          >
-            刷新
-          </Button>
-          <AddHostingNode />
-        </Space>
-      }
-    >
+    <PageContainer title="托管运维">
       <MetricGrid>
         {[
           {
@@ -199,7 +183,24 @@ export function HostingPage() {
       {params.get('deploymentId') && (
         <Button onClick={() => update('deploymentId', '')}>清除实例筛选，查看全部</Button>
       )}
-      <Tabs activeKey={tab} onChange={(v) => update('tab', v)} items={tabs} />
+      <Tabs
+        className="admin-section-tabs"
+        activeKey={tab}
+        onChange={(v) => update('tab', v)}
+        items={tabs}
+        tabBarExtraContent={
+          <Button
+            loading={nodes.isFetching || overview.isFetching || monitor.isFetching}
+            onClick={() => {
+              void nodes.refetch();
+              void overview.refetch();
+              void monitor.refetch();
+            }}
+          >
+            刷新
+          </Button>
+        }
+      />
     </PageContainer>
   );
 }

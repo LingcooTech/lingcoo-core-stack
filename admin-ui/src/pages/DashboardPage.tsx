@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
 import { Alert, Button, Card, Descriptions, Flex, Space, Table, Tag } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { listAdminTickets, listOrders } from '@/api/admin';
 import { listAppsAdmin } from '@/api/apps';
 import { getPaymentSettings } from '@/api/payments';
@@ -17,6 +17,7 @@ import { formatAmount, formatTime } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { user } = useAuth(),
     role = normalizeRole(user?.role);
   const can = (permission: Parameters<typeof hasPermission>[1]) => hasPermission(role, permission);
@@ -124,43 +125,38 @@ export function DashboardPage() {
           ))}
       </MetricGrid>
       <Card title="待处理事项">
-        {[
-          {
-            title: '待支付订单',
-            count: pending.data?.total,
-            href: '/admin/orders?status=pending',
-            action: '查看订单',
-          },
-          {
-            title: '待回复工单',
-            count: tickets.data?.total,
-            href: '/admin/tickets?status=waiting_staff',
-            action: '处理工单',
-          },
-          {
-            title: '待配置支付通道',
-            count: payments.data ? channels.filter((c) => !c.configured).length : undefined,
-            href: '/admin/payments',
-            action: '配置通道',
-          },
-        ]
-          .filter((task) => task.count !== undefined)
-          .map((task) => (
-            <Flex
-              key={task.title}
-              className="admin-task-row"
-              align="center"
-              justify="space-between"
-              wrap
-              gap={12}
-            >
-              <Space>
-                <span>{task.title}</span>
-                <Tag color={task.count ? 'orange' : undefined}>{task.count}</Tag>
-              </Space>
-              <Link to={task.href}>{task.action}</Link>
-            </Flex>
-          ))}
+        <div className="admin-task-grid">
+          {[
+            {
+              title: '待支付订单',
+              count: pending.data?.total,
+              href: '/admin/orders?status=pending',
+              action: '查看订单',
+            },
+            {
+              title: '待回复工单',
+              count: tickets.data?.total,
+              href: '/admin/tickets?status=waiting_staff',
+              action: '处理工单',
+            },
+            {
+              title: '待配置支付通道',
+              count: payments.data ? channels.filter((c) => !c.configured).length : undefined,
+              href: '/admin/payments',
+              action: '配置通道',
+            },
+          ]
+            .filter((task) => task.count !== undefined)
+            .map((task) => (
+              <Flex key={task.title} className="admin-task-row" align="center" wrap gap={12}>
+                <Space>
+                  <span>{task.title}</span>
+                  <Tag color={task.count ? 'orange' : undefined}>{task.count}</Tag>
+                </Space>
+                <Button onClick={() => void navigate(task.href)}>{task.action}</Button>
+              </Flex>
+            ))}
+        </div>
       </Card>
       {payments.data && (
         <Card title="支付通道">

@@ -116,26 +116,27 @@ export function DocsPage() {
     } else next();
   };
   return (
-    <PageContainer
-      title="文档管理"
-      actions={
-        <Button
-          type="primary"
-          onClick={() =>
-            move(() => {
-              setSpaceId(null);
-              setPageId(null);
-            })
-          }
-        >
-          新建空间
-        </Button>
-      }
-    >
+    <PageContainer title="文档管理">
       {context}
       <AsyncState loading={list.isPending} error={list.error} onRetry={() => void list.refetch()}>
         <div className="admin-asset-layout">
-          <Card title="文档空间">
+          <Card
+            title="文档空间"
+            extra={
+              <Button
+                type="primary"
+                size="small"
+                onClick={() =>
+                  move(() => {
+                    setSpaceId(null);
+                    setPageId(null);
+                  })
+                }
+              >
+                新建空间
+              </Button>
+            }
+          >
             <Select
               aria-label="选择文档空间"
               value={selected}
