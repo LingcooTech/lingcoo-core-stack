@@ -1,3 +1,4 @@
+import { AssetMarkdownField } from '@/components/storage/AssetMarkdownField';
 import { useCallback, useEffect, useState } from 'react';
 import {
   App,
@@ -466,7 +467,7 @@ function DocPageForm({
           ]}
         />
         <Form.Item name="content" label="正文">
-          <Input.TextArea rows={22} className="font-mono" />
+          <AssetMarkdownField aria-label="正文" />
         </Form.Item>
         <FormActions hint={dirty ? '有未保存的修改' : '已保存'}>
           <Button type="primary" htmlType="submit" loading={mutation.isPending} disabled={!dirty}>

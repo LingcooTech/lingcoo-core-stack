@@ -351,3 +351,80 @@ test('SMTP matches Edu field order; connection testing is separate and failed sa
     await view.dispose();
   }
 });
+
+test('image fields select public cloud assets without a URL textbox and preserve existing links until changed', async () => {
+  const { AssetImageField } = await import('./AssetImageField');
+  const { Form } = await import('antd');
+  mocks.role = 'admin';
+  const asset = {
+    ...fixture(),
+    mediaKind: 'image',
+    displayName: '公开图片',
+    contentType: 'image/png',
+  };
+  mocks.api.mockReset();
+  mocks.api.mockImplementation(async (id: string) => {
+    if (id === 'GET /v1/admin/storage/folders') return { items: [] };
+    if (id === 'GET /v1/admin/storage/assets')
+      return { items: [asset], total: 1, page: 1, pageSize: 20 };
+    return {};
+  });
+  const changed = vi.fn();
+  const view = await mount(
+    <Form initialValues={{ image: 'https://old.example.test/image.png' }} onValuesChange={changed}>
+      <Form.Item name="image">
+        <AssetImageField previewAlt="应用截图" />
+      </Form.Item>
+    </Form>,
+  );
+  try {
+    expect(view.host.querySelector('input')).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+    await act(async () => button('更换图片').click());
+    await vi.waitFor(() => expect(button('选择').disabled).toBe(false));
+    await act(async () => button('选择').click());
+    expect(changed.mock.calls.at(-1)?.[0]).toEqual({ image: asset.publicUrl });
+    await act(async () => button('移除').click());
+    expect(changed.mock.calls.at(-1)?.[0]).toEqual({ image: '' });
+  } finally {
+    await view.dispose();
+  }
+});
+
+test('Markdown images come from the cloud picker and preserve surrounding text', async () => {
+  const { AssetMarkdownField } = await import('./AssetMarkdownField');
+  const { Form } = await import('antd');
+  mocks.role = 'admin';
+  const asset = { ...fixture(), mediaKind: 'image', contentType: 'image/png' };
+  mocks.api.mockReset();
+  mocks.api.mockImplementation(async (id: string) => {
+    if (id === 'GET /v1/admin/storage/folders') return { items: [] };
+    if (id === 'GET /v1/admin/storage/assets')
+      return { items: [asset], total: 1, page: 1, pageSize: 20 };
+    return {};
+  });
+  const changed = vi.fn();
+  const view = await mount(
+    <Form initialValues={{ content: 'BeforeAfter' }} onValuesChange={changed}>
+      <Form.Item name="content">
+        <AssetMarkdownField />
+      </Form.Item>
+    </Form>,
+  );
+  try {
+    const textarea = view.host.querySelector('textarea')!;
+    await act(async () => {
+      textarea.focus();
+      textarea.setSelectionRange(6, 6);
+      textarea.dispatchEvent(new Event('select', { bubbles: true }));
+    });
+    await act(async () => button('插入云存储图片').click());
+    await vi.waitFor(() => expect(button('选择').disabled).toBe(false));
+    await act(async () => button('选择').click());
+    expect(changed.mock.calls.at(-1)?.[0].content).toBe(
+      `Before\n![图片](<${asset.publicUrl}>)\nAfter`,
+    );
+  } finally {
+    await view.dispose();
+  }
+});

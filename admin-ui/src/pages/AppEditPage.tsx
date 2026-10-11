@@ -37,6 +37,7 @@ import {
   createDeliverySecretState,
   createDeliverySettingsDraft,
   getDeliveryManifest,
+  serializeDeliveryManifestSourceDraft,
   type DeliverySettingsDraft,
   type DeliveryManifestSourceDraft,
 } from '@/lib/app-delivery';
@@ -195,6 +196,11 @@ function AppEditor({ appCode }: { appCode?: string }) {
   const sync = useMutation({
     mutationFn: async () => {
       if (!appCode) throw new Error('请先创建应用');
+      if (
+        serializeDeliveryManifestSourceDraft(form.getFieldValue('source')) !==
+        serializeDeliveryManifestSourceDraft(createDeliveryManifestSourceDraft(app))
+      )
+        throw new Error('请先保存交付清单来源，再同步清单');
       const saved = await syncAppDeliveryManifest(
         appCode,
         buildDeliveryManifestSourcePayload(form.getFieldValue('source')),
@@ -233,6 +239,7 @@ function AppEditor({ appCode }: { appCode?: string }) {
         const overview = appCode ? await getDeliverySettings(appCode) : undefined;
         if (overview) qc.setQueryData(['delivery-settings', appCode], overview);
         rebase({ delivery: createDeliverySettingsDraft(overview, manifest) });
+        void qc.invalidateQueries({ queryKey: ['app-readiness'] });
         void message.success('交付配置已清空');
       },
     });
@@ -269,7 +276,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
           void delivery.refetch();
         }}
       >
-        <AppReadiness appCode={appCode} />
         <Form
           name="app-editor"
           form={form}
@@ -279,6 +285,9 @@ function AppEditor({ appCode }: { appCode?: string }) {
           onFinish={() => mutation.mutate()}
         >
           <Tabs
+            tabBarExtraContent={
+              <AppReadiness appCode={appCode} dirty={dirty} onNavigate={setActive} />
+            }
             activeKey={active}
             onChange={setActive}
             items={APP_EDIT_TABS.filter((t) => t.key !== 'delivery' || mode === 'one_click').map(
@@ -304,6 +313,7 @@ function AppEditor({ appCode }: { appCode?: string }) {
                       manifest={manifest}
                       secrets={secrets}
                       create={!appCode}
+                      savedSource={createDeliveryManifestSourceDraft(app)}
                       busy={sync.isPending}
                       onSync={() => sync.mutate()}
                       onClear={clear}

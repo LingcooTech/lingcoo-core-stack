@@ -31,14 +31,16 @@ test('publication report distinguishes saved configuration from online acceptanc
         </QueryClientProvider>,
       ),
     );
-    await expect.poll(() => host.textContent).toContain('配置检查通过');
+    await expect.poll(() => host.textContent).toContain('配置检查 0/0');
+    await act(async () => host.querySelector('button')!.click());
+    await expect.poll(() => document.body.textContent).toContain('上线验收事项');
     await act(async () =>
-      host
+      document.body
         .querySelector('.ant-collapse-header')!
         .dispatchEvent(new MouseEvent('click', { bubbles: true })),
     );
-    expect(host.textContent).toContain('待在线验收');
-    expect(host.textContent).toContain('仅针对已保存的配置');
+    expect(document.body.textContent).toContain('在线验收尚未完成');
+    expect(document.body.textContent).toContain('检查已保存的售价、套餐权益和交付条件');
     expect(mocks.api.mock.calls.every((c) => String(c[0]).startsWith('GET'))).toBe(true);
     expect(host.querySelectorAll('button')).toHaveLength(1);
   } finally {

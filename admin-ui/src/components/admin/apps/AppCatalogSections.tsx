@@ -52,10 +52,10 @@ export function AppBasicsSection({ create }: { create: boolean }) {
           <Select options={statusOptions} />
         </Form.Item>
       </div>
-      <Form.Item name={['app', 'iconUrl']} label="图标 URL">
+      <Form.Item name={['app', 'iconUrl']} label="应用图标">
         <AssetImageField defaultPrefix="apps/icon" previewAlt="应用图标" />
       </Form.Item>
-      <Form.Item name={['app', 'coverUrl']} label="封面图 URL">
+      <Form.Item name={['app', 'coverUrl']} label="应用封面">
         <AssetImageField defaultPrefix="apps/cover" previewAlt="应用封面" />
       </Form.Item>
     </Card>

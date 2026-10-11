@@ -1,5 +1,5 @@
-import { PictureOutlined } from '@ant-design/icons';
-import { Button, Flex, Form, Image, Input } from 'antd';
+import { PictureOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, ConfigProvider, Flex, Image, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { AssetImagePickerDialog } from './AssetImagePickerDialog';
 interface AssetImageFieldProps {
@@ -17,44 +17,69 @@ export function AssetImageField({
   value = '',
   onChange,
   id,
-  defaultPrefix,
-  placeholder = 'https://...',
   previewAlt,
-  previewClassName = 'h-20 w-full rounded-md border object-cover',
   dialogTitle,
   dialogDescription,
 }: AssetImageFieldProps) {
   const [open, setOpen] = useState(false);
-  const { status } = Form.Item.useStatus();
+  const { componentDisabled } = ConfigProvider.useConfig();
   return (
     <>
-      <Flex wrap gap={8}>
-        <Input
-          id={id}
-          style={{ flex: '1 1 220px' }}
-          status={status === 'error' ? 'error' : undefined}
-          value={value}
-          onChange={(event) => onChange?.(event.target.value)}
-          placeholder={placeholder}
-        />
-        <Button icon={<PictureOutlined aria-hidden="true" />} onClick={() => setOpen(true)}>
-          云存储
-        </Button>
+      <Flex align="center" wrap gap={16}>
+        {value ? (
+          <Image
+            key={value}
+            src={value}
+            alt={previewAlt}
+            width={112}
+            height={88}
+            style={{ objectFit: 'contain', borderRadius: 8 }}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            style={{
+              width: 112,
+              height: 88,
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px dashed var(--ant-color-border, #d9d9d9)',
+              borderRadius: 8,
+            }}
+          >
+            <PictureOutlined style={{ fontSize: 28, opacity: 0.45 }} />
+          </div>
+        )}
+        <Space orientation="vertical" size={8}>
+          <Space wrap>
+            <Button
+              id={id}
+              aria-label={`${value ? '更换' : '选择'}${previewAlt}`}
+              icon={<PictureOutlined />}
+              onClick={() => setOpen(true)}
+            >
+              {value ? '更换图片' : '选择图片'}
+            </Button>
+            {value && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                aria-label={`移除${previewAlt}`}
+                onClick={() => onChange?.('')}
+              >
+                移除
+              </Button>
+            )}
+          </Space>
+          <Typography.Text type="secondary">从云存储选择，或上传新图片</Typography.Text>
+        </Space>
       </Flex>
-      {value && (
-        <Image
-          key={value}
-          src={value}
-          alt={previewAlt}
-          className={previewClassName}
-          style={{ maxHeight: 120, objectFit: 'contain', marginTop: 12 }}
-        />
-      )}
       <AssetImagePickerDialog
-        open={open}
+        open={open && !componentDisabled}
         onOpenChange={setOpen}
-        onSelect={(url) => onChange?.(url)}
-        defaultPrefix={defaultPrefix}
+        onSelect={(url) => {
+          if (!componentDisabled) onChange?.(url);
+        }}
         title={dialogTitle}
         description={dialogDescription}
       />

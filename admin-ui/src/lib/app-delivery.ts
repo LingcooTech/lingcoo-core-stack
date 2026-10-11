@@ -560,38 +560,33 @@ export function serializeDeliveryManifestSourceDraft(draft: DeliveryManifestSour
   });
 }
 
+export function isDeliveryFieldConfigured(
+  field: DeliveryManifestField,
+  draft: DeliverySettingsDraft,
+  secrets: DeliverySecretState,
+) {
+  if (field.type === 'secret')
+    return Boolean(draft.secrets[field.key]?.trim() || secrets[field.key]);
+  const value = draft.values[field.key] ?? field.defaultValue;
+  return (
+    typeof value === 'boolean' ||
+    (typeof value === 'string' && value.trim().length > 0 && !value.trim().startsWith('PENDING_'))
+  );
+}
+
 export function computeDeliveryConfigured(
   manifest: DeliveryManifest | null,
   draft: DeliverySettingsDraft,
   secrets: DeliverySecretState,
 ) {
-  const fields = getManifestFields(manifest, 'preset');
-  const requiredAssetSecretKeys = listRequiredAssetSecretKeys(manifest);
-  if (fields.length === 0) {
-    if (requiredAssetSecretKeys.length > 0) {
-      return requiredAssetSecretKeys.every((key) => Boolean(secrets[key]));
-    }
-
-    return Object.keys(draft.values).length > 0 || Object.keys(secrets).length > 0;
-  }
-
+  if (!manifest) return false;
   return (
-    fields.every((field) => {
-      if (!field.required) {
-        return true;
-      }
-
-      if (field.type === 'secret') {
-        return Boolean(secrets[field.key]);
-      }
-
-      const value = draft.values[field.key];
-      if (typeof value === 'boolean') {
-        return true;
-      }
-
-      return typeof value === 'string' && value.trim().length > 0;
-    }) && requiredAssetSecretKeys.every((key) => Boolean(secrets[key]))
+    getManifestFields(manifest, 'preset')
+      .filter((field) => field.required)
+      .every((field) => isDeliveryFieldConfigured(field, draft, secrets)) &&
+    listRequiredAssetSecretKeys(manifest).every((key) =>
+      Boolean(draft.secrets[key]?.trim() || secrets[key]),
+    )
   );
 }
 

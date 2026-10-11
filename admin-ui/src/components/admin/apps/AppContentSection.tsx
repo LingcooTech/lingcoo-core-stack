@@ -1,5 +1,5 @@
 import { Button, Card, Collapse, Form, Input, Select, Space } from 'antd';
-import MDEditor from '@uiw/react-md-editor';
+import { AssetMarkdownField } from '@/components/storage/AssetMarkdownField';
 import { AssetImageField } from '@/components/storage/AssetImageField';
 import { createDraftId } from '@/components/apps/app-edit/model';
 
@@ -8,7 +8,7 @@ export function AppContentSection() {
     <Space orientation="vertical" style={{ width: '100%' }} size={16}>
       <Card title="详情内容">
         <Form.Item name={['app', 'content']}>
-          <MDEditor height={400} />
+          <AssetMarkdownField rich aria-label="应用详情正文" />
         </Form.Item>
       </Card>
       <Card title="展示素材">
@@ -63,6 +63,8 @@ export function AppContentSection() {
                         <Card
                           size="small"
                           key={f.key}
+                          style={{ marginBottom: 16 }}
+                          title={`截图 ${f.name + 1}`}
                           extra={
                             <Space>
                               <Button
@@ -78,7 +80,7 @@ export function AppContentSection() {
                             </Space>
                           }
                         >
-                          <Form.Item name={[f.name, 'url']} label="图片 URL">
+                          <Form.Item name={[f.name, 'url']} label="截图图片">
                             <AssetImageField
                               defaultPrefix="apps/screenshots"
                               previewAlt="应用截图"

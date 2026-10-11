@@ -1,7 +1,20 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, Collapse, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Collapse, Flex, Space, Tag, Typography } from 'antd';
 import { apiClient } from '@/api/client';
-export function AppReadiness({ appCode }: { appCode?: string }) {
+import { ManagementDrawer } from '@/components/admin/ManagementDrawer';
+import type { AppEditTabKey } from './model';
+
+export function AppReadiness({
+  appCode,
+  dirty = false,
+  onNavigate,
+}: {
+  appCode?: string;
+  dirty?: boolean;
+  onNavigate?: (tab: AppEditTabKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
   const query = useQuery({
     queryKey: ['app-readiness', appCode],
     enabled: Boolean(appCode),
@@ -11,79 +24,98 @@ export function AppReadiness({ appCode }: { appCode?: string }) {
         `/v1/admin/apps/${encodeURIComponent(appCode!)}/readiness`,
       ),
   });
+  const checks = query.data?.checks.filter((check) => check.blocking) ?? [];
+  const passed = checks.filter((check) => check.status === 'passed').length;
+  const live = query.data?.checks.filter((check) => !check.blocking) ?? [];
   return (
-    <Card
-      size="small"
-      title={
-        <Space wrap>
-          <span>发布前检查</span>
-          {query.data && (
-            <Tag color={query.data.configurationReady ? 'success' : 'warning'}>
-              {query.data.configurationReady ? '配置检查通过' : '发布配置待补齐'}
+    <>
+      <Space wrap size={8}>
+        {dirty && appCode && <Tag>有未保存修改</Tag>}
+        <Button size="small" disabled={!appCode} onClick={() => setOpen(true)}>
+          {!appCode
+            ? '保存后检查配置'
+            : query.isError
+              ? '配置检查失败'
+              : query.isPending
+                ? '检查配置中'
+                : `配置检查 ${passed}/${checks.length}`}
+        </Button>
+      </Space>
+      <ManagementDrawer
+        open={open}
+        onClose={() => setOpen(false)}
+        title="应用配置检查"
+        size="small"
+        description="检查已保存的售价、套餐权益和交付条件；通过后才可上架。"
+      >
+        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          {dirty && (
+            <Alert
+              type="warning"
+              showIcon
+              title="当前有未保存修改，检查结果仍对应上次保存的配置。"
+            />
+          )}
+          <Flex justify="space-between" align="center" gap={12}>
+            <Tag color={query.data?.configurationReady ? 'success' : 'warning'}>
+              已通过 {passed}/{checks.length}
             </Tag>
+            <Button loading={query.isFetching} onClick={() => void query.refetch()}>
+              重新检查
+            </Button>
+          </Flex>
+          {query.isError && <Alert type="error" title="检查失败，请重试" />}
+          {checks.map((check) => (
+            <div key={check.code}>
+              <Flex justify="space-between" align="center" gap={12}>
+                <Space>
+                  <Typography.Text strong>{check.title}</Typography.Text>
+                  <Tag color={check.status === 'passed' ? 'success' : 'error'}>
+                    {check.status === 'passed' ? '通过' : '待补齐'}
+                  </Tag>
+                </Space>
+                {check.status !== 'passed' && onNavigate && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      onNavigate(
+                        check.code === 'offers'
+                          ? 'offers'
+                          : check.code === 'plans'
+                            ? 'plans'
+                            : 'delivery',
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    去配置
+                  </Button>
+                )}
+              </Flex>
+              <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
+                {check.detail}
+              </Typography.Paragraph>
+            </div>
+          ))}
+          {!!live.length && (
+            <Collapse
+              items={[
+                {
+                  key: 'live',
+                  label: '上线验收事项（不计入配置完成度）',
+                  children: live.map((check) => (
+                    <Typography.Paragraph key={check.code}>
+                      <strong>{check.title}</strong>
+                      <br />
+                      {check.detail}
+                    </Typography.Paragraph>
+                  )),
+                },
+              ]}
+            />
           )}
         </Space>
-      }
-      extra={
-        appCode && (
-          <Button loading={query.isFetching} onClick={() => void query.refetch()}>
-            重新检查
-          </Button>
-        )
-      }
-    >
-      {!appCode ? (
-        <Typography.Text type="secondary">保存应用草稿后检查发布条件。</Typography.Text>
-      ) : query.isPending ? (
-        <Typography.Text type="secondary">正在检查…</Typography.Text>
-      ) : query.isError ? (
-        <Alert type="error" title="检查失败，请重试。" />
-      ) : (
-        <Collapse
-          size="small"
-          items={[
-            {
-              key: 'checks',
-              label: '查看检查明细',
-              children: (
-                <Space orientation="vertical" size={16} style={{ display: 'flex' }}>
-                  <Typography.Text type="secondary">
-                    仅针对已保存的配置；实际部署和支付仍需在线验收。
-                  </Typography.Text>
-                  {query.data.checks.map((c) => (
-                    <div key={c.code}>
-                      <Space>
-                        <strong>{c.title}</strong>
-                        <Tag
-                          color={
-                            c.status === 'blocked'
-                              ? 'error'
-                              : c.status === 'passed'
-                                ? 'success'
-                                : 'default'
-                          }
-                        >
-                          {c.status === 'passed'
-                            ? '通过'
-                            : c.status === 'blocked'
-                              ? '需补齐'
-                              : '待在线验收'}
-                        </Tag>
-                      </Space>
-                      <Typography.Paragraph
-                        type="secondary"
-                        style={{ marginTop: 8, marginBottom: 0 }}
-                      >
-                        {c.detail}
-                      </Typography.Paragraph>
-                    </div>
-                  ))}
-                </Space>
-              ),
-            },
-          ]}
-        />
-      )}
-    </Card>
+      </ManagementDrawer>
+    </>
   );
 }

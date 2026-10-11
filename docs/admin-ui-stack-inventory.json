@@ -199,6 +199,7 @@
         "components/storage/AssetImageField.tsx",
         "components/storage/AssetImagePickerDialog.tsx",
         "components/storage/AssetLibrary.tsx",
+        "components/storage/AssetMarkdownField.tsx",
         "lib/app-delivery.ts",
         "lib/app-detail.ts",
         "lib/auth.tsx",
@@ -264,6 +265,7 @@
         "components/storage/AssetImageField.tsx",
         "components/storage/AssetImagePickerDialog.tsx",
         "components/storage/AssetLibrary.tsx",
+        "components/storage/AssetMarkdownField.tsx",
         "lib/auth.tsx",
         "lib/rbac.ts",
         "lib/settings-form.ts",
@@ -275,6 +277,7 @@
         "@lingcoo/api-client",
         "@lingcoo/contracts",
         "@tanstack/react-query",
+        "@uiw/react-md-editor",
         "antd",
         "react",
         "react-dom",
@@ -326,6 +329,7 @@
         "components/storage/AssetImageField.tsx",
         "components/storage/AssetImagePickerDialog.tsx",
         "components/storage/AssetLibrary.tsx",
+        "components/storage/AssetMarkdownField.tsx",
         "lib/auth.tsx",
         "lib/rbac.ts",
         "lib/settings-form.ts",
@@ -337,6 +341,7 @@
         "@lingcoo/api-client",
         "@lingcoo/contracts",
         "@tanstack/react-query",
+        "@uiw/react-md-editor",
         "antd",
         "react",
         "react-router-dom",
@@ -1750,6 +1755,12 @@
           "line": 686
         }
       ],
+      "antDesign": true,
+      "customSurface": false
+    },
+    {
+      "file": "components/storage/AssetMarkdownField.tsx",
+      "nativeControls": [],
       "antDesign": true,
       "customSurface": false
     },

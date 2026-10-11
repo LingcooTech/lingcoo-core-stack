@@ -4,8 +4,8 @@ export function AssetImagePickerDialog({
   open,
   onOpenChange,
   onSelect,
-  title = '选择营销素材',
-  description = '上传图片或从营销素材中选择公开图片。',
+  title = '选择图片',
+  description = '从云存储选择公开图片，或点击“上传素材”上传新图片。',
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;

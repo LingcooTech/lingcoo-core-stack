@@ -1,3 +1,4 @@
+import { AssetMarkdownField } from '@/components/storage/AssetMarkdownField';
 import { App, Button, Card, Form, Input, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -148,7 +149,7 @@ export function ContentEditPage() {
           </Card>
           <Card title="正文内容" extra="Markdown / HTML">
             <Form.Item name="content">
-              <Input.TextArea aria-label="正文内容" rows={22} className="font-mono" />
+              <AssetMarkdownField aria-label="正文内容" />
             </Form.Item>
           </Card>
           <FormActions hint={dirty ? '有未保存的修改' : '已保存'}>
