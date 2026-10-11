@@ -1,5 +1,7 @@
 # Stack 应用接入标准
 
+新版仓库导入、源码关联和不可变交付版本入口见 [应用定义标准](stack-application-definition-standard.md)。本文描述现有 Manifest v1/Adapter v2 执行路径；新版通用执行能力未通过验收前不替换已有实例。
+
 状态：当前可执行标准，核对日期 2026-10-11。覆盖免部署、自有服务器部署、平台托管；不包含 CloudBase、SAE 或第三方开发者分账。本文替代本文件此前的早期接入指南。代码事实、运营要求和待实现能力分别标注，不把规划当作已实现能力。
 
 阅读顺序：本文 → [托管适配器协议](stack-hosting-adapter-contract.md) → [后台填写指南](app-configuration-and-images-20261011.md)。平台解耦情况和剩余限制见 [解耦审计](stack-application-decoupling-audit-20261011.md)。Retail、Edu 是实现样本，不是平台协议的定义来源。

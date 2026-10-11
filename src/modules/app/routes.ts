@@ -1,4 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import {
+  applicationImportSchema,
+  applicationPreviewSchema,
+  applicationConnectionInputSchema,
+  applicationReleaseInputSchema,
+} from '@lingcoo/contracts';
 
 import { buildAppCodeUserRateLimitKey } from '../../lib/rate-limit';
 import {
@@ -12,6 +19,56 @@ import {
 } from './schemas';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
+  const managed = { preHandler: app.requirePermission('apps.manage') };
+  app.get('/v1/admin/app-connections', managed, () =>
+    app.services.AppService.lifecycle().connections(),
+  );
+  app.post('/v1/admin/app-connections', managed, (r) =>
+    app.services.AppService.lifecycle().connect(
+      applicationConnectionInputSchema.parse(r.body),
+      r.user.sub,
+    ),
+  );
+  app.delete('/v1/admin/app-connections/:connectionId', managed, (r) =>
+    app.services.AppService.lifecycle().disconnect(
+      z.object({ connectionId: z.uuid() }).parse(r.params).connectionId,
+      r.user.sub,
+    ),
+  );
+  app.post('/v1/admin/apps/import/preview', managed, (r) =>
+    app.services.AppService.lifecycle().preview(applicationImportSchema.parse(r.body)),
+  );
+  app.post('/v1/admin/apps/import', managed, (r) =>
+    app.services.AppService.lifecycle().import(applicationPreviewSchema.parse(r.body), r.user.sub),
+  );
+  app.get('/v1/admin/apps/:appCode/lifecycle', managed, (r) =>
+    app.services.AppService.lifecycle().overview(appCodeParamsSchema.parse(r.params).appCode),
+  );
+  app.post('/v1/admin/apps/:appCode/releases', managed, (r) =>
+    app.services.AppService.lifecycle().registerRelease(
+      appCodeParamsSchema.parse(r.params).appCode,
+      applicationReleaseInputSchema.parse(r.body),
+      r.user.sub,
+    ),
+  );
+  app.post('/v1/admin/apps/:appCode/releases/:releaseId/publish', managed, (r) => {
+    const params = appCodeParamsSchema.extend({ releaseId: z.uuid() }).parse(r.params);
+    return app.services.AppService.lifecycle().transition(
+      params.appCode,
+      params.releaseId,
+      'published',
+      r.user.sub,
+    );
+  });
+  app.post('/v1/admin/apps/:appCode/releases/:releaseId/withdraw', managed, (r) => {
+    const params = appCodeParamsSchema.extend({ releaseId: z.uuid() }).parse(r.params);
+    return app.services.AppService.lifecycle().transition(
+      params.appCode,
+      params.releaseId,
+      'withdrawn',
+      r.user.sub,
+    );
+  });
   app.get(
     '/v1/admin/apps/:appCode/readiness',
     { preHandler: app.requirePermission('apps.manage') },

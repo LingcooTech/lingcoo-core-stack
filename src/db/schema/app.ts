@@ -85,3 +85,43 @@ export const appOffers = pgTable(
     appCodeKey: unique('app_offers_app_id_code_key').on(table.appId, table.code),
   }),
 );
+
+export const appConnections = pgTable('app_connections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 120 }).notNull(),
+  kind: varchar('kind', { length: 32 }).notNull(),
+  host: varchar('host', { length: 255 }),
+  credentials: jsonb('credentials').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+export const appSources = pgTable('app_sources', {
+  appId: uuid('app_id')
+    .primaryKey()
+    .references(() => apps.id, { onDelete: 'cascade' }),
+  source: jsonb('source'),
+  definition: jsonb('definition').notNull(),
+  definitionDigest: varchar('definition_digest', { length: 80 }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+export const appReleases = pgTable(
+  'app_releases',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    version: varchar('version', { length: 80 }).notNull(),
+    commit: varchar('commit', { length: 40 }).notNull(),
+    status: varchar('status', { length: 16 }).notNull().default('draft'),
+    definition: jsonb('definition').notNull(),
+    definitionDigest: varchar('definition_digest', { length: 80 }).notNull(),
+    images: jsonb('images').notNull(),
+    notes: text('notes').notNull().default(''),
+    buildUrl: text('build_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+  },
+  (table) => ({
+    appVersionKey: unique('app_releases_app_version_key').on(table.appId, table.version),
+  }),
+);

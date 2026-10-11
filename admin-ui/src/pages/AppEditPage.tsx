@@ -256,6 +256,7 @@ function AppEditor({ appCode }: { appCode?: string }) {
       backTo="/admin/apps"
       actions={
         <Space>
+          {appCode && <Button href={`/admin/apps/${appCode}/lifecycle`}>源码与交付版本</Button>}
           {appCode && (
             <Button href={`/apps/${appCode}`} target="_blank">
               预览应用

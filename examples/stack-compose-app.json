@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "app": { "code": "example_web", "name": "Example Web", "license": "MIT", "acquisition": "free" },
+  "features": [{ "code": "use_app", "name": "使用应用" }],
+  "build": { "workflow": "publish.yml" },
+  "images": [
+    {
+      "key": "web",
+      "repository": "registry.example.com/lingcoo/example-web",
+      "imageEnv": "WEB_IMAGE"
+    }
+  ],
+  "delivery": {
+    "kind": "compose",
+    "modes": ["self_hosted", "managed"],
+    "compose": { "services": { "web": { "image": "${WEB_IMAGE}", "restart": "unless-stopped" } } },
+    "envFields": [],
+    "secretFields": [],
+    "domainSlots": [
+      {
+        "key": "web",
+        "label": "应用域名",
+        "envKey": "APP_DOMAIN",
+        "sourceField": "APP_DOMAIN",
+        "required": true
+      }
+    ],
+    "resources": { "cpuMillis": 500, "memoryMb": 256, "diskMb": 1024 },
+    "entrypoint": { "service": "web", "port": 80, "healthPath": "/" },
+    "lifecycle": { "initialize": [], "migrate": [], "upgradePolicy": "same_schema" }
+  }
+}

@@ -2,6 +2,7 @@ import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import type { AppService } from './service';
 import { AppRepository } from './repository';
+export { rotateApplicationConnectionKeys } from './key-rotation';
 
 export type AppServicePort = Pick<
   AppService,

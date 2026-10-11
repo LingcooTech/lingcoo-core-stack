@@ -109,9 +109,14 @@ export function AppsPage() {
       }
       actions={
         writable && (
-          <Button type="primary">
-            <Link to="/admin/apps/new">新建应用</Link>
-          </Button>
+          <Space>
+            <Button type="primary">
+              <Link to="/admin/apps/import">从仓库或文件导入</Link>
+            </Button>
+            <Button>
+              <Link to="/admin/apps/new">新建应用</Link>
+            </Button>
+          </Space>
         )
       }
     >
@@ -148,6 +153,7 @@ export function AppsPage() {
                 render: (_, a) => (
                   <Space orientation="vertical" size={0}>
                     <Link to={`/admin/apps/${a.code}/edit`}>{a.name}</Link>
+                    <Link to={`/admin/apps/${a.code}/lifecycle`}>源码与交付版本</Link>
                     <small>{a.code}</small>
                     <span>{a.tagline}</span>
                   </Space>

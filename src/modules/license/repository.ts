@@ -1,3 +1,4 @@
+import { httpError } from '../../lib/errors';
 import { queryBatch } from '../../db/query-batch';
 import { and, desc, eq, gte, ilike, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 
@@ -127,6 +128,7 @@ export class LicenseRepository {
       })
       .onConflictDoUpdate({
         target: plans.code,
+        setWhere: eq(plans.appId, input.appId),
         set: {
           appId: input.appId,
           name: input.name,
@@ -140,7 +142,7 @@ export class LicenseRepository {
         },
       })
       .returning();
-    if (!plan) throw new Error('Missing required write result: license plan');
+    if (!plan) throw httpError(409, 'Plan Code belongs to another application');
 
     return plan;
   }
@@ -164,6 +166,7 @@ export class LicenseRepository {
       })
       .onConflictDoUpdate({
         target: features.code,
+        setWhere: eq(features.appId, input.appId),
         set: {
           appId: input.appId,
           name: input.name,
@@ -172,7 +175,7 @@ export class LicenseRepository {
         },
       })
       .returning();
-    if (!feature) throw new Error('Missing required write result: license feature');
+    if (!feature) throw httpError(409, 'Feature Code belongs to another application');
 
     return feature;
   }

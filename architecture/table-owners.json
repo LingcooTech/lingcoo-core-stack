@@ -58,5 +58,8 @@
   "storageFolders": "storage",
   "storageAssets": "storage",
   "storageObjects": "storage",
-  "storageReferences": "storage"
+  "storageReferences": "storage",
+  "appConnections": "app",
+  "appSources": "app",
+  "appReleases": "app"
 }

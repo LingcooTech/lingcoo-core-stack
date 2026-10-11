@@ -8,6 +8,7 @@ import { randomBytes } from 'node:crypto';
 import type { DbExecutor } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
 import { AppManifestService } from './manifest-service';
+import { AppLifecycleService } from './lifecycle-service';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -40,6 +41,15 @@ export type CheckoutOffer = {
 };
 
 export class AppService {
+  lifecycle() {
+    if (!this.env) throw httpError(503, 'Application runtime settings are unavailable');
+    return new AppLifecycleService(
+      this.db,
+      this.env,
+      this.capabilities,
+      (db) => new AppService(this.capabilities, db, this.env),
+    );
+  }
   private readonly capabilities: AppDependencies;
   constructor(
     capabilities: AppDependencies,

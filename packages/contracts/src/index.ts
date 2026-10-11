@@ -4,6 +4,7 @@ export * from './billing.js';
 export * from './checkout.js';
 export * from './deployment.js';
 export * from './delivery.js';
+export * from './app-lifecycle.js';
 export * from './core-responses.js';
 export * from './response-registry.js';
 export function isIdempotentCommand(method: string, path: string) {

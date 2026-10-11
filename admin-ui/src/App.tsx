@@ -44,6 +44,8 @@ const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), '
 const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
 const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');
 const AppsPage = lazyNamed(() => import('@/pages/AppsPage'), 'AppsPage');
+const AppImportPage = lazyNamed(() => import('@/pages/AppImportPage'), 'AppImportPage');
+const AppLifecyclePage = lazyNamed(() => import('@/pages/AppLifecyclePage'), 'AppLifecyclePage');
 const AiTranslateWorkflowPrivacyPage = lazyNamed(
   () => import('@/pages/AiTranslateWorkflowPrivacyPage'),
   'AiTranslateWorkflowPrivacyPage',
@@ -246,6 +248,22 @@ const router = createBrowserRouter(
             element={
               <ProtectedAdminSectionRoute sectionKey="apps">
                 <AppEditPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/apps/import"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="apps">
+                <AppImportPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/apps/:appCode/lifecycle"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="apps">
+                <AppLifecyclePage />
               </ProtectedAdminSectionRoute>
             }
           />
