@@ -1,3 +1,4 @@
+import { staticAssetPrefix } from '../../http/static-assets';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -87,7 +88,9 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   if (existsSync(assetsDir)) {
     await app.register(fastifyStatic, {
       root: assetsDir,
-      prefix: '/assets/',
+      prefix: staticAssetPrefix,
+      immutable: true,
+      maxAge: '1y',
       decorateReply: false,
     });
   }

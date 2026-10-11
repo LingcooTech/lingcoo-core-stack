@@ -1,3 +1,4 @@
+import { isStaticAssetRequest } from './http/static-assets';
 import { registerRequestContracts } from './http/idempotency';
 import { createAdminCommandRunner } from './http/admin-commands';
 import {
@@ -272,6 +273,7 @@ export async function buildApp(env: AppEnv, options: { factories?: ServiceFactor
     await app.register(redisPlugin, { env });
     await app.register(rateLimit, {
       redis: app.redis,
+      allowList: isStaticAssetRequest,
       max: env.RATE_LIMIT_GLOBAL_MAX,
       timeWindow: env.RATE_LIMIT_GLOBAL_WINDOW,
     });
