@@ -567,10 +567,16 @@ test('admin detail drawers and editing modals fit desktop and mobile without wri
     const drawer = page.getByRole('dialog');
     await expect(drawer.getByText('基本信息', { exact: true })).toBeVisible();
     await expect(drawer.getByText('购买明细', { exact: true })).toBeVisible();
+    // Measure the settled layout: a translated animation frame can introduce
+    // floating-point error in getBoundingClientRect even at an integer width.
+    await expect(page.locator('.ant-drawer-content-wrapper')).toHaveCSS('transform', 'none');
     const box = await drawer.boundingBox();
     expect(box!.width).toBeLessThanOrEqual(width);
     expect(await drawer.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
-    await page.screenshot({ path: info.outputPath(`order-detail-${width}.png`) });
+    await page.screenshot({
+      path: info.outputPath(`order-detail-${width}.png`),
+      animations: 'disabled',
+    });
     await drawer.getByRole('button', { name: '关闭', exact: true }).last().click();
     await expect(drawer).toBeHidden();
     await page.goto('/admin/users');
@@ -580,10 +586,14 @@ test('admin detail drawers and editing modals fit desktop and mobile without wri
       .click();
     const modal = page.getByRole('dialog');
     await expect(modal.getByRole('button', { name: /^保\s*存$/ })).toBeVisible();
+    await expect(page.locator('.ant-modal')).toHaveCSS('transform', 'none');
     const modalBox = await modal.boundingBox();
     expect(modalBox!.x).toBeGreaterThanOrEqual(0);
     expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(width + 1);
-    await page.screenshot({ path: info.outputPath(`user-modal-${width}.png`) });
+    await page.screenshot({
+      path: info.outputPath(`user-modal-${width}.png`),
+      animations: 'disabled',
+    });
     await modal.getByRole('button', { name: /^取\s*消$/ }).click();
     await expect(modal).toBeHidden();
   }
