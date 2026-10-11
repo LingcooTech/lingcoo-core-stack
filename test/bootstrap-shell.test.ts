@@ -18,6 +18,7 @@ test('installer parameters preserve quotes, whitespace and shell expressions as 
   const command = buildRemoteInstallCommand({
     token: value,
     exchangeUrl: 'https://example.test/exchange',
+    remoteInstallScriptUrl: 'https://example.test/install.sh',
     installPath: value,
     repoBranch: value,
   });
