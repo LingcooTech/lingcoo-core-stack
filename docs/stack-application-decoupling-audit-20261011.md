@@ -41,7 +41,7 @@ Stack 核心运行流程已从 Retail/Edu 的应用名称和服务拓扑中解�
 
 这是两个销售入口共用 Stack 结算，不是 Chrome 应用商店代收款。平台账号不同不会自动合并授权。免部署商品使用 `deliveryMode=none`，无需 Manifest、Deploy Token 或服务器。
 
-扩展是公开客户端，只使用用户 Bearer Token，不内置 App Secret 或支付密钥。按 App Code 和 feature code 筛选功能。授权缓存最长五分钟；付款后强制刷新，网站购买后可以刷新授权或等待缓存更新。扩展 API 和 host permission 已从旧域名修正到 `https://stack.lingcoo.com`，版本提升为 2.6.1；已安装旧版本仍需更新扩展。
+扩展是公开客户端，只使用用户 Bearer Token，不内置 App Secret 或支付密钥。按 App Code 和 feature code 筛选功能。授权缓存最长五分钟；付款后强制刷新，网站购买后重新打开扩展账号页会强制同步授权，普通功能查询保留缓存。扩展 API 和 host permission 已从旧域名修正到 `https://stack.lingcoo.com`，版本提升为 2.6.1；已安装旧版本仍需更新扩展。
 
 Retail/Edu 当前 `delivery/stack-delivery.py` 均已使用 `runtimeAssets`，不依赖删除的旧上报结构。
 
@@ -69,3 +69,14 @@ Retail/Edu 当前 `delivery/stack-delivery.py` 均已使用 `runtimeAssets`，�
 - 早期责任规划与第二应用实施记录标为历史资料；移除“旧节点默认兼容 Retail”“公网必须 /health/ready”等与现状不符的描述。
 - 新需求若属于应用服务名、初始化、数据位置等差异，放入应用适配包；只有跨应用的新能力才演进通用协议，并增加异构样本验收。
 - 后续优先统一发布校验、版本化接入验收，再按真实需求扩展凭据与多镜像能力，不先宣称未实现能力。
+
+## 本次验证记录
+
+- Stack 运行提交：`b1759e83f6411d26cf188730d61c6da4bcbb2d4e`（主体修改 `fe2a08a`）。
+- [CI 38127640887](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38127640887)：108 项后端单元、131 项数据库集成、72 项浏览器组件、13 项 E2E，全部通过；生产及完整依赖审计均 0 漏洞。
+- 扩展提交：`5fcce27`（含 `324aaff` 域名修复），版本 2.6.1；2 项客户端契约测试通过，账号页脚本语法检查通过。
+- 生产迁移前只读统计：旧系统设置 0、带旧默认配置的应用 1、带旧资源状态的部署 2；无实际付款或生产订单创建。
+- 新版扩展 ZIP 已生成并检查文件完整性，尚未发布 Chrome 应用商店。
+- [Deploy 38128414686](https://github.com/LingcooTech/lingcoo-core-stack/actions/runs/38128414686) 成功；生产 `/ready` 返回 `ready`，版本为上述 `b1759e8` 完整 SHA。
+- 生产迁移后只读统计：旧系统设置 0、旧应用默认配置 0、旧部署资源状态 0；迁移标记 1，加密审计备份 3。未解密或输出生产密钥。
+- 本机用于本轮回归的隔离 PostgreSQL / Redis 已停止；扩展仓库原有未跟踪 `.DS_Store` 未改动。
