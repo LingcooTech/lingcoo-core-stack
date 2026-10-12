@@ -5,6 +5,8 @@ import { mkdtempSync, readFileSync, rmSync, readdirSync, symlinkSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
+import { composeInstallJobSchema, composeExecutionEvidenceSchema } from '@lingcoo/contracts';
 import { validateApplicationDefinition } from '../src/modules/app/definition';
 import {
   composeInstallJob,
@@ -16,6 +18,7 @@ test('generated configuration is private, declared and cannot be overridden; leg
     'docker.io/library/busybox@sha256:' + 'a'.repeat(64),
   );
   assert.match(String(values.PASSWORD), /^[a-f0-9]{64}$/);
+  composeInstallJobSchema.parse(composeInstallJob(plan, values, 25371));
   assert.notEqual(prepareComposeConfiguration(plan, {}).PASSWORD, values.PASSWORD);
   assert.throws(() => prepareComposeConfiguration(plan, { PASSWORD: 'override' }), /overridden/);
   assert.ok(!JSON.stringify(plan).includes(String(values.PASSWORD)));
@@ -143,11 +146,62 @@ test(
       assert.equal(invoke(changed).status, 1);
       assert.equal(read('/data/events'), 'migrate\ninitialize\n');
       assert.deepEqual(readdirSync(join(root, job.instanceId)), ['installation.json']);
+      const transport = {
+        id: randomUUID(),
+        deploymentId: job.instanceId,
+        appCode: 'generic_runtime_fixture',
+        hostname: 'fixture.app.example.test',
+        resources: job.resources,
+        env: {},
+        installation: job,
+      };
+      const config = {
+        composeRunnerSha256: createHash('sha256')
+          .update(readFileSync('scripts/compose-install.py'))
+          .digest('hex'),
+      };
+      const hosted = (task = transport, settings = config) =>
+        spawnSync(
+          'python3',
+          [
+            '-c',
+            'import sys,json; from pathlib import Path; sys.path.insert(0,"scripts"); from hosting_compose import execute,ingress_descriptor; data=json.load(sys.stdin); result=execute(data["job"],data["config"],Path(data["workspace"])); ingress_descriptor(Path(data["workspace"])/data["job"]["deploymentId"],data["job"]["deploymentId"]); print(json.dumps(result))',
+          ],
+          {
+            input: JSON.stringify({ job: task, config: settings, workspace: root }),
+            encoding: 'utf8',
+            timeout: 90000,
+          },
+        );
+      assert.notEqual(hosted(transport, { composeRunnerSha256: '0'.repeat(64) }).status, 0);
+      const routed = hosted();
+      assert.equal(routed.status, 0, routed.stderr);
+      const evidence = composeExecutionEvidenceSchema.parse(
+        JSON.parse(routed.stdout).composeEvidence,
+      );
+      assert.equal(evidence.releaseDigest, job.releaseDigest);
+      assert.equal(hosted().status, 0);
+      assert.notEqual(hosted({ ...transport, id: randomUUID() }).status, 0);
+      assert.ok(
+        !readFileSync(join(root, job.instanceId, 'execution.json'), 'utf8').includes(
+          String(values.PASSWORD),
+        ),
+      );
+      assert.equal(
+        execFileSync('docker', ['inspect', '-f', '{{.State.StartedAt}}', cid], {
+          encoding: 'utf8',
+        }),
+        before,
+      );
     } finally {
       spawnSync('docker', ['compose', '-p', job.project, '-f', '-', 'down', '--volumes'], {
         input: JSON.stringify(job.compose),
         timeout: 60000,
         stdio: ['pipe', 'ignore', 'ignore'],
+      });
+      spawnSync('docker', ['network', 'rm', job.project + '-ingress'], {
+        stdio: 'ignore',
+        timeout: 30000,
       });
       rmSync(root, { recursive: true, force: true });
     }

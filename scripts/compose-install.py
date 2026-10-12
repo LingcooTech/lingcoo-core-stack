@@ -296,7 +296,10 @@ def install_locked(job, workspace, fingerprint, port, docker_config, deadline, c
                 state['completed'].append(key)
                 private_json(journal, state)
         phase('runtime')
-        dc(['up', '-d', '--no-deps', *sorted(compose['services'])])
+        # Runtime services may depend on other application services (for example
+        # an SSR frontend requiring a healthy API). Preserve declared startup
+        # conditions; infrastructure already running with the same config is reused.
+        dc(['up', '-d', *sorted(compose['services'])])
         healthy(sorted(compose['services']))
         phase('entrypoint')
         entry_ready()

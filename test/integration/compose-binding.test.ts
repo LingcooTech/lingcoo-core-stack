@@ -123,3 +123,83 @@ test('installation binding atomically pins a published same-app version and encr
       .where(eq(deploymentComposeBindings.deploymentId, instance.id));
   }
 });
+
+test('per-server port reservations serialize concurrent allocations, retain retired ports and reject server drift', async () => {
+  const { app, user } = await seedPurchase(db);
+  const { definition } = composeRuntimeFixture(
+    'docker.io/library/busybox@sha256:' + 'a'.repeat(64),
+  );
+  definition.app.code = app.code;
+  const [release] = await db
+    .insert(appReleases)
+    .values({
+      appId: app.id,
+      version: 'ports-1',
+      commit: 'b'.repeat(40),
+      definition,
+      definitionDigest: definitionDigest(definition),
+      images: { app: 'docker.io/library/busybox@sha256:' + 'a'.repeat(64) },
+      status: 'published',
+      publishedAt: new Date(),
+    })
+    .returning();
+  assert.ok(release);
+  const host = 'port-test-' + randomUUID();
+  const instances = await db
+    .insert(deployments)
+    .values(
+      Array.from({ length: 4 }, (_, i) => ({
+        appId: app.id,
+        userId: user.id,
+        label: 'Port fixture ' + i,
+        deploymentMode: 'self_hosted' as const,
+        serverHost: i === 3 ? host + '-other' : host,
+      })),
+    )
+    .returning();
+  const service = new ComposeBindingService(db, env);
+  const range = { start: 25380, end: 25381 };
+  try {
+    const jobs = await Promise.all(
+      instances.slice(0, 2).map((item) => service.prepareAllocated(item.id, release.id, {}, range)),
+    );
+    assert.equal(new Set(jobs.map((job) => job.healthUrl)).size, 2);
+    assert.deepEqual(
+      await service.prepareAllocated(instances[0]!.id, release.id, {}, range),
+      jobs[0],
+    );
+    await assert.rejects(() => service.prepareAllocated(instances[2]!.id, release.id, {}, range), {
+      statusCode: 409,
+    });
+    await assert.rejects(() => service.prepare(instances[2]!.id, release.id, {}, 25380), {
+      statusCode: 409,
+    });
+    await db
+      .update(deployments)
+      .set({ status: 'inactive' })
+      .where(eq(deployments.id, instances[0]!.id));
+    await assert.rejects(() => service.prepareAllocated(instances[2]!.id, release.id, {}, range), {
+      statusCode: 409,
+    });
+    await service.prepareAllocated(instances[3]!.id, release.id, {}, range);
+    await assert.rejects(() =>
+      db
+        .update(deployments)
+        .set({ serverHost: host + '-moved' })
+        .where(eq(deployments.id, instances[1]!.id)),
+    );
+    assert.deepEqual(
+      await service.prepareAllocated(instances[1]!.id, release.id, {}, range),
+      jobs[1],
+    );
+    await assert.rejects(
+      () => service.prepareAllocated(instances[2]!.id, release.id, {}, { start: 80, end: 80 }),
+      { statusCode: 422 },
+    );
+  } finally {
+    for (const instance of instances)
+      await db
+        .delete(deploymentComposeBindings)
+        .where(eq(deploymentComposeBindings.deploymentId, instance.id));
+  }
+});

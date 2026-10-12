@@ -4,8 +4,18 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../../src/app';
-import { apps, deployments, hostingNodes, users } from '../../src/db/schema';
+import {
+  apps,
+  deployments,
+  hostingNodes,
+  users,
+  appReleases,
+  deploymentComposeBindings,
+} from '../../src/db/schema';
 import { seedPurchase, testDatabase } from './helpers';
+import { ComposeBindingService } from '../../src/modules/deployment/compose-binding';
+import { composeRuntimeFixture } from '../fixtures/compose-runtime';
+import { definitionDigest } from '../../src/modules/app/definition';
 import { HostingRepository } from '../../src/modules/deployment/hosting';
 
 const { db, pool, env } = testDatabase();
@@ -415,5 +425,118 @@ test('node execution is scoped, replayable, encrypted and never implies public r
     if (id) await db.delete(deployments).where(eq(deployments.id, id));
     await db.delete(hostingNodes).where(eq(hostingNodes.id, node.node.id));
     await db.delete(hostingNodes).where(eq(hostingNodes.id, node2.node.id));
+  }
+});
+
+test('generic hosting requires node capability and matching release evidence, while keeping configuration private', async () => {
+  const f = await fixture();
+  const { definition } = composeRuntimeFixture(
+    'docker.io/library/busybox@sha256:' + 'a'.repeat(64),
+  );
+  definition.app.code = f.app.code;
+  if (definition.delivery.kind !== 'compose') throw Error('fixture');
+  definition.delivery.resources.diskMb = 1024;
+  const [release] = await db
+    .insert(appReleases)
+    .values({
+      appId: f.app.id,
+      version: 'compose-1',
+      commit: 'b'.repeat(40),
+      definition,
+      definitionDigest: definitionDigest(definition),
+      images: { app: 'docker.io/library/busybox@sha256:' + 'a'.repeat(64) },
+      status: 'published',
+      publishedAt: new Date(),
+    })
+    .returning();
+  assert.ok(release);
+  const repository = new HostingRepository(db);
+  const node = await repository.createNode(
+    { name: 'Compose protocol node', serverIp: '192.0.2.205', capacity: resources },
+    new Date(),
+  );
+  let id: string | undefined;
+  try {
+    await repository.setEnabled(node.node.id, true);
+    const report = { dockerReady: true, available: resources, supportedApps: [f.app.code] };
+    await repository.report(node.node.id, node.reportToken, report, new Date());
+    const deployment = await app.services.DeploymentService.createDeployment(f.input);
+    id = deployment.id;
+    if (definition.delivery.kind !== 'compose') throw Error('fixture');
+    await db
+      .update(deployments)
+      .set({ hostingResources: definition.delivery.resources })
+      .where(eq(deployments.id, id));
+    const installation = await new ComposeBindingService(db, env).prepareAllocated(
+      id,
+      release.id,
+      {},
+    );
+    const headers = { authorization: `Bearer ${node.reportToken}` };
+    const url = `/v1/hosting/nodes/${node.node.id}`;
+    const claim = () => app.inject({ method: 'POST', url: url + '/claim', headers, payload: {} });
+    assert.equal((await claim()).json().job, null);
+    await repository.report(
+      node.node.id,
+      node.reportToken,
+      { ...report, supportedProtocols: ['compose_install_v1'] },
+      new Date(),
+    );
+    const response = await claim();
+    assert.equal(response.statusCode, 200, response.body);
+    const job = response.json().job;
+    assert.deepEqual(job.installation, installation);
+    assert.deepEqual((await claim()).json().job, job);
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/v1/deployments/me',
+      headers: f.headers,
+    });
+    const secret = (
+      installation.compose.services as Record<string, { environment: Record<string, string> }>
+    ).web!.environment.PASSWORD!;
+    assert(!listed.body.includes(secret));
+    const complete = (extra: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: url + '/complete',
+        headers,
+        payload: { deploymentId: id, jobId: job.id, success: true, ...extra },
+      });
+    assert.equal(
+      (await complete({ image: 'docker.io/library/busybox@sha256:' + 'a'.repeat(64) })).statusCode,
+      409,
+    );
+    const evidence = {
+      protocol: 'compose_install_v1',
+      instanceId: id,
+      releaseId: release.id,
+      releaseDigest: installation.releaseDigest,
+      phase: 'runtime_ready',
+      runnerVersion: '1',
+      imageSource: 'registry',
+      completed: ['migrate:0', 'initialize:0'],
+    };
+    assert.equal(
+      (await complete({ composeEvidence: { ...evidence, releaseId: randomUUID() } })).statusCode,
+      409,
+    );
+    assert.equal(
+      (await complete({ composeEvidence: { ...evidence, completed: [] } })).statusCode,
+      409,
+    );
+    const done = await complete({ composeEvidence: evidence });
+    assert.equal(done.statusCode, 200, done.body);
+    const view = (await app.services.DeploymentService.listUserDeployments(f.user.id)).items[0]!;
+    assert.equal(view.managed?.state, 'runtime_ready');
+    assert.equal(view.managed?.accessUrl, null);
+  } finally {
+    if (id) {
+      await db
+        .delete(deploymentComposeBindings)
+        .where(eq(deploymentComposeBindings.deploymentId, id));
+      await db.delete(deployments).where(eq(deployments.id, id));
+    }
+    await db.delete(hostingNodes).where(eq(hostingNodes.id, node.node.id));
   }
 });

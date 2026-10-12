@@ -88,6 +88,14 @@ def collect(data_path, config=None):
             continue
     containers = inventory() if ready else []
     supported = []
+    protocols = []
+    if ready and not config.get('monitorOnly', True) and config.get('composeRunnerSha256'):
+        try:
+            from hosting_compose import kernel
+            kernel(config)
+            protocols.append('compose_install_v1')
+        except (ValueError, OSError, ImportError):
+            pass
     if not config.get('monitorOnly', True):
         for code in sorted(config.get('adapters', {})):
             try:
@@ -97,7 +105,7 @@ def collect(data_path, config=None):
                 continue
     upgrades=catalog(config) if ready else []
     images=runtime_images(config,workspace) if ready and not config.get('monitorOnly',True) else []
-    return {'upgradeReleases':upgrades, 'runtimeImages':images, 'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': (['retire','export','reclaim','upgrade'] if config.get('ageBinary') and config.get('ageKeygenBinary') else ['retire','upgrade']) if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
+    return {'supportedProtocols':protocols, 'upgradeReleases':upgrades, 'runtimeImages':images, 'dockerReady': ready, 'canDeploy': not config.get('monitorOnly', True), 'supportedApps': supported, 'supportedOperations': (['retire','export','reclaim','upgrade'] if config.get('ageBinary') and config.get('ageKeygenBinary') else ['retire','upgrade']) if config.get('snapshotImage') and config.get('offsite') and not config.get('monitorOnly', True) else [],
         'totals': {'cpuMillis': (os.cpu_count() or 1)*1000, 'memoryMb':mem['MemTotal']//1024, 'diskMb':total_disk//1048576},
         'certificateAutomation':automation, 'load1':os.getloadavg()[0], 'containers':containers, 'certificate':certificate, 'backups':backups,
         'available': {

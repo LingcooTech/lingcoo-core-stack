@@ -100,9 +100,14 @@ export const deploymentComposeBindings = pgTable(
     plan: jsonb('plan').notNull(),
     configuration: jsonb('configuration').notNull(),
     loopbackPort: integer('loopback_port').notNull(),
+    serverHost: varchar('server_host', { length: 255 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
+    serverPort: uniqueIndex('deployment_compose_bindings_server_port_key').on(
+      t.serverHost,
+      t.loopbackPort,
+    ),
     portCheck: check(
       'deployment_compose_bindings_port_check',
       sql`${t.loopbackPort} between 1024 and 65535`,

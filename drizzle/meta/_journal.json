@@ -379,6 +379,13 @@
       "when": 1791781620195,
       "tag": "0053_naive_quicksilver",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791789742931,
+      "tag": "0054_red_scarecrow",
+      "breakpoints": true
     }
   ]
 }

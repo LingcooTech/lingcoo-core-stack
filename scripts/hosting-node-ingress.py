@@ -44,7 +44,11 @@ def publish(config, workspace, item):
     journal = json.loads((workspace / deployment_id / 'execution.json').read_text())
     if journal['phase'] != 'runtime_ready':
         raise ValueError('Instance is not locally ready')
-    descriptor, project = instance_adapter(config, workspace / deployment_id, verify=True)
+    if journal.get('protocol') == 'compose_install_v1':
+        from hosting_compose import ingress_descriptor
+        descriptor, project = ingress_descriptor(workspace / deployment_id, deployment_id)
+    else:
+        descriptor, project = instance_adapter(config, workspace / deployment_id, verify=True)
     path = Path(config['gatewayConfigPath'])
     gateway = config['gatewayContainer']
     if not path.is_absolute() or not re.fullmatch(r'[a-zA-Z0-9_-]+', gateway):

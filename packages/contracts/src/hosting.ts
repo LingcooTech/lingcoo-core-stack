@@ -7,6 +7,7 @@ import { reclamationEvidenceSchema } from './hosting-handover.js';
 import { hostingMonitorProfileSchema } from './hosting-monitor.js';
 import { z } from 'zod';
 import { hostingExitEvidenceSchema } from './hosting-exit.js';
+import { composeInstallJobSchema, composeExecutionEvidenceSchema } from './compose-plan.js';
 
 export const deploymentModeSchema = z.enum(['self_hosted', 'managed']);
 export const serverIpSchema = z.union([z.ipv4(), z.ipv6()]);
@@ -105,6 +106,7 @@ export const hostingNodeReportSchema = z
   .object({
     dockerReady: z.boolean(),
     canDeploy: z.boolean().optional(),
+    supportedProtocols: z.array(z.literal('compose_install_v1')).max(1).optional(),
     supportedOperations: z.array(z.enum(['retire', 'export', 'reclaim', 'upgrade'])).optional(),
     supportedApps: z
       .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
@@ -201,6 +203,7 @@ export const HostingJobSchema = z.object({
   hostname: z.string(),
   resources: hostingResourcesSchema,
   env: z.record(z.string(), z.string()),
+  installation: composeInstallJobSchema.optional(),
 });
 export type HostingJob = z.infer<typeof HostingJobSchema>;
 export const HostingClaimSchema = z.object({ job: HostingJobSchema.nullable() });
@@ -210,6 +213,7 @@ export const hostingCompletionSchema = z
     jobId: z.uuid(),
     success: z.boolean(),
     image: z.string().max(512).optional(),
+    composeEvidence: composeExecutionEvidenceSchema.optional(),
   })
   .strict();
 

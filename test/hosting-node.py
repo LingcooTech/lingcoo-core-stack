@@ -112,3 +112,20 @@ assert resolve_adapter({'adapters':{'static':static}},'static')['ingressPort']==
 for field,value in [('files',['../outside','docker-compose.prod.yml']),('ingressService','api'),('protocolVersion',1),('volumes',['../../other'])]:
     try:resolve_adapter({'adapters':{'static':{**static,field:value}}},'static');raise AssertionError('Invalid descriptor accepted')
     except ValueError:pass
+
+# One incompatible instance must not prevent other customers' backups.
+spec=importlib.util.spec_from_file_location('backup',root/'hosting-node-backup.py');backup=importlib.util.module_from_spec(spec);spec.loader.exec_module(backup)
+with tempfile.TemporaryDirectory() as tmp:
+    workspace=Path(tmp)
+    broken=workspace/'unsupported';healthy=workspace/'healthy'
+    for directory in (broken,healthy):
+        directory.mkdir();(directory/'execution.json').write_text(json.dumps({'phase':'runtime_ready'}))
+    settings=workspace/'node.json';settings.write_text(json.dumps({'workspace':tmp}));settings.chmod(0o600)
+    def resolve(config,directory):
+        if directory==broken:raise ValueError('Unsupported protocol')
+        return {'appServices':['api']},'fixture-project'
+    with patch.object(sys,'argv',['backup',str(settings)]),patch.object(backup,'instance_adapter',side_effect=resolve),patch.object(backup.subprocess,'check_output',return_value=b'container'),patch.object(backup,'backup_one') as run_backup:
+        try:backup.main();raise AssertionError('Backup failure must remain visible')
+        except RuntimeError:pass
+        run_backup.assert_called_once_with({'workspace':tmp},healthy)
+print('Backup failures are isolated per instance')

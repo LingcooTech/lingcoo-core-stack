@@ -41,6 +41,39 @@ export const composePlanSchema = z.object({
   lifecycle: delivery.shape.lifecycle,
   volumes: z.array(z.string()),
 });
+/** Private authenticated execution payload; never include in customer list projections. */
+export const composeInstallJobSchema = composePlanSchema
+  .pick({
+    instanceId: true,
+    releaseId: true,
+    releaseDigest: true,
+    mode: true,
+    resources: true,
+    services: true,
+    volumes: true,
+    entrypoint: true,
+    project: true,
+    lifecycle: true,
+    compose: true,
+  })
+  .extend({
+    protocol: z.literal('compose_install_v1'),
+    healthUrl: z.string().url(),
+  })
+  .strict();
+
+export const composeExecutionEvidenceSchema = z
+  .object({
+    protocol: z.literal('compose_install_v1'),
+    instanceId: z.uuid(),
+    releaseId: z.uuid(),
+    releaseDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+    phase: z.literal('runtime_ready'),
+    runnerVersion: z.literal('1'),
+    imageSource: z.enum(['cache', 'registry']),
+    completed: z.array(z.string().regex(/^(migrate|initialize):\d+$/)).max(128),
+  })
+  .strict();
 export const composePlanResponseContracts = [
   {
     method: 'POST',

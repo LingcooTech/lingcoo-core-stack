@@ -33,6 +33,10 @@ def private_json(path, value):
 
 
 def validate_job(job, config=None):
+    if 'installation' in job:
+        from hosting_compose import validate
+        validate(job, config or {})
+        return
     descriptor = resolve_adapter(config or {}, job['appCode'])
     for key in ('id', 'deploymentId'):
         uuid.UUID(job[key])
@@ -64,6 +68,9 @@ def render_limits(resources, weights):
 
 
 def execute(job, config, workspace):
+    if 'installation' in job:
+        from hosting_compose import execute as execute_compose
+        return execute_compose(job, config, workspace)
     validate_job(job, config)
     descriptor = resolve_adapter(config, job['appCode'], verify=True)
     bundle = Path(descriptor['bundle']).resolve()
@@ -261,7 +268,7 @@ def main():
         except Exception:
             # Stop only this task's owned project, retaining all data and capacity.
             journal = workspace / job['deploymentId'] / 'execution.json'
-            if journal.is_file() and json.loads(journal.read_text()).get('jobId') == job['id']:
+            if 'installation' not in job and journal.is_file() and json.loads(journal.read_text()).get('jobId') == job['id']:
                 _, project = instance_adapter(config, journal.parent)
                 ids = subprocess.check_output(['docker', 'ps', '-q', '--filter', 'label=com.docker.compose.project=' + project]).decode().split()
                 if ids:

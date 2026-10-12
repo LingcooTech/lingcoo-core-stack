@@ -5,6 +5,8 @@ import { HostingExecutionService } from './hosting-execution';
 import { hostedPrefixSchema, hostingProfileSchema, serverIpSchema } from '@lingcoo/contracts';
 import { HostingRepository } from './hosting';
 import { DeploymentActionUseCases } from './action-use-cases';
+import { eq } from 'drizzle-orm';
+import { deploymentComposeBindings } from '../../db/schema';
 
 import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
 
@@ -306,6 +308,27 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       ...currentDomainValues,
       ...requestedDomainValues,
     };
+
+    const [composeBinding] = await this.db
+      .select({ id: deploymentComposeBindings.deploymentId })
+      .from(deploymentComposeBindings)
+      .where(eq(deploymentComposeBindings.deploymentId, deployment.id));
+    if (composeBinding) {
+      const changed = (left: Record<string, unknown>, right: Record<string, unknown>) =>
+        Object.keys(left).length !== Object.keys(right).length ||
+        Object.keys(left).some((key) => left[key] !== right[key]);
+      if (
+        (input.serverHost !== undefined && input.serverHost.trim() !== deployment.serverHost) ||
+        (input.installPath !== undefined && input.installPath.trim() !== deployment.installPath) ||
+        changed(currentValues, nextValues) ||
+        changed(currentSecrets, nextSecrets) ||
+        changed(currentDomainValues, nextDomainValues)
+      )
+        throw httpError(
+          409,
+          '已固定安装配置；更换服务器或运行配置需要显式迁移，域名别名请使用域名管理',
+        );
+    }
 
     this.validateDeploymentInputs({
       manifest,

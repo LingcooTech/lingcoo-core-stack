@@ -87,9 +87,10 @@ def main():
         failures=0
         for journal in workspace.glob('*/execution.json'):
             if json.loads(journal.read_text()).get('phase')!='runtime_ready':continue
-            descriptor, project = instance_adapter(config, journal.parent)
-            if not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project,'--filter','label=com.docker.compose.service='+descriptor['appServices'][0]]).strip():continue
-            try:backup_one(config,journal.parent)
+            try:
+                descriptor, project = instance_adapter(config, journal.parent)
+                if not subprocess.check_output(['docker','ps','-q','--filter','label=com.docker.compose.project='+project,'--filter','label=com.docker.compose.service='+descriptor['appServices'][0]]).strip():continue
+                backup_one(config,journal.parent)
             except Exception:failures+=1
         if failures:raise RuntimeError('One or more managed backups failed')
 

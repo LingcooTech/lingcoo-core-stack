@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { HostingJobSchema, hostingResourcesSchema } from '@lingcoo/contracts';
+import {
+  HostingJobSchema,
+  hostingResourcesSchema,
+  hostingNodeReportSchema,
+  type hostingCompletionSchema,
+} from '@lingcoo/contracts';
+import type { z } from 'zod';
+import { ComposeBindingService } from './compose-binding';
 import { DeploymentConfigurationUseCases } from './configuration';
 import { HostingRepository, evaluateHostingNode } from './hosting';
 import { DeploymentRepository } from './repository';
@@ -19,6 +26,14 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
       if (!row) return { job: null };
       const { entitlement } = await service.loadDeploymentEntitlement(row);
       const meta = service.normalizeMeta(row.meta);
+      const installation = await new ComposeBindingService(tx, this.env).readJob(row.id);
+      if (
+        installation &&
+        !hostingNodeReportSchema
+          .safeParse(node.report)
+          .data?.supportedProtocols?.includes('compose_install_v1')
+      )
+        return { job: null };
       if (row.hostingState === 'deploying') {
         const execution = service.normalizeMeta(meta.hostingExecution);
         return {
@@ -28,6 +43,13 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
         };
       }
       const resources = hostingResourcesSchema.parse(row.hostingResources);
+      if (
+        installation &&
+        (Object.keys(resources) as (keyof typeof resources)[]).some(
+          (key) => resources[key] !== installation.resources[key],
+        )
+      )
+        throw httpError(409, '固定交付版本与预留资源不一致');
       // Re-check immediately before starting; reports must still have enough actual headroom.
       if (
         evaluateHostingNode(
@@ -59,6 +81,7 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
         hostname: row.hostedDomain,
         resources,
         env: bootstrap.envDefaults,
+        ...(installation ? { installation } : {}),
       });
       const repository = new DeploymentRepository(tx);
       const refreshed = await repository.findDeploymentById(row.id);
@@ -77,14 +100,9 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
     });
   }
 
-  async complete(input: {
-    nodeId: string;
-    token: string;
-    deploymentId: string;
-    jobId: string;
-    success: boolean;
-    image?: string;
-  }) {
+  async complete(
+    input: z.infer<typeof hostingCompletionSchema> & { nodeId: string; token: string },
+  ) {
     return this.db.transaction(async (tx) => {
       const service = new HostingExecutionService(this.capabilities, tx, this.env);
       const hosting = new HostingRepository(tx);
@@ -105,7 +123,25 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
       const job = HostingJobSchema.parse(
         decryptJson(execution.payload, service.getEncryptionSecret()),
       );
-      if (
+      if (input.success && job.installation) {
+        const evidence = input.composeEvidence;
+        const expectedSteps = ['migrate', 'initialize'].flatMap((operation) =>
+          job.installation!.lifecycle[operation as 'migrate' | 'initialize'].map(
+            (_, i) => `${operation}:${i}`,
+          ),
+        );
+        if (
+          !evidence ||
+          evidence.instanceId !== row.id ||
+          evidence.releaseId !== job.installation.releaseId ||
+          evidence.releaseDigest !== job.installation.releaseDigest ||
+          evidence.phase !== 'runtime_ready' ||
+          evidence.runnerVersion !== '1' ||
+          evidence.protocol !== 'compose_install_v1' ||
+          JSON.stringify(evidence.completed) !== JSON.stringify(expectedSteps)
+        )
+          throw httpError(409, '运行验收与固定交付版本不一致');
+      } else if (
         input.success &&
         (!job.env.APP_IMAGE || !input.image || input.image !== job.env.APP_IMAGE)
       )
@@ -115,7 +151,13 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
         hostingState: target,
         meta: {
           ...meta,
-          hostingExecution: { ...execution, completedAt: this.capabilities.now().toISOString() },
+          hostingExecution: {
+            ...execution,
+            completedAt: this.capabilities.now().toISOString(),
+            ...(input.success && job.installation
+              ? { composeEvidence: input.composeEvidence }
+              : {}),
+          },
         },
       });
       return { ok: true };

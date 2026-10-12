@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
-import { composePlanSchema } from '@lingcoo/contracts';
+import { and, eq, ne } from 'drizzle-orm';
+import { composePlanSchema, composeInstallJobSchema } from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { deploymentComposeBindings, deployments } from '../../db/schema';
@@ -42,7 +42,7 @@ export function composeInstallJob(
     !plan.lifecycle.infrastructure
   )
     throw httpError(422, 'Initialization requires an explicit infrastructure service list');
-  return {
+  return composeInstallJobSchema.parse({
     protocol: 'compose_install_v1' as const,
     instanceId: plan.instanceId,
     releaseId: plan.releaseId,
@@ -53,7 +53,7 @@ export function composeInstallJob(
     volumes: plan.volumes,
     entrypoint: plan.entrypoint,
     ...materializeComposePlan(plan, configuration, port),
-  };
+  });
 }
 
 /** Transactional preparation only. Scheduling, entitlement checks and ingress are outer gates. */
@@ -63,14 +63,40 @@ export class ComposeBindingService {
     private readonly env: AppEnv,
   ) {}
 
-  async prepare(
+  /** Only authenticated deployment execution callers may consume this secret payload. */
+  async readJob(deploymentId: string) {
+    const [binding] = await this.db
+      .select()
+      .from(deploymentComposeBindings)
+      .where(eq(deploymentComposeBindings.deploymentId, deploymentId));
+    if (!binding) return null;
+    const saved = decryptJson<{ input: ComposeConfiguration }>(
+      binding.configuration,
+      getEncryptionKeys(this.env),
+    );
+    return this.prepare(deploymentId, binding.releaseId, saved.input, binding.loopbackPort);
+  }
+
+  /** Reserve per-server ports under the same lock used by explicit preparation.
+   * Retired instances retain reservations until their binding is reclaimed.
+   * The runner still checks the actual socket: unrelated host processes are not
+   * represented in the platform database and must never be evicted.
+   */
+  async prepareAllocated(
     deploymentId: string,
     releaseId: string,
     input: ComposeConfiguration,
-    port: number,
+    range = { start: 24000, end: 29999 },
   ) {
+    if (
+      !Number.isInteger(range.start) ||
+      !Number.isInteger(range.end) ||
+      range.start < 1024 ||
+      range.end > 65535 ||
+      range.start > range.end
+    )
+      throw httpError(422, 'Invalid installation port range');
     return this.db.transaction(async (tx) => {
-      await acquireTransactionLock(tx, 'deployment:compose:' + deploymentId);
       const [instance] = await tx
         .select()
         .from(deployments)
@@ -78,6 +104,61 @@ export class ComposeBindingService {
         .for('update');
       if (!instance || instance.status !== 'active')
         throw httpError(404, 'Active deployment not found');
+      if (
+        !instance.serverHost ||
+        (instance.deploymentMode === 'managed' && !instance.hostingNodeId)
+      )
+        throw httpError(409, 'Allocate a server before preparing installation');
+      await acquireTransactionLock(tx, 'deployment:compose:server:' + instance.serverHost);
+      const [existing] = await tx
+        .select()
+        .from(deploymentComposeBindings)
+        .where(eq(deploymentComposeBindings.deploymentId, deploymentId));
+      const occupied = await tx
+        .select({ port: deploymentComposeBindings.loopbackPort })
+        .from(deploymentComposeBindings)
+        .where(eq(deploymentComposeBindings.serverHost, instance.serverHost));
+      const used = new Set(occupied.map((row) => row.port));
+      let port = existing?.loopbackPort ?? range.start;
+      if (!existing) {
+        while (port <= range.end && used.has(port)) port++;
+        if (port > range.end) throw httpError(409, 'Installation port capacity exhausted');
+      }
+      return new ComposeBindingService(tx, this.env).prepare(deploymentId, releaseId, input, port);
+    });
+  }
+
+  async prepare(
+    deploymentId: string,
+    releaseId: string,
+    input: ComposeConfiguration,
+    port: number,
+  ) {
+    return this.db.transaction(async (tx) => {
+      const [instance] = await tx
+        .select()
+        .from(deployments)
+        .where(eq(deployments.id, deploymentId))
+        .for('update');
+      if (!instance || instance.status !== 'active')
+        throw httpError(404, 'Active deployment not found');
+      if (!Number.isInteger(port) || port < 1024 || port > 65535)
+        throw httpError(422, 'Invalid installation port');
+      if (instance.serverHost) {
+        await acquireTransactionLock(tx, 'deployment:compose:server:' + instance.serverHost);
+        const occupied = await tx
+          .select({ id: deploymentComposeBindings.deploymentId })
+          .from(deploymentComposeBindings)
+          .where(
+            and(
+              eq(deploymentComposeBindings.serverHost, instance.serverHost),
+              eq(deploymentComposeBindings.loopbackPort, port),
+              ne(deploymentComposeBindings.deploymentId, deploymentId),
+            ),
+          )
+          .limit(1);
+        if (occupied.length) throw httpError(409, 'Installation port already reserved');
+      }
       const [existing] = await tx
         .select()
         .from(deploymentComposeBindings)
@@ -89,10 +170,17 @@ export class ComposeBindingService {
             409,
             'Installation binding is immutable; use an explicit upgrade or migration',
           );
-        const saved = decryptJson<{ input: ComposeConfiguration; values: ComposeConfiguration }>(
-          existing.configuration,
-          keys,
-        );
+        const saved = decryptJson<{
+          input: ComposeConfiguration;
+          values: ComposeConfiguration;
+          serverHost?: string | null;
+          hostingNodeId?: string | null;
+        }>(existing.configuration, keys);
+        if (
+          (Object.hasOwn(saved, 'serverHost') && saved.serverHost !== instance.serverHost) ||
+          (Object.hasOwn(saved, 'hostingNodeId') && saved.hostingNodeId !== instance.hostingNodeId)
+        )
+          throw httpError(409, 'Installation server changed; use an explicit migration');
         if (
           Object.keys(input).length !== Object.keys(saved.input).length ||
           Object.keys(input).some((key) => input[key] !== saved.input[key])
@@ -123,7 +211,11 @@ export class ComposeBindingService {
         releaseId,
         plan,
         loopbackPort: port,
-        configuration: encryptJson({ input, values }, keys),
+        serverHost: instance.serverHost,
+        configuration: encryptJson(
+          { input, values, serverHost: instance.serverHost, hostingNodeId: instance.hostingNodeId },
+          keys,
+        ),
       });
       return job;
     });
