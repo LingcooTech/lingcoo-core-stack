@@ -32,6 +32,7 @@ COPY docs ./docs
 COPY templates ./templates
 COPY examples ./examples
 COPY specs ./specs
+COPY skills ./skills
 COPY scripts ./scripts
 RUN npm run build:packages && npm run build:admin
 
