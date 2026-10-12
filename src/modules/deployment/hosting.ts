@@ -8,7 +8,7 @@ import {
   hostingResourcesSchema,
   type HostingResources,
 } from '@lingcoo/contracts';
-import { apps, deployments, hostingNodes } from '../../db/schema';
+import { apps, deployments, hostingNodes, deploymentComposeRequests } from '../../db/schema';
 import type { DbExecutor } from '../../db/types';
 import { acquireTransactionLock } from '../../db/locks';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -227,10 +227,19 @@ export class HostingRepository {
       .from(apps)
       .where(eq(apps.id, deployment.appId));
     if (!application) return;
+    const [composeRequest] = await this.db
+      .select({ id: deploymentComposeRequests.deploymentId })
+      .from(deploymentComposeRequests)
+      .where(eq(deploymentComposeRequests.deploymentId, deployment.id));
     const candidate = nodes
       .filter((node) => {
         const report = hostingNodeReportSchema.safeParse(node.report);
-        return report.success && (report.data.supportedApps ?? []).includes(application.code);
+        return (
+          report.success &&
+          (composeRequest
+            ? (report.data.supportedProtocols ?? []).includes('compose_install_v1')
+            : (report.data.supportedApps ?? []).includes(application.code))
+        );
       })
       .map((node) => ({
         node,

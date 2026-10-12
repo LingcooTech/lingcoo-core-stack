@@ -10,6 +10,16 @@ import type { DbExecutor } from '../../db/types';
 
 export class AppLifecycleRepository {
   constructor(private readonly db: DbExecutor) {}
+  async currentPublishedRelease(appId: string) {
+    return (
+      await this.db
+        .select()
+        .from(appReleases)
+        .where(and(eq(appReleases.appId, appId), eq(appReleases.status, 'published')))
+        .orderBy(desc(appReleases.publishedAt), desc(appReleases.createdAt))
+        .limit(1)
+    )[0];
+  }
   tokens(appId: string) {
     return this.db
       .select()

@@ -7,6 +7,7 @@ import { applicationReleaseSchema } from '@lingcoo/contracts';
 import { httpError } from '../../lib/errors';
 export { rotateApplicationConnectionKeys } from './key-rotation';
 export { compileComposePlan, materializeComposePlan, type ComposePlan } from './compose-plan';
+export { composeManifest } from './delivery-view';
 
 /** Deployment owns the instance; app owns and validates the immutable release snapshot. */
 export async function readPublishedComposeRelease(

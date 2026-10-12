@@ -7,6 +7,8 @@ import {
 } from '@lingcoo/contracts';
 import type { z } from 'zod';
 import { ComposeBindingService } from './compose-binding';
+import { eq } from 'drizzle-orm';
+import { deploymentComposeRequests } from '../../db/schema';
 import { DeploymentConfigurationUseCases } from './configuration';
 import { HostingRepository, evaluateHostingNode } from './hosting';
 import { DeploymentRepository } from './repository';
@@ -26,9 +28,14 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
       if (!row) return { job: null };
       const { entitlement } = await service.loadDeploymentEntitlement(row);
       const meta = service.normalizeMeta(row.meta);
-      const installation = await new ComposeBindingService(tx, this.env).readJob(row.id);
+      const bindings = new ComposeBindingService(tx, this.env);
+      let installation = await bindings.readJob(row.id);
+      const [requested] = await tx
+        .select({ id: deploymentComposeRequests.deploymentId })
+        .from(deploymentComposeRequests)
+        .where(eq(deploymentComposeRequests.deploymentId, row.id));
       if (
-        installation &&
+        (installation || requested) &&
         !hostingNodeReportSchema
           .safeParse(node.report)
           .data?.supportedProtocols?.includes('compose_install_v1')
@@ -46,7 +53,7 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
       if (
         installation &&
         (Object.keys(resources) as (keyof typeof resources)[]).some(
-          (key) => resources[key] !== installation.resources[key],
+          (key) => resources[key] < installation!.resources[key],
         )
       )
         throw httpError(409, '固定交付版本与预留资源不一致');
@@ -61,7 +68,9 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
       )
         return { job: null };
       const [view] = await service.hydrateDeployments([row]);
-      const app = await this.capabilities.createAppService(tx).getPublicApp(view?.app?.code ?? '');
+      const app = await this.capabilities
+        .createAppService(tx, this.env)
+        .getPublicApp(view?.app?.code ?? '');
       await service.ensureDeploymentReadyForTokenIssue({ app, deployment: row });
       const policy = service.readEntitlementDeploymentPolicy(entitlement);
       const bound = await service.bindDeploymentDomainOnExchange({
@@ -69,6 +78,14 @@ export class HostingExecutionService extends DeploymentConfigurationUseCases {
         entitlementId: entitlement.id,
         policy,
       });
+      installation ??= await bindings.preparePinned(row.id);
+      if (
+        installation &&
+        (Object.keys(resources) as (keyof typeof resources)[]).some(
+          (key) => resources[key] < installation!.resources[key],
+        )
+      )
+        throw httpError(409, '固定交付版本与预留资源不一致');
       const bootstrap = await service.buildBootstrapPayload({
         app,
         deployment: bound,

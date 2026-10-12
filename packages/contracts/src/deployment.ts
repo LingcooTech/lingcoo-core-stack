@@ -3,6 +3,7 @@ import { deploymentModeSchema, hostedPrefixSchema, serverIpSchema } from './host
 
 export const createDeploymentSchema = z
   .object({
+    releaseId: z.uuid().optional(),
     appCode: z.string().trim().min(1).max(64),
     entitlementId: z.string().uuid(),
     hostingPurchaseId: z.uuid().optional(),

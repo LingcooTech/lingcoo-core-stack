@@ -5,8 +5,12 @@ import { HostingExecutionService } from './hosting-execution';
 import { hostedPrefixSchema, hostingProfileSchema, serverIpSchema } from '@lingcoo/contracts';
 import { HostingRepository } from './hosting';
 import { DeploymentActionUseCases } from './action-use-cases';
+import { randomUUID } from 'node:crypto';
+import { ComposeBindingService } from './compose-binding';
+import { composeManifest } from '../app/public';
+import { compileComposePlan, readPublishedComposeRelease } from '../app/public';
 import { eq } from 'drizzle-orm';
-import { deploymentComposeBindings } from '../../db/schema';
+import { deploymentComposeBindings, deploymentComposeRequests } from '../../db/schema';
 
 import { type DeliverySettingSecrets, type DeliverySettingValues } from './public';
 
@@ -55,6 +59,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     commandId?: string;
     userId: string;
     appCode: string;
+    releaseId?: string;
     entitlementId: string;
     hostingPurchaseId?: string;
     allowUnpaidHosting?: boolean;
@@ -93,6 +98,36 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       );
     }
 
+    const currentRelease = this.normalizeMeta(selection.app.meta).deliveryReleaseId;
+    const selectedReleaseId =
+      input.releaseId ?? (typeof currentRelease === 'string' ? currentRelease : undefined);
+    const releasePlan = selectedReleaseId
+      ? compileComposePlan(
+          await readPublishedComposeRelease(this.db, selection.app.id, selectedReleaseId),
+          { instanceId: randomUUID(), mode: input.deploymentMode ?? 'self_hosted' },
+        )
+      : null;
+    if (releasePlan) {
+      if ((input.deploymentMode ?? 'self_hosted') === 'self_hosted')
+        throw httpError(422, '通用自部署入口尚未启用');
+      const manifest = composeManifest(releasePlan, this.env.PUBLIC_BASE_URL);
+      selection.app = {
+        ...selection.app,
+        meta: {
+          ...this.normalizeMeta(selection.app.meta),
+          deliveryManifest: manifest,
+          hostingProfile: {
+            enabled: true,
+            domainField: manifest.domainSlots[0]!.sourceField,
+            resources: {
+              cpuMillis: releasePlan.resources.cpuMillis,
+              memoryMb: releasePlan.resources.memoryMb,
+              diskMb: Math.max(1024, releasePlan.resources.diskMb),
+            },
+          },
+        },
+      };
+    }
     const manifest = this.readManifest(selection.app);
     if (
       !manifest?.installer.remoteInstallScriptUrl ||
@@ -165,6 +200,17 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     }
 
     const deploymentMeta: Record<string, unknown> = {
+      ...(releasePlan
+        ? {
+            deliveryProtocol: 'compose_install_v1',
+            deliveryRelease: {
+              id: releasePlan.releaseId,
+              version: releasePlan.version,
+              commit: releasePlan.commit,
+              digest: releasePlan.releaseDigest,
+            },
+          }
+        : {}),
       commandId: input.commandId,
       appCode: selection.app.code,
       planCode: plan.code,
@@ -205,6 +251,23 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       meta: deploymentMeta,
     });
 
+    if (releasePlan) {
+      const bootstrap = await this.buildBootstrapPayload({
+        app: selection.app,
+        deployment,
+        entitlement,
+      });
+      const keys = new Set(
+        [...releasePlan.fields.env, ...releasePlan.fields.secrets]
+          .map((field) => field.key)
+          .concat(releasePlan.fields.domains.map((field) => field.envKey)),
+      );
+      await new ComposeBindingService(this.db, this.env).pin(
+        deployment.id,
+        releasePlan.releaseId,
+        Object.fromEntries(Object.entries(bootstrap.envDefaults).filter(([key]) => keys.has(key))),
+      );
+    }
     if (input.hostingPurchaseId) {
       const purchase = await new HostingPurchases(this.db).bind(
         input.hostingPurchaseId,
@@ -283,9 +346,11 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       throw httpError(404, 'App not found');
     }
 
-    const app = await this.capabilities.createAppService(this.db).getPublicApp(appRow.code);
+    const app = await this.capabilities
+      .createAppService(this.db, this.env)
+      .getPublicApp(appRow.code);
     const { entitlement } = await this.loadDeploymentEntitlement(deployment);
-    const manifest = this.readManifest(app);
+    const manifest = await this.readDeploymentManifest(app, deployment.id);
     await assertNoPendingSoftwareRefund(this.db, entitlement);
     const policy = this.readEntitlementDeploymentPolicy(entitlement);
     const binding = this.readEntitlementBinding(entitlement);
@@ -313,7 +378,11 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
       .select({ id: deploymentComposeBindings.deploymentId })
       .from(deploymentComposeBindings)
       .where(eq(deploymentComposeBindings.deploymentId, deployment.id));
-    if (composeBinding) {
+    const [composeRequest] = await this.db
+      .select({ id: deploymentComposeRequests.deploymentId })
+      .from(deploymentComposeRequests)
+      .where(eq(deploymentComposeRequests.deploymentId, deployment.id));
+    if (composeBinding || composeRequest) {
       const changed = (left: Record<string, unknown>, right: Record<string, unknown>) =>
         Object.keys(left).length !== Object.keys(right).length ||
         Object.keys(left).some((key) => left[key] !== right[key]);
@@ -427,7 +496,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     }
 
     const app = await this.capabilities
-      .createAppService(this.db)
+      .createAppService(this.db, this.env)
       .getPublicApp((await createAppAccess(this.db).findAppById(deployment.appId))?.code ?? '');
     await this.ensureDeploymentReadyForTokenIssue({
       app,
@@ -510,7 +579,7 @@ export class DeploymentService extends DeploymentConfigurationUseCases {
     const [hydrated] = await this.hydrateDeployments([deployment]);
     if (!hydrated) throw new Error('Missing deployment projection');
     const app = await this.capabilities
-      .createAppService(this.db)
+      .createAppService(this.db, this.env)
       .getPublicApp(hydrated.app?.code ?? '');
     const { entitlement } = await this.loadDeploymentEntitlement(deployment);
     await assertNoPendingSoftwareRefund(this.db, entitlement);

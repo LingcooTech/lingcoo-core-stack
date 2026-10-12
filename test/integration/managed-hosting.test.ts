@@ -3,6 +3,7 @@ import { after, before, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { eq } from 'drizzle-orm';
+import { composeInstallJobSchema } from '@lingcoo/contracts';
 import { buildApp } from '../../src/app';
 import {
   apps,
@@ -11,6 +12,7 @@ import {
   users,
   appReleases,
   deploymentComposeBindings,
+  deploymentComposeRequests,
 } from '../../src/db/schema';
 import { seedPurchase, testDatabase } from './helpers';
 import { ComposeBindingService } from '../../src/modules/deployment/compose-binding';
@@ -450,6 +452,12 @@ test('generic hosting requires node capability and matching release evidence, wh
     })
     .returning();
   assert.ok(release);
+  await db
+    .update(apps)
+    .set({ meta: { deliveryMode: 'one_click', deliveryProtocol: 'compose_v2' } })
+    .where(eq(apps.id, f.app.id));
+  const publicApp = await app.services.AppService.getPublicApp(f.app.code);
+  assert.equal((publicApp.meta as Record<string, unknown>).deliveryReleaseId, release.id);
   const repository = new HostingRepository(db);
   const node = await repository.createNode(
     { name: 'Compose protocol node', serverIp: '192.0.2.205', capacity: resources },
@@ -458,20 +466,16 @@ test('generic hosting requires node capability and matching release evidence, wh
   let id: string | undefined;
   try {
     await repository.setEnabled(node.node.id, true);
-    const report = { dockerReady: true, available: resources, supportedApps: [f.app.code] };
+    const report = { dockerReady: true, available: resources, supportedApps: [] };
     await repository.report(node.node.id, node.reportToken, report, new Date());
     const deployment = await app.services.DeploymentService.createDeployment(f.input);
     id = deployment.id;
-    if (definition.delivery.kind !== 'compose') throw Error('fixture');
+    assert.equal(deployment.managed?.state, 'waiting_capacity');
+    await db.update(appReleases).set({ status: 'withdrawn' }).where(eq(appReleases.id, release.id));
     await db
-      .update(deployments)
-      .set({ hostingResources: definition.delivery.resources })
-      .where(eq(deployments.id, id));
-    const installation = await new ComposeBindingService(db, env).prepareAllocated(
-      id,
-      release.id,
-      {},
-    );
+      .update(apps)
+      .set({ meta: { deliveryMode: 'one_click' } })
+      .where(eq(apps.id, f.app.id));
     const headers = { authorization: `Bearer ${node.reportToken}` };
     const url = `/v1/hosting/nodes/${node.node.id}`;
     const claim = () => app.inject({ method: 'POST', url: url + '/claim', headers, payload: {} });
@@ -482,10 +486,27 @@ test('generic hosting requires node capability and matching release evidence, wh
       { ...report, supportedProtocols: ['compose_install_v1'] },
       new Date(),
     );
+    await db.transaction(async (tx) => {
+      const hosting = new HostingRepository(tx);
+      await hosting.lockPool();
+      const [row] = await tx.select().from(deployments).where(eq(deployments.id, id!));
+      assert.ok(row);
+      await hosting.allocate(row, new Date());
+    });
+    assert.equal(
+      (
+        await db
+          .select()
+          .from(deploymentComposeBindings)
+          .where(eq(deploymentComposeBindings.deploymentId, id))
+      ).length,
+      0,
+    );
     const response = await claim();
     assert.equal(response.statusCode, 200, response.body);
     const job = response.json().job;
-    assert.deepEqual(job.installation, installation);
+    const installation = composeInstallJobSchema.parse(job.installation);
+    assert.deepEqual(await new ComposeBindingService(db, env).readJob(id), installation);
     assert.deepEqual((await claim()).json().job, job);
     const listed = await app.inject({
       method: 'GET',
@@ -535,6 +556,9 @@ test('generic hosting requires node capability and matching release evidence, wh
       await db
         .delete(deploymentComposeBindings)
         .where(eq(deploymentComposeBindings.deploymentId, id));
+      await db
+        .delete(deploymentComposeRequests)
+        .where(eq(deploymentComposeRequests.deploymentId, id));
       await db.delete(deployments).where(eq(deployments.id, id));
     }
     await db.delete(hostingNodes).where(eq(hostingNodes.id, node.node.id));

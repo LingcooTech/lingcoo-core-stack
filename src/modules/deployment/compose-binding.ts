@@ -3,7 +3,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { composePlanSchema, composeInstallJobSchema } from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
-import { deploymentComposeBindings, deployments } from '../../db/schema';
+import { deploymentComposeBindings, deploymentComposeRequests, deployments } from '../../db/schema';
 import { acquireTransactionLock } from '../../db/locks';
 import {
   decryptJson,
@@ -62,6 +62,70 @@ export class ComposeBindingService {
     private readonly db: DbExecutor,
     private readonly env: AppEnv,
   ) {}
+
+  /** Fix a release and generated configuration before a waiting instance owns a server. */
+  async pin(deploymentId: string, releaseId: string, input: ComposeConfiguration) {
+    return this.db.transaction(async (tx) => {
+      const [instance] = await tx
+        .select()
+        .from(deployments)
+        .where(eq(deployments.id, deploymentId))
+        .for('update');
+      if (!instance || instance.status !== 'active')
+        throw httpError(404, 'Active deployment not found');
+      const [existing] = await tx
+        .select()
+        .from(deploymentComposeRequests)
+        .where(eq(deploymentComposeRequests.deploymentId, deploymentId));
+      const keys = getEncryptionKeys(this.env);
+      if (existing) {
+        const saved = decryptJson<{ input: ComposeConfiguration }>(existing.configuration, keys);
+        if (
+          existing.releaseId !== releaseId ||
+          Object.keys(input).length !== Object.keys(saved.input).length ||
+          Object.keys(input).some((key) => input[key] !== saved.input[key])
+        )
+          throw httpError(409, 'Requested installation is immutable');
+        return composePlanSchema.parse(existing.plan);
+      }
+      const [binding] = await tx
+        .select()
+        .from(deploymentComposeBindings)
+        .where(eq(deploymentComposeBindings.deploymentId, deploymentId));
+      if (instance.lastDeployedAt || binding)
+        throw httpError(409, 'Existing installations require an explicit migration');
+      if (!['self_hosted', 'managed'].includes(instance.deploymentMode))
+        throw httpError(422, 'Unsupported deployment mode');
+      const release = await readPublishedComposeRelease(tx, instance.appId, releaseId);
+      const plan = compileComposePlan(release, {
+        instanceId: deploymentId,
+        mode: instance.deploymentMode as 'managed' | 'self_hosted',
+      });
+      const values = prepareComposeConfiguration(plan, input);
+      // Validate fields and lifecycle now; this dummy port does not reserve or start anything.
+      composeInstallJob(plan, values, 24000);
+      await tx.insert(deploymentComposeRequests).values({
+        deploymentId,
+        releaseId,
+        plan,
+        configuration: encryptJson({ input, values }, keys),
+      });
+      return plan;
+    });
+  }
+
+  async preparePinned(deploymentId: string) {
+    const [request] = await this.db
+      .select()
+      .from(deploymentComposeRequests)
+      .where(eq(deploymentComposeRequests.deploymentId, deploymentId));
+    if (!request) return null;
+    const saved = decryptJson<{ input: ComposeConfiguration }>(
+      request.configuration,
+      getEncryptionKeys(this.env),
+    );
+    return this.prepareAllocated(deploymentId, request.releaseId, saved.input);
+  }
 
   /** Only authenticated deployment execution callers may consume this secret payload. */
   async readJob(deploymentId: string) {
@@ -199,12 +263,36 @@ export class ComposeBindingService {
         throw httpError(409, 'Existing installations require an explicit migration');
       if (!['managed', 'self_hosted'].includes(instance.deploymentMode))
         throw httpError(422, 'Unsupported deployment mode');
-      const release = await readPublishedComposeRelease(tx, instance.appId, releaseId);
-      const plan = compileComposePlan(release, {
-        instanceId: deploymentId,
-        mode: instance.deploymentMode as 'managed' | 'self_hosted',
-      });
-      const values = prepareComposeConfiguration(plan, input);
+      const [request] = await tx
+        .select()
+        .from(deploymentComposeRequests)
+        .where(eq(deploymentComposeRequests.deploymentId, deploymentId));
+      const saved = request
+        ? decryptJson<{ input: ComposeConfiguration; values: ComposeConfiguration }>(
+            request.configuration,
+            keys,
+          )
+        : null;
+      if (
+        request &&
+        (request.releaseId !== releaseId ||
+          Object.keys(input).length !== Object.keys(saved!.input).length ||
+          Object.keys(input).some((key) => input[key] !== saved!.input[key]))
+      )
+        throw httpError(409, 'Requested installation is immutable');
+      const plan = request
+        ? composePlanSchema.parse(request.plan)
+        : compileComposePlan(await readPublishedComposeRelease(tx, instance.appId, releaseId), {
+            instanceId: deploymentId,
+            mode: instance.deploymentMode as 'managed' | 'self_hosted',
+          });
+      if (
+        plan.instanceId !== instance.id ||
+        plan.mode !== instance.deploymentMode ||
+        plan.releaseId !== releaseId
+      )
+        throw httpError(409, 'Requested installation identity changed');
+      const values = saved?.values ?? prepareComposeConfiguration(plan, input);
       const job = composeInstallJob(plan, values, port);
       await tx.insert(deploymentComposeBindings).values({
         deploymentId,
@@ -229,17 +317,27 @@ export async function rotateComposeBindingKeys(
 ) {
   let checked = 0,
     rotated = 0;
-  for (const row of await db.select().from(deploymentComposeBindings).for('update')) {
-    checked++;
-    const plain = decryptJson(row.configuration, keys);
-    const envelope = row.configuration as { version?: number; keyId?: string };
-    if (envelope.version === 2 && envelope.keyId === keys.currentKeyId) continue;
-    rotated++;
-    if (!dryRun)
-      await db
-        .update(deploymentComposeBindings)
-        .set({ configuration: encryptJson(plain, keys) })
-        .where(eq(deploymentComposeBindings.deploymentId, row.deploymentId));
+  for (const table of [deploymentComposeRequests, deploymentComposeBindings]) {
+    for (const row of await db.select().from(table).for('update')) {
+      checked++;
+      const plain = decryptJson(row.configuration, keys);
+      const envelope = row.configuration as { version?: number; keyId?: string };
+      if (envelope.version === 2 && envelope.keyId === keys.currentKeyId) continue;
+      rotated++;
+      if (!dryRun) {
+        const configuration = encryptJson(plain, keys);
+        if (table === deploymentComposeRequests)
+          await db
+            .update(deploymentComposeRequests)
+            .set({ configuration })
+            .where(eq(deploymentComposeRequests.deploymentId, row.deploymentId));
+        else
+          await db
+            .update(deploymentComposeBindings)
+            .set({ configuration })
+            .where(eq(deploymentComposeBindings.deploymentId, row.deploymentId));
+      }
+    }
   }
   return { checked, rotated };
 }

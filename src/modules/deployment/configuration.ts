@@ -1,4 +1,8 @@
 import { isEffectiveEntitlement, loadDeploymentEntitlement } from './entitlement-policy';
+import { eq } from 'drizzle-orm';
+import { composePlanSchema } from '@lingcoo/contracts';
+import { deploymentComposeRequests } from '../../db/schema';
+import { composeManifest } from '../app/public';
 import { normalizeDeploymentMeta } from './record-utils';
 import { hydrateDeploymentViews } from './projection';
 import { assembleDeploymentBootstrap, buildExchangeCurl } from './bootstrap-payload';
@@ -60,14 +64,16 @@ export class DeploymentConfigurationUseCases {
   }
 
   protected async resolveDeployableApp(input: { userId: string; appCode: string }) {
-    const app = await this.capabilities.createAppService(this.db).getPublicApp(input.appCode);
+    const app = await this.capabilities
+      .createAppService(this.db, this.env)
+      .getPublicApp(input.appCode);
 
     if (this.readDeliveryMode(app) !== 'one_click') {
       throw httpError(422, 'This app is not configured for one-click delivery');
     }
 
     const entitlementView = await this.capabilities
-      .createAppService(this.db)
+      .createAppService(this.db, this.env)
       .listUserEntitlementsForApp(input.appCode, input.userId);
 
     if (entitlementView.summary.length === 0) {
@@ -118,6 +124,7 @@ export class DeploymentConfigurationUseCases {
   ) {
     return hydrateDeploymentViews(rows, {
       db: this.db,
+      publicBaseUrl: this.env.PUBLIC_BASE_URL,
       capabilities: this.capabilities,
       readManifest: this.readManifest.bind(this),
       readDeploymentInputValues: this.readDeploymentInputValues.bind(this),
@@ -202,6 +209,18 @@ export class DeploymentConfigurationUseCases {
   protected readManifest(app: DeploymentAppRecord) {
     const meta = this.normalizeMeta(app.meta);
     return normalizeDeliveryManifest(meta.deliveryManifest);
+  }
+
+  protected async readDeploymentManifest(app: DeploymentAppRecord, deploymentId: string) {
+    const [request] = await this.db
+      .select()
+      .from(deploymentComposeRequests)
+      .where(eq(deploymentComposeRequests.deploymentId, deploymentId));
+    return request
+      ? normalizeDeliveryManifest(
+          composeManifest(composePlanSchema.parse(request.plan), this.env.PUBLIC_BASE_URL),
+        )
+      : this.readManifest(app);
   }
 
   protected buildDeploymentDisplayEnvDefaults(input: {
@@ -487,7 +506,7 @@ export class DeploymentConfigurationUseCases {
             policy.domainBindingScope,
           );
     const issues = this.collectDeploymentConfigIssues({
-      manifest: this.readManifest(input.app),
+      manifest: await this.readDeploymentManifest(input.app, input.deployment.id),
       values: this.readDeploymentInputValues(input.deployment),
       secrets: this.readDeploymentInputSecrets(input.deployment),
       domainValues: this.readDeploymentDomainValues(input.deployment),
@@ -684,7 +703,7 @@ export class DeploymentConfigurationUseCases {
   }) {
     const statusReportAuth = await this.ensureDeploymentStatusReportAuth(input.deployment);
     input.deployment = statusReportAuth.deployment;
-    const manifest = this.readManifest(input.app);
+    const manifest = await this.readDeploymentManifest(input.app, input.deployment.id);
     const entitlement =
       input.entitlement ??
       (input.deployment?.entitlementId

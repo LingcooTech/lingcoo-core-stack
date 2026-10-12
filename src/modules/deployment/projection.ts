@@ -1,4 +1,8 @@
 import { queryBatch } from '../../db/query-batch';
+import { inArray } from 'drizzle-orm';
+import { composePlanSchema } from '@lingcoo/contracts';
+import { deploymentComposeRequests } from '../../db/schema';
+import { composeManifest } from '../app/public';
 import { type DeploymentDependencies } from './dependencies';
 
 import type { DbExecutor } from '../../db/types';
@@ -17,6 +21,7 @@ import {
 import type { DeploymentConfigurationUseCases } from './configuration';
 interface DeploymentProjectionContext {
   db: DbExecutor;
+  publicBaseUrl: string;
   capabilities: {
     createLicenseAccess: (
       ...args: Parameters<DeploymentDependencies['createLicenseAccess']>
@@ -48,16 +53,30 @@ export async function hydrateDeploymentViews(
       rows.map((item) => item.entitlementId).filter((item): item is string => Boolean(item)),
     ),
   ];
-  const [apps, users, tokens, entitlements] = await queryBatch(context.db, [
+  const [apps, users, tokens, entitlements, requests] = await queryBatch(context.db, [
     () => createAppAccess(context.db).listAppsByIds(appIds),
     () => createAuthAccess(context.db).listUsersByIds(userIds),
     () =>
       new DeploymentRepository(context.db).listTokensByDeploymentIds(rows.map((item) => item.id)),
     () =>
       context.capabilities.createLicenseAccess(context.db).listEntitlementsByIds(entitlementIds),
+    () =>
+      context.db
+        .select({
+          id: deploymentComposeRequests.deploymentId,
+          plan: deploymentComposeRequests.plan,
+        })
+        .from(deploymentComposeRequests)
+        .where(
+          inArray(
+            deploymentComposeRequests.deploymentId,
+            rows.map((row) => row.id),
+          ),
+        ),
   ]);
 
   const appMap = new Map(apps.map((item) => [item.id, item]));
+  const requestMap = new Map(requests.map((item) => [item.id, item.plan]));
   const userMap = new Map(users.map((item) => [item.id, item]));
   const entitlementMap = new Map(entitlements.map((item) => [item.id, item]));
   const planIds = [...new Set(entitlements.map((item) => item.planId))];
@@ -73,7 +92,21 @@ export async function hydrateDeploymentViews(
   return queryBatch(
     context.db,
     rows.map((row) => async () => {
-      const app = appMap.get(row.appId) ?? null;
+      const originalApp = appMap.get(row.appId) ?? null;
+      const pinnedPlan = requestMap.get(row.id);
+      const app =
+        originalApp && pinnedPlan
+          ? {
+              ...originalApp,
+              meta: {
+                ...context.normalizeMeta(originalApp.meta),
+                deliveryManifest: composeManifest(
+                  composePlanSchema.parse(pinnedPlan),
+                  context.publicBaseUrl,
+                ),
+              },
+            }
+          : originalApp;
       const user = userMap.get(row.userId) ?? null;
       const token = latestTokenMap.get(row.id) ?? null;
       const entitlement = row.entitlementId

@@ -1,5 +1,8 @@
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
+test('platform agent updates reject changed artifacts and roll back interrupted copies', () => {
+  execFileSync('python3', ['test/hosting-compose-update.py'], { stdio: 'pipe' });
+});
 test('recovery rejects unsafe archives, ambiguous manifests and wrong target bindings', () => {
   execFileSync('python3', ['test/hosting-recovery.py'], { stdio: 'pipe' });
 });

@@ -3,7 +3,12 @@ import { after, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { testDatabase, seedPurchase } from './helpers';
-import { appReleases, deployments, deploymentComposeBindings } from '../../src/db/schema';
+import {
+  appReleases,
+  deployments,
+  deploymentComposeBindings,
+  deploymentComposeRequests,
+} from '../../src/db/schema';
 import {
   ComposeBindingService,
   rotateComposeBindingKeys,
@@ -201,5 +206,92 @@ test('per-server port reservations serialize concurrent allocations, retain reti
       await db
         .delete(deploymentComposeBindings)
         .where(eq(deploymentComposeBindings.deploymentId, instance.id));
+  }
+});
+
+test('waiting requests pin generated configuration before allocation and survive release withdrawal and key rotation', async () => {
+  const { app, user } = await seedPurchase(db);
+  const { definition } = composeRuntimeFixture(
+    'docker.io/library/busybox@sha256:' + 'a'.repeat(64),
+  );
+  definition.app.code = app.code;
+  const [release] = await db
+    .insert(appReleases)
+    .values({
+      appId: app.id,
+      version: 'queued-1',
+      commit: 'b'.repeat(40),
+      definition,
+      definitionDigest: definitionDigest(definition),
+      images: { app: 'docker.io/library/busybox@sha256:' + 'a'.repeat(64) },
+      status: 'published',
+      publishedAt: new Date(),
+    })
+    .returning();
+  const [instance] = await db
+    .insert(deployments)
+    .values({
+      appId: app.id,
+      userId: user.id,
+      label: 'Waiting request',
+      deploymentMode: 'self_hosted',
+    })
+    .returning();
+  assert.ok(release && instance);
+  const service = new ComposeBindingService(db, env);
+  try {
+    const [first, second] = await Promise.all([
+      service.pin(instance.id, release.id, {}),
+      service.pin(instance.id, release.id, {}),
+    ]);
+    assert.deepEqual(first, second);
+    assert.equal(await service.readJob(instance.id), null);
+    await assert.rejects(() => service.preparePinned(instance.id), { statusCode: 409 });
+    await assert.rejects(() => service.pin(instance.id, release.id, { PASSWORD: 'override' }), {
+      statusCode: 409,
+    });
+    await assert.rejects(() =>
+      db
+        .update(deploymentComposeRequests)
+        .set({ releaseId: randomUUID() })
+        .where(eq(deploymentComposeRequests.deploymentId, instance.id)),
+    );
+    await assert.rejects(() =>
+      db
+        .update(deployments)
+        .set({ deploymentMode: 'managed' })
+        .where(eq(deployments.id, instance.id)),
+    );
+    await db.update(appReleases).set({ status: 'withdrawn' }).where(eq(appReleases.id, release.id));
+    await db
+      .update(deployments)
+      .set({ serverHost: 'queued-' + randomUUID() })
+      .where(eq(deployments.id, instance.id));
+    const rotatedEnv = {
+      ...env,
+      SETTINGS_ENCRYPTION_CURRENT_KEY_ID: 'queue',
+      SETTINGS_ENCRYPTION_KEYS: JSON.stringify({
+        primary: env.SETTINGS_ENCRYPTION_KEY || env.JWT_SECRET,
+        queue: 'queue-rotation-test-key',
+      }),
+    };
+    await db.transaction((tx) =>
+      rotateComposeBindingKeys(tx, getEncryptionKeys(rotatedEnv), false),
+    );
+    const ready = await new ComposeBindingService(db, rotatedEnv).preparePinned(instance.id);
+    assert.ok(ready);
+    assert.equal(ready.releaseId, release.id);
+    assert.deepEqual(
+      await new ComposeBindingService(db, rotatedEnv).preparePinned(instance.id),
+      ready,
+    );
+    await assert.rejects(() => db.delete(appReleases).where(eq(appReleases.id, release.id)));
+  } finally {
+    await db
+      .delete(deploymentComposeBindings)
+      .where(eq(deploymentComposeBindings.deploymentId, instance.id));
+    await db
+      .delete(deploymentComposeRequests)
+      .where(eq(deploymentComposeRequests.deploymentId, instance.id));
   }
 });

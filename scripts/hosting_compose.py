@@ -27,7 +27,7 @@ def validate(job, config):
     uuid.UUID(job['id'])
     if installation['instanceId'] != str(uuid.UUID(job['deploymentId'])) or installation['mode'] != 'managed':
         raise ValueError('Managed installation identity mismatch')
-    if any(installation['resources'][key] != job['resources'][key] for key in ('cpuMillis', 'memoryMb', 'diskMb')):
+    if any(installation['resources'][key] > job['resources'][key] for key in ('cpuMillis', 'memoryMb', 'diskMb')):
         raise ValueError('Managed resource budget mismatch')
     module.validate(installation)
     return module

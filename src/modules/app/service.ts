@@ -9,6 +9,10 @@ import type { DbExecutor } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
 import { AppManifestService } from './manifest-service';
 import { AppLifecycleService } from './lifecycle-service';
+import { AppLifecycleRepository } from './lifecycle-repository';
+import { applicationReleaseSchema } from '@lingcoo/contracts';
+import { compileComposePlan } from './compose-plan';
+import { composeManifest } from './delivery-view';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { hashPassword, verifyPassword } from '../../lib/security';
@@ -270,7 +274,47 @@ export class AppService {
     }
 
     const [hydrated] = await this.hydrateApps([app]);
-    return requireResult(hydrated, 'app projection');
+    const result = requireResult(hydrated, 'app projection');
+    const meta = this.normalizeMeta(result.meta);
+    if (meta.deliveryProtocol === 'compose_v2' && this.env) {
+      const row = await new AppLifecycleRepository(this.db).currentPublishedRelease(app.id);
+      if (
+        row &&
+        (row.definition as { delivery?: { kind?: string } }).delivery?.kind === 'compose'
+      ) {
+        const release = applicationReleaseSchema.parse({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+          publishedAt: row.publishedAt?.toISOString() ?? null,
+        });
+        const mode =
+          release.definition.delivery.kind === 'compose'
+            ? release.definition.delivery.modes[0]!
+            : 'managed';
+        const plan = compileComposePlan(release, { instanceId: release.id, mode });
+        const manifest = composeManifest(plan, this.env.PUBLIC_BASE_URL);
+        return {
+          ...result,
+          meta: {
+            ...meta,
+            deliveryReleaseId: release.id,
+            deliveryManifest: manifest,
+            hostingProfile: {
+              enabled:
+                release.definition.delivery.kind === 'compose' &&
+                release.definition.delivery.modes.includes('managed'),
+              domainField: manifest.domainSlots[0]!.sourceField,
+              resources: {
+                cpuMillis: plan.resources.cpuMillis,
+                memoryMb: plan.resources.memoryMb,
+                diskMb: Math.max(1024, plan.resources.diskMb),
+              },
+            },
+          },
+        };
+      }
+    }
+    return result;
   }
 
   async getManagedApp(appCode: string) {

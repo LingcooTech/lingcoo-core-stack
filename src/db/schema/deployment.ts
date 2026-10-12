@@ -88,6 +88,18 @@ export const deployments = pgTable(
 );
 
 /** Private immutable runtime binding; never included in customer/list projections. */
+export const deploymentComposeRequests = pgTable('deployment_compose_requests', {
+  deploymentId: uuid('deployment_id')
+    .primaryKey()
+    .references(() => deployments.id, { onDelete: 'restrict' }),
+  releaseId: uuid('release_id')
+    .notNull()
+    .references(() => appReleases.id, { onDelete: 'restrict' }),
+  plan: jsonb('plan').notNull(),
+  configuration: jsonb('configuration').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const deploymentComposeBindings = pgTable(
   'deployment_compose_bindings',
   {

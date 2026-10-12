@@ -64,5 +64,6 @@
   "appReleases": "app",
   "appPublishingTokens": "app",
   "appBuildRequests": "app",
-  "deploymentComposeBindings": "deployment"
+  "deploymentComposeBindings": "deployment",
+  "deploymentComposeRequests": "deployment"
 }
