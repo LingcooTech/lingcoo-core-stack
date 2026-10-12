@@ -2,7 +2,26 @@ import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import type { AppService } from './service';
 import { AppRepository } from './repository';
+import { AppLifecycleRepository } from './lifecycle-repository';
+import { applicationReleaseSchema } from '@lingcoo/contracts';
+import { httpError } from '../../lib/errors';
 export { rotateApplicationConnectionKeys } from './key-rotation';
+export { compileComposePlan, materializeComposePlan, type ComposePlan } from './compose-plan';
+
+/** Deployment owns the instance; app owns and validates the immutable release snapshot. */
+export async function readPublishedComposeRelease(
+  db: DbExecutor,
+  appId: string,
+  releaseId: string,
+) {
+  const row = await new AppLifecycleRepository(db).release(appId, releaseId);
+  if (!row || row.status !== 'published') throw httpError(422, 'Published release required');
+  return applicationReleaseSchema.parse({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+  });
+}
 
 export type AppServicePort = Pick<
   AppService,

@@ -1,8 +1,20 @@
 {
   "schemaVersion": 1,
-  "app": { "code": "example_web", "name": "Example Web", "license": "MIT", "acquisition": "free" },
-  "features": [{ "code": "use_app", "name": "使用应用" }],
-  "build": { "workflow": "publish.yml" },
+  "app": {
+    "code": "example_web",
+    "name": "Example Web",
+    "license": "MIT",
+    "acquisition": "free"
+  },
+  "features": [
+    {
+      "code": "use_app",
+      "name": "使用应用"
+    }
+  ],
+  "build": {
+    "workflow": "publish.yml"
+  },
   "images": [
     {
       "key": "web",
@@ -13,7 +25,14 @@
   "delivery": {
     "kind": "compose",
     "modes": ["self_hosted", "managed"],
-    "compose": { "services": { "web": { "image": "${WEB_IMAGE}", "restart": "unless-stopped" } } },
+    "compose": {
+      "services": {
+        "web": {
+          "image": "${WEB_IMAGE}",
+          "restart": "unless-stopped"
+        }
+      }
+    },
     "envFields": [],
     "secretFields": [],
     "domainSlots": [
@@ -25,8 +44,21 @@
         "required": true
       }
     ],
-    "resources": { "cpuMillis": 500, "memoryMb": 256, "diskMb": 1024 },
-    "entrypoint": { "service": "web", "port": 80, "healthPath": "/" },
-    "lifecycle": { "initialize": [], "migrate": [], "upgradePolicy": "same_schema" }
+    "resources": {
+      "cpuMillis": 500,
+      "memoryMb": 256,
+      "diskMb": 1024
+    },
+    "entrypoint": {
+      "service": "web",
+      "port": 80,
+      "healthPath": "/"
+    },
+    "lifecycle": {
+      "initialize": [],
+      "migrate": [],
+      "upgradePolicy": "same_schema",
+      "infrastructure": []
+    }
   }
 }

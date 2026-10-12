@@ -45,6 +45,18 @@ const composeDeliverySchema = z
     compose: z.union([repositoryPathSchema, z.record(z.string(), z.unknown())]),
     envFields: deliveryManifestSchema.shape.envFields,
     secretFields: deliveryManifestSchema.shape.secretFields,
+    generatedSecrets: z
+      .array(
+        z
+          .object({
+            key: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+            encoding: z.literal('hex'),
+            bytes: z.number().int().min(16).max(64),
+          })
+          .strict(),
+      )
+      .max(50)
+      .optional(),
     domainSlots: deliveryManifestSchema.shape.domainSlots,
     resources: z
       .object({
@@ -65,6 +77,10 @@ const composeDeliverySchema = z
       .strict(),
     lifecycle: z
       .object({
+        infrastructure: z
+          .array(z.string().regex(/^[A-Za-z0-9_-]+$/))
+          .max(30)
+          .optional(),
         migrate: z.array(stepSchema).max(20).default([]),
         initialize: z.array(stepSchema).max(20).default([]),
         upgradePolicy: z.enum(['same_schema', 'migration_required']),

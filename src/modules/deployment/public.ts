@@ -32,3 +32,4 @@ export type HostingTermsFactory = (
 >;
 
 export { HostingMonitor } from './hosting-monitor';
+export { rotateComposeBindingKeys } from './compose-binding';

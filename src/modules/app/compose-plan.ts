@@ -97,6 +97,7 @@ export function compileComposePlan(
     fields: {
       env: delivery.envFields,
       secrets: delivery.secretFields,
+      ...(delivery.generatedSecrets ? { generatedSecrets: delivery.generatedSecrets } : {}),
       domains: delivery.domainSlots,
     },
     entrypoint: delivery.entrypoint,

@@ -37,7 +37,9 @@ export function AppComposePlan({
           key: v.key,
           label: v.label,
           required: v.required,
-          kind: '密钥',
+          kind: plan.fields.generatedSecrets?.some((field) => field.key === v.key)
+            ? '实例自动生成'
+            : '密钥',
         })),
         ...plan.fields.domains.map((v) => ({
           key: v.envKey,
@@ -80,12 +82,19 @@ export function AppComposePlan({
                 <Alert
                   type="info"
                   showIcon
-                  title="只读预览，不创建实例或占用服务器资源。通用执行器验收完成前不能据此发布容器版本。"
+                  title="只读预览，不创建实例或占用服务器资源。完整交付验收完成前不能据此发布容器版本。"
                 />
                 <Descriptions
                   column={1}
                   items={[
                     { key: 'version', label: '交付版本', children: plan.version },
+                    {
+                      key: 'infrastructure',
+                      label: '初始化前基础服务',
+                      children: plan.lifecycle.infrastructure
+                        ? plan.lifecycle.infrastructure.join('、') || '无'
+                        : '未声明',
+                    },
                     {
                       key: 'digest',
                       label: '版本摘要',

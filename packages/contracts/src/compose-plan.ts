@@ -34,6 +34,7 @@ export const composePlanSchema = z.object({
   fields: z.object({
     env: deliveryManifestSchema.shape.envFields,
     secrets: deliveryManifestSchema.shape.secretFields,
+    generatedSecrets: delivery.shape.generatedSecrets,
     domains: deliveryManifestSchema.shape.domainSlots,
   }),
   entrypoint: delivery.shape.entrypoint,

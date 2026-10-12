@@ -87,6 +87,36 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
     throw httpError(422, 'Compose services required');
   const serviceMap = services as Record<string, unknown>;
   validateComposeModel(compose);
+  unique(
+    (delivery.generatedSecrets ?? []).map((v) => v.key),
+    'generated secret',
+  );
+  for (const generated of delivery.generatedSecrets ?? []) {
+    const field = delivery.secretFields.find((v) => v.key === generated.key);
+    if (!field || field.scope !== 'preset' || field.editable)
+      throw httpError(422, 'Generated secrets require a non-editable preset secret field');
+  }
+  const infrastructure = delivery.lifecycle.infrastructure ?? [];
+  unique(infrastructure, 'infrastructure service');
+  for (const name of infrastructure) {
+    if (!Object.hasOwn(serviceMap, name))
+      throw httpError(422, 'Infrastructure references unknown service');
+    const service = serviceMap[name] as Record<string, unknown>;
+    const health = service.healthcheck as { test?: unknown; disable?: boolean } | undefined;
+    if (
+      !health?.test ||
+      health.disable ||
+      (Array.isArray(health.test) && health.test[0] === 'NONE')
+    )
+      throw httpError(422, 'Infrastructure requires an enabled healthcheck');
+    const dependencies = service.depends_on;
+    const names = Array.isArray(dependencies) ? dependencies : Object.keys(dependencies ?? {});
+    if (names.some((v) => !infrastructure.includes(v)))
+      throw httpError(422, 'Infrastructure may only depend on other infrastructure services');
+  }
+  for (const step of [...delivery.lifecycle.migrate, ...delivery.lifecycle.initialize])
+    if (infrastructure.includes(step.service))
+      throw httpError(422, 'Initialization commands must use a stopped application service');
   if (delivery.resources.serviceWeights) {
     const weights = delivery.resources.serviceWeights;
     if (

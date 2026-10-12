@@ -10,7 +10,7 @@ import {
   integer,
   check,
 } from 'drizzle-orm/pg-core';
-import { apps } from './app';
+import { apps, appReleases } from './app';
 import { sql } from 'drizzle-orm';
 import { users } from './auth';
 import { entitlements } from './license';
@@ -84,6 +84,29 @@ export const deployments = pgTable(
     entitlementIdx: index('deployments_entitlement_id_idx').on(table.entitlementId),
     hostedPrefixKey: uniqueIndex('deployments_hosted_prefix_key').on(table.hostedPrefix),
     hostingNodeIdx: index('deployments_hosting_node_idx').on(table.hostingNodeId),
+  }),
+);
+
+/** Private immutable runtime binding; never included in customer/list projections. */
+export const deploymentComposeBindings = pgTable(
+  'deployment_compose_bindings',
+  {
+    deploymentId: uuid('deployment_id')
+      .primaryKey()
+      .references(() => deployments.id, { onDelete: 'restrict' }),
+    releaseId: uuid('release_id')
+      .notNull()
+      .references(() => appReleases.id, { onDelete: 'restrict' }),
+    plan: jsonb('plan').notNull(),
+    configuration: jsonb('configuration').notNull(),
+    loopbackPort: integer('loopback_port').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    portCheck: check(
+      'deployment_compose_bindings_port_check',
+      sql`${t.loopbackPort} between 1024 and 65535`,
+    ),
   }),
 );
 
