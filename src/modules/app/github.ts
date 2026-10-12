@@ -58,6 +58,36 @@ export class GitHubApplicationReader {
       throw httpError(502, 'Invalid GitHub response');
     }
   }
+  async repositories(page: number) {
+    if (!this.token) throw httpError(422, 'GitHub connection is required to list repositories');
+    const rows = z
+      .array(
+        z.object({
+          id: z.number(),
+          full_name: z.string(),
+          html_url: z.string().regex(/^https:\/\/github\.com\//),
+          private: z.boolean(),
+          default_branch: z.string(),
+          description: z.string().nullable(),
+        }),
+      )
+      .parse(
+        await this.request(
+          `/user/repos?per_page=50&page=${page}&sort=updated&affiliation=owner,collaborator,organization_member`,
+        ),
+      );
+    return {
+      items: rows.map((r) => ({
+        id: String(r.id),
+        name: r.full_name,
+        url: r.html_url,
+        private: r.private,
+        defaultBranch: r.default_branch,
+        description: r.description,
+      })),
+      nextPage: rows.length === 50 ? page + 1 : null,
+    };
+  }
   async preview(input: z.input<typeof gitSourceSchema>) {
     const source = gitSourceSchema.parse(input);
     const [owner, name] = source.repository

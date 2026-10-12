@@ -7,6 +7,7 @@ import { testDatabase, seedPurchase } from './helpers';
 import { AppService } from '../../src/modules/app/service';
 import { AppLifecycleService } from '../../src/modules/app/lifecycle-service';
 import { AppImagesService } from '../../src/modules/app/images-service';
+import { DevelopmentInventory } from '../../src/modules/app/development-inventory';
 import { readFileSync } from 'node:fs';
 import { buildApp } from '../../src/app';
 import { users } from '../../src/db/schema';
@@ -428,4 +429,203 @@ test('registry browsing is bound to the declared application component and match
   assert.equal(calls, 0);
   assert.deepEqual((await images.tags(code, 'web', { connectionId: good.id })).tags, ['v1']);
   assert.equal(calls, 2);
+});
+
+test('development project builds and registers releases before a product, then preserves source and sales boundaries', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'dev_' + randomUUID().replaceAll('-', '');
+  const preview = await service.preview({ document: JSON.stringify(definition(code)) });
+  await service.createProject(preview, user.id);
+  assert.equal(
+    (await db.select().from(apps).where(eq(apps.code, code))).length,
+    0,
+    'project creation must not create a product',
+  );
+  const credential = await service.publishing().issueToken(code, 'Pre-product CI', user.id);
+  const release = await service.publishing().submit(code, credential.token, {
+    version: '1.0.0',
+    commit: 'a'.repeat(40),
+    definition: preview.definition,
+    images: {},
+    notes: '',
+  });
+  await service.transition(code, release.id, 'published', user.id);
+  assert.equal((await service.overview(code)).releases[0]?.id, release.id);
+  await service.importProjectProduct(code, user.id);
+  const products = new AppService(createServiceFactories(), db, env);
+  await products.selectDeliveryVersion(code, release.id, user.id);
+  const [stored] = await db.select().from(apps).where(eq(apps.code, code));
+  assert.equal(stored!.status, 'inactive');
+  assert.equal((stored!.meta as Record<string, unknown>).deliveryReleaseId, release.id);
+  await products.upsertApp(
+    code,
+    { name: 'Sales-owned name', type: 'web_app', status: 'inactive', meta: { marketing: 'kept' } },
+    user.id,
+  );
+  let [updated] = await db.select().from(apps).where(eq(apps.code, code));
+  assert.equal(
+    (updated!.meta as Record<string, unknown>).deliveryReleaseId,
+    release.id,
+    'omitted delivery keys must be preserved',
+  );
+  const changed = await service.preview({
+    document: JSON.stringify({
+      ...definition(code),
+      app: { ...definition(code).app, name: 'Source candidate name' },
+    }),
+  });
+  await service.publishing().applySource(code, changed, user.id);
+  [updated] = await db.select().from(apps).where(eq(apps.code, code));
+  assert.equal(updated!.name, 'Sales-owned name');
+  assert.equal((updated!.meta as Record<string, unknown>).marketing, 'kept');
+  await assert.rejects(
+    () =>
+      products.upsertApp(
+        code,
+        {
+          name: 'Forbidden',
+          type: 'web_app',
+          status: 'inactive',
+          meta: { deliveryMode: 'one_click' },
+        },
+        user.id,
+      ),
+    { statusCode: 422 },
+  );
+  const other = 'dev_' + randomUUID().replaceAll('-', '');
+  await service.createProject(
+    await service.preview({ document: JSON.stringify(definition(other)) }),
+    user.id,
+  );
+  await assert.rejects(() => products.selectDeliveryVersion(other, release.id, user.id), {
+    statusCode: 404,
+  });
+  await assert.rejects(
+    () =>
+      service.publishing().submit(other, credential.token, {
+        version: '1.0.0',
+        commit: 'a'.repeat(40),
+        definition: changed.definition,
+        images: {},
+        notes: '',
+      }),
+    { statusCode: 401 },
+  );
+  await service.transition(code, release.id, 'withdrawn', user.id);
+  await assert.rejects(() => products.selectDeliveryVersion(code, release.id, user.id), {
+    statusCode: 422,
+  });
+});
+
+test('development APIs require permission, and referenced connections cannot be removed', async () => {
+  const { user } = await seedPurchase(db),
+    http = await buildApp(env);
+  try {
+    const headers = { authorization: `Bearer ${http.jwt.sign({ sub: user.id, kind: 'user' })}` };
+    assert.equal(
+      (await http.inject({ method: 'GET', url: '/v1/admin/development/projects', headers }))
+        .statusCode,
+      403,
+    );
+    await db.update(users).set({ role: 'admin' }).where(eq(users.id, user.id));
+    const code = 'dev_' + randomUUID().replaceAll('-', ''),
+      connection = await service.connect(
+        { kind: 'github', name: 'Referenced', token: 'never-output' },
+        user.id,
+      );
+    const preview = await service.preview({ document: JSON.stringify(definition(code)) });
+    const response = await http.inject({
+      method: 'POST',
+      url: '/v1/admin/development/projects',
+      headers,
+      payload: {
+        ...preview,
+        source: {
+          repository: 'https://github.com/example/app',
+          ref: 'main',
+          path: 'stack/app.yaml',
+          commit: 'a'.repeat(40),
+          connectionId: connection.id,
+        },
+      },
+    });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().projectCode, code);
+    const overview = await http.inject({
+      method: 'GET',
+      url: '/v1/admin/development/projects/' + code,
+      headers,
+    });
+    assert.equal(overview.statusCode, 200, overview.body);
+    assert.equal(overview.json().definition.app.code, code);
+    await assert.rejects(() => service.disconnect(connection.id, user.id), { statusCode: 409 });
+    assert.ok((await service.connections()).items.some((c) => c.id === connection.id));
+    const acr = await service.connect(
+      {
+        kind: 'acr',
+        name: 'ACR read',
+        edition: 'enterprise',
+        instanceId: 'cri-testinstance',
+        region: 'cn-beijing',
+        host: 'registry.cn-beijing.aliyuncs.com',
+        accessKeyId: 'private-id',
+        accessKeySecret: 'private-secret',
+      },
+      user.id,
+    );
+    const publicView = JSON.stringify(await service.connections());
+    assert.ok(!publicView.includes('private-secret') && !publicView.includes('private-id'));
+    await service.disconnect(acr.id, user.id);
+  } finally {
+    await http.close();
+  }
+});
+
+test('personal registry inventory derives known repositories from upstream declarations and pages tags', async () => {
+  const { user } = await seedPurchase(db),
+    code = 'inventory_' + randomUUID().replaceAll('-', '');
+  const raw = JSON.parse(readFileSync('examples/stack-compose-app.json', 'utf8'));
+  raw.app.code = code;
+  raw.features = [];
+  await service.createProject(await service.preview({ document: JSON.stringify(raw) }), user.id);
+  const connection = await service.connect(
+    {
+      kind: 'registry',
+      name: 'Personal pull',
+      host: 'registry.example.com',
+      username: 'robot',
+      password: 'private',
+    },
+    user.id,
+  );
+  const inventory = new DevelopmentInventory(db, env, async (url) => ({
+    status: 200,
+    headers: new Headers({
+      link: '</v2/lingcoo/example-web/tags/list?n=100&last=v100>; rel="next"',
+    }),
+    body: Buffer.from(
+      JSON.stringify({
+        name: 'lingcoo/example-web',
+        tags: [url.searchParams.has('last') ? 'v101' : 'v100'],
+      }),
+    ),
+  }));
+  assert.ok(
+    (await inventory.list(connection.id, { kind: 'namespaces', page: 1 })).items.some(
+      (r) => r.name === 'lingcoo',
+    ),
+  );
+  assert.ok(
+    (
+      await inventory.list(connection.id, { kind: 'repositories', namespace: 'lingcoo', page: 1 })
+    ).items.some((r) => 'repository' in r && r.repository === 'lingcoo/example-web'),
+  );
+  const first = await inventory.list(connection.id, {
+    kind: 'tags',
+    repository: 'lingcoo/example-web',
+    page: 1,
+  });
+  assert.equal(first.nextPage, 2);
+  assert.equal('nextCursor' in first && first.nextCursor, 'v100');
+  assert.equal((await db.select().from(apps).where(eq(apps.code, code))).length, 0);
 });

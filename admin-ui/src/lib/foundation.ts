@@ -1,4 +1,8 @@
 export type AdminSectionKey =
+  | 'development-projects'
+  | 'development-connections'
+  | 'development-repositories'
+  | 'development-images'
   | 'storage'
   | 'dashboard'
   | 'apps'
@@ -114,6 +118,74 @@ export function listAllowedAdminSectionKeys(
 }
 
 export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
+  'development-projects': {
+    groupLabel: '开发管理',
+    navTitle: '开发项目',
+    navNote: '',
+    icon: 'Package',
+    permission: 'apps.manage',
+    title: '开发项目',
+    lead: '',
+    href: '/admin/development/projects',
+    contextCards: [
+      { label: '开发', value: '上游项目', note: '源码、构建和交付版本' },
+      { label: '交接', value: '商品草稿', note: '校验定义后创建商品' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['development', '开发项目'],
+  },
+  'development-connections': {
+    groupLabel: '开发管理',
+    navTitle: '开发连接',
+    navNote: '',
+    icon: 'KeyRound',
+    permission: 'apps.manage',
+    title: '开发连接',
+    lead: '',
+    href: '/admin/development/connections',
+    contextCards: [
+      { label: '开发', value: '上游项目', note: '源码、构建和交付版本' },
+      { label: '交接', value: '商品草稿', note: '校验定义后创建商品' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['development', '开发连接'],
+  },
+  'development-repositories': {
+    groupLabel: '开发管理',
+    navTitle: 'Git 仓库',
+    navNote: '',
+    icon: 'FolderOpen',
+    permission: 'apps.manage',
+    title: 'Git 仓库',
+    lead: '',
+    href: '/admin/development/repositories',
+    contextCards: [
+      { label: '开发', value: '上游项目', note: '源码、构建和交付版本' },
+      { label: '交接', value: '商品草稿', note: '校验定义后创建商品' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['development', 'Git 仓库'],
+  },
+  'development-images': {
+    groupLabel: '开发管理',
+    navTitle: '镜像仓库',
+    navNote: '',
+    icon: 'Boxes',
+    permission: 'apps.manage',
+    title: '镜像仓库',
+    lead: '',
+    href: '/admin/development/images',
+    contextCards: [
+      { label: '开发', value: '上游项目', note: '源码、构建和交付版本' },
+      { label: '交接', value: '商品草稿', note: '校验定义后创建商品' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['development', '镜像仓库'],
+  },
   storage: {
     groupLabel: '内容管理',
     navTitle: '云存储',
@@ -483,6 +555,15 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   { label: '概览', items: ['dashboard'] },
+  {
+    label: '开发管理',
+    items: [
+      'development-projects',
+      'development-connections',
+      'development-repositories',
+      'development-images',
+    ],
+  },
   { label: '应用管理', items: ['apps'] },
   { label: '内容管理', items: ['content', 'storage'] },
   { label: '文档管理', items: ['docs'] },

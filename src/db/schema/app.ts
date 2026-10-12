@@ -95,11 +95,25 @@ export const appConnections = pgTable('app_connections', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Upstream development identity exists independently of a saleable application.
+export const developmentProjects = pgTable('development_projects', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: varchar('code', { length: 64 }).notNull().unique(),
+  name: varchar('name', { length: 120 }).notNull(),
+  appId: uuid('app_id')
+    .unique()
+    .references(() => apps.id, { onDelete: 'restrict' }),
+  source: jsonb('source'),
+  definition: jsonb('definition'),
+  definitionDigest: varchar('definition_digest', { length: 80 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const appPublishingTokens = pgTable('app_publishing_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  appId: uuid('app_id')
-    .notNull()
-    .references(() => apps.id, { onDelete: 'cascade' }),
+  appId: uuid('app_id').references(() => apps.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').references(() => developmentProjects.id, { onDelete: 'restrict' }),
   actorUserId: uuid('actor_user_id').notNull(),
   name: varchar('name', { length: 120 }).notNull(),
   tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
@@ -109,9 +123,8 @@ export const appPublishingTokens = pgTable('app_publishing_tokens', {
 });
 export const appBuildRequests = pgTable('app_build_requests', {
   id: uuid('id').primaryKey(),
-  appId: uuid('app_id')
-    .notNull()
-    .references(() => apps.id, { onDelete: 'cascade' }),
+  appId: uuid('app_id').references(() => apps.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').references(() => developmentProjects.id, { onDelete: 'restrict' }),
   version: varchar('version', { length: 80 }).notNull(),
   commit: varchar('commit', { length: 40 }).notNull(),
   status: varchar('status', { length: 16 }).notNull().default('dispatching'),
@@ -130,9 +143,10 @@ export const appReleases = pgTable(
   'app_releases',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    appId: uuid('app_id')
-      .notNull()
-      .references(() => apps.id, { onDelete: 'cascade' }),
+    appId: uuid('app_id').references(() => apps.id, { onDelete: 'cascade' }),
+    projectId: uuid('project_id').references(() => developmentProjects.id, {
+      onDelete: 'restrict',
+    }),
     version: varchar('version', { length: 80 }).notNull(),
     commit: varchar('commit', { length: 40 }).notNull(),
     status: varchar('status', { length: 16 }).notNull().default('draft'),
@@ -146,5 +160,9 @@ export const appReleases = pgTable(
   },
   (table) => ({
     appVersionKey: unique('app_releases_app_version_key').on(table.appId, table.version),
+    projectVersionKey: unique('app_releases_project_version_key').on(
+      table.projectId,
+      table.version,
+    ),
   }),
 );

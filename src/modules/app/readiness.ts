@@ -5,6 +5,9 @@ import type { AppDependencies } from './dependencies';
 import { AppRepository } from './repository';
 import { httpError } from '../../lib/errors';
 import { queryBatch } from '../../db/query-batch';
+import { AppLifecycleRepository } from './lifecycle-repository';
+import { applicationReleaseSchema } from '@lingcoo/contracts';
+import { compileComposePlan } from './compose-plan';
 export class AppReadiness {
   constructor(
     private readonly db: DbExecutor,
@@ -59,7 +62,58 @@ export class AppReadiness {
         }),
       '每个报价需关联有效套餐及有效权益；验收用途套餐不能作为正式售价。',
     );
-    if (meta.deliveryMode === 'one_click') {
+    const project = await new AppLifecycleRepository(this.db).project(appCode);
+    const standard = meta.deliveryProtocol === 'compose_v2' && !!project?.definition;
+    if (standard) {
+      const row =
+        typeof meta.deliveryReleaseId === 'string'
+          ? await new AppLifecycleRepository(this.db).release(app.id, meta.deliveryReleaseId)
+          : undefined;
+      const valid = !!row && row.appId === app.id && row.status === 'published';
+      check(
+        'delivery_version',
+        '已发布交付版本',
+        valid,
+        '选择属于当前商品、已完成验证并发布的交付版本。',
+      );
+      if (valid && this.env) {
+        const release = applicationReleaseSchema.parse({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+          publishedAt: row.publishedAt?.toISOString() ?? null,
+        });
+        if (release.definition.delivery.kind === 'compose') {
+          const plan = compileComposePlan(release, {
+            instanceId: release.id,
+            mode: release.definition.delivery.modes[0]!,
+          });
+          const settings = await this.capabilities
+            .createDeliverySettings(this.db, this.env)
+            .getOverview(appCode);
+          check(
+            'presets',
+            '平台必填配置',
+            plan.fields.env
+              .filter((f) => f.scope === 'preset' && f.required)
+              .every((f) => {
+                const value = settings.values[f.key] ?? f.defaultValue;
+                return value !== undefined && value !== '' && !String(value).startsWith('PENDING_');
+              }),
+            '填写版本声明中必填的平台预设。',
+          );
+          const generated = new Set(plan.fields.generatedSecrets?.map((f) => f.key) ?? []);
+          check(
+            'secrets',
+            '交付凭据已配置',
+            plan.fields.secrets
+              .filter((f) => f.scope === 'preset' && f.required && !generated.has(f.key))
+              .every((f) => settings.secrets[f.key]?.configured),
+            '只检查凭据是否已配置；运行验证由版本发布门禁负责。',
+          );
+        }
+      }
+    }
+    if (meta.deliveryMode === 'one_click' && !standard) {
       const parsed = deliveryManifestSchema.safeParse(meta.deliveryManifest);
       check(
         'manifest',

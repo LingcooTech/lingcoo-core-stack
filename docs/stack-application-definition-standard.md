@@ -2,6 +2,16 @@
 
 本标准对应应用生命周期新入口，公开和私有仓库均可；与旧 Manifest v1 并存。当前能力与阶段进度见 [任务清单](../specs/application-lifecycle/tasks.md)。不得将“导入成功”当成部署或真实支付验收成功。
 
+## 管理边界与入口
+
+- 开发管理：开发连接 `/admin/development/connections`、Git 仓库 `/admin/development/repositories`、镜像仓库 `/admin/development/images`、开发项目 `/admin/development/projects`。
+- 创建项目：POST `/v1/admin/development/projects` 接收已校验预览，不创建商品；GET 同路径列出项目，GET `/:projectCode` 返回定义和版本。
+- 创建商品：POST `/v1/admin/development/projects/:projectCode/product`，只创建一次非上架草稿，关联已有版本并保留其 ID。
+- 应用管理：展示、销售、授权及选择交付版本。POST `/v1/admin/apps/:appCode/delivery-version` 接收 `{releaseId}`，只允许当前商品的已发布版本。交付声明不重复编辑，平台预设单独维护。
+- 存量来源、版本、CI 凭证和构建记录迁入开发项目关联；原 `/v1/admin/apps/:appCode/...` 构建、版本、CI 地址保留为兼容入口，App Code 同时作为开发项目稳定标识。已有实例不随源码同步或商品版本切换自动升级。
+
+ACR 企业版列表通过官方 SDK 的[只读 API](https://help.aliyun.com/zh/acr/developer-reference/api-cr-2018-12-01-listrepository) 获取，配置地域、实例及 RAM 读取权限。ACR 个人版[不对外提供 OpenAPI](https://help.aliyun.com/zh/acr/user-guide/create-a-container-registry-personal-edition-instance)，通过镜像拉取连接展示开发项目已声明仓库，也可输入其他仓库路径；标签通过标准 Registry API 分页读取。个人版不能枚举账号下所有未声明仓库。
+
 ## 责任
 
 应用仓库提供定义、Dockerfile、CI、Compose、初始化/迁移/健康、数据备份与恢复规则。Git 服务保存源码并执行 CI，ACR 或兼容仓库存储镜像。Stack 负责连接、版本、销售授权、交付和托管运维，不管理应用内部业务账号。
@@ -68,7 +78,7 @@ Compose 模板包括可运行 HTTP 样本、Dockerfile、Compose、源码与实�
 
 ## 导入与版本
 
-后台应用列表 → 从仓库或文件导入 → 读取并校验 → 预览 → 创建草稿。公开 GitHub 匿名读取；私有 GitHub 配置 Contents: Read 连接。只访问固定 GitHub API，不执行仓库代码，不跟随任意下载 URL。导入先将 ref 解析到提交，应用和 Compose 都读取同一提交。重复 App Code 拒绝覆盖。
+后台开发管理 → 开发项目 → 创建开发项目 → 读取并校验 → 预览 → 创建开发项目。开发项目先于商品存在，可构建和登记版本；在项目中点击“创建商品草稿”才进入应用管理。公开 GitHub 匿名读取；私有 GitHub 配置 Contents: Read 连接。只访问固定 GitHub API，不执行仓库代码，不跟随任意下载 URL。导入先将 ref 解析到提交，应用和 Compose 都读取同一提交。重复 App Code 拒绝覆盖。
 
 服务连接令牌加密保存，后台只返回配置状态；连接纳入平台密钥轮换。构建使用 CI 的推送凭证，部署只使用只读镜像凭证。
 
@@ -80,7 +90,7 @@ Compose 模板包括可运行 HTTP 样本、Dockerfile、Compose、源码与实�
 
 ## 源码同步和 CI
 
-应用生命周期页的“关联仓库定义 / 同步交付定义”重新读取固定提交，比较候选定义后保存。同步不覆盖商品名称、价格、权益销售配置、已有版本快照或实例；这些内容有各自的发布与交付步骤。
+开发项目页的“关联仓库定义 / 同步交付定义”重新读取固定提交，比较候选定义后保存。同步不覆盖商品名称、价格、权益销售配置、已有版本快照或实例；这些内容有各自的发布与交付步骤。
 
 “构建新版本”调用仓库已有 GitHub Actions workflow_dispatch。连接需拥有该仓库 Contents: Read、Actions: Read/Write；公开仓库匿名读取仍可用，但触发构建必须选择有写权限的连接。构建流程在默认分支存在，接收 stack_commit、stack_version、stack_build_id 三个字符串输入，checkout 必须固定 stack_commit。Stack 保存请求 ID、提交和版本，展示 GitHub 运行状态和日志链接。网络失败时请求标记为待核对，不自动重新触发；先检查 Actions 运行记录，确认没有运行后再创建新请求。
 
@@ -92,7 +102,7 @@ Compose 模板包括可运行 HTTP 样本、Dockerfile、Compose、源码与实�
 
 ## 镜像仓库管理
 
-应用生命周期页的组件镜像表提供“查看仓库版本”。公开仓库可匿名读取；私有仓库选择与声明中 registry host 完全匹配的拉取连接。后台分页读取标签，可以将标签或已有摘要解析为固定 repository@sha256，独立计算 Manifest 内容摘要并与仓库声明核对。镜像标签可以变化，不作为已登记交付版本的身份。
+开发项目页的组件镜像表提供“查看仓库版本”。公开仓库可匿名读取；私有仓库选择与声明中 registry host 完全匹配的拉取连接。后台分页读取标签，可以将标签或已有摘要解析为固定 repository@sha256，独立计算 Manifest 内容摘要并与仓库声明核对。镜像标签可以变化，不作为已登记交付版本的身份。
 
 只查询当前应用声明的组件仓库；不开放任意地址代理，不跟随重定向。HTTPS 连接在实际 socket 的 DNS 查询中限制为公网地址，防止域名重绑定访问内网。认证仅向本仓库同源令牌服务，以及已知阿里云个人版、Docker Hub 认证端点发送；申请的令牌 scope 固定为该仓库 pull。其他跨域认证服务暂不支持，会明确报错。只读账号仍需在镜像厂商侧授予最小拉取权限。
 

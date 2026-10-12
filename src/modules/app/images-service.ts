@@ -2,7 +2,6 @@ import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { decryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
 import { httpError } from '../../lib/errors';
-import { AppRepository } from './repository';
 import { AppLifecycleRepository } from './lifecycle-repository';
 import { validateApplicationDefinition } from './definition';
 import { RegistryClient, type RegistryTransport } from './registry-client';
@@ -14,7 +13,7 @@ export class AppImagesService {
     private readonly transport?: RegistryTransport,
   ) {}
   private async client(code: string, key: string, connectionId?: string) {
-    const app = await new AppRepository(this.db).findAppByCode(code);
+    const app = await new AppLifecycleRepository(this.db).owner(code);
     if (!app) throw httpError(404, 'Application not found');
     const repo = new AppLifecycleRepository(this.db),
       source = await repo.source(app.id);

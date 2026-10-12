@@ -107,7 +107,9 @@ const routes = [
   ...app.matchAll(
     /path="(\/admin[^"]*)"\s+element=\{\s*<ProtectedAdminSectionRoute\s+sectionKey="([^"]+)"[^>]*>\s*<(\w+)/g,
   ),
-].map(([, route, section, page]) => ({ route, section, page }));
+]
+  .map(([, route, section, page]) => ({ route, section, page }))
+  .filter(({ page }) => !['Navigate', 'LegacyLifecycleRedirect'].includes(page));
 routes.push({ route: '/admin/login', section: 'login', page: 'LoginPage' });
 const pages = Object.fromEntries(
   [...new Set(routes.map(({ page }) => page))].map((page) => [
@@ -183,7 +185,7 @@ report.uiAudit = adminRuntimeFiles
   });
 if (process.argv.includes('--check')) {
   const failures = [];
-  if (routes.length !== 25 || report.businessSections !== 18)
+  if (routes.length !== 29 || report.businessSections !== 22)
     failures.push('Admin route coverage changed; update the inventory contract explicitly');
   for (const [name, item] of Object.entries({ ...pages, AdminShell: report.shell })) {
     const forbidden = item.packages.filter((dependency) =>

@@ -16,15 +16,16 @@ import { UploadOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  importApplication,
   listAppConnections,
   previewApplication,
   type ApplicationPreview,
 } from '@/api/app-lifecycle';
-import { AppConnections } from '@/components/admin/apps/AppConnections';
+import { createDevelopmentProject } from '@/api/development';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PageContainer } from '@/components/admin/PageContainer';
 
 export function AppImportPage() {
+  const [params] = useSearchParams();
   const [mode, setMode] = useState('repository'),
     [preview, setPreview] = useState<ApplicationPreview | null>(null),
     [form] = Form.useForm();
@@ -54,11 +55,11 @@ export function AppImportPage() {
     },
   });
   const save = useMutation({
-    mutationFn: () => importApplication(preview!),
+    mutationFn: () => createDevelopmentProject(preview!),
     onSuccess: (v) => {
-      void qc.invalidateQueries({ queryKey: ['apps'] });
-      void message.success('应用草稿已创建');
-      void navigate(`/admin/apps/${v.appCode}/lifecycle`);
+      void qc.invalidateQueries({ queryKey: ['development-projects'] });
+      void message.success('开发项目已创建，尚未创建商品');
+      void navigate(`/admin/development/projects/${v.projectCode}`);
     },
     onError: (e) => {
       void message.error(e.message);
@@ -66,14 +67,16 @@ export function AppImportPage() {
   });
   return (
     <PageContainer
-      title="导入应用"
-      backTo="/admin/apps"
+      title="创建开发项目"
+      backTo="/admin/development/projects"
       actions={
         <Space>
           <Button href="/developers/standard" target="_blank" rel="noreferrer">
             开发接入文档
           </Button>
-          <AppConnections />
+          <Link to="/admin/development/connections">
+            <Button>开发连接</Button>
+          </Link>
         </Space>
       }
     >
@@ -92,7 +95,12 @@ export function AppImportPage() {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ ref: 'main', path: 'stack/app.yaml' }}
+          initialValues={{
+            ref: params.get('ref') ?? 'main',
+            path: 'stack/app.yaml',
+            repository: params.get('repository') ?? '',
+            connectionId: params.get('connectionId') ?? undefined,
+          }}
           onValuesChange={() => setPreview(null)}
           onFinish={() => read.mutate()}
           disabled={read.isPending || save.isPending}
@@ -201,7 +209,7 @@ export function AppImportPage() {
           ))}
           <Space>
             <Button type="primary" loading={save.isPending} onClick={() => save.mutate()}>
-              创建应用草稿
+              创建开发项目
             </Button>
             <Button onClick={() => setPreview(null)}>返回修改</Button>
           </Space>

@@ -101,6 +101,8 @@ function setup() {
   mocks.api.mockReset();
   mocks.api.mockImplementation(async (id: string, _path: string, options?: { body: string }) => {
     if (id.includes('/readiness')) return { configurationReady: false, checks: [] };
+    if (id === 'GET /v1/admin/development/projects/:param')
+      return { source: null, definition: null, releases: [] };
     if (id === 'GET /v1/admin/apps') return { items: [app] };
     if (id === 'GET /v1/catalog')
       return { planFeatures: [{ planId: 'plan-1', featureId: 'feature-1' }] };
@@ -185,6 +187,8 @@ test('document manager can create a fresh space without auto-selecting the exist
   mocks.api.mockImplementation(async (id: string) => {
     if (id === 'GET /v1/admin/docs/spaces') return { items: [space] };
     if (id === 'GET /v1/admin/docs/spaces/:param') return { space, pages: [], tree: [] };
+    if (id === 'GET /v1/admin/development/projects/:param')
+      return { source: null, definition: null, releases: [] };
     if (id === 'GET /v1/admin/apps') return { items: [] };
     if (id.startsWith('POST')) throw new Error('Fixture validation failed');
     return {};
@@ -207,6 +211,28 @@ test('document manager can create a fresh space without auto-selecting the exist
       expect(mocks.api.mock.calls.some((c) => c[0] === 'POST /v1/admin/docs/spaces')).toBe(true),
     );
     expect(document.querySelector<HTMLInputElement>('#doc-space_title')!.value).toBe('New Space');
+  } finally {
+    await view.dispose();
+  }
+});
+
+test('product editor displays delivery information without source or preset fields', async () => {
+  setup();
+  const view = await mount('/admin/apps/sample_app/edit', <AppEditPage />);
+  try {
+    await vi.waitFor(() =>
+      expect(document.querySelector<HTMLInputElement>('#app-editor_app_name')?.value).toBe(
+        'Sample App',
+      ),
+    );
+    await click('交付信息');
+    expect(view.host.textContent).toContain('平台交付预设');
+    expect(view.host.textContent).not.toContain('源码与交付版本');
+    expect(view.host.querySelector('[id*="source_manifestUrl"]')).toBeNull();
+    expect(view.host.querySelector('[id*="delivery_values"]')).toBeNull();
+    expect(
+      view.host.querySelector('a[href="/admin/development/projects/sample_app/delivery-settings"]'),
+    ).toBeTruthy();
   } finally {
     await view.dispose();
   }

@@ -15,12 +15,15 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import {
-  getApplicationLifecycle,
   publishApplicationRelease,
   registerApplicationRelease,
   withdrawApplicationRelease,
 } from '@/api/app-lifecycle';
-import { AppConnections } from '@/components/admin/apps/AppConnections';
+import {
+  getDevelopmentProject,
+  createProjectProduct,
+  listDevelopmentProjects,
+} from '@/api/development';
 import { AppSourceBuilds } from '@/components/admin/apps/AppSourceBuilds';
 import { AppImageBrowser } from '@/components/admin/apps/AppImageBrowser';
 import { AppComposePlan } from '@/components/admin/apps/AppComposePlan';
@@ -36,7 +39,7 @@ export function AppLifecyclePage() {
     [form] = Form.useForm();
   const query = useQuery({
     queryKey: ['app-lifecycle', code],
-    queryFn: () => getApplicationLifecycle(code),
+    queryFn: () => getDevelopmentProject(code),
   });
   const change = useMutation({
     mutationFn: ({ id, action }: { id: string; action: 'publish' | 'withdraw' }) =>
@@ -79,20 +82,49 @@ export function AppLifecyclePage() {
       void message.error(e.message);
     },
   });
+  const projects = useQuery({
+    queryKey: ['development-projects'],
+    queryFn: listDevelopmentProjects,
+  });
+  const project = projects.data?.items.find((p) => p.code === code);
+  const product = useMutation({
+    mutationFn: () => createProjectProduct(code),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['development-projects'] });
+      void qc.invalidateQueries({ queryKey: ['apps'] });
+      void message.success('商品草稿已创建，请配置售价与授权后上架');
+    },
+    onError: (e) => void message.error(e.message),
+  });
   const data = query.data;
   return (
     <PageContainer
-      title="应用生命周期"
-      backTo="/admin/apps"
+      title={
+        data?.definition?.app.name ? `开发项目 · ${data.definition.app.name}` : `开发项目 · ${code}`
+      }
+      backTo="/admin/development/projects"
       actions={
         <Space>
-          <Button>
-            <Link to={`/admin/apps/${code}/edit`}>销售与展示配置</Link>
-          </Button>
+          {project?.appId ? (
+            <Link to={`/admin/apps/${code}/edit`}>
+              <Button>查看商品</Button>
+            </Link>
+          ) : (
+            <Button
+              type="primary"
+              disabled={!data?.definition || !project}
+              loading={product.isPending}
+              onClick={() => product.mutate()}
+            >
+              创建商品草稿
+            </Button>
+          )}
           <Button href="/developers/standard" target="_blank" rel="noreferrer">
             开发接入文档
           </Button>
-          <AppConnections />
+          <Link to="/admin/development/connections">
+            <Button>开发连接</Button>
+          </Link>
         </Space>
       }
     >

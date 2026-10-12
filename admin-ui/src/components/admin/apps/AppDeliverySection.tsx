@@ -25,6 +25,7 @@ import {
   type DeliverySecretState,
 } from '@/lib/app-delivery';
 export function AppDeliverySection({
+  showSource = true,
   manifest,
   secrets,
   create,
@@ -33,6 +34,7 @@ export function AppDeliverySection({
   onSync,
   onClear,
 }: {
+  showSource?: boolean;
   manifest: DeliveryManifest | null;
   secrets: DeliverySecretState;
   create: boolean;
@@ -56,78 +58,80 @@ export function AppDeliverySection({
   const sourceConfigured = Boolean(source?.manifestUrl.trim() || source?.repoUrl.trim());
   return (
     <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-      <Card
-        title="交付清单来源"
-        extra={
-          <Space wrap>
-            <Tag color={manifest ? 'success' : 'default'}>
-              {manifest ? `已同步 v${manifest.version}` : '待同步'}
-            </Tag>
-            <Button
-              disabled={create || busy || sourceDirty || !sourceConfigured}
-              loading={busy}
-              onClick={onSync}
-            >
-              同步清单
-            </Button>
-          </Space>
-        }
-      >
-        <Typography.Paragraph type="secondary">
-          填写应用发布流程生成的清单地址，保存应用后同步；镜像、安装入口和参数定义会自动读取。
-        </Typography.Paragraph>
-        <Form.Item
-          name={['source', 'manifestUrl']}
-          label="清单 URL（推荐）"
-          extra="填写可直接读取 JSON 的 HTTPS 地址，不是 Git 仓库页面或本机文件路径。填写后优先使用此地址。"
-          rules={[{ type: 'url', message: '请填写有效的清单地址' }]}
+      {showSource && (
+        <Card
+          title="交付清单来源"
+          extra={
+            <Space wrap>
+              <Tag color={manifest ? 'success' : 'default'}>
+                {manifest ? `已同步 v${manifest.version}` : '待同步'}
+              </Tag>
+              <Button
+                disabled={create || busy || sourceDirty || !sourceConfigured}
+                loading={busy}
+                onClick={onSync}
+              >
+                同步清单
+              </Button>
+            </Space>
+          }
         >
-          <Input placeholder="https://downloads.example.com/apps/app-code/version/fd-delivery.manifest.json" />
-        </Form.Item>
-        <Collapse
-          items={[
-            {
-              key: 'github',
-              label: '从 GitHub 仓库读取（另一种来源）',
-              children: (
-                <div className="admin-form-grid">
-                  <Form.Item
-                    name={['source', 'repoUrl']}
-                    label="公开 GitHub 仓库地址"
-                    extra="清单 URL 留空时生效；应使用可公开读取的交付仓库，不需要公开应用源码。"
-                  >
-                    <Input placeholder="https://github.com/your-org/app-delivery" />
-                  </Form.Item>
-                  <Form.Item
-                    name={['source', 'repoBranch']}
-                    label="分支、标签或提交"
-                    extra="正式发布建议固定到版本标签或提交。"
-                  >
-                    <Input placeholder="main" />
-                  </Form.Item>
-                  <Form.Item
-                    name={['source', 'manifestPath']}
-                    label="清单在仓库中的路径"
-                    extra="相对于仓库根目录，例如 delivery/fd-delivery.manifest.json。"
-                  >
-                    <Input placeholder="fd-delivery.manifest.json" />
-                  </Form.Item>
-                </div>
-              ),
-            },
-          ]}
-        />
-        {(create || sourceDirty) && (
-          <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-            先保存应用，再同步清单；同步不会自动上架。
+          <Typography.Paragraph type="secondary">
+            填写应用发布流程生成的清单地址，保存应用后同步；镜像、安装入口和参数定义会自动读取。
           </Typography.Paragraph>
-        )}
-      </Card>
+          <Form.Item
+            name={['source', 'manifestUrl']}
+            label="清单 URL（推荐）"
+            extra="填写可直接读取 JSON 的 HTTPS 地址，不是 Git 仓库页面或本机文件路径。填写后优先使用此地址。"
+            rules={[{ type: 'url', message: '请填写有效的清单地址' }]}
+          >
+            <Input placeholder="https://downloads.example.com/apps/app-code/version/fd-delivery.manifest.json" />
+          </Form.Item>
+          <Collapse
+            items={[
+              {
+                key: 'github',
+                label: '从 GitHub 仓库读取（另一种来源）',
+                children: (
+                  <div className="admin-form-grid">
+                    <Form.Item
+                      name={['source', 'repoUrl']}
+                      label="公开 GitHub 仓库地址"
+                      extra="清单 URL 留空时生效；应使用可公开读取的交付仓库，不需要公开应用源码。"
+                    >
+                      <Input placeholder="https://github.com/your-org/app-delivery" />
+                    </Form.Item>
+                    <Form.Item
+                      name={['source', 'repoBranch']}
+                      label="分支、标签或提交"
+                      extra="正式发布建议固定到版本标签或提交。"
+                    >
+                      <Input placeholder="main" />
+                    </Form.Item>
+                    <Form.Item
+                      name={['source', 'manifestPath']}
+                      label="清单在仓库中的路径"
+                      extra="相对于仓库根目录，例如 delivery/fd-delivery.manifest.json。"
+                    >
+                      <Input placeholder="fd-delivery.manifest.json" />
+                    </Form.Item>
+                  </div>
+                ),
+              },
+            ]}
+          />
+          {(create || sourceDirty) && (
+            <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
+              先保存应用，再同步清单；同步不会自动上架。
+            </Typography.Paragraph>
+          )}
+        </Card>
+      )}
       {!manifest ? (
         <Alert
           type="warning"
           title="尚未同步交付清单"
-          description="先填写来源并保存应用，再点击“同步清单”。空白草稿可以先保存。"
+          description="在开发项目中提供交付定义并选择已发布版本后配置平台预设。"
         />
       ) : (
         <>

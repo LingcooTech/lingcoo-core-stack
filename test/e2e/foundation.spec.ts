@@ -65,7 +65,7 @@ async function login(page: import('@playwright/test').Page, path: string, email:
 }
 test('application lifecycle imports a draft, registers an immutable version and keeps CI credentials scoped', async ({
   page,
-}) => {
+}, info) => {
   await login(page, '/admin/login', adminEmail);
   await expect(page).toHaveURL(/\/admin$/);
   const code = 'browser_import_' + randomUUID().replaceAll('-', '');
@@ -79,8 +79,8 @@ test('application lifecycle imports a draft, registers an immutable version and 
     }),
   );
   await page.getByRole('button', { name: '读取并校验', exact: true }).click();
-  await page.getByRole('button', { name: '创建应用草稿', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/lifecycle$`));
+  await page.getByRole('button', { name: '创建开发项目', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/development/projects/${code}$`));
   await page.reload();
   await expect(page.getByText('Browser imported application', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '登记版本', exact: true }).click();
@@ -107,6 +107,87 @@ test('application lifecycle imports a draft, registers an immutable version and 
   await expect(credentials).toBeHidden();
   const overview = await (await page.request.get(`/v1/admin/apps/${code}/lifecycle`)).json();
   expect(overview.releases[0].status).toBe('draft');
+  const before = await (await page.request.get('/v1/admin/apps')).json();
+  expect(before.items.some((app: { code: string }) => app.code === code)).toBe(false);
+  await page.getByRole('button', { name: '发布', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '发布 1.0.0？', exact: true })
+    .getByRole('button', { name: /^发\s*布$/ })
+    .click();
+  await expect(page.getByText('已发布', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('development-project.png'), fullPage: true });
+  await page.getByRole('button', { name: '创建商品草稿', exact: true }).click();
+  await expect(page.getByRole('button', { name: '查看商品', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '查看商品', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/edit$`));
+  await page.getByRole('tab', { name: '交付信息', exact: true }).click();
+  await page.getByRole('combobox', { name: '交付版本', exact: true }).click();
+  await page.getByTitle('1.0.0 · 已发布', { exact: true }).click();
+  await page.getByRole('button', { name: '设为交付版本', exact: true }).click();
+  await expect(page.getByText('交付版本已选择', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('tab', { name: '交付信息', exact: true }).click();
+  await expect(page.getByText('1.0.0 · 已发布', { exact: true })).toBeVisible();
+  expect(await page.locator('input[id*="source_manifestUrl"]').count()).toBe(0);
+  await page.screenshot({ path: info.outputPath('product-delivery-readonly.png'), fullPage: true });
+});
+test('development inventory navigates declared personal registry repositories and preserves tag cursors', async ({
+  page,
+}) => {
+  await login(page, '/admin/login', adminEmail);
+  await expect(page).toHaveURL(/\/admin$/);
+  const id = randomUUID();
+  await page.route('**/v1/admin/app-connections', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id,
+            kind: 'registry',
+            name: 'Personal registry fixture',
+            host: 'registry.example.com',
+            configured: true,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+    }),
+  );
+  const cursors: Array<string | null> = [];
+  await page.route('**/v1/admin/development/connections/*/inventory?*', (route) => {
+    const query = new URL(route.request().url()).searchParams;
+    if (query.get('kind') === 'namespaces')
+      return route.fulfill({ json: { items: [{ id: 'team', name: 'team' }], nextPage: null } });
+    if (query.get('kind') === 'repositories')
+      return route.fulfill({
+        json: {
+          items: [
+            { id: 'team/sample', name: 'sample', namespace: 'team', repository: 'team/sample' },
+          ],
+          nextPage: null,
+        },
+      });
+    cursors.push(query.get('cursor'));
+    return route.fulfill({
+      json: query.get('cursor')
+        ? { items: [{ id: 'v101', name: 'v101' }], nextPage: null, nextCursor: null }
+        : { items: [{ id: 'v100', name: 'v100' }], nextPage: 2, nextCursor: 'v100' },
+    });
+  });
+  await page.goto('/admin/development/images');
+  await page.getByRole('combobox', { name: '开发连接', exact: true }).click();
+  await page.getByTitle('Personal registry fixture', { exact: true }).click();
+  await page.getByRole('button', { name: '查看镜像仓库', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'sample', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '查看镜像版本', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'v100', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '下一页', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'v101', exact: true })).toBeVisible();
+  expect(cursors).toEqual([null, 'v100']);
+  await page.getByRole('button', { name: '上一页', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'v100', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '返回命名空间', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'team', exact: true })).toBeVisible();
 });
 test('user login, orders, entitlements and deployment survive deep-route refresh', async ({
   page,
@@ -322,8 +403,12 @@ test('admin navigation, command search and mobile menu preserve route access', a
   await page.getByRole('menuitem', { name: '交易管理', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: '订单管理', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '收起边栏', exact: true }).click();
+  await expect(page.locator('.admin-sider')).toHaveCSS('width', '72px');
   await page.locator('.admin-brand').hover();
-  await expect(page.getByRole('button', { name: '打开边栏', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '打开边栏', exact: true })).toHaveCSS(
+    'opacity',
+    '1',
+  );
   await page.getByRole('button', { name: '打开边栏', exact: true }).click();
   await page.keyboard.press('Control+k');
   const search = page.getByRole('dialog').getByLabel('搜索页面、资源、操作', { exact: true });
@@ -398,9 +483,19 @@ test('admin creates an application, content and documentation through Ant Design
   await expect(page).toHaveURL(/\/admin$/);
   const code = 'browser_app_' + randomUUID().replaceAll('-', '').slice(0, 12);
   await page.goto('/admin/apps/new');
-  await page.locator('#app-editor_app_appCode').fill(code);
-  await page.locator('#app-editor_app_name').fill('Browser application');
-  await page.getByRole('button', { name: '保存应用配置', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/development\/projects\/new$/);
+  await page.getByRole('tab', { name: '上传交付定义', exact: true }).click();
+  await page.getByLabel('应用定义', { exact: true }).fill(
+    JSON.stringify({
+      schemaVersion: 1,
+      app: { code, name: 'Browser application', license: 'MIT', acquisition: 'free' },
+      delivery: { kind: 'none', url: 'https://example.com' },
+    }),
+  );
+  await page.getByRole('button', { name: '读取并校验', exact: true }).click();
+  await page.getByRole('button', { name: '创建开发项目', exact: true }).click();
+  await page.getByRole('button', { name: '创建商品草稿', exact: true }).click();
+  await page.getByRole('button', { name: '查看商品', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/apps/${code}/edit$`));
   await page.reload();
   await expect(page.locator('#app-editor_app_name')).toHaveValue('Browser application');
@@ -486,6 +581,13 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     '/admin',
     '/admin/apps',
     '/admin/apps/new',
+    '/admin/development/projects',
+    '/admin/development/connections',
+    '/admin/development/repositories',
+    '/admin/development/images',
+    '/admin/development/projects/new',
+    `/admin/development/projects/${apps.items[0].code}`,
+    `/admin/development/projects/${apps.items[0].code}/delivery-settings`,
     `/admin/apps/${apps.items[0].code}/edit`,
     '/admin/content',
     '/admin/content/new',
@@ -584,7 +686,7 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     await expect(page.locator('.admin-toolbar')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`app-editor-${width}.png`) });
     await page.getByRole('button', { name: '返回列表', exact: true }).click();
-    await expect(page).toHaveURL(/\/admin\/apps$/);
+    await expect(page).toHaveURL(/\/admin\/development\/projects$/);
   }
   for (const width of [1440, 1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -695,12 +797,14 @@ test('Retail and Edu manifests render dynamically and survive an application edi
     });
     expect(response.ok(), await response.text()).toBe(true);
     await page.goto(`/admin/apps/${code}/edit`);
-    await page.getByRole('tab', { name: '交付配置', exact: true }).click();
+    await page.getByRole('tab', { name: '交付信息', exact: true }).click();
+    await page.getByRole('button', { name: '平台交付预设', exact: true }).click();
     await expect(
       page.getByLabel(sample === 'retail' ? 'Retail 运行镜像 digest' : 'Edu 运行镜像 digest', {
         exact: true,
       }),
     ).toBeVisible();
+    await page.getByRole('button', { name: '返回商品', exact: true }).click();
     await page.getByRole('tab', { name: '基本信息', exact: true }).click();
     await page.locator('#app-editor_app_name').fill(`Updated ${sample}`);
     await page.getByRole('tab', { name: '展示内容', exact: true }).click();

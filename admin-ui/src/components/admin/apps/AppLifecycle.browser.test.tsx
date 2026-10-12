@@ -32,10 +32,13 @@ async function mount() {
       <ConfigProvider theme={{ token: { motion: false } }}>
         <App>
           <QueryClientProvider client={client}>
-            <MemoryRouter initialEntries={['/admin/apps/import']}>
+            <MemoryRouter initialEntries={['/admin/development/projects/new']}>
               <Routes>
-                <Route path="/admin/apps/import" element={<AppImportPage />} />
-                <Route path="/admin/apps/:code/lifecycle" element={<div>应用生命周期目标页</div>} />
+                <Route path="/admin/development/projects/new" element={<AppImportPage />} />
+                <Route
+                  path="/admin/development/projects/:code"
+                  element={<div>开发项目目标页</div>}
+                />
               </Routes>
             </MemoryRouter>
           </QueryClientProvider>
@@ -66,34 +69,34 @@ async function paste(text: string) {
     node.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
-test('file import requires a preview, invalidates stale preview, and creates a draft before navigating', async () => {
+test('file import requires a preview, invalidates stale preview, and creates a development project without creating a product', async () => {
   const calls: string[] = [];
   mocks.api.mockImplementation(async (id: string) => {
     calls.push(id);
     if (id === 'GET /v1/admin/app-connections') return { items: [] };
     if (id.endsWith('/preview')) return preview;
-    if (id === 'POST /v1/admin/apps/import') return { appCode: 'sample_free' };
+    if (id === 'POST /v1/admin/development/projects') return { projectCode: 'sample_free' };
     throw Error(id);
   });
   const view = await mount();
   try {
     await click('上传交付定义');
     await paste(JSON.stringify(preview.definition));
-    expect(view.host.textContent).not.toContain('创建应用草稿');
+    expect(view.host.textContent).not.toContain('创建开发项目');
     await click('读取并校验');
-    await expect.poll(() => view.host.textContent).toContain('创建应用草稿');
-    expect(calls).not.toContain('POST /v1/admin/apps/import');
+    await expect.poll(() => view.host.textContent).toContain('创建开发项目');
+    expect(calls).not.toContain('POST /v1/admin/development/projects');
     await paste(
       JSON.stringify({
         ...preview.definition,
         app: { ...preview.definition.app, name: 'changed' },
       }),
     );
-    expect(view.host.textContent).not.toContain('创建应用草稿');
+    expect(view.host.textContent).not.toContain('创建开发项目');
     await click('读取并校验');
-    await expect.poll(() => view.host.textContent).toContain('创建应用草稿');
-    await click('创建应用草稿');
-    await expect.poll(() => view.host.textContent).toContain('应用生命周期目标页');
+    await expect.poll(() => view.host.textContent).toContain('创建开发项目');
+    await click('创建开发项目');
+    await expect.poll(() => view.host.textContent).toContain('开发项目目标页');
   } finally {
     await view.dispose();
   }
@@ -118,8 +121,8 @@ test('repository import defaults to public access and reports read failures with
     });
     await click('读取并校验');
     await expect.poll(() => document.body.textContent).toContain('GitHub returned 404');
-    expect(view.host.textContent).not.toContain('创建应用草稿');
-    expect(calls).not.toContain('POST /v1/admin/apps/import');
+    expect(view.host.textContent).not.toContain('创建开发项目');
+    expect(calls).not.toContain('POST /v1/admin/development/projects');
   } finally {
     await view.dispose();
   }

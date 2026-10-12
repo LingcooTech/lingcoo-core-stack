@@ -201,11 +201,30 @@ export const applicationConnectionInputSchema = z.discriminatedUnion('kind', [
       password: z.string().min(1).max(2000),
     })
     .strict(),
+  z
+    .object({
+      kind: z.literal('acr'),
+      name: z.string().min(1).max(120),
+      region: z.string().regex(/^[a-z]+-[a-z0-9]+(?:-[0-9]+)?$/),
+      edition: z.literal('enterprise'),
+      instanceId: z
+        .string()
+        .regex(/^cri-[A-Za-z0-9]+$/)
+        .optional(),
+      host: z.string().regex(/^[a-zA-Z0-9.-]+$/),
+      accessKeyId: z.string().min(1).max(255),
+      accessKeySecret: z.string().min(1).max(2000),
+    })
+    .strict()
+    .refine(
+      (v) => v.edition !== 'enterprise' || !!v.instanceId,
+      'Enterprise ACR requires instanceId',
+    ),
 ]);
 export const applicationConnectionSchema = z.object({
   id: z.uuid(),
   name: z.string(),
-  kind: z.enum(['github', 'registry']),
+  kind: z.enum(['github', 'registry', 'acr']),
   host: z.string().nullable(),
   configured: z.boolean(),
   createdAt: z.string(),

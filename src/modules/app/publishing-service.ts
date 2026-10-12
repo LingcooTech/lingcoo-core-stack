@@ -13,7 +13,6 @@ import type { AppEnv } from '../../lib/env';
 import { decryptJson, getEncryptionKeys } from '../../lib/settings-crypto';
 import { acquireTransactionLock } from '../../db/locks';
 import { httpError } from '../../lib/errors';
-import { AppRepository } from './repository';
 import { AppLifecycleRepository } from './lifecycle-repository';
 import { validateApplicationDefinition, definitionDigest } from './definition';
 import { GitHubActionsClient } from './github-actions';
@@ -32,20 +31,20 @@ export class AppPublishingService {
     return new AppLifecycleRepository(db);
   }
   private async app(code: string, db = this.db) {
-    const app = await new AppRepository(db).findAppByCode(code);
+    const app = await this.repo(db).owner(code);
     if (!app) throw httpError(404, 'App not found');
     return app;
   }
   private async event(
     db: DbExecutor,
     actor: string,
-    appId: string,
+    appId: string | null,
     name: string,
     properties: Record<string, unknown>,
   ) {
     await this.dependencies
       .createEventService(db)
-      .capture({ userId: actor, appId, eventName: name, properties });
+      .capture({ userId: actor, appId: appId ?? undefined, eventName: name, properties });
   }
   async applySource(code: string, input: z.input<typeof applicationPreviewSchema>, actor: string) {
     const preview = applicationPreviewSchema.parse(input),
@@ -61,7 +60,7 @@ export class AppPublishingService {
         definition,
         definitionDigest: preview.definitionDigest,
       });
-      await this.event(tx, actor, app.id, 'app.source_updated', {
+      await this.event(tx, actor, app.appId, 'app.source_updated', {
         commit: preview.source?.commit ?? null,
         definitionDigest: preview.definitionDigest,
       });
@@ -85,13 +84,14 @@ export class AppPublishingService {
       token = 'stk_publish_' + randomBytes(32).toString('base64url');
     return this.db.transaction(async (tx) => {
       const record = await this.repo(tx).createPublishingToken({
-        appId: app.id,
+        appId: app.appId,
+        projectId: app.id,
         actorUserId: actor,
         name,
         tokenHash: createHash('sha256').update(token).digest('hex'),
         expiresAt: new Date(this.dependencies.now().getTime() + 90 * 86400000),
       });
-      await this.event(tx, actor, app.id, 'app.publishing_token_issued', { tokenId: record.id });
+      await this.event(tx, actor, app.appId, 'app.publishing_token_issued', { tokenId: record.id });
       return { token, record: this.tokenView(record) };
     });
   }
@@ -100,7 +100,7 @@ export class AppPublishingService {
     await this.db.transaction(async (tx) => {
       await acquireTransactionLock(tx, 'app:publication:' + code);
       await this.repo(tx).revokeToken(app.id, id);
-      await this.event(tx, actor, app.id, 'app.publishing_token_revoked', { tokenId: id });
+      await this.event(tx, actor, app.appId, 'app.publishing_token_revoked', { tokenId: id });
     });
     return { ok: true as const };
   }
@@ -111,7 +111,7 @@ export class AppPublishingService {
     const app = await this.app(code);
     if (
       !record ||
-      record.appId !== app.id ||
+      (record.projectId ?? record.appId) !== app.id ||
       record.revoked ||
       record.expiresAt <= this.dependencies.now()
     )
@@ -185,7 +185,7 @@ export class AppPublishingService {
       const existing = await this.repo(tx).build(value.requestId);
       if (existing) {
         if (
-          existing.appId !== actions.app.id ||
+          (existing.projectId ?? existing.appId) !== actions.app.id ||
           existing.version !== value.version ||
           existing.commit !== actions.source.commit
         )
@@ -194,11 +194,12 @@ export class AppPublishingService {
       }
       const row = await this.repo(tx).createBuild({
         id: value.requestId,
-        appId: actions.app.id,
+        appId: actions.app.appId,
+        projectId: actions.app.id,
         version: value.version,
         commit: actions.source.commit,
       });
-      await this.event(tx, actor, actions.app.id, 'app.build_requested', {
+      await this.event(tx, actor, actions.app.appId, 'app.build_requested', {
         requestId: row.id,
         commit: row.commit,
         version: row.version,

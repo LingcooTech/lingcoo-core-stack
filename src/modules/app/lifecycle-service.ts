@@ -93,11 +93,19 @@ export class AppLifecycleService {
       const row = await this.repository(tx).createConnection({
         name: values.name,
         kind: values.kind,
-        host: values.kind === 'registry' ? values.host.toLowerCase() : null,
+        host: values.kind !== 'github' ? values.host.toLowerCase() : null,
         credentials: encryptJson(
           values.kind === 'github'
             ? { token: values.token }
-            : { username: values.username, password: values.password },
+            : values.kind === 'registry'
+              ? { username: values.username, password: values.password }
+              : {
+                  region: values.region,
+                  edition: values.edition,
+                  instanceId: values.instanceId,
+                  accessKeyId: values.accessKeyId,
+                  accessKeySecret: values.accessKeySecret,
+                },
           this.keys(),
         ),
       });
@@ -110,6 +118,12 @@ export class AppLifecycleService {
   }
   async disconnect(id: string, actor: string) {
     await this.db.transaction(async (tx) => {
+      const refs = await this.repository(tx).connectionReferences(id);
+      if (refs.length)
+        throw httpError(
+          409,
+          'Connection is used by projects: ' + refs.map((p) => p.code).join(', '),
+        );
       await this.repository(tx).deleteConnection(id);
       await this.event(tx, actor, 'app.connection_deleted', { connectionId: id });
     });
@@ -135,21 +149,60 @@ export class AppLifecycleService {
       warnings: ['上传定义未绑定源码提交；可用于草稿导入，版本登记必须提供源码提交。'],
     };
   }
-  async import(input: z.input<typeof applicationPreviewSchema>, actor: string) {
-    const preview = applicationPreviewSchema.parse(input);
-    const definition = validateApplicationDefinition(preview.definition);
+  async projects() {
+    return {
+      items: (await this.repository().projects()).map((p) => ({
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        appId: p.appId,
+        definitionReady: !!p.definition,
+        repository: (p.source as { repository?: string } | null)?.repository ?? null,
+        updatedAt: p.updatedAt.toISOString(),
+      })),
+    };
+  }
+  async createProject(input: z.input<typeof applicationPreviewSchema>, actor: string) {
+    const preview = applicationPreviewSchema.parse(input),
+      definition = validateApplicationDefinition(preview.definition);
     if (definitionDigest(definition) !== preview.definitionDigest)
       throw httpError(422, 'Preview content changed; validate again');
     return this.db.transaction(async (tx) => {
       await acquireTransactionLock(tx, 'app:publication:' + definition.app.code);
-      if (await new AppRepository(tx).findAppByCode(definition.app.code))
+      const repo = this.repository(tx);
+      if (
+        (await repo.project(definition.app.code)) ||
+        (await new AppRepository(tx).findAppByCode(definition.app.code))
+      )
+        throw httpError(409, 'Project code already exists');
+      await repo.createProject({
+        code: definition.app.code,
+        name: definition.app.name,
+        source: preview.source,
+        definition,
+        definitionDigest: preview.definitionDigest,
+      });
+      await this.event(tx, actor, 'development.project_created', {
+        projectCode: definition.app.code,
+      });
+      return { projectCode: definition.app.code };
+    });
+  }
+  async importProjectProduct(code: string, actor: string) {
+    return this.db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + code);
+      const project = await this.app(code, tx);
+      if (project.appId)
         throw httpError(
           409,
-          'App Code already exists; import cannot overwrite an existing application',
+          'Project already has a product; existing product information is preserved',
         );
-      const { code, acquisition, license, ...info } = definition.app;
+      if (await new AppRepository(tx).findAppByCode(code))
+        throw httpError(409, 'Application code already exists');
+      const definition = validateApplicationDefinition(project.definition);
+      const { code: appCode, acquisition, license, ...info } = definition.app;
       const app = await this.createApps(tx).upsertApp(
-        code,
+        appCode,
         {
           ...info,
           status: 'inactive',
@@ -163,28 +216,33 @@ export class AppLifecycleService {
         },
         actor,
       );
+      await this.repository(tx).linkProduct(project.id, app.id);
       await this.repository(tx).saveSource({
-        appId: app.id,
-        source: preview.source,
+        appId: project.id,
+        source: project.source,
         definition,
-        definitionDigest: preview.definitionDigest,
+        definitionDigest: definitionDigest(definition),
       });
-      await this.event(
+      await this.event(tx, actor, 'development.product_created', { projectCode: code }, app.id);
+      return { appCode };
+    });
+  }
+  // Compatibility for older clients; new UI creates a development project before a product.
+  async import(input: z.input<typeof applicationPreviewSchema>, actor: string) {
+    return this.db.transaction(async (tx) => {
+      const lifecycle = new AppLifecycleService(
         tx,
-        actor,
-        'app.source_imported',
-        {
-          appCode: code,
-          commit: preview.source?.commit ?? null,
-          definitionDigest: preview.definitionDigest,
-        },
-        app.id,
+        this.env,
+        this.dependencies,
+        this.createApps,
+        this.fetcher,
       );
-      return { appCode: code };
+      const { projectCode } = await lifecycle.createProject(input, actor);
+      return lifecycle.importProjectProduct(projectCode, actor);
     });
   }
   private async app(code: string, db = this.db) {
-    const app = await new AppRepository(db).findAppByCode(code);
+    const app = await new AppLifecycleRepository(db).owner(code);
     if (!app) throw httpError(404, 'App not found');
     return app;
   }
@@ -238,7 +296,8 @@ export class AppLifecycleService {
         return this.releaseView(existing);
       }
       const row = await repo.createRelease({
-        appId: app.id,
+        appId: app.appId,
+        projectId: app.id,
         version: value.version,
         commit: value.commit,
         definition,
@@ -252,7 +311,7 @@ export class AppLifecycleService {
         actor,
         'app.release_registered',
         { version: value.version, commit: value.commit, definitionDigest: digest },
-        app.id,
+        app.appId ?? undefined,
       );
       return this.releaseView(row);
     });
@@ -279,7 +338,7 @@ export class AppLifecycleService {
         actor,
         'app.release_' + status,
         { releaseId: id, version: row.version },
-        app.id,
+        app.appId ?? undefined,
       );
       return this.releaseView(next);
     });

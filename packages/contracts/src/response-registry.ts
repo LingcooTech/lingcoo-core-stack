@@ -1,3 +1,4 @@
+import { developmentResponseContracts } from './development.js';
 import { storageResponseContracts } from './storage.js';
 import { lifecycleResponseContracts } from './app-lifecycle.js';
 import { appPublishingResponseContracts } from './app-publishing.js';
@@ -33,6 +34,7 @@ import {
 import * as models from './models.js';
 import * as core from './core-responses.js';
 const clientResponseContracts = [
+  ...developmentResponseContracts,
   ...lifecycleResponseContracts,
   ...appPublishingResponseContracts,
   ...appImagesResponseContracts,

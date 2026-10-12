@@ -12,7 +12,13 @@ const statusOptions = ['active', 'inactive', 'cancelled', 'expired'].map((value)
   value,
   label: value,
 }));
-export function AppBasicsSection({ create }: { create: boolean }) {
+export function AppBasicsSection({
+  create,
+  technicalReadOnly = false,
+}: {
+  create: boolean;
+  technicalReadOnly?: boolean;
+}) {
   return (
     <Card title="基本信息">
       <div className="admin-form-grid">
@@ -40,8 +46,13 @@ export function AppBasicsSection({ create }: { create: boolean }) {
         >
           <Input />
         </Form.Item>
-        <Form.Item name={['app', 'deliveryMode']} label="交付方式">
+        <Form.Item
+          name={['app', 'deliveryMode']}
+          label="交付方式"
+          extra={technicalReadOnly ? '由交付版本提供，在此只读显示。' : undefined}
+        >
           <Select
+            disabled={technicalReadOnly}
             options={[
               { value: 'none', label: '免部署' },
               { value: 'one_click', label: '一键部署' },

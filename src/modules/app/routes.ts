@@ -1,3 +1,4 @@
+import { registerDevelopmentRoutes } from './development-routes';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
@@ -23,6 +24,7 @@ import {
 } from './schemas';
 
 export const appRoutes: FastifyPluginAsync = async (app) => {
+  await registerDevelopmentRoutes(app);
   const managed = { preHandler: app.requirePermission('apps.manage') };
   app.post('/v1/admin/apps/:appCode/releases/:releaseId/plan', managed, (r) => {
     const p = appCodeParamsSchema.extend({ releaseId: z.uuid() }).parse(r.params);

@@ -3,6 +3,7 @@ import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
 import { listDeliveryManifestFields, normalizeDeliveryManifest } from '../../lib/delivery-manifest';
 import { AppRepository } from './repository';
+import { AppLifecycleRepository } from './lifecycle-repository';
 import type { AppDependencies } from './dependencies';
 type ManifestDependencies = Pick<AppDependencies, 'createDeliverySettings' | 'createEventService'>;
 export class AppManifestService {
@@ -82,6 +83,11 @@ export class AppManifestService {
       throw httpError(404, 'App not found');
     }
 
+    if ((await new AppLifecycleRepository(this.db).project(appCode))?.definition)
+      throw httpError(
+        422,
+        'Source-owned delivery definition is read-only; select a published release',
+      );
     const meta = this.normalizeMeta(app.meta);
     const currentSource = this.normalizeDeliveryManifestSource(meta.deliveryManifestSource);
     const currentManifest = this.normalizeMeta(meta.deliveryManifest);

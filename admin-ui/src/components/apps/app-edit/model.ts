@@ -40,7 +40,7 @@ export const APP_EDIT_TABS: Array<{
   { key: 'content', label: '展示内容', description: '详情正文、亮点、截图、FAQ 和外链' },
   {
     key: 'delivery',
-    label: '交付配置',
+    label: '交付信息',
     description: '先确定一键部署 manifest、域名槽位和部署参数',
   },
   { key: 'features', label: '功能', description: '创建并维护当前应用的 features' },

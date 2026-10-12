@@ -14,6 +14,7 @@ import {
   Route,
   RouterProvider,
   useLocation,
+  useParams,
 } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 
@@ -43,6 +44,11 @@ const PortalUiProvider = lazyNamed(
 const AccountCenterPage = lazyNamed(() => import('@/pages/AccountCenterPage'), 'AccountCenterPage');
 const AppCatalogPage = lazyNamed(() => import('@/pages/AppCatalogPage'), 'AppCatalogPage');
 const AppEditPage = lazyNamed(() => import('@/pages/AppEditPage'), 'AppEditPage');
+const DevelopmentPage = lazyNamed(() => import('@/pages/DevelopmentPage'), 'DevelopmentPage');
+const DeliverySettingsPage = lazyNamed(
+  () => import('@/pages/DeliverySettingsPage'),
+  'DeliverySettingsPage',
+);
 const AppsPage = lazyNamed(() => import('@/pages/AppsPage'), 'AppsPage');
 const AppImportPage = lazyNamed(() => import('@/pages/AppImportPage'), 'AppImportPage');
 const AppLifecyclePage = lazyNamed(() => import('@/pages/AppLifecyclePage'), 'AppLifecyclePage');
@@ -105,6 +111,10 @@ const queryClient = new QueryClient({
   },
 });
 
+function LegacyLifecycleRedirect() {
+  const { appCode } = useParams();
+  return <Navigate to={`/admin/development/projects/${appCode}`} replace />;
+}
 function SiteAppearanceSync() {
   const { data } = useQuery({
     queryKey: PUBLIC_SITE_SETTINGS_QUERY_KEY,
@@ -238,6 +248,67 @@ const router = createBrowserRouter(
               </ProtectedAdminSectionRoute>
             }
           />
+          <Route
+            path="/admin/development"
+            element={<Navigate to="/admin/development/projects" replace />}
+          />
+          <Route
+            path="/admin/development/projects"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-projects">
+                <DevelopmentPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/development/connections"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-connections">
+                <DevelopmentPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/development/repositories"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-repositories">
+                <DevelopmentPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/development/images"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-images">
+                <DevelopmentPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+
+          <Route
+            path="/admin/development/projects/new"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-projects">
+                <AppImportPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/development/projects/:appCode"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-projects">
+                <AppLifecyclePage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/development/projects/:appCode/delivery-settings"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="development-projects">
+                <DeliverySettingsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
           <Route path="/admin/catalog" element={<Navigate to="/admin/apps" replace />} />
           <Route
             path="/admin/apps"
@@ -251,7 +322,7 @@ const router = createBrowserRouter(
             path="/admin/apps/new"
             element={
               <ProtectedAdminSectionRoute sectionKey="apps">
-                <AppEditPage />
+                <Navigate to="/admin/development/projects/new" replace />
               </ProtectedAdminSectionRoute>
             }
           />
@@ -259,7 +330,7 @@ const router = createBrowserRouter(
             path="/admin/apps/import"
             element={
               <ProtectedAdminSectionRoute sectionKey="apps">
-                <AppImportPage />
+                <Navigate to="/admin/development/projects/new" replace />
               </ProtectedAdminSectionRoute>
             }
           />
@@ -267,7 +338,7 @@ const router = createBrowserRouter(
             path="/admin/apps/:appCode/lifecycle"
             element={
               <ProtectedAdminSectionRoute sectionKey="apps">
-                <AppLifecyclePage />
+                <LegacyLifecycleRedirect />
               </ProtectedAdminSectionRoute>
             }
           />

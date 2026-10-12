@@ -4,6 +4,7 @@ import { requireResult } from '../../db/required-result';
 import { queryBatch } from '../../db/query-batch';
 import { pickAppDependencies, type AppDependencies } from './dependencies';
 import { randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import type { DbExecutor } from '../../db/types';
 import { hasPublicTable } from '../../lib/db-compat';
@@ -254,6 +255,59 @@ export class AppService {
     });
   }
 
+  async selectDeliveryVersion(code: string, releaseId: string, actor: string) {
+    if (!this.env) throw httpError(503, 'Application runtime settings unavailable');
+    return this.db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + code);
+      const repo = new AppRepository(tx),
+        app = await repo.findAppByCode(code);
+      if (!app) throw httpError(404, 'App not found');
+      const row = await new AppLifecycleRepository(tx).release(app.id, releaseId);
+      if (!row || row.appId !== app.id || row.status !== 'published')
+        throw httpError(422, 'Choose a published release belonging to this product');
+      const release = applicationReleaseSchema.parse({
+        ...row,
+        createdAt: row.createdAt.toISOString(),
+        publishedAt: row.publishedAt?.toISOString() ?? null,
+      });
+      const meta: Record<string, unknown> = {
+        ...this.normalizeMeta(app.meta),
+        deliveryReleaseId: release.id,
+        deliveryProtocol: 'compose_v2',
+        deliveryMode: release.definition.delivery.kind === 'none' ? 'none' : 'one_click',
+      };
+      if (release.definition.delivery.kind === 'compose') {
+        const plan = compileComposePlan(release, {
+          instanceId: release.id,
+          mode: release.definition.delivery.modes[0]!,
+        });
+        const manifest = composeManifest(plan, this.env!.PUBLIC_BASE_URL);
+        Object.assign(meta, {
+          deliveryManifest: manifest,
+          hostingProfile: {
+            enabled: release.definition.delivery.modes.includes('managed'),
+            domainField: manifest.domainSlots[0]!.sourceField,
+            resources: plan.resources,
+          },
+        });
+      }
+      if (release.definition.delivery.kind === 'none') {
+        delete meta.deliveryManifest;
+        delete meta.hostingProfile;
+      }
+      meta.acquisition = release.definition.app.acquisition;
+      meta.license = release.definition.app.license;
+      await repo.updateAppById(app.id, { meta });
+      await this.capabilities.createEventService(tx).capture({
+        userId: actor,
+        appId: app.id,
+        eventName: 'app.delivery_version_selected',
+        properties: { releaseId },
+      });
+      return { ok: true as const };
+    });
+  }
+
   async listActiveApps() {
     const apps = await new AppRepository(this.db).listApps();
     return this.hydrateApps(apps.filter((app) => app.status === 'active'));
@@ -277,9 +331,19 @@ export class AppService {
     const result = requireResult(hydrated, 'app projection');
     const meta = this.normalizeMeta(result.meta);
     if (meta.deliveryProtocol === 'compose_v2' && this.env) {
-      const row = await new AppLifecycleRepository(this.db).currentPublishedRelease(app.id);
+      const releaseRepo = new AppLifecycleRepository(this.db);
+      const row =
+        typeof meta.deliveryReleaseId === 'string'
+          ? await releaseRepo.release(app.id, meta.deliveryReleaseId)
+          : await releaseRepo.currentPublishedRelease(app.id);
+      if (
+        typeof meta.deliveryReleaseId === 'string' &&
+        (!row || row.status !== 'published' || row.appId !== app.id)
+      )
+        throw httpError(409, 'Selected delivery release is unavailable');
       if (
         row &&
+        row.status === 'published' &&
         (row.definition as { delivery?: { kind?: string } }).delivery?.kind === 'compose'
       ) {
         const release = applicationReleaseSchema.parse({
@@ -522,6 +586,36 @@ export class AppService {
       await acquireTransactionLock(tx, 'app:publication:' + appCode);
       const repository = new AppRepository(tx);
       const previous = await repository.findAppByCode(appCode);
+      let editableMeta = input.meta;
+      if (previous) {
+        const project = await new AppLifecycleRepository(tx).project(appCode);
+        if (project?.definition) {
+          const retained = { ...this.normalizeMeta(previous.meta), ...input.meta };
+          for (const key of [
+            'deliveryProtocol',
+            'deliveryMode',
+            'deliveryManifest',
+            'deliveryManifestSource',
+            'hostingProfile',
+            'deliveryReleaseId',
+            'acquisition',
+            'license',
+          ]) {
+            if (
+              input.meta &&
+              Object.hasOwn(input.meta, key) &&
+              !isDeepStrictEqual(input.meta[key], this.normalizeMeta(previous.meta)[key])
+            )
+              throw httpError(
+                422,
+                'Delivery definition is read-only; update the development project or select a release',
+              );
+            if (Object.hasOwn(this.normalizeMeta(previous.meta), key))
+              retained[key] = this.normalizeMeta(previous.meta)[key];
+          }
+          editableMeta = retained;
+        }
+      }
       const licenseRepository = this.capabilities.createLicenseAccess(tx);
 
       const app = await repository.upsertApp({
@@ -540,7 +634,7 @@ export class AppService {
         sortOrder: input.sortOrder,
         type: input.type,
         status: input.status,
-        meta: this.buildEditableMeta(input.meta, input.status),
+        meta: this.buildEditableMeta(editableMeta, input.status),
       });
 
       const featureMap = new Map<string, { id: string; code: string }>();

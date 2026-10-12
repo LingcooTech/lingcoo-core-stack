@@ -50,7 +50,10 @@
     "app:create": "node scripts/create-stack-app.mjs"
   },
   "dependencies": {
+    "@alicloud/cr20181201": "2.2.4",
+    "@alicloud/openapi-core": "1.0.8",
     "@aws-sdk/client-s3": "3.1117.0",
+    "@darabonba/typescript": "1.0.5",
     "@fastify/cookie": "^10.0.1",
     "@fastify/cors": "^10.0.2",
     "@fastify/formbody": "^8.0.2",

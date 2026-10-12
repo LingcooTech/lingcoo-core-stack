@@ -1,11 +1,11 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { App, Button, Form, Modal, Space, Tabs } from 'antd';
+import { App, Button, Form, Space, Tabs } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UpsertAppInputSchema } from '@lingcoo/contracts/models';
-import { listAppsAdmin, listCatalogSnapshot, syncAppDeliveryManifest, upsertApp } from '@/api/apps';
-import { clearDeliverySettings, getDeliverySettings, upsertDeliverySettings } from '@/api/delivery';
+import { listAppsAdmin, listCatalogSnapshot, upsertApp } from '@/api/apps';
+import { getDeliverySettings } from '@/api/delivery';
 import { PageContainer, FormActions } from '@/components/admin/PageContainer';
 import { AsyncState } from '@/components/admin/AsyncState';
 import { AppReadiness } from '@/components/apps/app-edit/AppReadiness';
@@ -15,7 +15,7 @@ import {
   AppPlansSection,
   AppOffersSection,
 } from '@/components/admin/apps/AppCatalogSections';
-import { AppDeliverySection } from '@/components/admin/apps/AppDeliverySection';
+import { AppDeliverySummary } from '@/components/admin/apps/AppDeliverySummary';
 import {
   EMPTY_FORM_STATE,
   APP_EDIT_TABS,
@@ -31,13 +31,9 @@ import {
   type EditableOffer,
 } from '@/components/apps/app-edit/model';
 import {
-  buildDeliveryManifestSourcePayload,
-  buildDeliverySettingsPayload,
   createDeliveryManifestSourceDraft,
-  createDeliverySecretState,
   createDeliverySettingsDraft,
   getDeliveryManifest,
-  serializeDeliveryManifestSourceDraft,
   type DeliverySettingsDraft,
   type DeliveryManifestSourceDraft,
 } from '@/lib/app-delivery';
@@ -65,7 +61,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
   const qc = useQueryClient(),
     navigate = useNavigate(),
     { message } = App.useApp(),
-    [modal, context] = Modal.useModal(),
     { user } = useAuth();
   const writable = hasPermission(normalizeRole(user?.role), 'apps.manage');
   const [active, setActive] = useState('basics');
@@ -98,9 +93,7 @@ function AppEditor({ appCode }: { appCode?: string }) {
       source: createDeliveryManifestSourceDraft(app),
     };
   }, [appCode, app, catalog.data, delivery.data]);
-  const { form, dirty, reset, rebase } = useSettingsForm(initial);
-  const mode = Form.useWatch(['app', 'deliveryMode'], form);
-  const secrets = createDeliverySecretState(delivery.data, manifest);
+  const { form, dirty, reset } = useSettingsForm(initial);
   const codes = useRef<{ features: Map<string, string>; plans: Map<string, string> } | null>(null);
   const reconcile = () => {
     const d = form.getFieldsValue(true) as AppEditorDraft;
@@ -149,10 +142,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
       const request = buildSaveRequest(d.app, d.features, d.plans, d.offers, app?.meta);
       if (!appCode && apps.data?.items.some((a) => a.code === request.appCode))
         throw new Error('App Code 已存在');
-      const source = buildDeliveryManifestSourcePayload(d.source);
-      if (Object.keys(source).length)
-        request.payload.meta = { ...request.payload.meta, deliveryManifestSource: source };
-      else if (request.payload.meta) delete request.payload.meta.deliveryManifestSource;
       request.payload = UpsertAppInputSchema.parse(request.payload);
       const saved = await upsertApp(request.appCode, request.payload);
       qc.setQueryData(
@@ -161,13 +150,9 @@ function AppEditor({ appCode }: { appCode?: string }) {
           items: [saved, ...(current?.items ?? []).filter((a) => a.id !== saved.id)],
         }),
       );
-      const overview =
-        d.app.deliveryMode === 'one_click'
-          ? await upsertDeliverySettings(saved.code, buildDeliverySettingsPayload(d.delivery))
-          : undefined;
-      return { saved, overview, d };
+      return { saved, d };
     },
-    onSuccess: ({ saved, overview, d }) => {
+    onSuccess: ({ saved, d }) => {
       const next = {
         ...d,
         app: createFormState(saved),
@@ -175,15 +160,12 @@ function AppEditor({ appCode }: { appCode?: string }) {
         plans: d.plans,
         offers: createEditableOffers(saved),
         source: createDeliveryManifestSourceDraft(saved),
-        delivery: overview
-          ? createDeliverySettingsDraft(overview, getDeliveryManifest(saved))
-          : d.delivery,
+        delivery: d.delivery,
       };
       flushSync(() => {
         reset(next);
         codes.current = null;
       });
-      if (overview) qc.setQueryData(['delivery-settings', saved.code], overview);
       void qc.invalidateQueries({ queryKey: ['catalog'] });
       void qc.invalidateQueries({ queryKey: ['app-readiness'] });
       void message.success('应用配置已保存');
@@ -193,57 +175,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
       void message.error(e.message);
     },
   });
-  const sync = useMutation({
-    mutationFn: async () => {
-      if (!appCode) throw new Error('请先创建应用');
-      if (
-        serializeDeliveryManifestSourceDraft(form.getFieldValue('source')) !==
-        serializeDeliveryManifestSourceDraft(createDeliveryManifestSourceDraft(app))
-      )
-        throw new Error('请先保存交付清单来源，再同步清单');
-      const saved = await syncAppDeliveryManifest(
-        appCode,
-        buildDeliveryManifestSourcePayload(form.getFieldValue('source')),
-      );
-      const overview = await getDeliverySettings(appCode);
-      return { saved, overview };
-    },
-    onSuccess: ({ saved, overview }) => {
-      qc.setQueryData(
-        ['apps'],
-        (current: Awaited<ReturnType<typeof listAppsAdmin>> | undefined) => ({
-          items: [saved, ...(current?.items ?? []).filter((a) => a.id !== saved.id)],
-        }),
-      );
-      qc.setQueryData(['delivery-settings', appCode], overview);
-      rebase({
-        delivery: createDeliverySettingsDraft(overview, getDeliveryManifest(saved)),
-        source: createDeliveryManifestSourceDraft(saved),
-      });
-      void qc.invalidateQueries({ queryKey: ['app-readiness'] });
-      void message.success('Manifest 已同步，其他未保存字段已保留');
-    },
-    onError: (e) => {
-      void message.error(e.message);
-    },
-  });
-  const clear = () => {
-    modal.confirm({
-      title: '清空平台交付配置？',
-      content: '已保存的交付密钥和预设将被清除；应用其他编辑内容会保留。',
-      okText: '清空配置',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        if (appCode) await clearDeliverySettings(appCode);
-        const overview = appCode ? await getDeliverySettings(appCode) : undefined;
-        if (overview) qc.setQueryData(['delivery-settings', appCode], overview);
-        rebase({ delivery: createDeliverySettingsDraft(overview, manifest) });
-        void qc.invalidateQueries({ queryKey: ['app-readiness'] });
-        void message.success('交付配置已清空');
-      },
-    });
-  };
   const error = apps.error || catalog.error || delivery.error;
   const loading =
     !initial &&
@@ -256,7 +187,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
       backTo="/admin/apps"
       actions={
         <Space>
-          {appCode && <Button href={`/admin/apps/${appCode}/lifecycle`}>源码与交付版本</Button>}
           {appCode && (
             <Button href={`/apps/${appCode}`} target="_blank">
               预览应用
@@ -265,7 +195,6 @@ function AppEditor({ appCode }: { appCode?: string }) {
         </Space>
       }
     >
-      {context}
       <AsyncState
         loading={loading}
         error={error}
@@ -281,7 +210,7 @@ function AppEditor({ appCode }: { appCode?: string }) {
           name="app-editor"
           form={form}
           layout="vertical"
-          disabled={!writable || mutation.isPending || sync.isPending}
+          disabled={!writable || mutation.isPending}
           onValuesChange={reconcile}
           onFinish={() => mutation.mutate()}
         >
@@ -291,37 +220,27 @@ function AppEditor({ appCode }: { appCode?: string }) {
             }
             activeKey={active}
             onChange={setActive}
-            items={APP_EDIT_TABS.filter((t) => t.key !== 'delivery' || mode === 'one_click').map(
-              (t) => ({
-                key: t.key,
-                label: t.label,
-                forceRender: t.key !== 'content',
-                children:
-                  t.key === 'basics' ? (
-                    <AppBasicsSection create={!appCode} />
-                  ) : t.key === 'content' ? (
-                    <Suspense fallback={<AsyncState loading>{null}</AsyncState>}>
-                      <AppContentSection />
-                    </Suspense>
-                  ) : t.key === 'features' ? (
-                    <AppFeaturesSection />
-                  ) : t.key === 'plans' ? (
-                    <AppPlansSection form={form} manifest={manifest} />
-                  ) : t.key === 'offers' ? (
-                    <AppOffersSection form={form} />
-                  ) : (
-                    <AppDeliverySection
-                      manifest={manifest}
-                      secrets={secrets}
-                      create={!appCode}
-                      savedSource={createDeliveryManifestSourceDraft(app)}
-                      busy={sync.isPending}
-                      onSync={() => sync.mutate()}
-                      onClear={clear}
-                    />
-                  ),
-              }),
-            )}
+            items={APP_EDIT_TABS.map((t) => ({
+              key: t.key,
+              label: t.label,
+              forceRender: t.key !== 'content',
+              children:
+                t.key === 'basics' ? (
+                  <AppBasicsSection create={!appCode} technicalReadOnly={Boolean(appCode)} />
+                ) : t.key === 'content' ? (
+                  <Suspense fallback={<AsyncState loading>{null}</AsyncState>}>
+                    <AppContentSection />
+                  </Suspense>
+                ) : t.key === 'features' ? (
+                  <AppFeaturesSection />
+                ) : t.key === 'plans' ? (
+                  <AppPlansSection form={form} manifest={manifest} />
+                ) : t.key === 'offers' ? (
+                  <AppOffersSection form={form} />
+                ) : (
+                  <AppDeliverySummary app={app} dirty={dirty} />
+                ),
+            }))}
           />
           <FormActions hint={dirty ? '有未保存的修改' : '配置已保存'}>
             <Button
