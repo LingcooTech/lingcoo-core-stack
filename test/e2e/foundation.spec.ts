@@ -244,6 +244,7 @@ test('contextual admin commands and announcement draft drawer work on desktop an
       '/admin/storage',
       '/admin/notifications',
       '/admin/hosting',
+      '/admin/servers',
       '/admin/settings',
     ]) {
       await page.goto(route);
@@ -256,7 +257,7 @@ test('contextual admin commands and announcement draft drawer work on desktop an
             .getByRole('button', { name: '新建空间', exact: true }),
         ).toBeVisible();
       }
-      if (route === '/admin/hosting') {
+      if (route === '/admin/servers') {
         await expect(
           page.locator('.admin-toolbar').getByRole('button', { name: '添加服务器', exact: true }),
         ).toBeVisible();
@@ -431,7 +432,8 @@ test('hosting resource registration keeps allocation paused and budget edits sur
 }, info) => {
   await login(page, '/admin/login', adminEmail);
   await expect(page).toHaveURL(/\/admin$/);
-  await page.goto('/admin/hosting');
+  await page.goto('/admin/servers');
+  await page.reload();
   await page.getByRole('button', { name: '添加服务器', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '添加服务器资源', exact: true });
   const name = 'Browser monitor ' + randomUUID().slice(0, 8);
@@ -440,7 +442,20 @@ test('hosting resource registration keeps allocation paused and budget edits sur
     .getByLabel('服务器 IP', { exact: true })
     .fill('192.0.2.' + (10 + Math.floor(Math.random() * 200)));
   await dialog.getByRole('button', { name: '登记服务器', exact: true }).click();
-  await expect(dialog.getByText('健康上报凭据仅显示一次', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('服务器接入凭据仅显示一次', { exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: '下载接入配置', exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('node-enrollment.json');
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const enrollment = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  expect(Object.keys(enrollment).sort()).toEqual(['nodeId', 'reportToken', 'stackUrl']);
+  expect(enrollment.nodeId).toMatch(/^[a-f0-9-]{36}$/);
+  expect(typeof enrollment.reportToken).toBe('string');
+  expect(enrollment.reportToken.length).toBeGreaterThan(32);
+  expect(await dialog.textContent()).not.toContain(enrollment.reportToken);
   await dialog.getByRole('button', { name: '已保存，隐藏凭据', exact: true }).click();
   const card = page.locator('.ant-card').filter({ has: page.getByText(name, { exact: true }) });
   await expect(card.getByText('暂停新分配', { exact: true })).toBeVisible();
@@ -487,6 +502,7 @@ test('all admin routes and legacy redirects render, with responsive themed forms
     '/admin/installs',
     '/admin/notifications',
     '/admin/hosting',
+    '/admin/servers',
     '/admin/deployments',
     '/admin/observability',
   ];
