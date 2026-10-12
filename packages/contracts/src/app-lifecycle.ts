@@ -63,6 +63,17 @@ const composeDeliverySchema = z
         cpuMillis: z.number().int().min(100).max(64000),
         memoryMb: z.number().int().min(128).max(262144),
         diskMb: z.number().int().min(256).max(10485760),
+        serviceLimits: z
+          .record(
+            z.string().regex(/^[A-Za-z0-9_-]+$/),
+            z
+              .object({
+                cpuMillis: z.number().int().min(10).max(64000),
+                memoryMb: z.number().int().min(64).max(262144),
+              })
+              .strict(),
+          )
+          .optional(),
         serviceWeights: z
           .record(z.string().regex(/^[A-Za-z0-9_-]+$/), z.number().int().min(1).max(1000))
           .optional(),

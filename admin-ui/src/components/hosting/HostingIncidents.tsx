@@ -129,7 +129,7 @@ export function HostingIncidents() {
                       <Link
                         to={
                           i.scope === 'node'
-                            ? '/admin/hosting?tab=servers'
+                            ? '/admin/servers'
                             : `/admin/hosting?tab=instances&deploymentId=${i.resourceId}`
                         }
                       >

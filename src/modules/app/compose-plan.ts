@@ -54,8 +54,13 @@ export function compileComposePlan(
       if (extra-- > 0) values[share.name]!++;
     return values;
   };
-  const cpu = allocate(delivery.resources.cpuMillis, 10),
-    memory = allocate(delivery.resources.memoryMb, 64),
+  const limits = delivery.resources.serviceLimits;
+  const cpu = limits
+      ? Object.fromEntries(names.map((name) => [name, limits[name]!.cpuMillis]))
+      : allocate(delivery.resources.cpuMillis, 10),
+    memory = limits
+      ? Object.fromEntries(names.map((name) => [name, limits[name]!.memoryMb]))
+      : allocate(delivery.resources.memoryMb, 64),
     images = Object.fromEntries(definition.images.map((v) => [v.imageEnv, release.images[v.key]!]));
   for (const name of names) {
     const service = services[name]!;

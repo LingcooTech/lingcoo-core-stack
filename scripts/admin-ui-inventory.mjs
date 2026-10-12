@@ -183,7 +183,7 @@ report.uiAudit = adminRuntimeFiles
   });
 if (process.argv.includes('--check')) {
   const failures = [];
-  if (routes.length !== 24 || report.businessSections !== 17)
+  if (routes.length !== 25 || report.businessSections !== 18)
     failures.push('Admin route coverage changed; update the inventory contract explicitly');
   for (const [name, item] of Object.entries({ ...pages, AdminShell: report.shell })) {
     const forbidden = item.packages.filter((dependency) =>

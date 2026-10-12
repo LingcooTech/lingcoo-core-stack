@@ -47,7 +47,13 @@
     "resources": {
       "cpuMillis": 500,
       "memoryMb": 256,
-      "diskMb": 1024
+      "diskMb": 1024,
+      "serviceLimits": {
+        "web": {
+          "cpuMillis": 500,
+          "memoryMb": 256
+        }
+      }
     },
     "entrypoint": {
       "service": "web",

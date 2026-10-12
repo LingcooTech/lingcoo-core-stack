@@ -117,6 +117,22 @@ export function validateApplicationDefinition(input: unknown): ApplicationDefini
   for (const step of [...delivery.lifecycle.migrate, ...delivery.lifecycle.initialize])
     if (infrastructure.includes(step.service))
       throw httpError(422, 'Initialization commands must use a stopped application service');
+  if (delivery.resources.serviceLimits) {
+    const limits = delivery.resources.serviceLimits;
+    if (delivery.resources.serviceWeights)
+      throw httpError(422, 'Choose explicit service limits or legacy weights, not both');
+    if (
+      Object.keys(limits).length !== Object.keys(serviceMap).length ||
+      Object.keys(serviceMap).some((name) => !Object.hasOwn(limits, name))
+    )
+      throw httpError(422, 'Resource limits must include every service exactly once');
+    for (const key of ['cpuMillis', 'memoryMb'] as const)
+      if (
+        Object.values(limits).reduce((sum, limit) => sum + limit[key], 0) !==
+        delivery.resources[key]
+      )
+        throw httpError(422, 'Service limits must equal the aggregate resource budget');
+  }
   if (delivery.resources.serviceWeights) {
     const weights = delivery.resources.serviceWeights;
     if (

@@ -48,3 +48,7 @@ test(
     });
   },
 );
+
+test('node enrollment refuses unsafe identity and public credential files', () => {
+  execFileSync('python3', ['test/hosting-enrollment.py'], { stdio: 'pipe' });
+});

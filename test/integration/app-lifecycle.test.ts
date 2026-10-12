@@ -40,6 +40,7 @@ test('Compose plan HTTP preview is scoped to the immutable release and never res
     user.id,
   );
   raw.delivery.resources.memoryMb = 512;
+  raw.delivery.resources.serviceLimits.web.memoryMb = 512;
   await service
     .publishing()
     .applySource(code, await service.preview({ document: JSON.stringify(raw) }), user.id);

@@ -11,6 +11,7 @@ export type AdminSectionKey =
   | 'users'
   | 'licenses'
   | 'deployments'
+  | 'servers'
   | 'hosting'
   | 'installs'
   | 'tickets'
@@ -147,14 +148,31 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     pageDataScopes: [],
     commandAliases: ['deployments', '应用部署', '交付台账'],
   },
+  servers: {
+    groupLabel: '资源',
+    navTitle: '服务器资源',
+    navNote: '接入、容量与健康',
+    icon: 'Server',
+    permission: 'settings.manage',
+    title: '服务器资源',
+    lead: '',
+    href: '/admin/servers',
+    contextCards: [
+      { label: '接入', value: '节点代理', note: '认证上报后显示实际资源' },
+      { label: '容量', value: '声明与预留', note: '按应用版本规格分配' },
+    ],
+    heroActions: [],
+    pageDataScopes: [],
+    commandAliases: ['servers', '服务器', '资源池'],
+  },
   hosting: {
     groupLabel: '运维',
     navTitle: '托管运维',
-    navNote: '资源、实例与备份',
+    navNote: '实例、备份与恢复',
     icon: 'Server',
     permission: 'settings.manage',
     title: '托管运维',
-    lead: '集中管理服务器资源、托管实例、证书与备份任务',
+    lead: '管理托管实例、备份与运维任务',
     href: '/admin/hosting',
     contextCards: [
       { label: '节点', value: '健康上报', note: '超过 5 分钟的报告不参与分配' },
@@ -162,7 +180,7 @@ export const adminSectionMeta: Record<AdminSectionKey, AdminSectionMeta> = {
     ],
     heroActions: [],
     pageDataScopes: [],
-    commandAliases: ['hosting', '托管', '服务器'],
+    commandAliases: ['hosting', '托管', '运维'],
   },
   dashboard: {
     groupLabel: '概览',
@@ -473,6 +491,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     label: '客户管理',
     items: ['users', 'licenses', 'deployments', 'installs', 'tickets', 'notifications'],
   },
+  { label: '资源', items: ['servers'] },
   { label: '运维', items: ['hosting', 'settings', 'observability'] },
 ];
 

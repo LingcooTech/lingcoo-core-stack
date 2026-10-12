@@ -110,17 +110,43 @@ export function AddHostingNode() {
           <Alert
             type="warning"
             showIcon
-            title="健康上报凭据仅显示一次"
+            title="服务器接入凭据仅显示一次"
             description={
               <Space orientation="vertical">
                 <span>
-                  保存到权限为 600 的探针配置文件，使用 scripts/hosting-node-report.py 定时上报。
+                  下载接入配置，传入服务器接入命令。首次上报后显示资源状态；启用托管前还需完成网关、证书和备份验收。
                 </span>
                 <Typography.Text code>节点 ID：{credential.id}</Typography.Text>
                 <Typography.Text code>
                   {visible ? credential.token : '••••••••••••••••'}
                 </Typography.Text>
                 <Space>
+                  <Button
+                    onClick={() => {
+                      const blob = new Blob(
+                        [
+                          JSON.stringify(
+                            {
+                              stackUrl: window.location.origin,
+                              nodeId: credential.id,
+                              reportToken: credential.token,
+                            },
+                            null,
+                            2,
+                          ),
+                        ],
+                        { type: 'application/json' },
+                      );
+                      const url = URL.createObjectURL(blob),
+                        a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'node-enrollment.json';
+                      a.click();
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    }}
+                  >
+                    下载接入配置
+                  </Button>
                   <Button onClick={() => setVisible((v) => !v)}>
                     {visible ? '隐藏凭据' : '显示凭据'}
                   </Button>

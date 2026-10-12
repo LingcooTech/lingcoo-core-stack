@@ -10,10 +10,12 @@ const documents = [
   ['quickstart', '开发接入指南', 'docs/developer-quickstart.md'],
   ['standard', '接入与交付标准', 'docs/stack-application-definition-standard.md'],
   ['templates', '开发模板与验收', 'templates/stack-app/README.md'],
+  ['server-onboarding', '服务器接入与资源标准', 'docs/server-onboarding.md'],
   ['progress', '实施进度与边界', 'specs/application-lifecycle/tasks.md'],
 ];
 const files = [
   ...documents.map(([, , file]) => file),
+  'skills/stack-server-onboarding/SKILL.md',
   'examples/stack-compose-app.json',
   'examples/stack-publish-workflow.yml',
   'scripts/publish-application-release.mjs',

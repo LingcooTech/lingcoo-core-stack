@@ -34,6 +34,7 @@ test('version-bound plans pin every image, isolate projects and preserve aggrega
       database: { image: 'registry.example.com/postgres@sha256:' + 'c'.repeat(64) },
     },
   };
+  delete source.definition.delivery.resources.serviceLimits;
   source.definition.delivery.resources.serviceWeights = { web: 2, worker: 1, database: 3 };
   source.definitionDigest = definitionDigest(source.definition);
   const instanceId = randomUUID(),

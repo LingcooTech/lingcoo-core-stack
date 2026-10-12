@@ -56,7 +56,7 @@ export function HostingNodeCard({ node }: { node: HostingNode }) {
         extra={
           <StatusTag
             tone={node.healthy ? 'ok' : 'danger'}
-            label={node.healthy ? '在线' : '报告异常'}
+            label={node.healthy ? '在线' : node.lastReportedAt ? '报告异常' : '待接入'}
           />
         }
       >
@@ -65,7 +65,9 @@ export function HostingNodeCard({ node }: { node: HostingNode }) {
           <Space wrap>
             <StatusTag
               tone={node.telemetry?.canDeploy ? 'info' : 'neutral'}
-              label={node.telemetry?.canDeploy ? '托管节点' : '仅监控'}
+              label={
+                !node.telemetry ? '等待首次上报' : node.telemetry.canDeploy ? '托管节点' : '仅监控'
+              }
             />
             <StatusTag
               tone={node.enabled ? 'ok' : 'neutral'}
@@ -76,7 +78,10 @@ export function HostingNodeCard({ node }: { node: HostingNode }) {
             {[node.asset.provider, node.asset.region].filter(Boolean).join(' · ') ||
               '资产信息待完善'}
           </span>
-          <span>应用适配：{node.telemetry?.supportedApps?.join('、') || '尚无已验证适配器'}</span>
+          <span>
+            执行协议：{node.telemetry?.supportedProtocols?.join('、') || '尚未上报通用协议'}
+          </span>
+          <span>兼容应用：{node.telemetry?.supportedApps?.join('、') || '尚无已验证适配器'}</span>
           <ResourceMeter
             label="内存使用"
             value={

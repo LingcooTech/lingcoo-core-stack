@@ -73,6 +73,7 @@ const AdminDeploymentsPage = lazyNamed(
   () => import('@/pages/AdminDeploymentsPage'),
   'AdminDeploymentsPage',
 );
+const ServersPage = lazyNamed(() => import('@/pages/ServersPage'), 'ServersPage');
 const HostingPage = lazyNamed(() => import('@/pages/HostingPage'), 'HostingPage');
 const InstallsPage = lazyNamed(() => import('@/pages/InstallsPage'), 'InstallsPage');
 const LicensesPage = lazyNamed(() => import('@/pages/LicensesPage'), 'LicensesPage');
@@ -387,6 +388,14 @@ const router = createBrowserRouter(
             element={
               <ProtectedAdminSectionRoute sectionKey="notifications">
                 <NotificationsPage />
+              </ProtectedAdminSectionRoute>
+            }
+          />
+          <Route
+            path="/admin/servers"
+            element={
+              <ProtectedAdminSectionRoute sectionKey="servers">
+                <ServersPage />
               </ProtectedAdminSectionRoute>
             }
           />

@@ -1,15 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Input, Select, Space, Tabs } from 'antd';
-import { useSearchParams } from 'react-router-dom';
+import { Alert, Button, Tabs } from 'antd';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/api/client';
 import { MetricCard, MetricGrid } from '@/components/admin/MetricCard';
-import { PageContainer, PageToolbar } from '@/components/admin/PageContainer';
-import { AsyncState } from '@/components/admin/AsyncState';
+import { PageContainer } from '@/components/admin/PageContainer';
 import { HostingIncidents } from '@/components/hosting/HostingIncidents';
 import { HostingOffers } from '@/components/hosting/HostingOffers';
-import { HostingNodeCard } from '@/components/hosting/HostingNodeCard';
 import { HostingInstances } from '@/components/hosting/HostingInstances';
-import { AddHostingNode } from '@/components/hosting/AddHostingNode';
 import { useHostingOverview } from '@/components/hosting/useHostingOverview';
 import { useAuth } from '@/lib/auth';
 import { hasPermission, normalizeRole } from '@/lib/rbac';
@@ -17,8 +14,6 @@ export function HostingPage() {
   const { user } = useAuth(),
     [params, setParams] = useSearchParams();
   const canManageOffers = hasPermission(normalizeRole(user?.role), 'hosting.offers.manage');
-  const search = params.get('search') ?? '',
-    filter = params.get('nodeType') ?? 'all';
   const update = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -40,16 +35,7 @@ export function HostingPage() {
         ),
       refetchInterval: 30000,
     });
-  const items = nodes.data?.items ?? [],
-    filtered = items.filter(
-      (n) =>
-        `${n.name} ${n.serverIp} ${n.asset.provider}`
-          .toLowerCase()
-          .includes(search.toLowerCase()) &&
-        (filter === 'all' ||
-          (filter === 'deploy' && n.telemetry?.canDeploy) ||
-          (filter === 'attention' && (!n.healthy || n.alerts.length > 0))),
-    );
+  const items = nodes.data?.items ?? [];
   const instances = overview.data?.instances ?? [],
     backupInstances = instances.filter((i) => !['retained', 'terminated'].includes(i.state ?? '')),
     protectedCount = backupInstances.filter(
@@ -73,55 +59,6 @@ export function HostingPage() {
             : '最近完整性扫描未发现异常。请同时留意节点报告时间。';
   const tabs = [
     {
-      key: 'servers',
-      label: '服务器资源',
-      children: (
-        <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-          <PageToolbar
-            actions={<AddHostingNode />}
-            filters={
-              <>
-                <Input.Search
-                  aria-label="搜索服务器"
-                  placeholder="搜索名称或 IP"
-                  value={search}
-                  onChange={(e) => update('search', e.target.value)}
-                  style={{ width: 300 }}
-                />
-                <Select
-                  aria-label="筛选服务器"
-                  value={filter}
-                  onChange={(v) => update('nodeType', v)}
-                  style={{ width: 160 }}
-                  options={[
-                    { value: 'all', label: '全部节点' },
-                    { value: 'deploy', label: '托管节点' },
-                    { value: 'attention', label: '需要关注' },
-                  ]}
-                />
-              </>
-            }
-          />
-          <p>资源预算与实际占用独立展示，暂停分配不影响已有应用。</p>
-          <AsyncState
-            loading={nodes.isPending}
-            error={nodes.error}
-            empty={!filtered.length}
-            emptyText={
-              items.length ? '没有匹配的服务器' : '尚未添加服务器，登记并接入上报后显示资源状态。'
-            }
-            onRetry={() => void nodes.refetch()}
-          >
-            <div className="grid items-start gap-4 xl:grid-cols-2">
-              {filtered.map((n) => (
-                <HostingNodeCard key={n.id} node={n} />
-              ))}
-            </div>
-          </AsyncState>
-        </Space>
-      ),
-    },
-    {
       key: 'instances',
       label: '托管实例',
       children: (
@@ -135,16 +72,12 @@ export function HostingPage() {
     { key: 'operations', label: '运维记录', children: <HostingInstances view="operations" /> },
     ...(canManageOffers ? [{ key: 'offers', label: '托管套餐', children: <HostingOffers /> }] : []),
   ];
-  const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab')! : 'servers';
+  const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab')! : 'instances';
+  if (params.get('tab') === 'servers') return <Navigate to="/admin/servers" replace />;
   return (
     <PageContainer title="托管运维">
       <MetricGrid>
         {[
-          {
-            title: '服务器在线',
-            value: nodes.data ? `${items.filter((n) => n.healthy).length} / ${items.length}` : '—',
-            note: '节点健康与资源上报',
-          },
           {
             title: '托管实例',
             value: overview.data ? instances.length : '—',

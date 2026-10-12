@@ -141,7 +141,7 @@ export function InstallsPage() {
           {canViewDeployments && <Link to="/admin/deployments">查看应用部署</Link>}
           <PageHelp>
             这里记录客户端主动调用登记接口产生的安装。使用 deploy token
-            安装到服务器的记录位于“应用部署”。最近上报不是服务器健康状态；服务器、证书和备份在“托管运维”管理。
+            安装到服务器的记录位于“应用部署”。最近上报不是服务器健康状态；服务器在“服务器资源”管理，实例备份与恢复在“托管运维”管理。
           </PageHelp>
         </>
       }
