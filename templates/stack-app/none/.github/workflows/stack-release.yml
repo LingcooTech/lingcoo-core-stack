@@ -1,0 +1,51 @@
+name: Stack Release
+run-name: Stack ${{ inputs.stack_build_id || github.run_id }} ${{ inputs.stack_version || github.ref_name }}
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      stack_build_id:
+        type: string
+      stack_commit:
+        type: string
+        required: true
+      stack_version:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.stack_commit || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Validate fixed source and version before building
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          STACK_COMMIT: ${{ inputs.stack_commit }}
+          STACK_VERSION: ${{ inputs.stack_version }}
+        run: |
+          node -e 'if (!/^[a-f0-9]{40}$/.test(process.env.STACK_COMMIT || "") || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(process.env.STACK_VERSION || "")) process.exit(1);'
+          test "$(git rev-parse HEAD)" = "$STACK_COMMIT"
+      - name: Validate definition
+        run: npm run stack:validate
+      # Add your own app build, tests and authorization checks before registration.
+      - name: Register no-deployment draft
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          STACK_VERSION: ${{ inputs.stack_version }}
+          STACK_COMMIT: ${{ inputs.stack_commit }}
+          STACK_API_URL: ${{ vars.STACK_API_URL }}
+          STACK_PUBLISH_TOKEN: ${{ secrets.STACK_PUBLISH_TOKEN }}
+          STACK_PUBLISH_TOOLING_DIR: ${{ runner.temp }}/stack-publisher
+        run: |
+          npm install --prefix "$STACK_PUBLISH_TOOLING_DIR" --ignore-scripts --no-audit --no-fund yaml@2.9.1
+          echo '{}' > "$RUNNER_TEMP/images.json"
+          node scripts/stack-toolkit.cjs release stack/app.yaml "$RUNNER_TEMP/images.json" "$STACK_VERSION" "$STACK_COMMIT"
+          node scripts/publish-application-release.mjs stack/app.yaml "$RUNNER_TEMP/images.json" "$STACK_VERSION" "$STACK_COMMIT"

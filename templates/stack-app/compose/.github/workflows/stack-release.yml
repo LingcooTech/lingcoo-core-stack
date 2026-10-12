@@ -1,0 +1,84 @@
+name: Stack Release
+run-name: Stack ${{ inputs.stack_build_id || github.run_id }} ${{ inputs.stack_version || github.ref_name }}
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      stack_build_id:
+        type: string
+      stack_commit:
+        type: string
+        required: true
+      stack_version:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.stack_commit || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Validate fixed source and version before building
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          STACK_COMMIT: ${{ inputs.stack_commit }}
+          STACK_VERSION: ${{ inputs.stack_version }}
+        run: |
+          node -e 'if (!/^[a-f0-9]{40}$/.test(process.env.STACK_COMMIT || "") || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(process.env.STACK_VERSION || "")) process.exit(1);'
+          test "$(git rev-parse HEAD)" = "$STACK_COMMIT"
+      - name: Validate application definition and test source
+        run: |
+          npm run stack:validate
+          npm test
+      # Extend source tests with your application's own E2E and persistence checks.
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build and test the actual image
+        run: |
+          docker build --tag stack-delivery-smoke:ci .
+          npm run test:image -- stack-delivery-smoke:ci
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      # This sample has one web image. Application workflows build each declared component.
+      - name: Read image repository from validated definition
+        if: github.event_name == 'workflow_dispatch'
+        id: repository
+        run: |
+          node scripts/stack-toolkit.cjs validate stack/app.yaml > "$RUNNER_TEMP/stack-definition.json"
+          node --input-type=module -e 'import fs from "node:fs"; const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/stack-definition.json")); fs.appendFileSync(process.env.GITHUB_OUTPUT,"web="+d.images.find(i=>i.key==="web").repository+"\n");'
+      - id: image
+        name: Push the tested image without rebuilding
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE_REPOSITORY: ${{ steps.repository.outputs.web }}
+          STACK_COMMIT: ${{ inputs.stack_commit }}
+        run: |
+          docker tag stack-delivery-smoke:ci "$IMAGE_REPOSITORY:$STACK_COMMIT"
+          docker push "$IMAGE_REPOSITORY:$STACK_COMMIT"
+          docker image inspect "$IMAGE_REPOSITORY:$STACK_COMMIT" > "$RUNNER_TEMP/stack-image.json"
+          node --input-type=module -e 'import fs from "node:fs"; const image=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/stack-image.json"))[0]; const ref=image.RepoDigests.find(v=>v.startsWith(process.env.IMAGE_REPOSITORY+"@sha256:")); if(!ref)throw Error("Published digest missing"); fs.appendFileSync(process.env.GITHUB_OUTPUT,"digest="+ref.split("@")[1]+"\n");'
+      - name: Register version draft
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          IMAGE_REPOSITORY: ${{ steps.repository.outputs.web }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          STACK_VERSION: ${{ inputs.stack_version }}
+          STACK_COMMIT: ${{ inputs.stack_commit }}
+          STACK_API_URL: ${{ vars.STACK_API_URL }}
+          STACK_PUBLISH_TOKEN: ${{ secrets.STACK_PUBLISH_TOKEN }}
+          STACK_PUBLISH_TOOLING_DIR: ${{ runner.temp }}/stack-publisher
+        run: |
+          npm install --prefix "$STACK_PUBLISH_TOOLING_DIR" --ignore-scripts --no-audit --no-fund yaml@2.9.1
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync(process.env.RUNNER_TEMP + "/images.json", JSON.stringify({web: process.env.IMAGE_REPOSITORY + "@" + process.env.IMAGE_DIGEST}));'
+          node scripts/stack-toolkit.cjs release stack/app.yaml "$RUNNER_TEMP/images.json" "$STACK_VERSION" "$STACK_COMMIT"
+          node scripts/publish-application-release.mjs stack/app.yaml "$RUNNER_TEMP/images.json" "$STACK_VERSION" "$STACK_COMMIT"

@@ -46,7 +46,8 @@
     "app:validate": "node --import tsx scripts/validate-app-product.mjs",
     "smoke:retail-delivery": "node --import tsx scripts/verify-retail-delivery.mjs",
     "check:admin-boundaries": "node scripts/admin-ui-inventory.mjs --check",
-    "app:definition:validate": "node --import tsx scripts/validate-application-definition.mjs"
+    "app:definition:validate": "node --import tsx scripts/validate-application-definition.mjs",
+    "app:create": "node scripts/create-stack-app.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1117.0",
@@ -84,6 +85,7 @@
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.15.5",
     "drizzle-kit": "0.31.11",
+    "esbuild": "0.28.2",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^9.1.2",
     "globals": "^15.15.0",

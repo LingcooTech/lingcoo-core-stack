@@ -12,6 +12,21 @@
 
 推荐 `stack/app.yaml`（也可 JSON，导入时指定路径）。[容器应用完整示例](../examples/stack-compose-app.json) 是可通过结构检查的模板，镜像地址为示例，不能作为真实交付证据。
 
+### 生成应用开发模板
+
+在 Stack 仓库运行以下命令，将模板生成到尚不存在的目录，然后按生成的 `STACK-DELIVERY.md` 集成到应用仓库：
+
+```sh
+npm run app:create -- --kind compose --directory /tmp/my-stack-app --code my_app --name 我的应用 --image registry.example.com/team/my-app
+npm run app:create -- --kind none --directory /tmp/my-extension --code my_extension --url https://example.com/download
+```
+
+Compose 模板包括可运行 HTTP 样本、Dockerfile、Compose、源码与实际镜像启动测试、CI 登记流程。免部署模板包括定义、入口与不推送镜像的登记流程，应用自身构建与授权测试需由开发者补入。两套模板默认免费且许可为 UNLICENSED，开发者必须确认实际许可与商品策略。
+
+生成的 `scripts/stack-toolkit.cjs` 内置与服务端同源的结构校验规则，在应用目录运行 `npm run stack:validate` 即可，无需安装 Stack。`release` 子命令额外核对完整提交、版本和镜像集合。校验器更新通过重新生成、审查工具差异后替换；平台接收时再次校验。模板不覆盖已有目录，不自动创建远程仓库或上传密钥。
+
+完整责任矩阵、首次接入步骤及验收清单见 [开发交付模板说明](../templates/stack-app/README.md)。模板与单容器启动检查不代替平台多服务交付验收。
+
 | 字段          | 内容                                                                                  |
 | ------------- | ------------------------------------------------------------------------------------- |
 | schemaVersion | 整数 1；与旧 Manifest 的字符串版本独立                                                |
