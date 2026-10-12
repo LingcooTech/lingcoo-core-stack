@@ -21,6 +21,6 @@
     "build": "node ../../scripts/build-shared-package.mjs"
   },
   "dependencies": {
-    "zod": "4.3.6"
+    "zod": "4.6.5"
   }
 }
