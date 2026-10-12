@@ -88,10 +88,13 @@ test('application lifecycle imports a draft, registers an immutable version and 
   await page.getByLabel('源码提交 SHA', { exact: true }).fill('a'.repeat(40));
   await page.getByRole('button', { name: '保存版本草稿', exact: true }).click();
   await expect(page.getByText('交付版本已登记为草稿', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '登记交付版本', exact: true })).toBeHidden();
   await page.getByRole('button', { name: '详情', exact: true }).click();
   await expect(page.getByText('版本快照', { exact: true })).toBeVisible();
   await expect(page.getByText('软件许可证', { exact: true })).toBeVisible();
-  await page.locator('.ant-drawer-close').click();
+  const snapshot = page.getByRole('dialog', { name: '版本快照', exact: true });
+  await snapshot.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(snapshot).toBeHidden();
   await page.getByRole('button', { name: 'CI 发布凭证', exact: true }).click();
   await page.getByLabel('凭证名称', { exact: true }).fill('Browser Actions');
   await page.getByRole('button', { name: '生成发布凭证', exact: true }).click();
@@ -99,7 +102,9 @@ test('application lifecycle imports a draft, registers an immutable version and 
   const records = await (await page.request.get(`/v1/admin/apps/${code}/publishing-tokens`)).json();
   expect(records.items[0].name).toBe('Browser Actions');
   expect(JSON.stringify(records)).not.toContain('stk_publish_');
-  await page.locator('.ant-drawer-close').click();
+  const credentials = page.getByRole('dialog', { name: 'CI 发布凭证', exact: true });
+  await credentials.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(credentials).toBeHidden();
   const overview = await (await page.request.get(`/v1/admin/apps/${code}/lifecycle`)).json();
   expect(overview.releases[0].status).toBe('draft');
 });
