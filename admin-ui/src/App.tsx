@@ -58,6 +58,7 @@ const ContentDetailPage = lazyNamed(() => import('@/pages/ContentDetailPage'), '
 const ContentEditPage = lazyNamed(() => import('@/pages/ContentEditPage'), 'ContentEditPage');
 const ContentHubPage = lazyNamed(() => import('@/pages/ContentHubPage'), 'ContentHubPage');
 const CreateTicketPage = lazyNamed(() => import('@/pages/CreateTicketPage'), 'CreateTicketPage');
+const DeveloperDocsPage = lazyNamed(() => import('@/pages/DeveloperDocsPage'), 'DeveloperDocsPage');
 const DocsHubPage = lazyNamed(() => import('@/pages/DocsHubPage'), 'DocsHubPage');
 const DocsPage = lazyNamed(() => import('@/pages/DocsPage'), 'DocsPage');
 const DocsSpacePage = lazyNamed(() => import('@/pages/DocsSpacePage'), 'DocsSpacePage');
@@ -219,6 +220,8 @@ const router = createBrowserRouter(
         </Route>
         <Route element={<DocsShell />}>
           <Route path="/docs" element={<DocsHubPage />} />
+          <Route path="/developers" element={<DeveloperDocsPage />} />
+          <Route path="/developers/:documentId" element={<DeveloperDocsPage />} />
           <Route path="/docs/:spaceSlug" element={<DocsSpacePage />} />
           <Route path="/docs/:spaceSlug/*" element={<DocsSpacePage />} />
         </Route>

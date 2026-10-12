@@ -65,7 +65,18 @@ export function AppImportPage() {
     },
   });
   return (
-    <PageContainer title="导入应用" backTo="/admin/apps" actions={<AppConnections />}>
+    <PageContainer
+      title="导入应用"
+      backTo="/admin/apps"
+      actions={
+        <Space>
+          <Button href="/developers/standard" target="_blank" rel="noreferrer">
+            开发接入文档
+          </Button>
+          <AppConnections />
+        </Space>
+      }
+    >
       <Card>
         <Tabs
           activeKey={mode}

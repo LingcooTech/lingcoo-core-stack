@@ -57,6 +57,9 @@ export function DocsShell() {
               <div className="hidden lg:block">
                 <DocsSearchTrigger onOpen={() => setSearchOpen(true)} />
               </div>
+              <Button variant="ghost" asChild>
+                <Link to="/developers">开发文档</Link>
+              </Button>
               <ThemeToggle />
               <Button variant="outline" asChild className="hidden rounded-full px-3 sm:inline-flex">
                 <a href="/api-docs" target="_blank" rel="noreferrer">

@@ -110,7 +110,16 @@ export function UserShell() {
     refetchInterval: 30_000,
   });
   const siteName = getSiteDisplayName(siteSettings);
-  const headerNavigation = getSiteHeaderNavigation(siteSettings);
+  const configuredNavigation = getSiteHeaderNavigation(siteSettings);
+  const headerNavigation = configuredNavigation.some(
+    (item) =>
+      item.url === '/developers' || item.children.some((child) => child.url === '/developers'),
+  )
+    ? configuredNavigation
+    : [
+        ...configuredNavigation,
+        { label: '开发文档', url: '/developers', openInNewTab: false, children: [] },
+      ];
   const currentUser = currentUserData?.user ?? null;
   const unreadNotificationCount = unreadNotificationData?.unreadCount ?? 0;
   const accountName =

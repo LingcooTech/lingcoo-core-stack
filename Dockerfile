@@ -28,6 +28,11 @@ FROM deps AS build
 COPY scripts/build-shared-package.mjs ./scripts/build-shared-package.mjs
 COPY packages ./packages
 COPY admin-ui ./admin-ui
+COPY docs ./docs
+COPY templates ./templates
+COPY examples ./examples
+COPY specs ./specs
+COPY scripts ./scripts
 RUN npm run build:packages && npm run build:admin
 
 COPY tsconfig.json ./

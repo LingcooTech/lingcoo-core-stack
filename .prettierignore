@@ -14,3 +14,5 @@ drizzle/meta
 
 package-lock.json
 *.tsbuildinfo
+
+admin-ui/public/developer-docs

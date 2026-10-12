@@ -89,6 +89,9 @@ export function AppLifecyclePage() {
           <Button>
             <Link to={`/admin/apps/${code}/edit`}>销售与展示配置</Link>
           </Button>
+          <Button href="/developers/standard" target="_blank" rel="noreferrer">
+            开发接入文档
+          </Button>
           <AppConnections />
         </Space>
       }

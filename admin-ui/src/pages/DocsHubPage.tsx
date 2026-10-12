@@ -43,6 +43,16 @@ export function DocsHubPage() {
         )}
       </header>
 
+      <Link
+        to="/developers"
+        className="block rounded-xl border border-border bg-card p-5 hover:border-foreground/20"
+      >
+        <h2 className="text-lg font-semibold">开发者中心</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          接入与交付标准、开发模板、验收清单和 AI 可读文档
+        </p>
+      </Link>
+
       {docsQuery.isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-muted-foreground" />

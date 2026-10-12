@@ -95,6 +95,23 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     });
   }
 
+  const developerDocsDir = path.join(adminUiDist, 'developer-docs');
+  if (existsSync(developerDocsDir)) {
+    await app.register(fastifyStatic, {
+      root: developerDocsDir,
+      prefix: '/developer-docs/',
+      maxAge: 0,
+      decorateReply: false,
+      setHeaders: (response, filePath) => {
+        response.header('Cache-Control', 'no-cache');
+        response.header('X-Content-Type-Options', 'nosniff');
+        if (!filePath.endsWith('.json')) {
+          response.header('Content-Type', 'text/plain; charset=utf-8');
+        }
+      },
+    });
+  }
+
   // SPA handler — serves index.html for all /admin* HTML routes
   const sendSPA = async (_request: unknown, reply: FastifyReply) => {
     reply.type('text/html; charset=utf-8').header('Content-Security-Policy', SPA_CSP);
@@ -139,6 +156,8 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
   app.get('/content', sendSPA);
   app.get('/content/:slug', sendSPA);
   app.get('/docs', sendSPA);
+  app.get('/developers', sendSPA);
+  app.get('/developers/:documentId', sendSPA);
   app.get('/docs/:spaceSlug', sendSPA);
   app.get('/docs/:spaceSlug/*', sendSPA);
   app.get('/login', sendSPA);

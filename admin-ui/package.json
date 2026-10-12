@@ -14,7 +14,9 @@
     "format:check": "prettier --check src",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prebuild": "node ../scripts/build-developer-docs.mjs",
+    "predev": "node ../scripts/build-developer-docs.mjs"
   },
   "dependencies": {
     "@ant-design/cssinjs": "2.1.2",

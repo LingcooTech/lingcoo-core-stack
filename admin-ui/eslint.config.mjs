@@ -12,6 +12,7 @@ export default tseslint.config(
     ignores: [
       'node_modules',
       'dist',
+      'public/developer-docs',
       '.vite',
       'storybook-static',
       '*.tsbuildinfo',

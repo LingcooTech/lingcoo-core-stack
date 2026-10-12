@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -16,3 +17,19 @@ for (const asset of assets) {
   assert((await stat(file)).size > 0, `Missing or empty production asset: ${asset}`);
 }
 console.info(`Verified ${assets.length} Admin production entry assets`);
+
+const developerIndex = JSON.parse(
+  await readFile(resolve(root, 'developer-docs/index.json'), 'utf8'),
+);
+assert.equal(developerIndex.schemaVersion, 1);
+assert.equal(developerIndex.items.filter((item) => typeof item.content === 'string').length, 4);
+for (const item of developerIndex.items) {
+  const published = await readFile(resolve(root, 'developer-docs', item.path), 'utf8');
+  const source = await readFile(resolve(item.path), 'utf8');
+  assert.equal(published, source, `Developer document differs from source: ${item.path}`);
+  assert.equal(createHash('sha256').update(published).digest('hex'), item.sha256);
+  if (item.content !== undefined) assert.equal(item.content, published);
+}
+console.info(
+  `Verified ${developerIndex.items.length} developer documentation assets against source`,
+);
