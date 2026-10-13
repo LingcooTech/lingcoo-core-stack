@@ -34,6 +34,7 @@ export async function seedPurchase(db: ReturnType<typeof testDatabase>['db']) {
             repoUrl: 'https://example.test/fixture',
             repoBranch: 'main',
             remoteInstallScriptUrl: 'https://example.test/install.sh',
+            remoteInstallScriptSha256: 'a'.repeat(64),
             installPath: '/opt/fixture',
           },
           groups: [],

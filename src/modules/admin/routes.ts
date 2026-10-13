@@ -1,3 +1,4 @@
+import { acquireTransactionLock } from '../../db/locks';
 import { staticAssetPrefix } from '../../http/static-assets';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -289,13 +290,16 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const params = adminAppCodeParamsSchema.parse(request.params);
       const payload = adminUpsertDeliverySettingsSchema.parse(request.body);
-      const result = await app.settings.mutate(request, (executor) =>
-        new DeliverySettingsService(executor, app.appEnv).upsertSettings(
+      const result = await app.settings.mutate(request, async (executor) => {
+        await acquireTransactionLock(executor, 'app:publication:' + params.appCode);
+        const result = await new DeliverySettingsService(executor, app.appEnv).upsertSettings(
           params.appCode,
           payload,
           request.user.sub,
-        ),
-      );
+        );
+        await app.services.AppService.assertActiveConfiguration(params.appCode, executor);
+        return result;
+      });
 
       return result;
     },
@@ -306,9 +310,11 @@ export const adminRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: requireAppsManage },
     async (request) => {
       const params = adminAppCodeParamsSchema.parse(request.params);
-      await app.settings.mutate(request, (executor) =>
-        new DeliverySettingsService(executor, app.appEnv).deleteSettings(params.appCode),
-      );
+      await app.settings.mutate(request, async (executor) => {
+        await acquireTransactionLock(executor, 'app:publication:' + params.appCode);
+        await new DeliverySettingsService(executor, app.appEnv).deleteSettings(params.appCode);
+        await app.services.AppService.assertActiveConfiguration(params.appCode, executor);
+      });
 
       return { ok: true };
     },

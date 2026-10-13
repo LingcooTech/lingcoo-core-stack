@@ -23,6 +23,7 @@ async function fixture() {
             repoUrl: 'https://example.test/app',
             repoBranch: 'main',
             remoteInstallScriptUrl: 'https://example.test/install.sh',
+            remoteInstallScriptSha256: 'a'.repeat(64),
             installPath: '/opt/fixture',
           },
           groups: [],

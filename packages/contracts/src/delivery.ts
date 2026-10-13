@@ -26,6 +26,10 @@ export const deliveryManifestSchema = z
         repoUrl: z.url(),
         repoBranch: z.string().min(1),
         remoteInstallScriptUrl: z.url(),
+        remoteInstallScriptSha256: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .optional(),
         installPath: z.string().startsWith('/'),
       })
       .strict(),

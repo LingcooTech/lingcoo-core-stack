@@ -19,11 +19,22 @@ export function buildRemoteInstallCommand(input: {
   token: string;
   exchangeUrl: string;
   remoteInstallScriptUrl?: string;
+  remoteInstallScriptSha256?: string;
   installPath?: string | null;
   repoUrl?: string;
   repoBranch?: string;
 }) {
   if (!input.remoteInstallScriptUrl) throw httpError(422, 'Delivery installer is required');
+  if (!/^[a-f0-9]{64}$/.test(input.remoteInstallScriptSha256 ?? ''))
+    throw httpError(422, 'Delivery installer requires a trusted SHA-256 digest');
+  let url: URL;
+  try {
+    url = new URL(input.remoteInstallScriptUrl);
+  } catch {
+    throw httpError(422, 'Delivery installer requires an HTTPS URL');
+  }
+  if (url.protocol !== 'https:' || url.username || url.password)
+    throw httpError(422, 'Delivery installer requires an HTTPS URL without credentials');
   const commandParts = [
     `FD_STACK_DEPLOY_TOKEN=${quoteShellArgument(input.token)}`,
     `FD_STACK_EXCHANGE_URL=${quoteShellArgument(input.exchangeUrl)}`,
@@ -41,7 +52,27 @@ export function buildRemoteInstallCommand(input: {
     commandParts.push(`REPO_BRANCH=${quoteShellArgument(input.repoBranch)}`);
   }
 
-  commandParts.push(`bash <(curl -fsSL ${quoteShellArgument(input.remoteInstallScriptUrl)})`);
+  const script = [
+    'set -eu',
+    'umask 077',
+    'stack_install_tmp=$(mktemp -d)',
+    'trap \'rm -rf -- "$stack_install_tmp"\' EXIT',
+    "trap 'exit 130' INT",
+    "trap 'exit 143' TERM",
+    `curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 --max-filesize 8388608 --output "$stack_install_tmp/install.sh" -- ${quoteShellArgument(input.remoteInstallScriptUrl)}`,
+    'if command -v sha256sum >/dev/null 2>&1; then',
+    '  stack_install_hash=$(sha256sum "$stack_install_tmp/install.sh")',
+    'else',
+    '  stack_install_hash=$(shasum -a 256 "$stack_install_tmp/install.sh")',
+    'fi',
+    'stack_install_hash=${stack_install_hash%% *}',
+    `if [ "$stack_install_hash" != ${quoteShellArgument(input.remoteInstallScriptSha256!)} ]; then`,
+    '  echo "Installer integrity verification failed; nothing was executed" >&2',
+    '  exit 1',
+    'fi',
+    'bash "$stack_install_tmp/install.sh"',
+  ].join('\n');
+  commandParts.push(`bash -c ${quoteShellArgument(script)}`);
 
   return commandParts.join(' ');
 }
@@ -175,6 +206,7 @@ export function assembleDeploymentBootstrap({
           repoUrl: installer.repoUrl,
           repoBranch: installer.repoBranch,
           remoteInstallScriptUrl: installer.remoteInstallScriptUrl,
+          remoteInstallScriptSha256: installer.remoteInstallScriptSha256,
         })
       : null,
     notes: [

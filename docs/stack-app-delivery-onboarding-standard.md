@@ -53,20 +53,24 @@ Chrome 扩展等免部署应用可以同时在应用内部调用 Stack 支付、
 
 权威结构：[deliveryManifestSchema](../packages/contracts/src/delivery.ts)。`version` 为字符串 `"1"`；严格发布校验拒绝未知结构字段。托管 Adapter 的版本号 `2` 与这里的 Manifest 版本独立。
 
-| 字段              | 必须表达的内容                                                   |
-| ----------------- | ---------------------------------------------------------------- |
-| `installer`       | 交付仓库 URL、版本引用、远程安装脚本 URL、绝对安装目录           |
-| `domainSlots`     | 域名标识、名称、环境变量、部署输入字段、是否必填                 |
-| `envFields`       | 普通配置的 key、label、type、scope、required、editable、advanced |
-| `secretFields`    | 敏感配置；type 为 secret，禁止嵌入默认值                         |
-| `assets`          | 资源唯一标识、类型、是否必需、公开/私有及镜像/文件/凭据引用      |
-| `groups`、`notes` | 可选分组与操作说明                                               |
+| 字段              | 必须表达的内容                                                       |
+| ----------------- | -------------------------------------------------------------------- |
+| `installer`       | 交付仓库 URL、版本引用、远程安装脚本 URL、脚本 SHA-256、绝对安装目录 |
+| `domainSlots`     | 域名标识、名称、环境变量、部署输入字段、是否必填                     |
+| `envFields`       | 普通配置的 key、label、type、scope、required、editable、advanced     |
+| `secretFields`    | 敏感配置；type 为 secret，禁止嵌入默认值                             |
+| `assets`          | 资源唯一标识、类型、是否必需、公开/私有及镜像/文件/凭据引用          |
+| `groups`、`notes` | 可选分组与操作说明                                                   |
 
 普通字段类型为 text、email、boolean；scope 为 preset（平台配置）或 user_input（客户部署时填写）。环境变量名必须为大写字母开头的字母、数字和下划线。字段不能重名，资源引用必须能解析到声明字段。
 
 资源枚举包括 docker_image、http_file、github_release、qiniu_object、custom，但“能声明某类型”不等于平台内置了该类型的安装执行器。新应用仍需要执行适配。镜像型应用的必需 Docker 镜像固定到完整 `@sha256:<64位摘要>`，不能以 latest 或仅 Git SHA tag 替代发布检查要求。
 
 清单来源可以是直接返回 JSON 的正式 HTTPS 地址，或公开 GitHub 交付仓库。两者同时配置时 URL 优先；应用源码不需要公开。更换来源后先保存，再同步。同步读取并保存清单，不自动执行安装，不构成制品发布方认证或安装安全证明。
+
+自部署入口必须在 `installer.remoteInstallScriptSha256` 提供安装脚本的 64 位小写十六进制 SHA-256。摘要由应用维护者在构建和审核固定版本时生成，例如 `sha256sum remote-install.sh`（macOS 可用 `shasum -a 256 remote-install.sh`），与脚本 URL 一起发布。不能用客户端刚下载的文件现算摘要作为可信预期值；脚本发布地址也应使用不可变版本。
+
+平台生成的命令只允许 HTTPS 下载及 HTTPS 重定向，使用私有临时目录，下载成功且摘要匹配后才运行脚本，并清理临时文件。缺少摘要、下载失败、摘要不匹配都拒绝执行。兼容解析旧清单不代表旧安装入口继续获准执行：已有应用需要补充经维护者确认的脚本摘要后，才能生成新的安装命令。托管节点适配器仍遵循其独立的制品校验协议。
 
 ## 5. 应用交付包必须满足的运营要求
 
@@ -161,3 +165,7 @@ npm run app:validate -- app-products/<app-code>/product.json --ready
 - [后台填写指南](app-configuration-and-images-20261011.md)：当前交付字段操作。
 - [应用与平台责任规划](app-platform-responsibility-contract.md)：保留早期规划，当前范围以本文为准。
 - 历史具体 registry、namespace、Retail/Edu 字段和 npm 命令是样本值，不是通用平台标准。
+
+### 在售配置的变更规则
+
+启用应用和修改已启用应用时，服务端会统一检查有效报价、套餐与权益映射，以及对应交付配置。该规则同时覆盖后台保存、远程清单同步、交付版本切换、CLI 导入和后台交付设置更新/删除。失败时整笔事务回滚，现有配置保留；先保存草稿可继续补全缺失项。配置检查通过仍不代表真实镜像拉取、部署恢复或付款退款已验收。

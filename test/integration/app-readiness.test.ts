@@ -25,6 +25,7 @@ const manifest = {
     repoUrl: 'https://github.com/example/app',
     repoBranch: 'main',
     remoteInstallScriptUrl: 'https://example.com/install.sh',
+    remoteInstallScriptSha256: 'a'.repeat(64),
     installPath: '/opt/app',
   },
   domainSlots: [],
@@ -118,6 +119,15 @@ test('digest, active rights and formal pricing block reactivation; failed update
     f.user.id,
   );
   for (const change of [
+    {
+      meta: {
+        deliveryMode: 'one_click',
+        deliveryManifest: {
+          ...manifest,
+          installer: { ...manifest.installer, remoteInstallScriptSha256: undefined },
+        },
+      },
+    },
     {
       meta: {
         deliveryMode: 'one_click',
@@ -224,5 +234,100 @@ test('active CLI import enforces shared gate without ready-for-sale flag and rol
     assert.equal(config.secrets.REGISTRY_TOKEN?.configured, false);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('active edits and manifest sync cannot invalidate published delivery; failed writes roll back', async () => {
+  const f = await fixture();
+  await new DeliverySettingsService(db, env).upsertSettings(
+    f.code,
+    { secrets: { REGISTRY_TOKEN: 'fixture' } },
+    f.user.id,
+  );
+  await service.upsertApp(f.code, { ...f.input, status: 'active' }, f.user.id);
+  const invalid = {
+    ...manifest,
+    installer: { ...manifest.installer, remoteInstallScriptSha256: undefined },
+  };
+  await assert.rejects(
+    service.upsertApp(
+      f.code,
+      {
+        ...f.input,
+        status: 'active',
+        name: 'Invalid edit',
+        meta: { deliveryMode: 'one_click', deliveryManifest: invalid },
+      },
+      f.user.id,
+    ),
+    { statusCode: 422 },
+  );
+  const { AppManifestService } = await import('../../src/modules/app/manifest-service');
+  const sync = new AppManifestService(factories, db, env, async () => Response.json(invalid));
+  await assert.rejects(
+    sync.sync(f.code, { manifestUrl: 'https://example.com/manifest.json' }, f.user.id),
+    { statusCode: 422 },
+  );
+  const [stored] = await db.select().from(apps).where(eq(apps.code, f.code));
+  assert.equal(stored?.name, 'Publication fixture');
+  assert.deepEqual((stored?.meta as Record<string, unknown>).deliveryManifest, manifest);
+  assert.equal((await readiness.inspect(f.code)).configurationReady, true);
+});
+
+test('non-deployment applications also enforce valid pricing and rights on activation and edits', async () => {
+  const f = await fixture();
+  const input = { ...f.input, status: 'active' as const, meta: { deliveryMode: 'none' } };
+  await assert.rejects(service.upsertApp(f.code, { ...input, offers: [] }, f.user.id), {
+    statusCode: 422,
+  });
+  await service.upsertApp(f.code, input, f.user.id);
+  await assert.rejects(
+    service.upsertApp(
+      f.code,
+      {
+        ...input,
+        features: f.input.features!.map((feature) => ({ ...feature, status: 'inactive' as const })),
+      },
+      f.user.id,
+    ),
+    { statusCode: 422 },
+  );
+  assert.equal((await readiness.inspect(f.code)).configurationReady, true);
+});
+
+test('delivery settings API rolls back deletion without changing revision and permits valid credential rotation', async () => {
+  const f = await fixture();
+  await new DeliverySettingsService(db, env).upsertSettings(
+    f.code,
+    { secrets: { REGISTRY_TOKEN: 'fixture' } },
+    f.user.id,
+  );
+  await service.upsertApp(f.code, { ...f.input, status: 'active' }, f.user.id);
+  await db.update(users).set({ role: 'admin' }).where(eq(users.id, f.user.id));
+  const api = await buildApp(env);
+  try {
+    const url = '/v1/admin/delivery-settings/' + f.code;
+    const headers = { authorization: 'Bearer ' + api.jwt.sign({ sub: f.user.id, kind: 'user' }) };
+    const initial = await api.inject({ method: 'GET', url, headers });
+    assert.equal(initial.statusCode, 200, initial.body);
+    const removed = await api.inject({
+      method: 'DELETE',
+      url,
+      headers: { ...headers, 'if-match': String(initial.headers.etag) },
+    });
+    assert.equal(removed.statusCode, 422, removed.body);
+    const again = await api.inject({ method: 'GET', url, headers });
+    assert.equal(again.headers.etag, initial.headers.etag);
+    assert.equal(again.json().secrets.REGISTRY_TOKEN.configured, true);
+    const updated = await api.inject({
+      method: 'PUT',
+      url,
+      headers: { ...headers, 'if-match': String(initial.headers.etag) },
+      payload: { secrets: { REGISTRY_TOKEN: 'replacement' } },
+    });
+    assert.equal(updated.statusCode, 200, updated.body);
+    assert.notEqual(updated.headers.etag, initial.headers.etag);
+  } finally {
+    await api.close();
   }
 });

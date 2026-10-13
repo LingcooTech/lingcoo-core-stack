@@ -298,6 +298,8 @@ export class AppService {
       meta.acquisition = release.definition.app.acquisition;
       meta.license = release.definition.app.license;
       await repo.updateAppById(app.id, { meta });
+      if (app.status === 'active')
+        await new AppReadiness(tx, this.env, this.capabilities).assertConfiguration(code);
       await this.capabilities.createEventService(tx).capture({
         userId: actor,
         appId: app.id,
@@ -531,6 +533,14 @@ export class AppService {
     return new AppReadiness(this.db, this.env, this.capabilities).inspect(appCode);
   }
 
+  /** Called inside the settings mutation transaction so invalid active edits roll back. */
+  async assertActiveConfiguration(appCode: string, executor: DbExecutor) {
+    const app = await new AppRepository(executor).findAppByCode(appCode);
+    if (!app) throw httpError(404, 'App not found');
+    if (app.status === 'active')
+      await new AppReadiness(executor, this.env, this.capabilities).assertConfiguration(appCode);
+  }
+
   async upsertApp(
     appCode: string,
     input: {
@@ -713,12 +723,7 @@ export class AppService {
         await repository.replaceAppOffers(app.id, validOffers);
       }
 
-      if (
-        input.status === 'active' &&
-        (previous?.status !== 'active' ||
-          (previous.meta as Record<string, unknown>)?.deliveryMode !== 'one_click') &&
-        (app.meta as Record<string, unknown>)?.deliveryMode === 'one_click'
-      )
+      if (input.status === 'active')
         await new AppReadiness(tx, this.env, this.capabilities).assertConfiguration(appCode);
 
       await this.capabilities.createEventService(tx).capture({

@@ -15,6 +15,7 @@ export interface DeliveryManifestInstaller {
   repoUrl: string;
   repoBranch: string;
   remoteInstallScriptUrl: string;
+  remoteInstallScriptSha256?: string;
   installPath: string;
 }
 
@@ -279,6 +280,7 @@ export function normalizeDeliveryManifest(value: unknown): DeliveryManifest | nu
     repoUrl: normalizeString(installerRaw.repoUrl),
     repoBranch: normalizeString(installerRaw.repoBranch) || 'main',
     remoteInstallScriptUrl: normalizeString(installerRaw.remoteInstallScriptUrl),
+    remoteInstallScriptSha256: normalizeString(installerRaw.remoteInstallScriptSha256) || undefined,
     installPath: normalizeString(installerRaw.installPath),
   };
 

@@ -266,13 +266,12 @@ async function main() {
   if (options.readyForSale && options.skipDeliverySettings)
     throw new Error('--ready-for-sale cannot skip delivery settings');
   const { absolutePath, product } = await loadProductConfig(options.configPath);
-  const publishingOneClick =
-    product.app.status === 'active' && product.app.meta?.deliveryMode === 'one_click';
-  if (options.readyForSale || publishingOneClick) {
+  const publishing = product.app.status === 'active';
+  if (options.readyForSale || publishing) {
     validateAppProduct(product, true);
     options.requireSecrets = true;
   }
-  if (publishingOneClick && options.skipDeliverySettings)
+  if (publishing && options.skipDeliverySettings)
     throw new Error('Publishing cannot skip delivery settings');
   const { secrets, missing } = resolveSecrets(product.delivery?.settings?.secretsFromEnv, options);
   const shouldApplyDeliverySettings =
@@ -327,7 +326,7 @@ async function main() {
           options.actorUserId,
         );
       }
-      if (publishingOneClick) {
+      if (publishing) {
         await new AppReadiness(tx, env, createServiceFactories()).assertConfiguration(
           product.app.code,
         );

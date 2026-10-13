@@ -93,6 +93,8 @@ export function validateAppProduct(input: unknown, readyForSale = false) {
         errors.push(`Asset ${asset.key} requires an approved digest`);
     }
     const installer = manifest?.installer;
+    if (installer && !/^[a-f0-9]{64}$/.test(installer.remoteInstallScriptSha256 ?? ''))
+      errors.push('Installer requires a trusted SHA-256 digest');
     if (
       installer &&
       (!installer.remoteInstallScriptUrl.startsWith('https://') ||

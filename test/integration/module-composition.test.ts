@@ -35,9 +35,12 @@ test('transaction batches use one connection sequentially while pool reads can r
 test('manifest persistence rolls back metadata and presets when event recording fails', async () => {
   const fixture = await seedPurchase(db),
     base = createServiceFactories();
+  await db.update(apps).set({ status: 'inactive' }).where(eq(apps.id, fixture.app.id));
   const service = new AppManifestService(
     {
       createDeliverySettings: base.createDeliverySettings,
+      createLicenseAccess: base.createLicenseAccess,
+      now: base.now,
       createEventService: (tx) => ({
         ...base.createEventService(tx),
         capture: async () => {
@@ -75,7 +78,10 @@ test('manifest synchronization preserves metadata changed while a remote fetch i
   const service = new AppManifestService(base, db, env, async () => {
     await db
       .update(apps)
-      .set({ meta: { preserved: 'concurrent change', deliveryMode: 'one_click' } })
+      .set({
+        status: 'inactive',
+        meta: { preserved: 'concurrent change', deliveryMode: 'one_click' },
+      })
       .where(eq(apps.id, fixture.app.id));
     return Response.json({ version: '2', installer: { repoBranch: 'main' } });
   });

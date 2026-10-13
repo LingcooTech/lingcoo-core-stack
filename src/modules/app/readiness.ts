@@ -12,7 +12,10 @@ export class AppReadiness {
   constructor(
     private readonly db: DbExecutor,
     private readonly env: AppEnv | undefined,
-    private readonly capabilities: AppDependencies,
+    private readonly capabilities: Pick<
+      AppDependencies,
+      'createLicenseAccess' | 'createDeliverySettings' | 'now'
+    >,
   ) {}
   async inspect(appCode: string) {
     const repo = new AppRepository(this.db),
@@ -123,6 +126,12 @@ export class AppReadiness {
       );
       if (parsed.success) {
         const manifest = parsed.data;
+        check(
+          'installer_integrity',
+          '安装脚本完整性',
+          /^[a-f0-9]{64}$/.test(manifest.installer.remoteInstallScriptSha256 ?? ''),
+          '交付声明必须提供安装脚本的 SHA-256；执行前下载并验证，缺少摘要时不能发放安装命令。',
+        );
         const installer = new URL(manifest.installer.remoteInstallScriptUrl);
         check(
           'installer',

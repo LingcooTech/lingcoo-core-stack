@@ -1,3 +1,5 @@
+import { acquireTransactionLock } from '../../db/locks';
+import { AppReadiness } from './readiness';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
 import { httpError } from '../../lib/errors';
@@ -5,7 +7,10 @@ import { listDeliveryManifestFields, normalizeDeliveryManifest } from '../../lib
 import { AppRepository } from './repository';
 import { AppLifecycleRepository } from './lifecycle-repository';
 import type { AppDependencies } from './dependencies';
-type ManifestDependencies = Pick<AppDependencies, 'createDeliverySettings' | 'createEventService'>;
+type ManifestDependencies = Pick<
+  AppDependencies,
+  'createDeliverySettings' | 'createEventService' | 'createLicenseAccess' | 'now'
+>;
 export class AppManifestService {
   private readonly capabilities: ManifestDependencies;
   constructor(
@@ -17,6 +22,8 @@ export class AppManifestService {
     this.capabilities = {
       createDeliverySettings: dependencies.createDeliverySettings,
       createEventService: dependencies.createEventService,
+      createLicenseAccess: dependencies.createLicenseAccess,
+      now: dependencies.now,
     };
   }
   private requireEnv() {
@@ -148,6 +155,12 @@ export class AppManifestService {
     };
 
     await this.db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + appCode);
+      if ((await new AppLifecycleRepository(tx).project(appCode))?.definition)
+        throw httpError(
+          422,
+          'Source-owned delivery definition is read-only; select a published release',
+        );
       const current = await new AppRepository(tx).lockAppByCode(appCode);
       if (!current) throw httpError(404, 'App not found');
       await new AppRepository(tx).updateAppMetaByCode(appCode, {
@@ -176,6 +189,8 @@ export class AppManifestService {
         actorUserId,
       );
 
+      if (current.status === 'active')
+        await new AppReadiness(tx, this.env, this.capabilities).assertConfiguration(appCode);
       await this.capabilities.createEventService(tx).capture({
         userId: actorUserId,
         appId: app.id,

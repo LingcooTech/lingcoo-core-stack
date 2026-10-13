@@ -511,6 +511,13 @@ test('development project builds and registers releases before a product, then p
       }),
     { statusCode: 401 },
   );
+  // A legacy active row without a valid commercial configuration cannot bypass
+  // publication checks by selecting an already published delivery version.
+  await db.update(apps).set({ status: 'active' }).where(eq(apps.code, code));
+  await assert.rejects(() => products.selectDeliveryVersion(code, release.id, user.id), {
+    statusCode: 422,
+  });
+  await db.update(apps).set({ status: 'inactive' }).where(eq(apps.code, code));
   await service.transition(code, release.id, 'withdrawn', user.id);
   await assert.rejects(() => products.selectDeliveryVersion(code, release.id, user.id), {
     statusCode: 422,
