@@ -57,3 +57,19 @@
 使用已有 SSH 专用配置，在 118.25.36.15 运行独立 BusyBox fixture，限额 500m CPU / 256 MiB 内存 / 256 MiB 磁盘预算，固定镜像 digest。镜像实际从仓库拉取，故障初始化恢复、迁移一次性执行、持久文件、字面量环境变量和重复执行均通过。测试容器、卷、网络与临时目录均已核对清理，既有应用未改动。复现探针为 `test/compose-node-probe.py`，记录为 `docs/compose-runtime-node-acceptance-20261013.json`。
 
 这份手工 fixture 记录不能用于放行商品发布；尚未验证备份恢复、DNS/TLS、自定义域名和平台受信验收记录，也不是 Retail/Edu 实例迁移验收。
+
+### 2026-10-13 第三批：通用冷备份与隔离恢复内核
+
+- 增加平台拥有的命名卷冷快照执行器，停写后备份全部卷，失败也尝试恢复原服务；固定归档镜像 digest，限制辅助容器权限与资源。
+- 恢复校验受信清单摘要、每卷摘要、归档路径、展开大小及原始版本/配置，仅允许新实例与空资源，恢复后继续既有启动内核，不重复迁移或初始化。
+- 拒绝路径测试包含损坏摘要/数据、错误版本、路径与链接逃逸、源实例/已有目标覆盖，以及归档失败后原服务重启。
+- 118.25.36.15 独立 fixture 实测通过：实际镜像拉取、原服务重启、独立实例数据恢复、初始化不重复、覆盖拒绝；容器、卷、网络、临时目录均已清理。记录见 `docs/compose-snapshot-node-acceptance-20261013.json`，使用边界见 `docs/compose-cold-snapshot.md`。
+- 完整 `npm run check` 通过：130 项单元测试通过、0 失败、5 项本机 Docker 场景跳过；格式、边界、Lint、前后端类型检查、生产构建与静态资源校验通过。Python 拒绝路径覆盖 4 组场景。
+- 本批未接入托管调度、异机加密传输、生产恢复协调器或平台可信版本验收；不是 Retail/Edu 数据库恢复验收。通用交付总项继续保持未完成，发布门禁没有放开。
+
+### GitHub Actions 阻断核实（2026-10-13）
+
+- `main` CI run `38286351429` 与 Security Audit run `38290726353` 的检查注释均为：`The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings`。
+- 因此已确认账单/付款/支出限额阻止任务启动，不能将其解释为代码测试失败或单次运行超时。尚不能确定是免费分钟额度用尽还是付款失败。
+- 账号 `LingcooTech` 为个人账号。现有 GitHub 授权缺少账单接口所需 `user` scope，无法读取准确分钟数；浏览器连接不可用。没有修改付款方式、预算或权限。
+- 当前修复分支不在 push 触发列表，也未建立 PR，不能宣称修复分支已在 GitHub CI 验收。本地工程与隔离节点验收分别记录；账单状态需在 https://github.com/settings/billing 核对。

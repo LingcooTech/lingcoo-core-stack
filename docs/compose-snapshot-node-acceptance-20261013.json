@@ -1,0 +1,48 @@
+{
+  "runtime": {
+    "protocol": "compose_install_v1",
+    "runnerVersion": "1",
+    "instanceId": "1d46a0d6-8523-4da1-a6c8-24d630f0d9d4",
+    "releaseId": "47ab7c3b-2a83-4ed5-ba92-2d2efbcebdb5",
+    "releaseDigest": "sha256:134d95eb2e95f73cdb963bdf2ff3100827d67336a46b335506408b209233ccc9",
+    "phase": "runtime_ready",
+    "completed": ["migrate:0", "initialize:0"],
+    "imageSource": "registry"
+  },
+  "failedInitializationResumed": true,
+  "migrationExecutedOnce": true,
+  "literalEnvironmentPreserved": true,
+  "idempotentReplay": true,
+  "coldSnapshot": {
+    "protocol": "compose_cold_snapshot_v1",
+    "snapshotId": "3b9d76e4-266f-403e-91bd-fb7c3630c63f",
+    "manifestSha256": "5969b16db3eebb32e460d4929d881c3be2f39ab0b5989beefd5d522d68173568",
+    "volumeCount": 1,
+    "isolatedDataRestored": true,
+    "initializationNotRepeated": true,
+    "sourceOverwriteRejected": true,
+    "existingTargetOverwriteRejected": true
+  },
+  "checkedAt": "2026-10-13T08:26:43.589843+00:00",
+  "node": "118.25.36.15",
+  "scope": "isolated_runtime_and_cold_snapshot_fixture_only",
+  "publishableEvidence": false,
+  "cleanup": {
+    "containers": true,
+    "volumes": true,
+    "networks": true,
+    "temporaryDirectory": true
+  },
+  "notVerified": [
+    "retail_or_edu_database_restore",
+    "offsite_encrypted_transport",
+    "production_recovery_fencing",
+    "dns_tls",
+    "platform_trusted_validation_record"
+  ],
+  "scriptSha256": {
+    "scripts/compose-install.py": "39fb8d03391f0a0779340da2051c39c8f06e1eee096e4287af1fe180ce5ae717",
+    "scripts/compose-snapshot.py": "958a269b87357bac673eaed099acf5b0ec5e4dd643cf27b185c74ee44a240ef1",
+    "test/compose-node-probe.py": "11ebe188dab1eedb551f526a40515dd9fda824b2e99560379e3946a057b42f4d"
+  }
+}
