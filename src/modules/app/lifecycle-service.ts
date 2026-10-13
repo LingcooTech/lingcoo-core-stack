@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { z } from 'zod';
 import {
   applicationImportSchema,
@@ -201,12 +202,41 @@ export class AppLifecycleService {
         throw httpError(409, 'Application code already exists');
       const definition = validateApplicationDefinition(project.definition);
       const { code: appCode, acquisition, license, ...info } = definition.app;
+      const productFeatures = definition.features.length
+        ? definition.features
+        : acquisition === 'free'
+          ? [
+              {
+                code: 'access_' + createHash('sha256').update(appCode).digest('hex').slice(0, 40),
+                name: '应用使用权',
+                kind: 'boolean',
+              },
+            ]
+          : [];
+      const freePlanCode =
+        'free_' + createHash('sha256').update(appCode).digest('hex').slice(0, 40);
       const app = await this.createApps(tx).upsertApp(
         appCode,
         {
           ...info,
           status: 'inactive',
-          features: definition.features.map((f) => ({ ...f, status: 'active' })),
+          features: productFeatures.map((f) => ({ ...f, status: 'active' })),
+          ...(acquisition === 'free'
+            ? {
+                plans: [
+                  {
+                    code: freePlanCode,
+                    name: '免费使用',
+                    billingProvider: 'free',
+                    priceAmount: 0,
+                    currency: 'CNY',
+                    interval: 'one_time' as const,
+                    status: 'active' as const,
+                    featureCodes: productFeatures.map((f) => f.code),
+                  },
+                ],
+              }
+            : {}),
           meta: {
             deliveryMode: definition.delivery.kind === 'none' ? 'none' : 'one_click',
             acquisition,

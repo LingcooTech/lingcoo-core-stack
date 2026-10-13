@@ -176,6 +176,7 @@ export function getAccessLinkLabel(link: Pick<AppLink, 'label' | 'type'>) {
 
 /** A free default in metadata is not a purchasable offer or an application entry. */
 export function getAppAvailabilityLabel(app: Pick<AppWithDetails, 'meta' | 'links'>) {
+  if (app.meta?.acquisition === 'free') return '免费领取';
   const detail = getAppDetailProfile(app);
   const externalPurchase = detail.purchaseType === 'offsite' && Boolean(detail.purchaseUrl);
   const directAccess =

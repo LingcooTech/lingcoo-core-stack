@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { acquireTransactionLock } from '../../db/locks';
+import { freeAcquisitionPlan } from '../../lib/free-acquisition';
+import { readPublishedComposeRelease } from '../app/public';
 import { billingPeriodEnd } from '../../lib/billing-period';
 import { queryBatch } from '../../db/query-batch';
 import { pickLicenseDependencies, type LicenseDependencies } from './dependencies';
@@ -21,6 +25,74 @@ export class LicenseService {
     private readonly db: DbExecutor,
   ) {
     this.capabilities = pickLicenseDependencies(capabilities);
+  }
+
+  async claimFreeApplication(appCode: string, userId: string) {
+    return this.db.transaction(async (tx) => {
+      await acquireTransactionLock(tx, 'app:publication:' + appCode);
+      const access = createAppAccess(tx),
+        app = await access.findAppByCode(appCode);
+      if (!app || app.status !== 'active') throw httpError(404, '应用不存在或未上架');
+      const meta = normalizeMeta(app.meta);
+      if (meta.acquisition !== 'free') throw httpError(422, '该应用不支持免费领取');
+      if (meta.deliveryProtocol === 'compose_v2') {
+        if (typeof meta.deliveryReleaseId !== 'string')
+          throw httpError(422, '应用尚未选择交付版本');
+        const release = await readPublishedComposeRelease(tx, app.id, meta.deliveryReleaseId);
+        if (release.definition.app.acquisition !== 'free')
+          throw httpError(422, '交付版本不是免费应用');
+      }
+      const repo = new LicenseRepository(tx);
+      const plan = freeAcquisitionPlan(
+        await repo.listPlansByAppId(app.id),
+        await repo.listFeaturesByAppId(app.id),
+        await repo.listPlanFeatureMappings(),
+      );
+      if (!plan || (await access.listOffersByAppId(app.id)).some((o) => o.status === 'active'))
+        throw httpError(422, '免费领取配置尚未完成');
+      // Stable, domain-separated source identity: retries never create another grant,
+      // and a cancelled grant cannot be resurrected by claiming again.
+      const hash = createHash('sha256')
+        .update('stack:free-claim:v1:' + app.id + ':' + userId)
+        .digest('hex');
+      const sourceId = [
+        hash.slice(0, 8),
+        hash.slice(8, 12),
+        '5' + hash.slice(13, 16),
+        '8' + hash.slice(17, 20),
+        hash.slice(20, 32),
+      ].join('-');
+      const previous = await repo.listEntitlementsBySource('grant', sourceId);
+      if (previous.length) {
+        const item = previous[0]!;
+        if (
+          item.userId !== userId ||
+          item.appId !== app.id ||
+          item.status !== 'active' ||
+          (item.startsAt && item.startsAt > this.capabilities.now()) ||
+          (item.expiresAt && item.expiresAt <= this.capabilities.now())
+        )
+          throw httpError(409, '已有领取记录不可再次领取，请联系支持');
+        return { entitlementId: item.id, alreadyOwned: true };
+      }
+      const service = new LicenseService(this.capabilities, tx);
+      const owned = await service.findActiveOneTimeOwnership(userId, app.id);
+      if (owned?.items[0]) return { entitlementId: owned.items[0].id, alreadyOwned: true };
+      const result = await service.grantEntitlementsForPlan({
+        userId,
+        planId: plan.id,
+        sourceType: 'grant',
+        sourceId,
+      });
+      if (!result.entitlement) throw httpError(409, '领取权益未完成');
+      await this.capabilities.createEventService(tx).capture({
+        userId,
+        appId: app.id,
+        eventName: 'app.free_claimed',
+        properties: { entitlementId: result.entitlement.id, planId: plan.id },
+      });
+      return { entitlementId: result.entitlement.id, alreadyOwned: !result.granted };
+    });
   }
 
   async findActiveOneTimeOwnership(userId: string, appId: string, planId?: string) {

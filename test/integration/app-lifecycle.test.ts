@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { appConnections, appPublishingTokens, apps, deployments } from '../../src/db/schema';
+import { appConnections, appPublishingTokens, apps, deployments, plans } from '../../src/db/schema';
 import { testDatabase, seedPurchase } from './helpers';
 import { AppService } from '../../src/modules/app/service';
 import { AppLifecycleService } from '../../src/modules/app/lifecycle-service';
@@ -511,9 +511,13 @@ test('development project builds and registers releases before a product, then p
       }),
     { statusCode: 401 },
   );
-  // A legacy active row without a valid commercial configuration cannot bypass
+  // A legacy active row with a paid mode but no paid offers cannot bypass
   // publication checks by selecting an already published delivery version.
-  await db.update(apps).set({ status: 'active' }).where(eq(apps.code, code));
+  await db
+    .update(apps)
+    .set({ status: 'active', meta: { acquisition: 'paid' } })
+    .where(eq(apps.code, code));
+  await db.update(plans).set({ status: 'inactive' }).where(eq(plans.appId, stored!.id));
   await assert.rejects(() => products.selectDeliveryVersion(code, release.id, user.id), {
     statusCode: 422,
   });

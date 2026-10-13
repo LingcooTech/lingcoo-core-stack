@@ -146,3 +146,9 @@ export async function syncAppDeliveryManifest(
     { body: JSON.stringify(payload) },
   );
 }
+
+export function claimFreeApp(appCode: string) {
+  return apiClient('POST /v1/apps/:param/claim', `/v1/apps/${encodeURIComponent(appCode)}/claim`, {
+    body: JSON.stringify({}),
+  });
+}

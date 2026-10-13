@@ -429,3 +429,43 @@ for (const closing of ['cancelled', 'exit_requested'] as const) {
     assert.equal((await terms.read(deployed.id)).service?.expiresAt, service.expiresAt);
   });
 }
+
+test('free software grant purchases and fulfills only paid hosting, without paid software rights', async () => {
+  const f = await fixture();
+  const { plans, entitlements } = await import('../../src/db/schema');
+  const { LicenseService } = await import('../../src/modules/license/service');
+  const [current] = await db.select().from(apps).where(eq(apps.id, f.app.id));
+  await db
+    .update(apps)
+    .set({ meta: { ...(current!.meta as Record<string, unknown>), acquisition: 'free' } })
+    .where(eq(apps.id, f.app.id));
+  await db.update(plans).set({ priceAmount: 0 }).where(eq(plans.id, f.plan.id));
+  await db.update(appOffers).set({ status: 'inactive' }).where(eq(appOffers.appId, f.app.id));
+  const claim = await new LicenseService(createServiceFactories(), db).claimFreeApplication(
+    f.app.code,
+    f.user.id,
+  );
+  const session = await f.checkout.createSession({
+    ...f.input,
+    hostingOnly: { entitlementId: claim.entitlementId },
+  });
+  assert.equal(session.order.amount, 1990);
+  assert.equal(session.order.items.length, 1);
+  assert.equal(session.order.items[0]!.kind, 'hosting');
+  await f.billing.mockPayOrder({ userId: f.user.id, orderNo: session.order.orderNo });
+  const owned = await db.select().from(entitlements).where(eq(entitlements.appId, f.app.id));
+  assert.equal(owned.length, 1);
+  assert.equal(owned[0]!.sourceType, 'grant');
+  const hosting = (await new HostingPurchases(db).list(f.user.id)).items;
+  assert.equal(hosting.length, 1);
+  const deployment = await f.service.createDeployment({
+    userId: f.user.id,
+    appCode: f.app.code,
+    entitlementId: claim.entitlementId,
+    hostingPurchaseId: hosting[0]!.id,
+    label: 'Free app paid hosting',
+    environment: 'test',
+    deploymentMode: 'managed',
+  });
+  assert.equal(deployment.entitlementId, claim.entitlementId);
+});

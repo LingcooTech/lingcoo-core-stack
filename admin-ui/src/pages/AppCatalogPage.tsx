@@ -2,7 +2,7 @@ import { PageSkeleton } from '@/components/layout/PageSkeleton';
 import { usePageMetadata } from '@/lib/use-page-metadata';
 import { QueryErrorState } from '@/components/portal/QueryErrorState';
 import { runAsync } from '@/lib/async-events';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -18,7 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 
-import { getAppCatalog } from '@/api/apps';
+import { claimFreeApp, getAppCatalog } from '@/api/apps';
 import { listMyEntitlements } from '@/api/user';
 import type { MyEntitlement } from '@/api/types';
 const AppPurchaseDialog = lazy(() =>
@@ -91,6 +91,18 @@ export function AppCatalogPage() {
     queryKey: ['app-catalog', params.appCode],
     queryFn: () => getAppCatalog(params.appCode ?? ''),
     enabled: Boolean(params.appCode),
+  });
+
+  const freeClaim = useMutation({
+    mutationFn: () => claimFreeApp(params.appCode ?? ''),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['my-entitlements'] });
+      await navigate(
+        data?.app && getAppDeliveryMode(data.app) === 'one_click'
+          ? `/deploy?app=${encodeURIComponent(params.appCode ?? '')}`
+          : '/account?tab=apps',
+      );
+    },
   });
 
   usePageMetadata(
@@ -190,6 +202,7 @@ export function AppCatalogPage() {
 
   const app = data.app;
   const appDetail = getAppDetailProfile(app);
+  const isFree = normalizeMeta(app.meta).acquisition === 'free';
   const isDeployable = getAppDeliveryMode(app) === 'one_click';
   const entitlementStateLoading = isAuthenticated && entitlementsQuery.isLoading;
   const hasActiveEntitlement = activeCurrentAppEntitlements.length > 0;
@@ -211,9 +224,14 @@ export function AppCatalogPage() {
   const canShowEntitledResourceLinks = !offers.length || hasActiveEntitlement;
   const hasDirectAccess = !isDeployable && (websiteLinks.length > 0 || downloadLinks.length > 0);
   const primarySubscriptionPlan = appDetail.subscriptionPlans[0] ?? null;
-  const heroPriceLabel = offers.length > 0 ? priceRangeLabel : getAppAvailabilityLabel(app);
-  const heroPriceDescription =
-    offers.length > 1
+  const heroPriceLabel = isFree
+    ? '免费'
+    : offers.length > 0
+      ? priceRangeLabel
+      : getAppAvailabilityLabel(app);
+  const heroPriceDescription = isFree
+    ? '免费获得应用使用权，托管服务单独计费'
+    : offers.length > 1
       ? `${offers.length} 个套餐，购买时选择`
       : (preferredOffer?.title ??
         (appDetail.purchaseType === 'offsite' && appDetail.purchaseUrl
@@ -435,6 +453,22 @@ export function AppCatalogPage() {
                     </Button>
                   ) : null}
                 </div>
+              ) : isFree ? (
+                <Button
+                  className="mt-4 h-10 w-full rounded-xl"
+                  disabled={freeClaim.isPending}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      runAsync(() =>
+                        navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`),
+                      );
+                    } else {
+                      runAsync(() => freeClaim.mutateAsync());
+                    }
+                  }}
+                >
+                  {freeClaim.isPending ? '正在领取…' : '免费领取'}
+                </Button>
               ) : offers.length > 0 ? (
                 <Button
                   className="mt-4 h-10 w-full rounded-xl"

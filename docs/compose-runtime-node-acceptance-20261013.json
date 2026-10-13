@@ -1,0 +1,41 @@
+{
+  "runtime": {
+    "protocol": "compose_install_v1",
+    "runnerVersion": "1",
+    "instanceId": "b8a0b52e-b492-45ea-8243-647673d4e6df",
+    "releaseId": "b1f9b6a5-9d0f-4b71-ad12-8c8957716116",
+    "releaseDigest": "sha256:134d95eb2e95f73cdb963bdf2ff3100827d67336a46b335506408b209233ccc9",
+    "phase": "runtime_ready",
+    "completed": ["migrate:0", "initialize:0"],
+    "imageSource": "registry"
+  },
+  "failedInitializationResumed": true,
+  "migrationExecutedOnce": true,
+  "literalEnvironmentPreserved": true,
+  "idempotentReplay": true,
+  "checkedAt": "2026-10-13T08:02:18.073908+00:00",
+  "node": "118.25.36.15",
+  "scope": "isolated_runtime_fixture_only",
+  "publishableEvidence": false,
+  "resources": {
+    "cpuMillis": 500,
+    "memoryMb": 256,
+    "diskMb": 256
+  },
+  "image": "docker.io/library/busybox@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e",
+  "runnerSha256": "39fb8d03391f0a0779340da2051c39c8f06e1eee096e4287af1fe180ce5ae717",
+  "probeSha256": "d4d94fd3f349835a527d8f54988968bb8db7211f02d8d0c0b620feaeafa0fb2c",
+  "cleanup": {
+    "containers": true,
+    "volumes": true,
+    "networks": true,
+    "temporaryDirectory": true
+  },
+  "notVerified": [
+    "backup_restore",
+    "dns_tls",
+    "custom_domains",
+    "platform_trusted_validation_record",
+    "retail_or_edu_migration"
+  ]
+}

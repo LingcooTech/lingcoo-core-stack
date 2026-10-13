@@ -46,3 +46,48 @@ test('publishing rejects unsupported manifest versions and embedded secret defau
   secrets[0]!.defaultValue = 'must-not-be-published';
   assert.throws(() => validateAppProduct(other), /embedded secret/);
 });
+
+test('explicit free products validate without offers but still require one permanent zero-price mapped plan', () => {
+  const product = {
+    schemaVersion: 1,
+    app: {
+      code: 'free_sample',
+      name: 'Free',
+      status: 'active',
+      meta: { acquisition: 'free', deliveryMode: 'none' },
+    },
+    features: [{ code: 'free_sample_access', name: 'Access' }],
+    plans: [
+      {
+        code: 'free_sample_plan',
+        name: 'Free',
+        priceAmount: 0,
+        interval: 'one_time',
+        featureCodes: ['free_sample_access'],
+      },
+    ],
+    offers: [],
+  };
+  assert.doesNotThrow(() => validateAppProduct(product, true));
+  assert.throws(
+    () =>
+      validateAppProduct({ ...product, plans: [{ ...product.plans[0], interval: 'month' }] }, true),
+    /Free acquisition/,
+  );
+  assert.throws(
+    () =>
+      validateAppProduct(
+        { ...product, features: [{ ...product.features[0], status: 'inactive' }] },
+        true,
+      ),
+    /Free acquisition/,
+  );
+  assert.throws(
+    () =>
+      validateAppProduct(
+        { ...product, app: { ...product.app, meta: { acquisition: 'paid' } } },
+        true,
+      ),
+    /No active offer/,
+  );
+});

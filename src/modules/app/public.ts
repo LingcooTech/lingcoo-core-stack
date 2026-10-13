@@ -39,6 +39,7 @@ export function createAppAccess(db: DbExecutor) {
   return {
     findAppByCode: implementation.findAppByCode.bind(implementation),
     findAppById: implementation.findAppById.bind(implementation),
+    listOffersByAppId: implementation.listOffersByAppId.bind(implementation),
     listAppsByIds: implementation.listAppsByIds.bind(implementation),
   };
 }

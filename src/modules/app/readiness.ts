@@ -1,3 +1,4 @@
+import { freeAcquisitionPlan } from '../../lib/free-acquisition';
 import { deliveryManifestSchema, hostingProfileSchema } from '@lingcoo/contracts';
 import type { DbExecutor } from '../../db/types';
 import type { AppEnv } from '../../lib/env';
@@ -39,32 +40,43 @@ export class AppReadiness {
     const check = (code: string, title: string, ok: boolean, detail: string) =>
       checks.push({ code, title, status: ok ? 'passed' : 'blocked', detail, blocking: true });
     const activeOffers = offers.filter((o) => o.status === 'active');
-    check(
-      'offers',
-      '有效售价',
-      activeOffers.length > 0 &&
-        activeOffers.every((o) => o.priceAmount > 0 && o.currency === 'CNY'),
-      '需要至少一个启用的正式人民币报价；零价或验收价格请保留草稿。',
-    );
-    const activePlans = plans.filter((p) => activeOffers.some((o) => o.planId === p.id));
-    check(
-      'plans',
-      '套餐与权益映射',
-      activePlans.length > 0 &&
-        activeOffers.every((o) => {
-          const plan = plans.find((p) => p.id === o.planId);
-          const linked = plan ? mappings.filter((m) => m.planId === plan.id) : [];
-          return (
-            !!plan &&
-            plan.status === 'active' &&
-            plan.currency === o.currency &&
-            !(plan.meta as Record<string, unknown>)?.acceptanceOnlyPrice &&
-            linked.length > 0 &&
-            linked.every((m) => features.some((f) => f.id === m.featureId && f.status === 'active'))
-          );
-        }),
-      '每个报价需关联有效套餐及有效权益；验收用途套餐不能作为正式售价。',
-    );
+    if (meta.acquisition === 'free') {
+      check(
+        'free_acquisition',
+        '免费领取权益',
+        !!freeAcquisitionPlan(plans, features, mappings) && activeOffers.length === 0,
+        '免费应用需唯一有效的零价永久套餐及权益映射，不发布软件付费报价；托管单独计费。',
+      );
+    } else {
+      check(
+        'offers',
+        '有效售价',
+        activeOffers.length > 0 &&
+          activeOffers.every((o) => o.priceAmount > 0 && o.currency === 'CNY'),
+        '需要至少一个启用的正式人民币报价；零价或验收价格请保留草稿。',
+      );
+      const activePlans = plans.filter((p) => activeOffers.some((o) => o.planId === p.id));
+      check(
+        'plans',
+        '套餐与权益映射',
+        activePlans.length > 0 &&
+          activeOffers.every((o) => {
+            const plan = plans.find((p) => p.id === o.planId);
+            const linked = plan ? mappings.filter((m) => m.planId === plan.id) : [];
+            return (
+              !!plan &&
+              plan.status === 'active' &&
+              plan.currency === o.currency &&
+              !(plan.meta as Record<string, unknown>)?.acceptanceOnlyPrice &&
+              linked.length > 0 &&
+              linked.every((m) =>
+                features.some((f) => f.id === m.featureId && f.status === 'active'),
+              )
+            );
+          }),
+        '每个报价需关联有效套餐及有效权益；验收用途套餐不能作为正式售价。',
+      );
+    }
     const project = await new AppLifecycleRepository(this.db).project(appCode);
     const standard = meta.deliveryProtocol === 'compose_v2' && !!project?.definition;
     if (standard) {

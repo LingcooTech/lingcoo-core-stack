@@ -1,3 +1,4 @@
+import { freeAcquisitionPlan } from './free-acquisition';
 import { normalizeDeliveryManifest } from './delivery-manifest';
 import { productSchema } from './app-product';
 import { deliveryManifestSchema } from '@lingcoo/contracts';
@@ -76,7 +77,20 @@ export function validateAppProduct(input: unknown, readyForSale = false) {
   }
   if (readyForSale) {
     if (product.app.status !== 'active') errors.push('App is not active');
-    if (!product.offers?.some((offer) => offer.status === 'active')) errors.push('No active offer');
+    if (product.app.meta?.acquisition === 'free') {
+      const plan = freeAcquisitionPlan(
+        (product.plans ?? []).map((p) => ({ ...p, id: p.code, meta: p.meta ?? {} })),
+        (product.features ?? []).map((f) => ({ ...f, id: f.code })),
+        (product.plans ?? []).flatMap((p) =>
+          p.featureCodes.map((code) => ({ planId: p.code, featureId: code })),
+        ),
+      );
+      if (!plan || product.offers?.some((o) => o.status === 'active'))
+        errors.push(
+          'Free acquisition requires one permanent zero-price plan with active rights and no paid offers',
+        );
+    } else if (!product.offers?.some((offer) => offer.status === 'active'))
+      errors.push('No active offer');
     for (const offer of product.offers?.filter((entry) => entry.status === 'active') ?? []) {
       const plan = product.plans?.find((entry) => entry.code === offer.planCode);
       if (!plan || plan.status !== 'active') errors.push(`Offer ${offer.code} has no active plan`);

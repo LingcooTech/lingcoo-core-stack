@@ -594,6 +594,11 @@ const clientResponseContracts = [
     path: '/v1/billing/orders/:param/sync',
     schema: models.ReconcileResponseSchema.and(z.object({ order: models.OrderSchema })),
   },
+  {
+    method: 'POST',
+    path: '/v1/apps/:param/claim',
+    schema: z.object({ entitlementId: z.uuid(), alreadyOwned: z.boolean() }),
+  },
   { method: 'GET', path: '/v1/entitlements/me', schema: models.MyEntitlementsResponseSchema },
   { method: 'GET', path: '/v1/notifications/me', schema: models.NotificationsResponseSchema },
   {
